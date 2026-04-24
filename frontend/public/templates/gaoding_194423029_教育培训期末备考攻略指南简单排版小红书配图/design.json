@@ -1,0 +1,2188 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.33,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "366d8633-f926-48fe-8ca4-12205a3c3575",
+      "elements": [
+        {
+          "uuid": "d2a1c5da-f06a-4402-8f67-ad3c710a7e99",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "上传文件",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "1837971061"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "userAdded": false,
+          "background": {
+            "color": "#57c2fcff",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "backgroundEffectImage": "",
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/86421/b5155a9c22374d77a7a2b3156d38b921.png",
+            "width": 256,
+            "height": 341
+          },
+          "elements": [
+            {
+              "uuid": "3c9f6c4f-384f-4d79-8d3b-888579ea088d",
+              "imageUrl": "",
+              "type": "text",
+              "title": "(期末考临近) 学生必做的备考攻略",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 844,
+              "height": 225,
+              "version": "9.2.0",
+              "left": 198.99999999999997,
+              "top": 56.899902248382666,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ffffffff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 93.7,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "(期末考临近)\r学生必做的备考攻略",
+              "contents": [
+                {
+                  "color": "#fffa79ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 93.7,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "("
+                },
+                {
+                  "color": "#ffffffff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 93.7,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "期末考临近"
+                },
+                {
+                  "color": "#fffa79ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 93.7,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": ")\r"
+                },
+                {
+                  "color": "#ffffffff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 93.7,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "学生必做的备考攻略"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ffffffff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "271ed161-ac00-4cd5-827f-e263d6c11f2a",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1220.999945282936,
+              "height": 1366.0000176429749,
+              "left": 14.0999819993973,
+              "top": 284.9499423027039,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "29605559-6b00-4c6a-8cde-f4eff875c434",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/86421/113d6400db30491483460b58ba74545b.png",
+                  "type": "svg",
+                  "title": "底框",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1220.999945282936,
+                  "height": 1366.0000176429749,
+                  "left": -2.1316282072803006e-14,
+                  "top": -5.684341886080802e-14,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#3289da99",
+                    "#ffffffff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/86421/dd987ea875574034ac73a44bebcd35d7.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 609,
+                      "top": 682,
+                      "right": 609.9999452829361,
+                      "bottom": 682.0000176429749
+                    }
+                  },
+                  "naturalWidth": 1220.999945282936,
+                  "naturalHeight": 1366.0000176429749
+                },
+                {
+                  "uuid": "a6822244-8d2c-4a6e-a049-0cc6288039f5",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 990,
+                  "height": 250.94674294552806,
+                  "left": 118.0250180006027,
+                  "top": 100.88831475176812,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "2f5679cb-3746-4be9-bfe0-ba04827afcf7",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "制定一份详细的复习计划，将距离期末考的时间合理分割。比如，把每天的时间划分成不同模块，分别用于复习不同科目。像数学这种需要大量",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 990,
+                      "height": 192,
+                      "version": "9.2.0",
+                      "left": 2.842170943040401e-14,
+                      "top": 58.946742945528,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#242424ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 30,
+                      "lineHeight": 1.6,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "制定一份详细的复习计划，将距离期末考的时间合理分割。比如，把每天的时间划分成不同模块，分别用于复习不同科目。像数学这种需要大量练习的学科，可多分配些时间；语文则注重日常积累，安排固定时段背诵古诗词、优美文段等。按计划推进，避免盲目复习，让备考有条不紊。",
+                      "contents": [
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "制定一份详细的复习计划，将距离期末考的时间合理分割。比如，把每天的时间划"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "分成不同模块",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，分别用于复习不同科目。像数学这种"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "需要大量练习",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "的学科，可多分配些时间；语文则注重日常积累，安排固定时段背诵古诗词、优美文段等。按计划推进，"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "避免盲目复习",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，让备考有条不紊。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#242424ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "3d5b13f8-e718-4321-928f-f5217a63e553",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "1",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 363,
+                      "height": 45,
+                      "version": "9.2.0",
+                      "left": 12.119832341639608,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#ffffffff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 29.6,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "1   精准规划，明确方向",
+                      "contents": [
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "1",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20241224/4ee54058c9a5e095e0b952b8fc93916a.svg",
+                            "repeat": "stretch",
+                            "drawUnit": "char",
+                            "width": 22,
+                            "height": 22,
+                            "svgInfo": {
+                              "colors": [
+                                "#519debff"
+                              ],
+                              "strokeWidth": 0
+                            },
+                            "renderRect": {
+                              "bottom": 0.172,
+                              "left": -0.172,
+                              "right": 0.172,
+                              "top": -0.172
+                            },
+                            "style": {
+                              "y": 0.5,
+                              "height": 1
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "  ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36.8,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": " ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 35.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "精准规划，明确方向",
+                          "highlight": null
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false,
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20241224/4ee54058c9a5e095e0b952b8fc93916a.svg",
+                        "repeat": "stretch",
+                        "drawUnit": "char",
+                        "width": 22,
+                        "height": 22,
+                        "svgInfo": {
+                          "colors": [
+                            "#519debff"
+                          ],
+                          "strokeWidth": 0
+                        },
+                        "renderRect": {
+                          "bottom": 0.172,
+                          "left": -0.172,
+                          "right": 0.172,
+                          "top": -0.172
+                        },
+                        "style": {
+                          "y": 0.5,
+                          "height": 1
+                        },
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      },
+                      "parents": []
+                    }
+                  ]
+                },
+                {
+                  "uuid": "b05a8932-9557-4322-8874-95b5da3f65de",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 990,
+                  "height": 249.94674294552783,
+                  "left": 118.0250180006027,
+                  "top": 409.8883147517681,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "a3c0e1c0-f3cb-450d-b97f-bd3e42818eeb",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "梳理各学科知识点，制作思维导图。对照思维导图，找出自己没掌握或理解不深的部分。针对这些薄弱点，深入钻研教材、请教老师同学，再找",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 990,
+                      "height": 192,
+                      "version": "9.2.0",
+                      "left": 0,
+                      "top": 57.94674294552783,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#242424ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 30,
+                      "lineHeight": 1.6,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "梳理各学科知识点，制作思维导图。对照思维导图，找出自己没掌握或理解不深的部分。针对这些薄弱点，深入钻研教材、请教老师同学，再找相关练习题巩固。比如物理的力学部分没掌握好，就集中做力学题，从简单题入手逐步攻克难题，补齐知识短板。",
+                      "contents": [
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "梳理各学科知识点，"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "制作思维导图",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "。对照思维导图，找出自己没掌握或理解不深的部分。"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "针对这些薄弱点",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，深入钻研教材、请教老师同学，再找相关练习题巩固。比如物理的力学部分没掌握好，就集中做力学题，从"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "简单题入手",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "逐步攻克难题，补齐知识短板。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#242424ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "4f550cde-316c-45d0-acbb-5082e32b10b8",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "1",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 369,
+                      "height": 45,
+                      "version": "9.2.0",
+                      "left": 12.119832341639608,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#ffffffff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 29.6,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "2   查缺补漏，巩固根基",
+                      "contents": [
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "2",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20241224/4ee54058c9a5e095e0b952b8fc93916a.svg",
+                            "repeat": "stretch",
+                            "drawUnit": "char",
+                            "width": 22,
+                            "height": 22,
+                            "svgInfo": {
+                              "colors": [
+                                "#519debff"
+                              ],
+                              "strokeWidth": 0
+                            },
+                            "renderRect": {
+                              "bottom": 0.172,
+                              "left": -0.172,
+                              "right": 0.172,
+                              "top": -0.172
+                            },
+                            "style": {
+                              "y": 0.5,
+                              "height": 1
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "  ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36.8,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": " ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 35.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "查缺补漏，巩固根基",
+                          "highlight": null
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false,
+                      "parents": []
+                    }
+                  ]
+                },
+                {
+                  "uuid": "1c12eccb-789a-4c06-9d7f-5bba1ddc4b21",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 990,
+                  "height": 250,
+                  "left": 118.0250180006027,
+                  "top": 717.835057697296,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "3c4d5a3f-903e-4097-89dd-970666522262",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "选取历年期末真题或模拟试卷，按照考试时间和要求进行模拟考试。在这个过程中，熟悉考试题型、题量，把握答题节奏。比如英语考试，规定",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 990,
+                      "height": 192,
+                      "version": "9.2.0",
+                      "left": 0,
+                      "top": 58,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#242424ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 30,
+                      "lineHeight": 1.6,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "选取历年期末真题或模拟试卷，按照考试时间和要求进行模拟考试。在这个过程中，熟悉考试题型、题量，把握答题节奏。比如英语考试，规定时间内完成听力、阅读、写作等题型，训练自己合理分配答题时间。模拟考后，分析错题，总结失误原因，及时调整复习策略和答题技巧。",
+                      "contents": [
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "选取"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "历年期末真题或模拟试卷",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，按照考试时间和要求进行模拟考试。在这个过程中，熟悉考试题型、题量，"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "把握答题节奏",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "。比如英语考试，规定时间内完成听力、阅读、写作等题型，训练自己合理分配答题时间。模拟考后，分析错题，总结失误原因，"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "及时调整",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "复习策略和答题技巧。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#242424ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "3f534ed4-6fe2-41b3-b2e3-e8d67833dba8",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "1",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 369,
+                      "height": 45,
+                      "version": "9.2.0",
+                      "left": 12.119832341639608,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#ffffffff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 29.6,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "3   模拟实战，调整状态",
+                      "contents": [
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "3",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20241224/4ee54058c9a5e095e0b952b8fc93916a.svg",
+                            "repeat": "stretch",
+                            "drawUnit": "char",
+                            "width": 22,
+                            "height": 22,
+                            "svgInfo": {
+                              "colors": [
+                                "#519debff"
+                              ],
+                              "strokeWidth": 0
+                            },
+                            "renderRect": {
+                              "bottom": 0.172,
+                              "left": -0.172,
+                              "right": 0.172,
+                              "top": -0.172
+                            },
+                            "style": {
+                              "y": 0.5,
+                              "height": 1
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "  ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36.8,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": " ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 35.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "模拟实战，调整状态",
+                          "highlight": null
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false,
+                      "parents": []
+                    }
+                  ]
+                },
+                {
+                  "uuid": "a488c19a-5d1a-46f3-b6b0-229208af3cc2",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 990,
+                  "height": 203.0532570544724,
+                  "left": 118.0250180006027,
+                  "top": 1025.7818006428238,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "568a4544-afd2-4efd-9634-c3f0367d24a2",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "临近考试，焦虑情绪很常见。要学会自我调节，感觉压力大时，通过运动、听音乐等方式放松。保持积极心态，给自己正面心理暗示，相信 “",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 990,
+                      "height": 144,
+                      "version": "9.2.0",
+                      "left": 0,
+                      "top": 59.0532570544724,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#242424ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 30,
+                      "lineHeight": 1.6,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "临近考试，焦虑情绪很常见。要学会自我调节，感觉压力大时，通过运动、听音乐等方式放松。保持积极心态，给自己正面心理暗示，相信 “我能行”合理安排作息，保证充足睡眠，让自己以饱满的精神状态迎接期末考。",
+                      "contents": [
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "临近考试，焦虑情绪"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "很常见",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "。要学会自我调节，感觉压力大时，通过运动、听音乐等方式放松。保持积极心态，"
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "给自己正面心理暗示",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                            "repeat": "round",
+                            "width": 48,
+                            "height": 28,
+                            "svgInfo": {
+                              "colors": [
+                                "#fffa79ff"
+                              ],
+                              "strokeWidth": 0.6040404040404042
+                            },
+                            "renderRect": {
+                              "bottom": 0,
+                              "left": 0,
+                              "right": 0,
+                              "top": 0
+                            },
+                            "style": {
+                              "y": 0.92,
+                              "height": 0
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#242424ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 30,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，相信 “我能行”合理安排作息，保证充足睡眠，让自己以饱满的精神状态迎接期末考。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#242424ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "42d2c1c4-b1fa-4d4d-8171-280e27bd6acf",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "1",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 369,
+                      "height": 45,
+                      "version": "9.2.0",
+                      "left": 12.119832341639608,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": null,
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#ffffffff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 29.6,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "4   心态调适，轻松应考",
+                      "contents": [
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "4",
+                          "highlight": {
+                            "type": "svg",
+                            "url": "https://cdn.dancf.com/fe-assets/20241224/4ee54058c9a5e095e0b952b8fc93916a.svg",
+                            "repeat": "stretch",
+                            "drawUnit": "char",
+                            "width": 22,
+                            "height": 22,
+                            "svgInfo": {
+                              "colors": [
+                                "#519debff"
+                              ],
+                              "strokeWidth": 0
+                            },
+                            "renderRect": {
+                              "bottom": 0.172,
+                              "left": -0.172,
+                              "right": 0.172,
+                              "top": -0.172
+                            },
+                            "style": {
+                              "y": 0.5,
+                              "height": 1
+                            },
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#ffffffff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 29.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "  ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36.8,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": " ",
+                          "highlight": null
+                        },
+                        {
+                          "color": "#519debff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 35.6,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "心态调适，轻松应考",
+                          "highlight": null
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false,
+                      "parents": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "backgroundColor": "#57c2fcff",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}

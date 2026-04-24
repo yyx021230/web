@@ -1,0 +1,4258 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.5990338164251208,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "c7da9f74-e8d1-4d25-ab17-71e3397a49f2",
+      "elements": [
+        {
+          "uuid": "4abb3d3d-b931-4c55-a9cb-8e9c909e6378",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "上传3",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "2169530265"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "userAdded": false,
+          "background": {
+            "color": "#ffffffff",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/74244/ff54ee8fec3a4f11ba18dce02e768701.png",
+            "width": 256,
+            "height": 341
+          },
+          "backgroundEffectImage": "",
+          "elements": [
+            {
+              "uuid": "a99b5b6f-56ae-4602-99cf-db459ba0d6d5",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/65163/4ffbe41313804b3599f0a9f772ac1c35.png",
+              "type": "path",
+              "title": "矩形 1",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1211.5090223550797,
+              "height": 1625.4277138710022,
+              "left": 15.245451807975769,
+              "top": 15.286093711853027,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,0h1211.50902v0v1625.42771v0h-1211.50902v0v-1625.42771z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 30,
+                  "color": "#f9863bff",
+                  "filling": {
+                    "type": "color",
+                    "enable": true,
+                    "color": ""
+                  },
+                  "fillColor": ""
+                }
+              ],
+              "effectedResult": {
+                "left": -15,
+                "top": -15,
+                "width": 1241.50902,
+                "height": 1655.42771
+              }
+            },
+            {
+              "uuid": "a55a37ed-9f1c-4154-8d18-0d019d839c15",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1131,
+              "height": 267.61643510396175,
+              "left": 68.58884224004828,
+              "top": 1018.375571587281,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "8f7528f8-9931-4d27-a971-3a79fd3d1bd2",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "1 .阅读技巧：唐迟“阅读逻辑”课，掌握“主旨题”“细节题”解题方法。 2.作文模板：整理万能句式（开头、结尾、过渡句），避免",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1131,
+                  "height": 199,
+                  "version": "9.2.0",
+                  "left": 2.842170943040401e-14,
+                  "top": 68.61643510396175,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 33,
+                  "lineHeight": 2.01,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "justify",
+                  "verticalAlign": "top",
+                  "content": "1 .阅读技巧：唐迟“阅读逻辑”课，掌握“主旨题”“细节题”解题方法。\r2.作文模板：整理万能句式（开头、结尾、过渡句），避免雷同。\r3.三刷真题：2010-2020年真题限时训练，错题归类（偷换概念/过度推断）。",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                },
+                {
+                  "uuid": "06d00e1b-153a-4ace-a64d-efb01bd2ba50",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "二、5个月高效备考计划",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 480,
+                  "height": 54,
+                  "version": "9.2.0",
+                  "left": 5.891233188609405,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 45,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "二、5个月高效备考计划",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff",
+                    "#ffec9cff"
+                  ],
+                  "mainColor": "",
+                  "background": {
+                    "path": {
+                      "renderRect": {
+                        "left": -0.26,
+                        "top": -0.26,
+                        "right": 0.26,
+                        "bottom": 0.26
+                      },
+                      "pathShape": "glyph",
+                      "pathEffects": [
+                        {
+                          "enable": true,
+                          "filling": {
+                            "type": "color",
+                            "color": "#ffec9cff",
+                            "enable": true
+                          }
+                        }
+                      ],
+                      "radius": 0.3,
+                      "radiusUnitType": "relative"
+                    },
+                    "enable": true
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false,
+                  "highlight": null
+                }
+              ]
+            },
+            {
+              "uuid": "392e688e-4288-4916-bd7a-0da98e77dd2d",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 799,
+              "height": 201.52360794964488,
+              "left": 68.58884224004834,
+              "top": 1362.5691957244514,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "2ec1cba2-34e7-4056-aeec-7dd0f8b8d2ca",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "误区1：盲目刷模拟题（真题才是王道！）。 误区2：作文死背模板（需个性化修改）。",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 799,
+                  "height": 133,
+                  "version": "9.2.0",
+                  "left": -2.1416046263471348e-14,
+                  "top": 68.52360794964488,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 33,
+                  "lineHeight": 2.01,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "justify",
+                  "verticalAlign": "top",
+                  "content": "误区1：盲目刷模拟题（真题才是王道！）。\r误区2：作文死背模板（需个性化修改）。",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                },
+                {
+                  "uuid": "fc80fdcf-cd76-45b0-aa6d-72e5dc27c5ac",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "三、避坑指南",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 337.79875195007804,
+                  "height": 54,
+                  "version": "9.2.0",
+                  "left": 12.203679451480152,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 45,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "三、避坑指南",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff",
+                    "#ffec9cff"
+                  ],
+                  "mainColor": "",
+                  "background": {
+                    "path": {
+                      "renderRect": {
+                        "left": -0.26,
+                        "top": -0.26,
+                        "right": 0.26,
+                        "bottom": 0.26
+                      },
+                      "pathShape": "glyph",
+                      "pathEffects": [
+                        {
+                          "enable": true,
+                          "filling": {
+                            "type": "color",
+                            "color": "#ffec9cff",
+                            "enable": true
+                          }
+                        }
+                      ],
+                      "radius": 0.3,
+                      "radiusUnitType": "relative"
+                    },
+                    "enable": true
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false,
+                  "highlight": null
+                }
+              ]
+            },
+            {
+              "uuid": "baf56b92-b927-4ff0-a815-72ebbe178ea8",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 698,
+              "height": 250.42160788738482,
+              "left": 276.91823933100846,
+              "top": 137.27922739377982,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "59b288ec-6b75-452c-a1af-c5316a397243",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "从零基础到高分上岸",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    12.52651895740102,
+                    15.526148509424356,
+                    12.52651895740102,
+                    15.526148509424356
+                  ],
+                  "width": 676,
+                  "height": 111,
+                  "version": "9.2.0",
+                  "left": 7.756594022834861,
+                  "top": 139.42160788738482,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#ffffffff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 71.7,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "center",
+                  "verticalAlign": "top",
+                  "content": "从零基础到高分上岸",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#ffffffff",
+                    "#c20408ff"
+                  ],
+                  "mainColor": "",
+                  "background": {
+                    "path": {
+                      "pathShape": "rect",
+                      "pathEffects": [
+                        {
+                          "enable": true,
+                          "filling": {
+                            "type": "color",
+                            "color": "#c20408ff",
+                            "enable": true
+                          }
+                        }
+                      ],
+                      "radius": 15.956260727523203,
+                      "radiusUnitType": "absolute"
+                    },
+                    "enable": true
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false,
+                  "highlight": null
+                },
+                {
+                  "uuid": "d1e44c10-ddb6-4d24-bfda-3f969f4140d4",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "考研英语5个月",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 698,
+                  "height": 127,
+                  "version": "9.2.0",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-M",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 105.1,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "center",
+                  "verticalAlign": "top",
+                  "content": "考研英语5个月",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                }
+              ]
+            },
+            {
+              "uuid": "f2e90d15-4bbb-420f-acbf-39922f438592",
+              "imageUrl": "",
+              "type": "group",
+              "title": "【33931797】",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 216,
+              "height": 262,
+              "left": 898,
+              "top": 1310,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "8b16fd17-0667-413e-859f-34a626c54d24",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "【33931797】",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 214,
+                  "height": 217,
+                  "left": 0,
+                  "top": 45,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 33931797,
+                        "type": "image"
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/65163/485376ac127c4e808e467f22ff2b2a51.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 214,
+                  "naturalHeight": 217,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "99b92672-8b16-463f-9e8f-39f21aad021b",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "【33931797】",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 147,
+                  "height": 83,
+                  "left": 14,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 33931797,
+                        "type": "image"
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/65163/c5b289e19a834c52913e69c7f897c516.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 147,
+                  "naturalHeight": 83,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "d80bf140-25ea-40f3-98da-6898bfa0fec8",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "【33931797】",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 50,
+                  "height": 40,
+                  "left": 166,
+                  "top": 74,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 33931797,
+                        "type": "image"
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/65163/e9435581641f4f7cb6ce3209d4d853be.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 50,
+                  "naturalHeight": 40,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "f5c67315-5cb8-4232-a2b9-c960e867a490",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "【33931797】",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 36,
+                  "height": 43,
+                  "left": 16,
+                  "top": 167,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 33931797,
+                        "type": "image"
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/65163/69cffccc70c74b80895e4f698836739c.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 36,
+                  "naturalHeight": 43,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "0dfba9c1-5406-496d-ae1f-a90dd1c7d83d",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1105.7095947265625,
+              "height": 124.50235387446162,
+              "left": 67.79043620575567,
+              "top": 471.9723836558662,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "0fb926f8-1153-4347-b698-d3dd764adaca",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "考研英语分为英语一（学硕）和英语二（专硕），主要题型：",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1105.7095947265625,
+                  "height": 47,
+                  "version": "9.2.0",
+                  "left": 2.842170943040401e-14,
+                  "top": 77.50235387446162,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-M",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 39,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "justify",
+                  "verticalAlign": "top",
+                  "content": "考研英语分为英语一（学硕）和英语二（专硕），主要题型：",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                },
+                {
+                  "uuid": "8c81bab2-bc50-4bff-8dbe-d29fb16f7f76",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "一、考研英语题型分析",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 451,
+                  "height": 54,
+                  "version": "9.2.0",
+                  "left": 7.092827154316794,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 45,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "一、考研英语题型分析",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff",
+                    "#ffec9cff"
+                  ],
+                  "mainColor": "",
+                  "background": {
+                    "path": {
+                      "renderRect": {
+                        "left": -0.26,
+                        "top": -0.26,
+                        "right": 0.26,
+                        "bottom": 0.26
+                      },
+                      "pathShape": "glyph",
+                      "pathEffects": [
+                        {
+                          "enable": true,
+                          "filling": {
+                            "type": "color",
+                            "color": "#ffec9cff",
+                            "enable": true
+                          }
+                        }
+                      ],
+                      "radius": 0.3,
+                      "radiusUnitType": "relative"
+                    }
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false,
+                  "highlight": null
+                }
+              ]
+            },
+            {
+              "uuid": "34b12ed6-2e11-4172-8160-de5a10d4f68b",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/74244/bee94ca446894fb1b0858ae2d5a7f978.png",
+              "type": "table",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1105,
+              "height": 331,
+              "version": "8.0.0",
+              "left": 69,
+              "top": 620,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "tableData": {
+                "cells": [
+                  [
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    }
+                  ],
+                  [
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    }
+                  ],
+                  [
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    }
+                  ],
+                  [
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    }
+                  ],
+                  [
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    },
+                    {
+                      "content": "",
+                      "colspan": 1,
+                      "rowspan": 1,
+                      "styleIds": [
+                        "4",
+                        "5",
+                        "6"
+                      ]
+                    }
+                  ]
+                ],
+                "styles": {
+                  "1": {
+                    "fontSize": 18,
+                    "fontFamily": "SourceHanSansSC-Regular",
+                    "lineHeight": 1.5,
+                    "fontWeight": 200,
+                    "fontStyle": "normal",
+                    "textDecoration": "none",
+                    "textAlign": "center",
+                    "backgroundColor": "#ffffffff",
+                    "color": "#33383eff",
+                    "borders": [
+                      {
+                        "style": "solid",
+                        "width": 1,
+                        "color": "#33383eff"
+                      }
+                    ],
+                    "padding": [
+                      5.372453137734311
+                    ]
+                  },
+                  "4": {
+                    "borders": [
+                      {
+                        "style": "solid",
+                        "width": 1,
+                        "color": "#33383eff"
+                      }
+                    ]
+                  },
+                  "5": {
+                    "backgroundColor": "#ffffffff"
+                  },
+                  "6": {
+                    "fontSize": 20
+                  }
+                },
+                "all": {
+                  "styleId": "1"
+                },
+                "rules": [],
+                "cols": [
+                  {
+                    "width": 129
+                  },
+                  {
+                    "width": 129
+                  },
+                  {
+                    "width": 129
+                  },
+                  {
+                    "width": 129
+                  }
+                ],
+                "rows": [
+                  {
+                    "height": 54
+                  },
+                  {
+                    "height": 55
+                  },
+                  {
+                    "height": 54
+                  },
+                  {
+                    "height": 55
+                  },
+                  {
+                    "height": 54
+                  }
+                ]
+              },
+              "fontFamily": "SourceHanSansSC-Regular",
+              "zoom": 1,
+              "columnsWidth": [
+                223,
+                660,
+                221
+              ],
+              "rules": [],
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "contents": null,
+              "content": null,
+              "elements": [
+                {
+                  "uuid": "37995098-ce65-43ac-ac59-1d055afa39ec",
+                  "type": "tableRow",
+                  "top": 0.5,
+                  "left": 0.5,
+                  "width": 1104,
+                  "height": 66,
+                  "elements": [
+                    {
+                      "uuid": "ba6feb34-10fe-4f97-a52e-0bee4ee44e92",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 0.5,
+                      "width": 222,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "22d9054f-9b30-4aca-ac60-ee31eccfe729",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 207.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "完形填空",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "2dad265b-7a41-41c2-8ddf-c9775f22d0ef",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 223.5,
+                      "width": 659,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "c8df96ab-00b8-46a3-ab81-147b71248966",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 644.5860735009671,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "考察词汇+语法",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "92c536fb-ace5-4426-81d9-6ad321cfb37f",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 883.5,
+                      "width": 220,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "ebe200d7-fa50-48da-8d7f-faeae0a05309",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 205.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "（10分）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "uuid": "0c94f726-13d9-466c-a76b-fff7e287016d",
+                  "type": "tableRow",
+                  "top": 66.5,
+                  "left": 0.5,
+                  "width": 1104,
+                  "height": 66,
+                  "elements": [
+                    {
+                      "uuid": "da1a79e4-4293-463e-bc94-c90c2651ecb7",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 0.5,
+                      "width": 222,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "80b32caa-4a0a-4a43-9794-ae9fac4c4175",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 207.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "阅读理解",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "2f58032d-4cb4-415b-ba54-f8c916e2a479",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 223.5,
+                      "width": 659,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "4600eb68-ee6b-4dcf-a3e1-ab137573dcf8",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 644.5860735009671,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "核心拉分项",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "e098bca1-1e38-4d04-b466-9f665aa5caf7",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 883.5,
+                      "width": 220,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "f879a631-46c8-4de9-a14e-9deeb50a03f2",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 205.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "（40分）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "uuid": "a24b217d-fa16-488f-9761-bfa58486b1d9",
+                  "type": "tableRow",
+                  "top": 132.5,
+                  "left": 0.5,
+                  "width": 1104,
+                  "height": 66,
+                  "elements": [
+                    {
+                      "uuid": "8d0b2cdc-0219-4587-ae32-e15e2763e802",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 0.5,
+                      "width": 222,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "b3240e76-c4b4-428b-9956-20fdf39c5fcb",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 207.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "新题型",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "ab5673d5-9c8b-45af-b4db-db140690b49b",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 223.5,
+                      "width": 659,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "d189f696-790c-44a3-ac3b-9d18f9269667",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 644.5860735009671,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "排序/七选五",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "a0f4a2ee-cdc8-400a-a309-b3f259413121",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 883.5,
+                      "width": 220,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "7a2d5b21-1ee1-4be9-8ff3-e9623ca379bf",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 205.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "（10分）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "uuid": "099fc166-3d9d-4765-942f-e30be656c32b",
+                  "type": "tableRow",
+                  "top": 198.5,
+                  "left": 0.5,
+                  "width": 1104,
+                  "height": 66,
+                  "elements": [
+                    {
+                      "uuid": "9c477a4a-a9b5-4662-82b2-4acc26d2bc64",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 0.5,
+                      "width": 222,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "8e520f64-ab97-4d4b-bab3-71fc370a0247",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 207.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "翻译",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "8f4f5f23-3a93-4003-92a1-43d2fee8d992",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 223.5,
+                      "width": 659,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "9d8561dc-a49d-48af-b091-e4fd36c8b137",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 644.5860735009671,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "长难句解析",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "19526ba1-0633-4afe-9f83-090d648e5838",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 883.5,
+                      "width": 220,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "e9968b00-defc-46f3-9869-fb7e2df52b1d",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 205.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "（1050分）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "uuid": "2ed05d45-18d1-473e-934b-84c101583b1c",
+                  "type": "tableRow",
+                  "top": 264.5,
+                  "left": 0.5,
+                  "width": 1104,
+                  "height": 66,
+                  "elements": [
+                    {
+                      "uuid": "481ec572-a6af-4774-ab47-3b4d664d7bab",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 0.5,
+                      "width": 222,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "f9e31f1b-45a6-466c-8d6f-5e6fe259928d",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 207.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "作文",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "3e875337-4c38-4084-b4dc-9ecaccadb1bd",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 223.5,
+                      "width": 659,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "7f4456f8-3aa5-405e-8d88-0718523f10ea",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 644.5860735009671,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "小作文（书信）+大作文（图表/图画）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    },
+                    {
+                      "uuid": "7e2e2f20-38de-4922-bb65-81c171e24111",
+                      "type": "tableCell",
+                      "top": 0.5,
+                      "left": 883.5,
+                      "width": 220,
+                      "height": 65,
+                      "elements": [
+                        {
+                          "uuid": "45724992-b1b4-493e-b209-885d86e3cebe",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 205.58607350096713,
+                          "height": 50,
+                          "version": "9.2.0",
+                          "left": 7.20696324951644,
+                          "top": 6.5,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": true,
+                          "rotatable": true,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#33383eff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 33,
+                          "lineHeight": 1.5,
+                          "letterSpacing": 0,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "center",
+                          "verticalAlign": "top",
+                          "content": "（2530分）",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#33383eff"
+                          ],
+                          "mainColor": "",
+                          "listStyle": null,
+                          "listStyleBackground": null,
+                          "background": null,
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "fillOpacity": 1,
+                          "adjustsFontSize": false,
+                          "highlight": null
+                        }
+                      ],
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "borders": [
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        },
+                        {
+                          "color": "#000000ff",
+                          "width": 1,
+                          "style": "solid"
+                        }
+                      ],
+                      "background": "#ffffff00",
+                      "padding": [
+                        0,
+                        7.20696324951644,
+                        0,
+                        7.20696324951644
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "backgroundColor": "#ffffffff",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}

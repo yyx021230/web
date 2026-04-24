@@ -1,0 +1,2244 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.7644927536231884,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "fddddb87-5e14-45f6-8384-25a71e4dd0ca",
+      "imageUrl": "",
+      "title": "T250516235482-原始文件PSD - 副本",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "1189361997"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "userAdded": false,
+      "background": {
+        "color": "#f8b865ff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/61681/45ce7a6c27b241b5a011f412bf5df561.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "elements": [
+        {
+          "uuid": "08a0da4f-cf2d-41ad-be29-7c40a697d7bd",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1139.9999996423721,
+          "height": 1178.9999656677246,
+          "left": 50.99996316432953,
+          "top": 408.99998474121094,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "24886087-91c0-4921-befc-cd2c7a9048fd",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/3cd3b2593d7f41558f0c716159ffff9a.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1139.9999996423721,
+              "height": 1178.9999656677246,
+              "version": null,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#ffffffff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/d8799128832a4eb2849196a0d3d7cfb1.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1,
+                "imageSlice": {
+                  "left": 26,
+                  "top": 26,
+                  "right": 25,
+                  "bottom": 25
+                }
+              },
+              "naturalWidth": 1139.9999996423721,
+              "naturalHeight": 1178.9999656677246,
+              "iconType": null
+            },
+            {
+              "uuid": "2db68953-5ee9-4729-8440-692568aa8c28",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1037.0000159740448,
+              "height": 265.82554448311294,
+              "left": 52.0000205039978,
+              "top": 46.31720768744981,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "d7295ce9-a6a6-4e9a-87f3-676dfa5f70f6",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/7466fbcdde2a4bf0b1fa3904e3834d87.png",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1037.0000159740448,
+                  "height": 227.2855167388916,
+                  "left": 0,
+                  "top": 38.540027744221334,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#f8b865ff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/ecfca7bdee4748db87979512961b6882.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 31,
+                      "top": 30,
+                      "right": 31,
+                      "bottom": 30
+                    }
+                  },
+                  "naturalWidth": 1037.0000159740448,
+                  "naturalHeight": 227.2855167388916
+                },
+                {
+                  "uuid": "c2847ddc-5e7c-4b28-8716-f0f3021254b8",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 995.5637527942229,
+                  "height": 244.3718242380059,
+                  "left": 0,
+                  "top": 5.684341886080802e-14,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "c818d4a7-6017-4866-be0c-f2c6d2c44f22",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "2018年司法考试改革为法律职业资格考试，分为客观题和主观题两阶段。通过率控制在10-15%左右，是法律行业从业的必备证书。改",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 951,
+                      "height": 139,
+                      "version": "9.2.0",
+                      "left": 44.563752794222836,
+                      "top": 105.3718242380059,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#070707ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 31.3,
+                      "lineHeight": 1.47,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "2018年司法考试改革为法律职业资格考试，分为客观题和主观题两阶段。通过率控制在10-15%左右，是法律行业从业的必备证书。改革后更注重实务能力考查，新增了案例分析比重。",
+                      "contents": [
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "2018年司法考试改革为法律职业资格考试，分为客观题和主观题两阶段。"
+                        },
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "通过率控制在10-15%左右"
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "，是法律行业从业的"
+                        },
+                        {
+                          "color": "#2656adff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "必备证书"
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "。改革后更注重实务能力考查，新增了案例分析比重。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#070707ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "ee5920c8-5a05-4160-9956-99f6864fddb3",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "法考改革与现状",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        15.413772287999999,
+                        18.858624,
+                        15.413772287999999,
+                        18.858624
+                      ],
+                      "width": 379,
+                      "height": 85,
+                      "version": "9.2.0",
+                      "left": 0,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#070707ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 45.1,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": " 法考改革与现状 ",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [
+                        {
+                          "enable": true,
+                          "skew": {
+                            "enable": false,
+                            "x": 0,
+                            "y": 0
+                          },
+                          "offset": {
+                            "x": 0,
+                            "y": 0,
+                            "enable": false
+                          },
+                          "stroke": {
+                            "enable": true,
+                            "color": "#ffffffff",
+                            "width": 6,
+                            "type": "outer",
+                            "join": "round"
+                          },
+                          "excludeScale": [],
+                          "filling": {
+                            "enable": false,
+                            "type": "color",
+                            "color": "#000000ff"
+                          }
+                        }
+                      ],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff",
+                        "#f8b865ff"
+                      ],
+                      "mainColor": "",
+                      "background": {
+                        "path": {
+                          "pathShape": "rect",
+                          "pathEffects": [
+                            {
+                              "enable": true,
+                              "filling": {
+                                "type": "color",
+                                "color": "#f8b865ff",
+                                "enable": true
+                              }
+                            }
+                          ],
+                          "radius": 42.502505572352,
+                          "radiusUnitType": "absolute"
+                        }
+                      },
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "uuid": "56758828-c527-46f3-93a9-d98db206d4f4",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1037.0000159740448,
+              "height": 366.0618496090483,
+              "left": 52.0000205039978,
+              "top": 353.48847483095415,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "96bcb877-ff9f-4607-b8d6-4d36eb99dad5",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/16ecb676a6944576b1c69fff7a489066.png",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1037.0000159740448,
+                  "height": 325.1006841659546,
+                  "left": 0,
+                  "top": 40.961165443093705,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#f8b865ff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/22018f946879473f9b2d7cef95f7d25e.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 31,
+                      "top": 30,
+                      "right": 31,
+                      "bottom": 30
+                    }
+                  },
+                  "naturalWidth": 1037.0000159740448,
+                  "naturalHeight": 325.1006841659546
+                },
+                {
+                  "uuid": "00a35271-dc9f-4343-9934-987dce94fa0b",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 752.0000163316727,
+                  "height": 338.2005570945015,
+                  "left": 5.684341886080802e-14,
+                  "top": 1.1368683772161603e-13,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "d93dc691-f0d1-4ef7-8bf7-a1fae80d2a9c",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "客观题考试(300分) 试卷一：法治理论、法理学、宪法等(150分) 试卷二：民法、商法、民事诉讼法等(150分) 主观题考试",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 706.9792705937158,
+                      "height": 231,
+                      "version": "9.2.0",
+                      "left": 45.020745737956815,
+                      "top": 107.2005570945015,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#cd1a16ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 31.3,
+                      "lineHeight": 1.47,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "客观题考试(300分)\n试卷一：法治理论、法理学、宪法等(150分)\n试卷二：民法、商法、民事诉讼法等(150分)\n主观题考试(180分)\n案例分析、法律文书写作、论述题等",
+                      "contents": [
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "客观题考试(300分)\n"
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "试卷一：法治理论、法理学、宪法等(150分)\n试卷二：民法、商法、民事诉讼法等(150分)\n"
+                        },
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "主观题考试(180分)\n"
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "案例分析、法律文书写作、论述题等"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#cd1a16ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "01669488-ef96-400c-a2c0-3fdbf6db510d",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "考试内容深度解析",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        17.328,
+                        21.66,
+                        17.328,
+                        21.66
+                      ],
+                      "width": 430,
+                      "height": 89,
+                      "version": "9.2.0",
+                      "left": -1.4210854715202004e-14,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#070707ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 45.1,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": " 考试内容深度解析 ",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [
+                        {
+                          "enable": true,
+                          "skew": {
+                            "enable": false,
+                            "x": 0,
+                            "y": 0
+                          },
+                          "offset": {
+                            "x": 0,
+                            "y": 0,
+                            "enable": false
+                          },
+                          "stroke": {
+                            "enable": true,
+                            "color": "#ffffffff",
+                            "width": 6,
+                            "type": "outer",
+                            "join": "round"
+                          },
+                          "excludeScale": [],
+                          "filling": {
+                            "enable": false,
+                            "type": "color",
+                            "color": "#000000ff"
+                          }
+                        }
+                      ],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff",
+                        "#f8b865ff"
+                      ],
+                      "mainColor": "",
+                      "background": {
+                        "path": {
+                          "pathShape": "rect",
+                          "pathEffects": [
+                            {
+                              "enable": true,
+                              "filling": {
+                                "type": "color",
+                                "color": "#f8b865ff",
+                                "enable": true
+                              }
+                            }
+                          ],
+                          "radius": 44.828,
+                          "radiusUnitType": "absolute"
+                        },
+                        "enable": true
+                      },
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "uuid": "9398e7a8-09ca-402f-9a4b-fc751ff386ed",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1037.0000159740448,
+              "height": 356.5488450945609,
+              "left": 52.0000205039978,
+              "top": 763.032311636091,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "7f31dbe8-0af4-47e5-ae7f-df4b0e2024c3",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/4ad5437191ca454b9be02a03c234746b.png",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1037.0000159740448,
+                  "height": 318.19121503829956,
+                  "version": null,
+                  "left": 0,
+                  "top": 38.357630056261314,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#f8b865ff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/30f0c8b6857b452eb5d9a6e0fb9132db.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 31,
+                      "top": 30,
+                      "right": 31,
+                      "bottom": 30
+                    }
+                  },
+                  "naturalWidth": 1037.0000159740448,
+                  "naturalHeight": 318.19121503829956,
+                  "iconType": null
+                },
+                {
+                  "uuid": "6d6ac503-5939-4a8a-8f8e-f44325ec6267",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 995.183957503576,
+                  "height": 335.6567202893648,
+                  "version": null,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "524b8b91-4289-4626-9b1f-d68e8834f93a",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "知识体系构建：建议采用\"金字塔学习法\"—先建立框架，再填充细节 重点学科排序：民法(20%)>刑法(18%)>民诉(15%)>",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 951,
+                      "height": 231,
+                      "version": "9.2.0",
+                      "left": 44.18395750357618,
+                      "top": 104.65672028936478,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#cd1a16ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 31.3,
+                      "lineHeight": 1.47,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "知识体系构建：建议采用\"金字塔学习法\"—先建立框架，再填充细节\r重点学科排序：民法(20%)>刑法(18%)>民诉(15%)>刑诉(12%)>行政法(10%)\r实务能力培养：定期进行案例研习，关注最高人民法院指导案例\r答题技巧：主观题遵循\"结论-大前提-小前提\"三段论结构",
+                      "contents": [
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "知识体系构建："
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "建议采用\"金字塔学习法"
+                        },
+                        {
+                          "color": "#2656adff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "\"—先建立框架，再填充细节\r"
+                        },
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "重点学科排序："
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "民法(20%)>刑法(18%)>民诉(15%)>刑诉(12%)>行政法(10%)\r"
+                        },
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "实务能力培养："
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "定期进行案例研习，关注最高人民法院指导案例\r"
+                        },
+                        {
+                          "color": "#cd1a16ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "答题技巧："
+                        },
+                        {
+                          "color": "#070707ff",
+                          "fontFamily": "OPPOSans-M",
+                          "fontStyle": "normal",
+                          "fontSize": 31.3,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "主观题遵循\"结论-大前提-小前提\"三段论结构"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#cd1a16ff"
+                      ],
+                      "mainColor": "",
+                      "listStyle": null,
+                      "listStyleBackground": null,
+                      "background": null,
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "cc52f553-770e-4e0e-9cc5-3bc549a0762b",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "科学备考方法论",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        15.168000000000001,
+                        18.96,
+                        15.168000000000001,
+                        18.96
+                      ],
+                      "width": 379,
+                      "height": 85,
+                      "version": "9.2.0",
+                      "left": -1.4210854715202004e-14,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#070707ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 45.1,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "justify",
+                      "verticalAlign": "top",
+                      "content": "科学备考方法论  ",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [
+                        {
+                          "enable": true,
+                          "skew": {
+                            "enable": false,
+                            "x": 0,
+                            "y": 0
+                          },
+                          "offset": {
+                            "x": 0,
+                            "y": 0,
+                            "enable": false
+                          },
+                          "stroke": {
+                            "enable": true,
+                            "color": "#ffffffff",
+                            "width": 6,
+                            "type": "outer",
+                            "join": "round"
+                          },
+                          "excludeScale": [],
+                          "filling": {
+                            "enable": false,
+                            "type": "color",
+                            "color": "#000000ff"
+                          }
+                        }
+                      ],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#ffffffff",
+                        "#f8b865ff"
+                      ],
+                      "mainColor": "",
+                      "listStyle": null,
+                      "listStyleBackground": null,
+                      "background": {
+                        "path": {
+                          "pathShape": "rect",
+                          "pathEffects": [
+                            {
+                              "enable": true,
+                              "filling": {
+                                "type": "color",
+                                "color": "#f8b865ff",
+                                "enable": true
+                              }
+                            }
+                          ],
+                          "radius": 42.668000000000006,
+                          "radiusUnitType": "absolute"
+                        },
+                        "enable": true
+                      },
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "uuid": "14839a4b-ddf1-422c-9140-ca98cc1f8dfb",
+          "imageUrl": "",
+          "type": "image",
+          "title": "【48234226】",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 205,
+          "height": 224,
+          "left": 855,
+          "top": 849,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 48234226,
+                "type": "image"
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/df732c88bcaa4d6993617f189bd0352d.png",
+          "loop": 1,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "naturalWidth": 205,
+          "naturalHeight": 224,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "b2880068-9fa4-49e9-8559-201a10a6c997",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1266,
+          "height": 370.5006483588418,
+          "left": 19,
+          "top": 46.49935164115823,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "7300ac72-0cfa-417f-8446-19fdf9d2ab60",
+              "imageUrl": "",
+              "type": "text",
+              "title": "法律职业资格考试 (法考)通关指南",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1034,
+              "height": 290,
+              "version": "9.2.0",
+              "left": 86.68417398756584,
+              "top": 7.105427357601002e-15,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#cd1a16ff",
+              "fontFamily": "AlimamaShuHeiTi",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 129.2,
+              "lineHeight": 1.12,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "法律职业资格考试\n(法考)通关指南",
+              "contents": [
+                {
+                  "color": "#1f1f1fff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 129.2,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "法律职业资格考试\n"
+                },
+                {
+                  "color": "#cd1a16ff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 129.2,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "(法考)通关指南"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [
+                {
+                  "enable": true,
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "offset": {
+                    "x": 0,
+                    "y": 0,
+                    "enable": false
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#ffffffff",
+                    "width": 10,
+                    "type": "outer",
+                    "join": "round"
+                  },
+                  "excludeScale": [],
+                  "filling": {
+                    "enable": false,
+                    "type": "color",
+                    "color": "#000000ff"
+                  }
+                }
+              ],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ffffffff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "40486c81-3df0-47f4-9b91-124a94d38fd4",
+              "imageUrl": "",
+              "type": "image",
+              "title": "【48234222】",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 242,
+              "height": 140,
+              "left": 0,
+              "top": 230.50064835884177,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 48234222,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/ffb9e43e6bfc4d1598af0777b8e2fd8a.png",
+              "loop": 1,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "naturalWidth": 242,
+              "naturalHeight": 140,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "quality": 100,
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "7555cc6e-7bea-4055-9658-1eeb784384a9",
+              "imageUrl": "",
+              "type": "image",
+              "title": "【48223678】",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 198,
+              "height": 178,
+              "left": 1068,
+              "top": 141.50064835884177,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 48223678,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/ddc129cc099b48a0bf3c651b94e15e32.png",
+              "loop": 1,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "naturalWidth": 198,
+              "naturalHeight": 178,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "quality": 100,
+              "fillOpacity": 1
+            }
+          ]
+        }
+      ],
+      "backgroundColor": "#f8b865ff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

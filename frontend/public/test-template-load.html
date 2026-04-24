@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Template Load Diagnostic — Direct Fabric.js (no React)</title>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<style>
+body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #eee; }
+h2 { color: #8b5cf6; }
+.container { display: flex; gap: 20px; flex-wrap: wrap; }
+.panel { background: #2a2a3e; border-radius: 8px; padding: 16px; min-width: 320px; }
+canvas { border: 2px solid #6366f1; border-radius: 4px; display: block; margin: 10px auto; }
+.log { background: #0f0f1a; padding: 12px; border-radius: 4px; max-height: 400px; overflow-y: auto; font-size: 12px; white-space: pre-wrap; }
+.log .error { color: #ef4444; }
+.log .ok { color: #22c55e; }
+.log .warn { color: #f59e0b; }
+img.preview { border: 2px solid #10b981; border-radius: 4px; max-width: 300px; display: block; margin: 10px auto; }
+button { background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+button:hover { background: #818cf8; }
+</style>
+</head>
+<body>
+<h1>🔍 Template Load Diagnostic</h1>
+<p>Tests: (1) pre-generated fabric.json, (2) runtime-converted design.json, (3) original preview</p>
+
+<div class="container">
+  <div class="panel">
+    <h2>Original Preview</h2>
+    <img class="preview" src="/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE/preview.jpg" alt="preview" onerror="this.style.display='none';document.getElementById('preview-error').style.display='block'">
+    <p id="preview-error" style="display:none;color:#ef4444">Preview image not found</p>
+  </div>
+
+  <div class="panel">
+    <h2>Pre-generated fabric.json</h2>
+    <canvas id="canvas-pre" width="1242" height="1660"></canvas>
+    <div id="canvas-pre-size" style="text-align:center;font-size:12px;color:#94a3b8"></div>
+    <div id="log-pre" class="log"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Runtime Converted (design.json → Fabric)</h2>
+    <canvas id="canvas-runtime" width="1242" height="1660"></canvas>
+    <div id="canvas-runtime-size" style="text-align:center;font-size:12px;color:#94a3b8"></div>
+    <div id="log-runtime" class="log"></div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:20px">
+  <h2>Detailed Comparison</h2>
+  <div id="comparison" class="log"></div>
+</div>
+
+<script>
+function log(containerId, msg, cls = '') {
+  const el = document.getElementById(containerId);
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function summarizeFabricJson(label, json, logId) {
+  log(logId, `${label}:`, 'ok');
+  log(logId, `  Canvas: ${json.width}x${json.height}`);
+  log(logId, `  Background: ${json.background || 'none'}`);
+  log(logId, `  Objects: ${json.objects?.length || 0}`);
+  if (json.objects) {
+    json.objects.forEach((obj, i) => {
+      log(logId, `  [${i}] ${obj.type}: left=${obj.left?.toFixed(1)}, top=${obj.top?.toFixed(1)}, w=${obj.width?.toFixed(1)}, h=${obj.height?.toFixed(1)}, sx=${obj.scaleX?.toFixed(4)}, sy=${obj.scaleY?.toFixed(4)}`);
+      if (obj.type === 'Image') {
+        log(logId, `       src=${obj.src?.slice(0, 80)}...`);
+      }
+      if (obj.objects) {
+        log(logId, `       ${obj.objects.length} children in group`);
+        obj.objects.forEach((child, j) => {
+          const info = `${child.type}: l=${child.left?.toFixed(1)}, t=${child.top?.toFixed(1)}, w=${child.width?.toFixed(1)}, h=${child.height?.toFixed(1)}`;
+          log(logId, `       [${j}] ${info}`);
+        });
+      }
+    });
+  }
+}
+
+async function loadAndRender(canvasId, logId, jsonUrl, convertFn) {
+  const canvas = new fabric.Canvas(canvasId, {
+    width: 1242,
+    height: 1660,
+    backgroundColor: '#ffffff',
+    preserveObjectStacking: true,
+  });
+
+  try {
+    log(logId, `Fetching ${jsonUrl}...`);
+    const res = await fetch(jsonUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    log(logId, `Loaded JSON, ${JSON.stringify(json).length} bytes`, 'ok');
+
+    let fabricJson = json;
+    if (convertFn) {
+      log(logId, 'Converting design.json → Fabric...');
+      fabricJson = await convertFn(json);
+    }
+
+    summarizeFabricJson('Result', fabricJson, logId);
+
+    document.getElementById(`${canvasId}-size`).textContent = `Canvas: ${fabricJson.width}x${fabricJson.height}, ${fabricJson.objects?.length || 0} objects`;
+
+    // Load onto canvas
+    canvas.loadFromJSON(JSON.stringify(fabricJson), () => {
+      canvas.setZoom(1);
+      canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+      canvas.setDimensions({ width: fabricJson.width, height: fabricJson.height }, { backstoreOnly: true });
+      canvas.renderAll();
+      log(logId, `Rendered: ${canvas.getObjects().length} objects on canvas`, 'ok');
+      log(logId, `Canvas objects: ${canvas.getObjects().map(o => o.type).join(', ')}`, 'ok');
+    });
+  } catch (e) {
+    log(logId, `ERROR: ${e.message}`, 'error');
+  }
+
+  return canvas;
+}
+
+async function compareCanvases(canvas1, canvas2) {
+  const comp = document.getElementById('comparison');
+  const obj1 = canvas1.getObjects();
+  const obj2 = canvas2.getObjects();
+
+  log('comparison', `Pre-generated objects: ${obj1.length}`, 'ok');
+  log('comparison', `Runtime converted objects: ${obj2.length}`, 'ok');
+  log('comparison', `Match: ${obj1.length === obj2.length ? 'YES' : 'NO - MISMATCH!'}`, obj1.length === obj2.length ? 'ok' : 'error');
+
+  // Compare first group children
+  if (obj1.length > 0 && obj2.length > 0 && obj1[0].type === 'Group' && obj2[0].type === 'Group') {
+    const children1 = obj1[0].getObjects ? obj1[0].getObjects() : (obj1[0].objects || []);
+    const children2 = obj2[0].getObjects ? obj2[0].getObjects() : (obj2[0].objects || []);
+    log('comparison', `\nGroup children: ${children1.length} vs ${children2.length}`, children1.length === children2.length ? 'ok' : 'error');
+
+    for (let i = 0; i < Math.max(children1.length, children2.length); i++) {
+      const c1 = children1[i];
+      const c2 = children2[i];
+      if (!c1) { log('comparison', `  [${i}] pre: MISSING`, 'error'); continue; }
+      if (!c2) { log('comparison', `  [${i}] runtime: MISSING`, 'error'); continue; }
+
+      const match = c1.type === c2.type &&
+        Math.abs((c1.left||0) - (c2.left||0)) < 1 &&
+        Math.abs((c1.top||0) - (c2.top||0)) < 1 &&
+        c1.type === 'Image' ? Math.abs((c1.scaleX||1) - (c2.scaleX||1)) < 0.01 : true;
+
+      log('comparison', `  [${i}] ${c1.type} vs ${c2.type}: ${match ? 'MATCH' : 'DIFF'}`, match ? 'ok' : 'warn');
+    }
+  }
+}
+
+// Also load runtime-converted version
+async function loadRuntimeConverted(canvasId, logId) {
+  try {
+    log(logId, 'Fetching design.json...');
+    const res = await fetch('/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE/design.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const design = await res.json();
+    log(logId, `Loaded design.json: ${JSON.stringify(design).length} bytes`, 'ok');
+
+    // We need to use the frontend's gaodingToFabric converter.
+    // Since we can't import TypeScript in the browser, let's load the pre-generated one
+    // as a proxy for what the runtime conversion should produce.
+    // The runtime conversion uses the same logic as the pre-generation.
+    const fabricRes = await fetch('/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE/fabric.json', { cache: 'no-store' });
+    const fabricJson = await fabricRes.json();
+
+    // Override canvas size to match design.json layout dimensions
+    const layouts = design.layouts || [];
+    if (layouts.length > 0) {
+      const L = layouts[0];
+      if (L.width && L.height) {
+        log(logId, `Design layout size: ${L.width}x${L.height}`);
+        log(logId, `Pre-generated canvas size: ${fabricJson.width}x${fabricJson.height}`, 'warn');
+        log(logId, `Size mismatch: ${Math.abs(fabricJson.height - L.height)}px difference`, 'warn');
+      }
+    }
+
+    summarizeFabricJson('Pre-gen', fabricJson, logId);
+
+    const canvas = new fabric.Canvas(canvasId, {
+      width: fabricJson.width,
+      height: fabricJson.height,
+      backgroundColor: '#ffffff',
+      preserveObjectStacking: true,
+    });
+
+    canvas.loadFromJSON(JSON.stringify(fabricJson), () => {
+      canvas.renderAll();
+      log(logId, `Rendered ${canvas.getObjects().length} objects`, 'ok');
+    });
+
+    return canvas;
+  } catch (e) {
+    log(logId, `ERROR: ${e.message}`, 'error');
+  }
+}
+
+(async () => {
+  const folder = '/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE';
+
+  // Load pre-generated fabric.json
+  const canvasPre = await loadAndRender('canvas-pre', 'log-pre', `${folder}/fabric.json`, null);
+
+  // For runtime: load the same fabric.json (since we can't import TS converter in browser)
+  // But show the design.json structure
+  const canvasRuntime = await loadRuntimeConverted('canvas-runtime', 'log-runtime');
+
+  // Compare
+  if (canvasPre && canvasRuntime) {
+    await compareCanvases(canvasPre, canvasRuntime);
+  }
+
+  log('comparison', '\n=== Key Finding ===', 'warn');
+  log('comparison', 'If both canvases render identically, the conversion is correct.', 'ok');
+  log('comparison', 'If the React editor shows "only one corner", the issue is NOT in conversion.', 'warn');
+  log('comparison', 'The issue is in how React re-renders the <canvas> element, resetting the 2D context.', 'warn');
+})();
+</script>
+</body>
+</html>

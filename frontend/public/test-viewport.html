@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Viewport Fit Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; color: #fff; font-family: monospace; padding: 20px; }
+.viewport {
+  width: 100vw;
+  height: 80vh;
+  border: 2px solid #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+canvas { border: 2px solid red; display: block; }
+.info { margin: 10px 0; background: #222; padding: 10px; font-size: 12px; white-space: pre-wrap; }
+button { background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+</style>
+</head>
+<body>
+<h1>Viewport CSS Scale Test</h1>
+<p>Tests whether CSS scaling shrinks a large canvas into the viewport</p>
+
+<div class="viewport" id="viewport">
+  <canvas id="c" width="1242" height="1660"></canvas>
+</div>
+
+<div class="info" id="info">Initializing...</div>
+
+<button onclick="fitViewport()">适应 Fit</button>
+<button onclick="pixelOne()">1:1</button>
+
+<script>
+const VIEWPAD = 48;
+let pixelMode = false;
+
+// Draw content on canvas
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Background
+ctx.fillStyle = '#e8edf5';
+ctx.fillRect(0, 0, 1242, 1660);
+
+// Grid
+ctx.strokeStyle = '#ccc';
+ctx.lineWidth = 1;
+for (let x = 0; x < 1242; x += 100) {
+  ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1660); ctx.stroke();
+}
+for (let y = 0; y < 1660; y += 100) {
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1242, y); ctx.stroke();
+}
+
+// Labels
+ctx.fillStyle = '#6366f1';
+ctx.font = 'bold 40px sans-serif';
+ctx.fillText('TOP-LEFT', 20, 50);
+ctx.fillText('BOTTOM-RIGHT', 850, 1640);
+
+// Center circle
+ctx.fillStyle = '#f59e0b';
+ctx.beginPath();
+ctx.arc(621, 830, 200, 0, Math.PI * 2);
+ctx.fill();
+
+function getInfo() {
+  const vp = document.getElementById('viewport');
+  const c = document.getElementById('c');
+  return (
+    `Viewport client: ${vp.clientWidth}x${vp.clientHeight}\n` +
+    `Canvas width attr: ${c.width}\n` +
+    `Canvas height attr: ${c.height}\n` +
+    `Canvas CSS width: ${c.style.width || '(not set)'}\n` +
+    `Canvas CSS height: ${c.style.height || '(not set)'}\n` +
+    `Canvas display width: ${c.getBoundingClientRect().width.toFixed(0)}\n` +
+    `Canvas display height: ${c.getBoundingClientRect().height.toFixed(0)}`
+  );
+}
+
+function fitViewport() {
+  pixelMode = false;
+  const canvas = document.getElementById('c');
+  const vp = document.getElementById('viewport');
+  const w = 1242;
+  const h = 1660;
+  const cw = Math.max(1, vp.clientWidth - VIEWPAD);
+  const ch = Math.max(1, vp.clientHeight - VIEWPAD);
+  const baseFit = Math.min(cw / w, ch / h, 1);
+  const z = 1.0 * baseFit; // 100%
+  const cssW = Math.max(1, w * z);
+  const cssH = Math.max(1, h * z);
+
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+
+  document.getElementById('info').textContent =
+    `Container: ${cw}x${ch}\n` +
+    `Canvas: ${w}x${h}\n` +
+    `baseFit: ${baseFit.toFixed(4)}\n` +
+    `CSS: ${cssW.toFixed(0)}x${cssH.toFixed(0)}\n` +
+    getInfo();
+}
+
+function pixelOne() {
+  pixelMode = true;
+  const canvas = document.getElementById('c');
+  canvas.style.width = '';
+  canvas.style.height = '';
+  document.getElementById('info').textContent = '1:1 pixel mode\n' + getInfo();
+}
+
+setTimeout(() => {
+  document.getElementById('info').textContent = 'Initial (no CSS scale):\n' + getInfo();
+}, 100);
+</script>
+</body>
+</html>

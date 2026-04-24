@@ -1,0 +1,674 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.4774556920148324,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "72bd837f-af84-4dfd-9e4f-42ce2d613e3f",
+      "imageUrl": "",
+      "title": "01",
+      "category": "cover",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "3261277168"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "e83ebd69-daed-4ed9-9e79-dde019689c7d",
+          "imageUrl": "",
+          "type": "text",
+          "title": "从负债10万到存款50万，  我是如何通过副业和理财 逆袭人生的？",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1175.769287109375,
+          "height": 1193,
+          "version": "9.2.0",
+          "left": 33.11535644531247,
+          "top": 55,
+          "transform": {
+            "a": 0.93,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 206829,
+                "ttf": "https://gd-filems.dancf.com/gaoding/editor/20221222-201824-hbkbc.ttf",
+                "woff": "https://gd-filems.dancf.com/gaoding/editor/20221222-201824-afhia.woff",
+                "fontFamily": "AlibabaPuHuiTi-Medium",
+                "type": "font",
+                "alias": "阿里巴巴普惠体 中等",
+                "weight": 500,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#000000ff",
+          "fontFamily": "AlibabaPuHuiTi-Medium",
+          "fontStyle": "normal",
+          "fontWeight": 500,
+          "fontSize": 93.3,
+          "lineHeight": 1.42,
+          "letterSpacing": 1.9645267013688066,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "justify",
+          "verticalAlign": "top",
+          "content": "“\n从负债10万到存款50万， 我是如何通过副业和理财\n逆袭人生的？\n”\n真实经历分享，教你如何\n通过副业和理财双管齐下，\n摆脱负债，\n走向财务自由之路！",
+          "contents": [
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "“\n从"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "负债10万到存款50万",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                "svgInfo": {
+                  "colors": [
+                    "#fa6021ff"
+                  ],
+                  "strokeWidth": 0.20101010101010103
+                },
+                "width": 37,
+                "height": 2,
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": 0,
+                  "right": 0,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.92,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "， 我是如何通过副业和理财\n逆袭人生的？\n”\n真实经历分享，教你如何\n通过"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "副业",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240926/5c2e3add1bc146af996b674e20ea38fa.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#53a6ffff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.6,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.45,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "和"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "理财",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240926/5c2e3add1bc146af996b674e20ea38fa.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#53a6ffff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.6,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.45,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "双管齐下，\n"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "AlibabaPuHuiTi-Medium",
+              "fontStyle": "normal",
+              "fontSize": 93.3,
+              "fontWeight": 500,
+              "textDecoration": "none",
+              "content": "摆脱负债，\n走向财务自由之路！",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/5e8e160d2ddba1dd5e1cb91b686fea22.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 0.9272727272727272
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.1,
+                  "right": 0.1,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.92,
+                  "height": 0
+                },
+                "repeat": "round"
+              }
+            }
+          ],
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#000000ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "quality": 100,
+          "boundingBox": {
+            "left": 1.94366455078125,
+            "right": 1005.4959106445312,
+            "top": -6.0815277099609375,
+            "bottom": 353.504638671875
+          },
+          "fillOpacity": 1,
+          "adjustsFontSize": false
+        },
+        {
+          "uuid": "98347e4a-180c-40d4-830e-f896c80f2a06",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 415,
+          "height": 294,
+          "left": 685,
+          "top": 1285.6998333060837,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "83c5d5c7-60dd-47bd-84c8-39db2e44a925",
+              "imageUrl": "",
+              "type": "image",
+              "title": "表情",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 288,
+              "height": 269,
+              "left": 127,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/fbf1d4d3d42e45308151eedaed72aa76.png",
+              "loop": 1,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "naturalWidth": 288,
+              "naturalHeight": 269,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "quality": 100,
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "d2f961b7-596b-4c6b-afee-3c1f39a788e4",
+              "imageUrl": "",
+              "type": "image",
+              "title": "表情",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 315,
+              "height": 90,
+              "left": 0,
+              "top": 204,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/973286eb82bc4217a9f6b5ca5cd34579.png",
+              "loop": 1,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "naturalWidth": 315,
+              "naturalHeight": 90,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "quality": 100,
+              "fillOpacity": 1
+            }
+          ]
+        }
+      ],
+      "userAdded": false,
+      "background": {
+        "color": "#e7f6ffff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/23543/01148cd8e70c4cb0b72f756c2996511c.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundColor": "#e7f6ffff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

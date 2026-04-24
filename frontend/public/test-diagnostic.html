@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fabric.js Rendering Diagnostic</title>
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .container { display: flex; gap: 20px; flex-wrap: wrap; }
+    .panel { border: 2px solid #333; padding: 10px; }
+    .panel h3 { margin: 0 0 10px 0; font-size: 14px; }
+    canvas { border: 1px solid #ccc; }
+    .log { background: #1a1a2e; color: #0f0; padding: 10px; margin-top: 10px;
+           max-height: 300px; overflow-y: auto; font-size: 12px; white-space: pre; }
+    .preview { max-width: 300px; border: 2px solid #f00; }
+  </style>
+</head>
+<body>
+  <h1>Fabric.js Template Rendering Diagnostic</h1>
+
+  <div class="container">
+    <div class="panel">
+      <h3>Original Preview (preview.jpg)</h3>
+      <img class="preview" src="/templates/gaoding_193254158_母婴知识科普手帐风小红书套装小红书配图/preview.jpg" />
+    </div>
+    <div class="panel">
+      <h3>Pre-generated fabric.json</h3>
+      <canvas id="pre-gen-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Runtime Converted JSON</h3>
+      <canvas id="runtime-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script>
+    const log = [];
+    function logMsg(msg) {
+      log.push(msg);
+      document.getElementById('log').textContent = log.join('\n');
+      console.log(msg);
+    }
+    const FOLDER = 'gaoding_193254158_母婴知识科普手帐风小红书套装小红书配图';
+
+    async function loadPreGenerated() {
+      logMsg('=== Loading pre-generated fabric.json ===');
+      const res = await fetch('/templates/' + FOLDER + '/fabric.json');
+      const json = await res.json();
+      logMsg('Canvas size: ' + json.width + ' x ' + json.height);
+      logMsg('Object count: ' + (json.objects ? json.objects.length : 0));
+      let totalObjs = 0, imageCount = 0, textCount = 0;
+      function countObjs(obj) {
+        totalObjs++;
+        if (obj.type === 'Image') imageCount++;
+        if (obj.type && (obj.type.includes('Text') || obj.type === 'Textbox')) textCount++;
+        if (obj.objects) obj.objects.forEach(countObjs);
+      }
+      json.objects.forEach(countObjs);
+      logMsg('Total objects (nested): ' + totalObjs + ', Images: ' + imageCount + ', Text: ' + textCount);
+      const canvas = new fabric.Canvas('pre-gen-canvas', {
+        width: json.width, height: json.height,
+        backgroundColor: json.background || '#fff',
+      });
+      canvas.loadFromJSON(json, () => {
+        canvas.renderAll();
+        logMsg('Pre-generated: renderAll() called');
+        logMsg('Canvas objects after load: ' + canvas.getObjects().length);
+        canvas.getObjects().forEach(function(obj, i) {
+          if (obj.type === 'Group') {
+            obj.getObjects().forEach(function(child, j) {
+              if (child.type === 'Image') {
+                var el = child.getElement();
+                logMsg('  Group['+i+']/Image['+j+']: element=' + !!el + ', naturalSize=' + (el ? el.naturalWidth : '?') + 'x' + (el ? el.naturalHeight : '?'));
+              }
+            });
+          }
+        });
+      });
+    }
+
+    async function loadRuntimeConverted() {
+      logMsg('');
+      logMsg('=== Loading runtime converted JSON ===');
+      const res = await fetch('/templates/' + FOLDER + '/design.json');
+      const design = await res.json();
+
+      function makeFabricImage(src, absLeft, absTop, displayW, displayH, naturalW, naturalH, scaleX, scaleY, angle, opacity, uuid, name, lock) {
+        var safeNaturalW = naturalW > 0 ? naturalW : displayW;
+        var safeNaturalH = naturalH > 0 ? naturalH : displayH;
+        return {
+          type: 'Image', src: src, left: absLeft, top: absTop,
+          width: safeNaturalW, height: safeNaturalH,
+          scaleX: (displayW * scaleX) / safeNaturalW,
+          scaleY: (displayH * scaleY) / safeNaturalH,
+          angle: angle, opacity: opacity, originX: 'left', originY: 'top',
+          selectable: !lock, id: uuid, name: name, crossOrigin: 'anonymous', shadow: null,
+        };
+      }
+      function getAngle(transform) {
+        if (!transform) return 0;
+        if (transform.a === 1 && transform.b === 0) return 0;
+        return Math.atan2(transform.b, transform.a) * 180 / Math.PI;
+      }
+      function getScale(transform) {
+        if (!transform) return { scaleX: 1, scaleY: 1 };
+        var sx = Math.sqrt(transform.a * transform.a + transform.b * transform.b);
+        var sy = Math.sqrt(transform.c * transform.c + transform.d * transform.d);
+        return { scaleX: isFinite(sx) && sx > 0 ? sx : 1, scaleY: isFinite(sy) && sy > 0 ? sy : 1 };
+      }
+      function convertAny(el, groupOffsetX, groupOffsetY) {
+        if (groupOffsetX === undefined) groupOffsetX = 0;
+        if (groupOffsetY === undefined) groupOffsetY = 0;
+        var absLeft = groupOffsetX + (el.left || 0);
+        var absTop = groupOffsetY + (el.top || 0);
+        var sc = getScale(el.transform);
+        switch (el.type) {
+          case 'text':
+            return {
+              type: 'Textbox', text: el.content || '',
+              left: absLeft, top: absTop,
+              width: el.width * sc.scaleX, height: el.height * sc.scaleY,
+              fill: el.color || '#000000', fontSize: el.fontSize * 0.75,
+              fontFamily: el.fontFamily || 'PingFang SC',
+              fontWeight: (el.fontWeight || 400) >= 500 ? 'bold' : 'normal',
+              fontStyle: el.fontStyle === 'italic' ? 'italic' : 'normal',
+              lineHeight: el.lineHeight || 1.2,
+              charSpacing: (el.letterSpacing || 0) * 10,
+              textAlign: el.textAlign || 'left',
+              angle: getAngle(el.transform), opacity: el.opacity,
+              originX: 'left', originY: 'top', selectable: !el.lock,
+              id: el.uuid, name: el.title || '文字', shadow: null,
+            };
+          case 'image': {
+            var localUrl = '/templates/' + FOLDER + '/images/' + el.url.split('?')[0].split('/').pop();
+            return makeFabricImage(localUrl, absLeft, absTop, el.width, el.height,
+              el.naturalWidth || el.width, el.naturalHeight || el.height,
+              sc.scaleX, sc.scaleY, getAngle(el.transform), el.opacity, el.uuid, el.title || '图片', el.lock);
+          }
+          case 'svg': {
+            var localUrl = '/templates/' + FOLDER + '/images/' + el.url.split('?')[0].split('/').pop();
+            return makeFabricImage(localUrl, absLeft, absTop, el.width, el.height,
+              el.naturalWidth || el.width, el.naturalHeight || el.height,
+              sc.scaleX, sc.scaleY, getAngle(el.transform), el.opacity, el.uuid, el.title || '图形', el.lock);
+          }
+          case 'path': case 'mask': case 'effectText': case 'ninePatch': return null;
+          case 'group': {
+            var children = [];
+            if (el.elements) {
+              for (var k = 0; k < el.elements.length; k++) {
+                var converted = convertAny(el.elements[k], 0, 0);
+                if (converted) children.push(converted);
+              }
+            }
+            if (children.length === 0) return null;
+            return {
+              type: 'Group', left: absLeft, top: absTop,
+              width: el.width * sc.scaleX, height: el.height * sc.scaleY,
+              scaleX: sc.scaleX, scaleY: sc.scaleY,
+              angle: getAngle(el.transform), opacity: el.opacity,
+              originX: 'left', originY: 'top', selectable: !el.lock,
+              id: el.uuid, name: el.title || '组合', objects: children, shadow: null,
+            };
+          }
+          case 'layout': return null;
+          default: return null;
+        }
+      }
+
+      var layout = design.layouts[0];
+      var canvasWidth = design.global.layout.width;
+      var canvasHeight = design.global.layout.height;
+      logMsg('Canvas size from global.layout: ' + canvasWidth + ' x ' + canvasHeight);
+
+      var objects = [];
+      if (layout.elements) {
+        for (var i = 0; i < layout.elements.length; i++) {
+          var converted = convertAny(layout.elements[i], 0, 0);
+          if (converted) objects.push(converted);
+        }
+      }
+      logMsg('Converted objects: ' + objects.length);
+
+      var fabricJson = {
+        version: '5.3.0', objects: objects,
+        background: '#ffffff',
+        width: canvasWidth, height: canvasHeight,
+      };
+
+      var canvas = new fabric.Canvas('runtime-canvas', {
+        width: fabricJson.width, height: fabricJson.height,
+        backgroundColor: fabricJson.background,
+      });
+
+      canvas.loadFromJSON(fabricJson, function() {
+        canvas.renderAll();
+        logMsg('Runtime converted: renderAll() called');
+        logMsg('Canvas objects after load: ' + canvas.getObjects().length);
+        canvas.getObjects().forEach(function(obj, i) {
+          if (obj.type === 'Group') {
+            obj.getObjects().forEach(function(child, j) {
+              if (child.type === 'Image') {
+                var el = child.getElement();
+                logMsg('  Group['+i+']/Image['+j+']: element=' + !!el + ', src=' + child.src);
+              }
+            });
+          }
+        });
+      });
+    }
+
+    Promise.all([loadPreGenerated(), loadRuntimeConverted()])
+      .then(function() { logMsg(''); logMsg('=== Both loaded ==='); })
+      .catch(function(e) { logMsg('ERROR: ' + e.message); });
+  </script>
+</body>
+</html>

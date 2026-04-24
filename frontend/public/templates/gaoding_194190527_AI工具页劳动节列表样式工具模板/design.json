@@ -1,0 +1,740 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.391304347826087,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "e0f76a44-2576-4973-b0aa-d361089dec38",
+      "elements": [
+        {
+          "uuid": "03569b18-3c1f-4cc8-87fe-e422222bed79",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "4",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "1171911075"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "elements": [
+            {
+              "uuid": "5455a896-2250-4860-a7ee-295f59214d5d",
+              "imageUrl": "",
+              "type": "image",
+              "title": "矢量智能对象",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1243.4492415402567,
+              "height": 1656,
+              "version": null,
+              "left": 2.1316282072803006e-14,
+              "top": 2.842170943040401e-14,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/ceaac27401234613abd7f9db64b6d9b5.png",
+              "loop": 1,
+              "ruleIndex": null,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 0.9661610268378062,
+                "b": 0,
+                "c": 0,
+                "d": 0.9661610268378062,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "mainColor": null,
+              "naturalWidth": 1287,
+              "naturalHeight": 1714,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "quality": 100,
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "c0baae5c-179c-4626-9c1f-dc81a633bfaf",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1127,
+              "height": 1551,
+              "left": 56,
+              "top": 63,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "a55691a4-a0fb-4738-bb14-7efa040a43e1",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "矢量智能对象 拷贝",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1099,
+                  "height": 1533,
+                  "left": 5,
+                  "top": 18,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/d270fbd23a374dcc87070255a4051aad.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 1099,
+                  "naturalHeight": 1533,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "881ccf76-f49b-4eba-95f2-f56c2269500c",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "矢量智能对象",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1099,
+                  "height": 1533,
+                  "left": 5,
+                  "top": 18,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/37ffe02409904185970d9bf700994ca4.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 1099,
+                  "naturalHeight": 1533,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "3a517122-5807-474e-9a3b-fdeb42a13321",
+                  "imageUrl": "",
+                  "type": "image",
+                  "title": "矢量智能对象",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1127,
+                  "height": 1520,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/8dbf55f1397747ebb533d8392d7a296e.png",
+                  "loop": 1,
+                  "imageEffects": [],
+                  "imageTransform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "width": 0,
+                    "height": 0,
+                    "left": 0,
+                    "top": 0
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [],
+                  "aggregatedColors": [],
+                  "naturalWidth": 1127,
+                  "naturalHeight": 1520,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "quality": 100,
+                  "fillOpacity": 1
+                },
+                {
+                  "uuid": "df93b84b-4717-450e-8033-a8164a11bc90",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 788,
+                  "height": 555,
+                  "version": "9.2.0",
+                  "left": 171.00000000000003,
+                  "top": 431.0853537852548,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 402253,
+                        "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240121-185106-jfiae.ttf",
+                        "woff": "https://gd-filems.dancf.com/gaoding/editor/20240121-185107-jiahc.woff",
+                        "fontFamily": "HongLei-Regular",
+                        "type": "font",
+                        "alias": "鸿雷板书简体",
+                        "weight": 400,
+                        "lang": "zh",
+                        "source": "GD",
+                        "fromUser": true
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "HongLei-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 132.1,
+                  "lineHeight": 1.4,
+                  "letterSpacing": -29.49032086172116,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "center",
+                  "verticalAlign": "top",
+                  "content": "选择列表样式\n调整大小布局\n收获整齐列表",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "listStyleBackground": {
+                    "url": "https://cdn.dancf.com/fe-assets/20250416/0978f16bda7ebf3d7f1257e82680aa04.svg",
+                    "type": "svg",
+                    "naturalWidth": 64,
+                    "naturalHeight": 64,
+                    "colors": [
+                      "#fdcf4aff",
+                      "#e60000ff"
+                    ],
+                    "size": "small"
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "ruleIndex": -1,
+                  "scale": 0.6,
+                  "boardScale": 0.21,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                }
+              ]
+            }
+          ],
+          "userAdded": false,
+          "background": {
+            "color": "#fffdfaff",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/b95f6f5611d8405ea495b22181d2ca4c.png",
+            "width": 256,
+            "height": 341
+          },
+          "backgroundEffectImage": "",
+          "backgroundColor": "#fffdfaff",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}

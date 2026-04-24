@@ -1,0 +1,615 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.586352657004831,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "0763084c-7ce1-4547-a8a0-6745cca15d73",
+      "imageUrl": "",
+      "title": "249",
+      "category": "cover",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "2252984507"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "7a018b33-4706-445a-9b87-e76eb6f11c77",
+          "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/9df17178cfdb497280cdf5acf291f979.png",
+          "type": "path",
+          "title": "形状-上",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 280.3100559775708,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "path": "M0,98.56168c0,26.4541 0,52.91601 0,79.37011c30.97735,31.35156 78.79584,35.87375 120.1958,39.00468c59.84776,4.52613 120.96519,9.301 179.50219,-7.25662c40.21372,-11.3747 75.30797,-36.73663 114.59536,-48.52925c0.67181,0.48375 1.34385,0.96771 2.01573,1.45146c12.62001,22.7039 14.37939,39.33988 36.2836,61.77254c48.27925,49.44424 132.12631,42.11844 190.18575,15.1484c24.22013,-14.23982 48.44759,-28.48388 72.66772,-42.7238c6.8864,8.43506 13.77487,16.87268 20.66126,25.30774c10.51108,11.31074 22.66271,20.64135 36.28367,27.93824c62.21039,33.32656 146.70306,33.72809 214.87871,26.48687c46.41106,-4.92944 86.14107,-19.1354 122.96064,-47.98479c16.46027,-13.15149 32.92549,-26.30684 49.38576,-39.45833c15.56289,4.67014 41.43298,29.99328 60.37159,38.279c5.72955,2.50672 22.01222,4.58328 22.01222,11.06654c0,-93.13545 0,-145.29893 0,-238.43448c-413.95859,0 -828.04141,0 -1242,0c0,50.35549 0,59.72618 0,110.08177c0,-0.0303 0,-0.06051 0,-0.09071c0,-0.81629 0,-1.63288 0,-2.44917",
+          "radius": 0,
+          "effectShadowBlurScale": 1,
+          "effectStrokeWidthScale": 1,
+          "pathShape": "pen",
+          "pathEffects": [
+            {
+              "type": "brush",
+              "offset": {
+                "x": 0,
+                "y": 0
+              },
+              "skew": {
+                "enable": false,
+                "x": 0,
+                "y": 0
+              },
+              "enable": true,
+              "lineType": "center",
+              "width": 0,
+              "color": "#ffffffff",
+              "filling": {
+                "enable": true,
+                "type": 0,
+                "color": "#f1d5caff"
+              }
+            }
+          ]
+        },
+        {
+          "uuid": "b190e4f6-9333-4e76-a5e1-35c15a7a497a",
+          "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/2ff468d9c98e4672b22517f25a0501a0.png",
+          "type": "path",
+          "title": "形状-下",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 323.99776666026185,
+          "left": 0,
+          "top": 1332.002233339738,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "path": "M0,74.71025c0,-13.61807 0,-27.24019 0,-40.85827c85.94978,-56.60265 143.90876,-34.92657 228.13907,11.62186c25.463,14.13262 50.93378,28.26939 76.39679,42.40192c11.08554,8.29184 22.17434,16.58624 33.25981,24.87808c11.55577,-15.8575 23.1151,-31.71974 34.67088,-47.57714c10.74109,-12.21073 23.39626,-22.63145 39.00468,-27.87447c30.01727,-10.08324 94.44705,-3.49683 107.94342,32.95898c10.91757,-7.959 21.8384,-15.92037 32.75589,-23.87938c19.26389,-11.70398 44.48216,-15.85789 66.31811,-9.89678c25.89348,7.06878 44.94972,28.43601 62.18581,47.75885c8.9692,9.16952 17.94107,18.34171 26.91027,27.51124c3.15771,-5.74988 6.3163,-11.50144 9.47401,-17.25132c11.47042,-15.15491 27.68106,-27.33801 44.04405,-36.77236c80.94668,-46.67142 228.40076,-38.47128 313.7512,-12.16681c28.40173,8.75328 55.55978,21.68447 81.33548,36.40932c13.06745,7.9287 26.13881,15.85987 39.20626,23.78857c-0.6382,-0.33283 -1.27656,-0.66577 -1.91476,-0.9987c5.50909,-7.77738 11.01988,-15.55724 16.52904,-23.33462c10.66224,-8.35244 21.32775,-16.70735 31.98999,-25.05979c0,89.20047 0,178.42778 0,267.62834c-413.95859,0 -828.04141,0 -1242,0c0,-85.78092 0,-171.5875 0,-257.36842c0,2.69337 0,5.38753 0,8.0809z",
+          "radius": 0,
+          "effectShadowBlurScale": 1,
+          "effectStrokeWidthScale": 1,
+          "pathShape": "pen",
+          "pathEffects": [
+            {
+              "type": "brush",
+              "offset": {
+                "x": 0,
+                "y": 0
+              },
+              "skew": {
+                "enable": false,
+                "x": 0,
+                "y": 0
+              },
+              "enable": true,
+              "lineType": "center",
+              "width": 0,
+              "color": "#ffffffff",
+              "filling": {
+                "enable": true,
+                "type": 0,
+                "color": "#f1d5caff"
+              }
+            }
+          ],
+          "effectedResult": {
+            "left": 0,
+            "top": 0.04390102844238913,
+            "width": 1242,
+            "height": 323.9538689715576
+          }
+        },
+        {
+          "uuid": "71f4766c-c1ae-4726-b4b6-f828055241f8",
+          "imageUrl": "",
+          "type": "text",
+          "title": "今天也要当美美的石矶娘娘。每天窝在家里，穿得漂漂亮亮的。有自己一个小窝，情绪价值十分稳定。 “没关系呀，还有一点点，留得青山在",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 951.8434603501545,
+          "height": 912,
+          "version": "9.2.0",
+          "left": 143,
+          "top": 324.8372835004558,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 193426047,
+                "ttf": "https://gd-filems.dancf.com/xi19e5/xi19e5/740/38a5dc4e1f094dd0806d5221c8bfc8ca.ttf",
+                "woff": "https://gd-filems.dancf.com/xi19e5/xi19e5/740/36a0427404b94ca99b443909d922b49f.woff",
+                "fontFamily": "PlayFont-PangboGBT",
+                "type": "font",
+                "alias": "造字侠磅礴简繁 Regular",
+                "weight": 400,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#282828ff",
+          "fontFamily": "PlayFont-PangboGBT",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 95,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "justify",
+          "verticalAlign": "top",
+          "content": "今天也要当美美的石矶娘娘。每天窝在家里，穿得漂漂亮亮的。有自己一个小窝，情绪价值十分稳定。\n“没关系呀，还有一点点，留得青山在，不怕没柴烧！”",
+          "contents": [
+            {
+              "color": "#282828ff",
+              "fontFamily": "PlayFont-PangboGBT",
+              "fontStyle": "normal",
+              "fontSize": 95,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "今天也要当美美的"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "PlayFont-PangboGBT",
+              "fontStyle": "normal",
+              "fontSize": 95,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "石矶娘娘",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/6493b384911d51df5eb6131f25627910.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 1.1757575757575758
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.58,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "PlayFont-PangboGBT",
+              "fontStyle": "normal",
+              "fontSize": 95,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "。每天窝在家里，穿得漂漂亮亮的。有自己一个小窝，情绪价值十分稳定。\n“没关系呀，还有一点点，"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "PlayFont-PangboGBT",
+              "fontStyle": "normal",
+              "fontSize": 95,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "留得青山在，不怕没柴烧！",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240819/0964fc20a458f345a5c2b200aa3709a9.svg",
+                "width": 28,
+                "height": 3,
+                "svgInfo": {
+                  "colors": [
+                    "#f96023ff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": 0,
+                  "right": 0,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.9,
+                  "height": 0.2
+                },
+                "repeat": "repeat",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "PlayFont-PangboGBT",
+              "fontStyle": "normal",
+              "fontSize": 95,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "”"
+            }
+          ],
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#282828ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "quality": 100,
+          "boundingBox": {
+            "left": 4.1875,
+            "right": 950.5625,
+            "top": -3.518310546875,
+            "bottom": 884.544189453125
+          },
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "b1113216-2a49-4768-92fc-d4c5a361ab29",
+          "imageUrl": "",
+          "type": "image",
+          "title": "表情",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 401,
+          "height": 339,
+          "left": 659,
+          "top": 1207.9425706472198,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/d7634f76636640c3a323a6198290c53c.png",
+          "loop": 1,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "naturalWidth": 401,
+          "naturalHeight": 339,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "quality": 100,
+          "fillOpacity": 1
+        }
+      ],
+      "userAdded": true,
+      "background": {
+        "color": "#fbf2eeff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/74244/d16d4ed728874c1ba300720b8be0757f.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundColor": "#fbf2eeff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+<svg width="19" height="18" viewBox="0 0 19 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 9.15393L11.4086 4.06278C11.4269 4.05016 11.4555 4.06372 11.4428 4.08203C10.5275 5.40081 -0.854168 21.9958 15 9.15393" stroke="{{ colors[0] }}" stroke-width="7" stroke-linecap="round"/>
+</svg>

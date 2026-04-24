@@ -1,0 +1,1903 @@
+'use client';
+
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
+import {
+  LayoutGrid, Square, Type, ImageIcon, Layers, Wand2,
+  Eye, EyeOff, Lock, Unlock, Search, Plus,
+  Copy, Trash2, ArrowUp, ArrowDown,
+  AlignCenter, AlignLeft, AlignRight, Bold, Italic, Underline, Strikethrough,
+  Circle, Triangle,
+  MinusIcon, Star, Hexagon, ArrowRight, Sparkles,
+  Group, Scissors,
+  Image,
+  Crop, Replace, Maximize2,
+  Minus, Plus as PlusIcon,
+  ZoomIn, ZoomOut, Palette, X, ChevronDown, ChevronRight,
+  FlipHorizontal, FlipVertical,
+  Loader2,
+} from 'lucide-react';
+import { useEditorContext } from '@/contexts/EditorContext';
+import { editorApi, type Template as BackendTemplate, type Material as BackendMaterial } from '@/services/editorApi';
+import { parseFabricJson } from '@/utils/fabricParser';
+
+/* ============ Types ============ */
+
+type ElementType = 'rect' | 'circle' | 'triangle' | 'star' | 'hexagon' | 'line' | 'arrow' | 'diamond' | 'text' | 'image';
+
+interface LayerItem {
+  id: string;
+  name: string;
+  type: ElementType;
+  visible: boolean;
+  locked: boolean;
+}
+
+interface CanvasAttr {
+  id: string;
+  name: string;
+  w: number;
+  h: number;
+  bgColor: string;
+  bg?: string;
+  bgImage?: string;
+}
+
+interface ElementAttr {
+  id: string;
+  name: string;
+  type: ElementType;
+  canvasId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  angle: number;
+  opacity: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  visible?: boolean;
+  shadow?: { enabled: boolean; color: string; blur: number; x: number; y: number };
+  fontSize?: number;
+  lineHeight?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  underline?: boolean;
+  strikethrough?: boolean;
+  textAlign?: string;
+  text?: string;
+  flipX?: boolean;
+  flipY?: boolean;
+  borderRadius?: number;
+}
+
+/* ============ Constants ============ */
+
+/* Backend data: templates and materials are fetched from API */
+
+const mockBackgrounds = [
+  // 纯色
+  { id: 'bg1', name: '纯白', type: 'color', value: '#ffffff' },
+  { id: 'bg2', name: '浅灰', type: 'color', value: '#f8fafc' },
+  { id: 'bg3', name: '深蓝', type: 'color', value: '#0f172a' },
+  { id: 'bg8', name: '暗夜', type: 'color', value: '#1a1a2e' },
+  { id: 'bg9', name: '薄荷绿', type: 'color', value: '#d1fae5' },
+  { id: 'bg10', name: '薰衣草', type: 'color', value: '#ede9fe' },
+  { id: 'bg20', name: '奶油白', type: 'color', value: '#fefce8' },
+  { id: 'bg21', name: '天蓝', type: 'color', value: '#e0f2fe' },
+  { id: 'bg22', name: '玫瑰粉', type: 'color', value: '#fce7f3' },
+  { id: 'bg23', name: '纯黑', type: 'color', value: '#000000' },
+  { id: 'bg24', name: '深绿', type: 'color', value: '#052e16' },
+  { id: 'bg25', name: '暖沙', type: 'color', value: '#fef3c7' },
+  // 渐变
+  { id: 'bg4', name: '渐变蓝紫', type: 'gradient', value: 'linear-gradient(135deg, #6366f1, #a855f7)' },
+  { id: 'bg5', name: '渐变粉橙', type: 'gradient', value: 'linear-gradient(135deg, #ec4899, #f59e0b)' },
+  { id: 'bg6', name: '渐变青蓝', type: 'gradient', value: 'linear-gradient(135deg, #10b981, #3b82f6)' },
+  { id: 'bg7', name: '暖色渐变', type: 'gradient', value: 'linear-gradient(135deg, #ef4444, #f59e0b)' },
+  { id: 'bg30', name: '紫罗兰', type: 'gradient', value: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { id: 'bg31', name: '日落余晖', type: 'gradient', value: 'linear-gradient(135deg, #f093fb, #f5576c)' },
+  { id: 'bg32', name: '极光绿', type: 'gradient', value: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
+  { id: 'bg33', name: '深海蓝', type: 'gradient', value: 'linear-gradient(135deg, #0c3483, #a2b6df, #6b8dd6)' },
+  { id: 'bg34', name: '暮光之城', type: 'gradient', value: 'linear-gradient(135deg, #4a00e0, #8e2de2)' },
+  { id: 'bg35', name: '薄荷清新', type: 'gradient', value: 'linear-gradient(135deg, #96fbc4, #f9f586)' },
+  { id: 'bg36', name: '暗夜渐变', type: 'gradient', value: 'linear-gradient(135deg, #232526, #66737a)' },
+  { id: 'bg37', name: '珊瑚海', type: 'gradient', value: 'linear-gradient(135deg, #ff9a9e, #fad0c4, #ffd1ff)' },
+  { id: 'bg38', name: '金属银', type: 'gradient', value: 'linear-gradient(135deg, #e0e0e0, #bdbdbd, #e0e0e0)' },
+  { id: 'bg39', name: '赛博朋克', type: 'gradient', value: 'linear-gradient(135deg, #fc466b, #3f5efb)' },
+  // 图案
+  { id: 'bg11', name: '几何图案', type: 'gradient', value: 'linear-gradient(135deg, #667eea 25%, #764ba2 25%, #764ba2 50%, #667eea 50%, #667eea 75%, #764ba2 75%)' },
+  { id: 'bg12', name: '条纹', type: 'gradient', value: 'repeating-linear-gradient(45deg, #6366f1, #6366f1 10px, #818cf8 10px, #818cf8 20px)' },
+  { id: 'bg40', name: '点阵网格', type: 'gradient', value: 'radial-gradient(circle, #d1d5db 1px, transparent 1px); background-size: 20px 20px' },
+  { id: 'bg41', name: '方格纸', type: 'gradient', value: 'linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px' },
+  { id: 'bg42', name: '斜纹', type: 'gradient', value: 'repeating-linear-gradient(-45deg, #f0f0f0, #f0f0f0 5px, #ffffff 5px, #ffffff 10px)' },
+  { id: 'bg43', name: '同心圆', type: 'gradient', value: 'radial-gradient(circle at center, #6366f1 2px, transparent 2px); background-size: 30px 30px' },
+  { id: 'bg44', name: '棋盘格', type: 'gradient', value: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%); background-size: 20px 20px' },
+];
+
+const elementShapes = [
+  { id: 'rect', icon: Square, label: '矩形' },
+  { id: 'circle', icon: Circle, label: '圆形' },
+  { id: 'triangle', icon: Triangle, label: '三角形' },
+  { id: 'star', icon: Star, label: '星形' },
+  { id: 'hexagon', icon: Hexagon, label: '六边形' },
+  { id: 'line', icon: MinusIcon, label: '线条' },
+  { id: 'arrow', icon: ArrowRight, label: '箭头' },
+  { id: 'diamond', icon: LayoutGrid, label: '菱形' },
+];
+
+const layerTypeConfig: Record<string, { icon: string; color: string }> = {
+  rect: { icon: '▬', color: 'bg-blue-100 text-blue-600' },
+  circle: { icon: '●', color: 'bg-purple-100 text-purple-600' },
+  triangle: { icon: '▲', color: 'bg-green-100 text-green-600' },
+  star: { icon: '★', color: 'bg-yellow-100 text-yellow-600' },
+  hexagon: { icon: '⬡', color: 'bg-teal-100 text-teal-600' },
+  line: { icon: '╱', color: 'bg-gray-100 text-gray-600' },
+  arrow: { icon: '→', color: 'bg-orange-100 text-orange-600' },
+  diamond: { icon: '◆', color: 'bg-indigo-100 text-indigo-600' },
+  text: { icon: 'T', color: 'bg-amber-100 text-amber-600' },
+  image: { icon: '🖼', color: 'bg-pink-100 text-pink-600' },
+};
+
+const textColors = ['#0f172a', '#64748b', '#94a3b8', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
+const shapeDefaultColors = ['#6366f1', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+
+const presetSizes = [
+  { name: '手机海报', w: 1080, h: 1920, ratio: '9:16', cat: '海报' },
+  { name: '横版海报', w: 1920, h: 1080, ratio: '16:9', cat: '海报' },
+  { name: '小红书配图', w: 1242, h: 1660, ratio: '3:4', cat: '社交媒体' },
+  { name: '公众号首图', w: 900, h: 383, ratio: '2.35:1', cat: '社交媒体' },
+  { name: '公众号次图', w: 500, h: 500, ratio: '1:1', cat: '社交媒体' },
+  { name: '文章长图', w: 1080, h: 3000, ratio: '9:25', cat: '社交媒体' },
+  { name: 'PPT 演示', w: 1920, h: 1080, ratio: '16:9', cat: '演示' },
+  { name: 'PPT 标准', w: 1920, h: 1440, ratio: '4:3', cat: '演示' },
+  { name: '抖音封面', w: 1080, h: 1440, ratio: '3:4', cat: '视频' },
+  { name: 'B站封面', w: 1920, h: 1080, ratio: '16:9', cat: '视频' },
+  { name: '名片', w: 900, h: 540, ratio: '5:3', cat: '印刷' },
+  { name: 'A4 文档', w: 794, h: 1123, ratio: 'A4', cat: '印刷' },
+];
+
+let _idCounter = 100;
+const nextId = () => `l${++_idCounter}`;
+
+function initialElements(): ElementAttr[] {
+  return [
+    { id: 'l2', name: '装饰圆形', type: 'circle', canvasId: 'c1', x: 560, y: 30, w: 220, h: 220, angle: 0, opacity: 25, fill: '#6366f1', strokeWidth: 0, shadow: { enabled: false, color: '#6366f1', blur: 10, x: 0, y: 0 } },
+    { id: 'l3', name: '主标题', type: 'text', canvasId: 'c1', x: 50, y: 80, w: 480, h: 56, angle: 0, opacity: 100, fill: '#0f172a', fontFamily: 'PingFang SC', fontSize: 42, fontWeight: 'bold', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'left', lineHeight: 1.2, text: 'AI 创意工作室' },
+    { id: 'l4', name: '副标题', type: 'text', canvasId: 'c1', x: 50, y: 145, w: 420, h: 24, angle: 0, opacity: 70, fill: '#64748b', fontFamily: 'PingFang SC', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'left', lineHeight: 1.5, text: '点击选中元素，在右侧面板编辑属性' },
+    { id: 'l5', name: '产品图片', type: 'image', canvasId: 'c1', x: 50, y: 200, w: 180, h: 180, angle: 0, opacity: 100, flipX: false, flipY: false },
+    { id: 'l6', name: '装饰线条', type: 'line', canvasId: 'c1', x: 50, y: 410, w: 350, h: 2, angle: 0, opacity: 40, stroke: '#6366f1', strokeWidth: 2 },
+    { id: 'l7', name: 'Logo', type: 'image', canvasId: 'c1', x: 20, y: 20, w: 48, h: 48, angle: 0, opacity: 100, flipX: false, flipY: false },
+    { id: 'l8', name: 'CTA 按钮背景', type: 'rect', canvasId: 'c1', x: 50, y: 430, w: 170, h: 44, angle: 0, opacity: 100, fill: '#6366f1', strokeWidth: 0, borderRadius: 9999, shadow: { enabled: true, color: '#6366f188', blur: 16, x: 0, y: 4 } },
+    { id: 'l9', name: 'CTA 按钮文字', type: 'text', canvasId: 'c1', x: 85, y: 440, w: 100, h: 24, angle: 0, opacity: 100, fill: '#ffffff', fontFamily: 'PingFang SC', fontSize: 15, fontWeight: 'bold', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'center', lineHeight: 1.4, text: '开始创作 →' },
+  ];
+}
+
+function initialLayers(): LayerItem[] {
+  return [
+    { id: 'l2', name: '装饰圆形', type: 'circle', visible: true, locked: false },
+    { id: 'l3', name: '主标题', type: 'text', visible: true, locked: false },
+    { id: 'l4', name: '副标题', type: 'text', visible: true, locked: false },
+    { id: 'l5', name: '产品图片', type: 'image', visible: true, locked: false },
+    { id: 'l6', name: '装饰线条', type: 'line', visible: true, locked: false },
+    { id: 'l7', name: 'Logo', type: 'image', visible: true, locked: false },
+    { id: 'l8', name: 'CTA 按钮背景', type: 'rect', visible: true, locked: false },
+    { id: 'l9', name: 'CTA 按钮文字', type: 'text', visible: true, locked: false },
+  ];
+}
+
+/* ============ Small Components ============ */
+
+function Divider({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-3 py-2 border-b flex items-center gap-2">
+      <div className="h-3.5 w-0.5 rounded-full bg-primary" />
+      <h4 className="text-xs font-semibold text-foreground">{children}</h4>
+    </div>
+  );
+}
+
+function AttrRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5">
+      <span className="text-[11px] text-muted-foreground w-9 shrink-0">{label}</span>
+      <div className="flex-1 flex items-center gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function NumInput({ value, onChange, min, max, step = 1 }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+  return (
+    <div className="flex items-center border rounded-md bg-background overflow-hidden">
+      <button onClick={() => onChange(Math.max(min ?? -9999, value - step))} className="h-7 w-6 flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors">
+        <Minus className="h-3 w-3" />
+      </button>
+      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} step={step}
+        className="w-full h-7 text-center text-xs font-mono bg-transparent border-0 focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+      <button onClick={() => onChange(Math.min(max ?? 9999, value + step))} className="h-7 w-6 flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors">
+        <PlusIcon className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+/* ============ Main Editor ============ */
+
+export default function EditorPage() {
+  const ctx = useEditorContext();
+
+  const [activeLeftTab, setActiveLeftTab] = useState('templates');
+  const [selectedLayer, setSelectedLayer] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [canvasW, setCanvasW] = useState(800);
+  const [canvasH, setCanvasH] = useState(500);
+  const [bgColor, setBgColor] = useState('#ffffff');
+  const [activeFilter, setActiveFilter] = useState('原图');
+  const [templateCat, setTemplateCat] = useState('全部');
+  const [materialCat, setMaterialCat] = useState('全部');
+  const [bgCat, setBgCat] = useState('全部');
+  const [aiSize, setAiSize] = useState('1:1');
+  const [aiStyle, setAiStyle] = useState('写实');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [selectedShape, setSelectedShape] = useState('');
+  const [activeRightTab, setActiveRightTab] = useState<'attr' | 'style'>('attr');
+
+  /* Multi-canvas state */
+  const [canvases, setCanvases] = useState<CanvasAttr[]>([
+    { id: 'c1', name: '画板 1', w: 800, h: 500, bgColor: '#e8edf5', bg: '#e8edf5' },
+  ]);
+  const [activeCanvasId, setActiveCanvasId] = useState('c1');
+  const activeCanvas = canvases.find(c => c.id === activeCanvasId) ?? canvases[0];
+
+  /* Size modal */
+  const [showSizeModal, setShowSizeModal] = useState(false);
+  const [showSizeTemplateModal, setShowSizeTemplateModal] = useState(false);
+  const [customSizeW, setCustomSizeW] = useState(String(canvasW));
+  const [customSizeH, setCustomSizeH] = useState(String(canvasH));
+
+  /* Collapsible sections for text element */
+  const [textSectionOpen, setTextSectionOpen] = useState<Record<string, boolean>>({ transform: false, effects: false, shadow: false });
+  const toggleSection = (key: string) => setTextSectionOpen(p => ({ ...p, [key]: !p[key] }));
+  /* Text transform values */
+  const [skewX, setSkewX] = useState(0);
+  const [skewY, setSkewY] = useState(0);
+  const [letterSpacing, setLetterSpacing] = useState(0);
+
+  /* Text draft — the KEY fix: local draft value so textarea input is never blocked */
+  const [textDraft, setTextDraft] = useState('');
+  const [isEditingText, setIsEditingText] = useState(false);
+
+  /* Backend data */
+  const [backendTemplates, setBackendTemplates] = useState<BackendTemplate[]>([]);
+  const [backendMaterials, setBackendMaterials] = useState<BackendMaterial[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(true);
+
+  const [elements, setElements] = useState<ElementAttr[]>(initialElements);
+  const [layers, setLayers] = useState<LayerItem[]>(initialLayers);
+
+  /* History */
+  const [history, setHistory] = useState<{ elements: ElementAttr[]; layers: LayerItem[] }[]>([
+    { elements: initialElements(), layers: initialLayers() },
+  ]);
+  const [historyIdx, setHistoryIdx] = useState(0);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const textTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /* Filter elements for active canvas only */
+  const canvasElements = elements.filter(e => e.canvasId === activeCanvasId);
+
+  /* Load template from sessionStorage on mount */
+  useEffect(() => {
+    /* 1. Fetch backend templates */
+    setLoadingTemplates(true);
+    editorApi.getTemplates()
+      .then(res => setBackendTemplates(res.data?.items ?? []))
+      .catch(() => setBackendTemplates([]))
+      .finally(() => setLoadingTemplates(false));
+
+    /* 2. Fetch backend materials */
+    setLoadingMaterials(true);
+    editorApi.getMaterials(undefined, 1, 100)
+      .then(res => setBackendMaterials(res.data?.items ?? []))
+      .catch(() => setBackendMaterials([]))
+      .finally(() => setLoadingMaterials(false));
+
+    /* 3. Load template from sessionStorage */
+    const tpl = sessionStorage.getItem('selectedTemplate');
+    if (tpl) {
+      try {
+        const data = JSON.parse(tpl);
+        if (data.name) ctx.setProjectName(data.name);
+        if (data.width && data.height) {
+          setCanvases(prev => prev.map(c => c.id === 'c1' ? { ...c, w: data.width, h: data.height } : c));
+        }
+        if (data.fabric_json) {
+          const { elements: newEls, layers: newLyrs } = parseFabricJson(data.fabric_json, 'c1');
+          if ((newEls as ElementAttr[]).length > 0) {
+            setElements(newEls as ElementAttr[]);
+            setLayers(newLyrs as LayerItem[]);
+            setHistory([{ elements: newEls as ElementAttr[], layers: newLyrs as LayerItem[] }]);
+            setHistoryIdx(0);
+            ctx._setCanUndo(false);
+            ctx._setCanRedo(false);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load template:', e);
+      } finally {
+        sessionStorage.removeItem('selectedTemplate');
+      }
+    } else {
+      /* 4. Try loading saved project from backend */
+      editorApi.getProjects(1, 1)
+        .then(res => {
+          if (res.data.items.length > 0) {
+            const project = res.data.items[0];
+            ctx.setProjectName(project.name);
+            ctx.setProjectId(project.id);
+            // Load project detail
+            return editorApi.getProject(project.id);
+          }
+          return null;
+        })
+        .then(detailRes => {
+          if (!detailRes || !detailRes.data.fabric_json) return;
+          const data = JSON.parse(detailRes.data.fabric_json);
+          if (data.elements) setElements(data.elements);
+          if (data.layers) setLayers(data.layers);
+          if (data.canvases) setCanvases(data.canvases);
+          if (data.activeCanvasId) setActiveCanvasId(data.activeCanvasId);
+        })
+        .catch(() => {});
+    }
+  }, []);
+  const canvasLayers = layers.filter(l => elements.some(e => e.id === l.id && e.canvasId === activeCanvasId));
+
+  /* Render elements for a specific canvas (used for both active and inactive canvases) */
+  const renderCanvasElements = (canvasId: string) => {
+    const cEl = elements.filter(e => e.canvasId === canvasId);
+    const cLyr = layers.filter(l => elements.some(e => e.id === l.id && e.canvasId === canvasId));
+    const isInactive = canvasId !== activeCanvasId;
+    return cEl.map(el => {
+      const layer = cLyr.find(l => l.id === el.id);
+      if (!layer?.visible) return null;
+      const sel = !isInactive && selectedLayer === el.id && !isEditingText;
+      const editing = !isInactive && selectedLayer === el.id && isEditingText;
+      const locked = layer.locked;
+
+      const transform = `rotate(${el.angle}deg) scaleX(${el.flipX ? -1 : 1}) scaleY(${el.flipY ? -1 : 1})`;
+
+      const cls = cn(
+        'absolute select-none',
+        isInactive ? 'pointer-events-none opacity-60' : 'cursor-move',
+        sel && 'ring-2 ring-primary ring-offset-1 z-10',
+        !locked && !isInactive && 'hover:ring-2 hover:ring-primary/30',
+      );
+
+      const handles = sel && (
+        <>
+          <div
+            className="absolute -top-[5px] -left-[5px] w-[10px] h-[10px] bg-white border-2 border-primary rounded-full shadow cursor-nw-resize z-20"
+            onMouseDown={e => onDragStart(e, el.id, 'resize', 'nw')}
+          />
+          <div
+            className="absolute -top-[5px] -right-[5px] w-[10px] h-[10px] bg-white border-2 border-primary rounded-full shadow cursor-ne-resize z-20"
+            onMouseDown={e => onDragStart(e, el.id, 'resize', 'ne')}
+          />
+          <div
+            className="absolute -bottom-[5px] -left-[5px] w-[10px] h-[10px] bg-white border-2 border-primary rounded-full shadow cursor-sw-resize z-20"
+            onMouseDown={e => onDragStart(e, el.id, 'resize', 'sw')}
+          />
+          <div
+            className="absolute -bottom-[5px] -right-[5px] w-[10px] h-[10px] bg-white border-2 border-primary rounded-full shadow cursor-se-resize z-20"
+            onMouseDown={e => onDragStart(e, el.id, 'resize', 'se')}
+          />
+          {el.type === 'text' && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2">
+              <div className="w-px h-6 bg-primary mx-auto" />
+              <div className="w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-sm mx-auto -mt-0.5 cursor-grab" />
+            </div>
+          )}
+        </>
+      );
+
+      const shapeContent = (e2: ElementAttr) => {
+        switch (e2.type) {
+          case 'triangle': return (<svg viewBox="0 0 100 100" className="w-full h-full"><polygon points="50,5 95,95 5,95" fill={e2.fill || '#6366f1'} /></svg>);
+          case 'star': return (<svg viewBox="0 0 100 100" className="w-full h-full"><polygon points="50,5 61,35 95,35 68,57 79,90 50,70 21,90 32,57 5,35 39,35" fill={e2.fill || '#f59e0b'} /></svg>);
+          case 'hexagon': return (<svg viewBox="0 0 100 100" className="w-full h-full"><polygon points="50,3 93,25 93,75 50,97 7,75 7,25" fill={e2.fill || '#10b981'} /></svg>);
+          case 'arrow': return (<svg viewBox="0 0 100 100" className="w-full h-full"><polygon points="10,30 60,30 60,10 95,50 60,90 60,70 10,70" fill={e2.fill || '#ef4444'} /></svg>);
+          case 'diamond': return (<svg viewBox="0 0 100 100" className="w-full h-full"><polygon points="50,5 95,50 50,95 5,50" fill={e2.fill || '#8b5cf6'} /></svg>);
+          default: return null;
+        }
+      };
+      const isSvgShape = ['triangle', 'star', 'hexagon', 'arrow', 'diamond'].includes(el.type);
+
+      return (
+        <div
+          key={el.id}
+          onMouseDown={(e) => {
+            if (isInactive || locked) return;
+            if (el.type === 'text' && isEditingText) return;
+            if (el.type === 'text') { flushTextDraft(); setIsEditingText(false); onDragStart(e, el.id, 'move'); }
+            else { onDragStart(e, el.id, 'move'); }
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (isInactive) return;
+            if (el.type === 'text' && !locked) { flushTextDraft(); setSelectedLayer(el.id); setIsEditingText(true); }
+          }}
+          className={cn(cls, isSvgShape ? 'pointer-events-auto' : '')}
+          style={{ left: el.x, top: el.y, width: el.w, height: el.h, opacity: isSvgShape ? 1 : (el.opacity / 100), transform }}
+        >
+          {isSvgShape ? (
+            <>{shapeContent(el)}{handles}</>
+          ) : el.type === 'text' ? (
+            editing ? (
+              <textarea
+                ref={textAreaRef}
+                value={textDraft}
+                onChange={e => setTextDraft(e.target.value)}
+                onBlur={flushTextDraft}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full h-full resize-none bg-transparent border-0 outline-none px-1 py-0.5 m-0"
+                style={{ fontSize: el.fontSize, fontWeight: el.fontWeight, fontStyle: el.fontStyle, textDecoration: `${el.underline ? 'underline' : ''} ${el.strikethrough ? 'line-through' : ''}`.trim() || 'none', textAlign: el.textAlign as any, color: el.fill, lineHeight: el.lineHeight, fontFamily: el.fontFamily }}
+              />
+            ) : (
+              <div className="px-1 py-0.5" style={{ fontSize: el.fontSize, fontWeight: el.fontWeight, fontStyle: el.fontStyle, textDecoration: `${el.underline ? 'underline' : ''} ${el.strikethrough ? 'line-through' : ''}`.trim() || 'none', textAlign: el.textAlign as any, color: el.fill, lineHeight: el.lineHeight, fontFamily: el.fontFamily }}>{el.text}</div>
+            )
+          ) : el.type === 'image' ? (
+            <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center rounded-lg overflow-hidden">
+              <Image className="w-8 h-8 text-indigo-300" />
+            </div>
+          ) : el.type === 'line' ? (
+            <div className="w-full" style={{ height: el.strokeWidth ?? 2, backgroundColor: el.stroke, marginTop: (el.h - (el.strokeWidth ?? 2)) / 2 }} />
+          ) : (
+            <div className="w-full h-full" style={{ backgroundColor: el.fill, borderRadius: el.borderRadius, boxShadow: el.shadow?.enabled ? `${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur}px ${el.shadow.color}` : undefined }} />
+          )}
+          {handles}
+        </div>
+      );
+    });
+  };
+
+  const selectedEl = canvasElements.find(e => e.id === selectedLayer) ?? null;
+  const isText = selectedEl?.type === 'text';
+  const isImage = selectedEl?.type === 'image';
+  const isShape = ['rect', 'circle', 'triangle', 'star', 'hexagon', 'line', 'arrow', 'diamond'].includes(selectedEl?.type || '');
+
+  /* Sync text draft when selected element changes */
+  useEffect(() => {
+    if (isText && selectedEl) {
+      setTextDraft(selectedEl.text ?? '');
+      setIsEditingText(false);
+      requestAnimationFrame(() => { textAreaRef.current?.focus(); });
+    }
+  }, [selectedEl?.id, isText]);
+
+  /* Sync canvas dimensions when active canvas changes */
+  useEffect(() => {
+    if (!activeCanvas) return;
+    setCanvasW(activeCanvas.w);
+    setCanvasH(activeCanvas.h);
+    setBgColor(activeCanvas.bgColor);
+  }, [activeCanvas.w, activeCanvas.h, activeCanvas.bgColor, activeCanvas.id]);
+
+  /* Auto-fit zoom when canvas size changes */
+  useEffect(() => {
+    const container = viewportRef.current;
+    if (!container) return;
+    const availW = container.clientWidth - 48; // minus p-6 padding (24px each side)
+    const availH = container.clientHeight - 48;
+    if (availW <= 0 || availH <= 0) return;
+    const fitZoom = Math.min(availW / canvasW, availH / canvasH) * 100;
+    // Only auto-fit if current zoom would make canvas overflow
+    const currentScaledW = canvasW * ctx.zoom / 100;
+    const currentScaledH = canvasH * ctx.zoom / 100;
+    if (currentScaledW > availW || currentScaledH > availH) {
+      ctx.setZoom(Math.round(Math.min(fitZoom, 100)));
+    }
+  }, [canvasW, canvasH]);
+
+  /* Push history — functional update, no stale closures */
+  const doPushHistory = useCallback((els: ElementAttr[], lyrs: LayerItem[]) => {
+    setHistory(prev => {
+      const truncated = prev.slice(0, historyIdx + 1);
+      const newStack = [...truncated, { elements: [...els], layers: [...lyrs] }].slice(-50);
+      return newStack;
+    });
+    setHistoryIdx(prev => {
+      const newIdx = Math.min(prev, history.length - 1) + 1;
+      return newIdx;
+    });
+    ctx._setCanUndo(true);
+    ctx._setCanRedo(false);
+  }, [historyIdx, history.length, ctx]);
+
+  /* Update element — DIRECT setElements, debounced history for text */
+  const updateEl = useCallback((id: string, u: Partial<ElementAttr>) => {
+    /* For text edits: only update local draft immediately, delay element state update */
+    if ('text' in u) {
+      /* Don't update elements here — the textarea uses textDraft */
+      if (textTimerRef.current) clearTimeout(textTimerRef.current);
+      textTimerRef.current = setTimeout(() => {
+        setElements(prev => prev.map(e => e.id === id ? { ...e, ...u } : e));
+        ctx.setHasUnsavedChanges(true);
+      }, 300);
+      return;
+    }
+
+    setElements(prev => prev.map(e => e.id === id ? { ...e, ...u } : e));
+    if ('name' in u) setLayers(prev => prev.map(l => l.id === id ? { ...l, name: u.name as string } : l));
+    ctx.setHasUnsavedChanges(true);
+
+    /* Push history for non-text changes (debounced slightly to batch rapid changes) */
+    setTimeout(() => {
+      setElements(els => {
+        setLayers(lyrs => {
+          doPushHistory(els, lyrs);
+          return lyrs;
+        });
+        return els;
+      });
+    }, 0);
+  }, [doPushHistory, ctx]);
+
+  /* Flush text draft on blur — push actual text to elements + history */
+  const flushTextDraft = useCallback(() => {
+    if (textTimerRef.current) {
+      clearTimeout(textTimerRef.current);
+      textTimerRef.current = null;
+    }
+    if (selectedEl && isText && textDraft !== selectedEl.text) {
+      setElements(prev => {
+        const next = prev.map(e => e.id === selectedEl.id ? { ...e, text: textDraft } : e);
+        setLayers(lyrs => {
+          doPushHistory(next, lyrs);
+          return lyrs;
+        });
+        return next;
+      });
+    }
+  }, [selectedEl, isText, textDraft, doPushHistory]);
+
+  /* Add element */
+  const addElement = useCallback((el: ElementAttr) => {
+    const newLayer: LayerItem = { id: el.id, name: el.name, type: el.type, visible: true, locked: false };
+    setElements(prev => {
+      const next = [...prev, el];
+      setLayers(lyrs => {
+        const nextL = [...lyrs, newLayer];
+        setHistory(h => {
+          const truncated = h.slice(0, historyIdx + 1);
+          const newStack = [...truncated, { elements: [...next], layers: [...nextL] }].slice(-50);
+          setHistoryIdx(newStack.length - 1);
+          ctx._setCanUndo(true);
+          ctx._setCanRedo(false);
+          return newStack;
+        });
+        return nextL;
+      });
+      return next;
+    });
+    setSelectedLayer(el.id);
+    ctx.setHasUnsavedChanges(true);
+  }, [historyIdx, ctx]);
+
+  /* Delete element */
+  const deleteEl = useCallback((id: string) => {
+    setElements(prev => {
+      const next = prev.filter(e => e.id !== id);
+      setLayers(lyrs => {
+        const nextL = lyrs.filter(l => l.id !== id);
+        setHistory(h => {
+          const truncated = h.slice(0, historyIdx + 1);
+          const newStack = [...truncated, { elements: [...next], layers: [...nextL] }].slice(-50);
+          setHistoryIdx(newStack.length - 1);
+          ctx._setCanUndo(true);
+          ctx._setCanRedo(false);
+          return newStack;
+        });
+        return nextL;
+      });
+      return next;
+    });
+    setSelectedLayer('');
+    ctx.setHasUnsavedChanges(true);
+  }, [historyIdx, ctx]);
+
+  /* Duplicate */
+  const duplicateEl = useCallback((id: string) => {
+    setElements(prev => {
+      const el = prev.find(e => e.id === id);
+      if (!el) return prev;
+      const nid = nextId();
+      const newEl = { ...el, id: nid, name: el.name + ' 副本', x: el.x + 20, y: el.y + 20 };
+      const next = [...prev, newEl];
+      const newLayer: LayerItem = { id: nid, name: newEl.name, type: newEl.type, visible: true, locked: false };
+      setLayers(lyrs => {
+        const nextL = [...lyrs, newLayer];
+        setHistory(h => {
+          const truncated = h.slice(0, historyIdx + 1);
+          const newStack = [...truncated, { elements: [...next], layers: [...nextL] }].slice(-50);
+          setHistoryIdx(newStack.length - 1);
+          ctx._setCanUndo(true);
+          ctx._setCanRedo(false);
+          return newStack;
+        });
+        return nextL;
+      });
+      return next;
+    });
+    /* Select the duplicated element after state updates */
+    setTimeout(() => {
+      setElements(prev => {
+        const last = prev.filter(e => e.name.includes(' 副本')).pop();
+        if (last) setSelectedLayer(last.id);
+        return prev;
+      });
+    }, 0);
+    ctx.setHasUnsavedChanges(true);
+  }, [historyIdx, ctx]);
+
+  const addCanvas = useCallback(() => {
+    const newId = `c${Date.now()}`;
+    const newBg = '#ffffff';
+    const newCanvas: CanvasAttr = { id: newId, name: `画板 ${canvases.length + 1}`, w: 800, h: 500, bgColor: newBg, bg: newBg };
+    setCanvases(prev => [...prev, newCanvas]);
+    setActiveCanvasId(newId);
+    setCanvasW(800);
+    setCanvasH(500);
+    setBgColor(newBg);
+    setSelectedLayer('');
+    setActiveRightTab('attr');
+  }, [canvases.length]);
+
+  const duplicateCanvas = useCallback((id: string) => {
+    const src = canvases.find(c => c.id === id);
+    if (!src) return;
+    const newId = `c${Date.now()}`;
+    setCanvases(prev => [...prev, { ...src, id: newId, name: src.name + ' 副本' }]);
+    setActiveCanvasId(newId);
+    setCanvasW(src.w);
+    setCanvasH(src.h);
+    setBgColor(src.bgColor);
+    setSelectedLayer('');
+    setActiveRightTab('attr');
+  }, [canvases]);
+
+  const deleteCanvas = useCallback((id: string) => {
+    if (canvases.length <= 1) return;
+    if (!confirm('确定要删除此画板吗？')) return;
+    const next = canvases.filter(c => c.id !== id);
+    setCanvases(next);
+    if (activeCanvasId === id) {
+      setActiveCanvasId(next[0].id);
+      setCanvasW(next[0].w);
+      setCanvasH(next[0].h);
+      setBgColor(next[0].bgColor);
+    }
+  }, [canvases, activeCanvasId]);
+
+  const switchToCanvas = useCallback((id: string) => {
+    const c = canvases.find(x => x.id === id);
+    if (!c) return;
+    setActiveCanvasId(id);
+    setCanvasW(c.w);
+    setCanvasH(c.h);
+    setBgColor(c.bgColor);
+    setSelectedLayer('');
+    setActiveRightTab('attr');
+  }, [canvases]);
+
+  /* AI generate in editor */
+  const aiGenerate = useCallback(() => {
+    if (!aiPrompt.trim()) return;
+    const id = nextId();
+    const newEl: ElementAttr = {
+      id, name: `AI生成: ${aiPrompt.slice(0, 10)}`, type: 'image',
+      canvasId: activeCanvasId,
+      x: Math.round(canvasW / 2 - 75), y: Math.round(canvasH / 2 - 75),
+      w: 150, h: 150, angle: 0, opacity: 100, flipX: false, flipY: false,
+    };
+    addElement(newEl);
+    alert(`模拟 AI 生图完成\n提示词: ${aiPrompt}\n尺寸: ${aiSize}\n风格: ${aiStyle}\n\n已添加到画布中心`);
+    setAiPrompt('');
+  }, [aiPrompt, aiSize, aiStyle, canvasW, canvasH, activeCanvasId, addElement]);
+
+  const applyCanvasSize = useCallback((w: number, h: number) => {
+    setCanvasW(w);
+    setCanvasH(h);
+    setCustomSizeW(String(w));
+    setCustomSizeH(String(h));
+    setCanvases(prev => prev.map(c => c.id === activeCanvasId ? { ...c, w, h } : c));
+  }, [activeCanvasId]);
+
+  /* Undo */
+  const doUndo = useCallback(() => {
+    setHistory(prev => {
+      setHistoryIdx(idx => {
+        if (idx <= 0) return idx;
+        const newIdx = idx - 1;
+        const snap = prev[newIdx];
+        setElements(snap.elements.map(e => ({ ...e })));
+        setLayers(snap.layers.map(l => ({ ...l })));
+        setSelectedLayer('');
+        ctx._setCanUndo(newIdx > 0);
+        ctx._setCanRedo(true);
+        return newIdx;
+      });
+      return prev;
+    });
+  }, [ctx]);
+
+  /* Redo */
+  const doRedo = useCallback(() => {
+    setHistory(prev => {
+      setHistoryIdx(idx => {
+        if (idx >= prev.length - 1) return idx;
+        const newIdx = idx + 1;
+        const snap = prev[newIdx];
+        setElements(snap.elements.map(e => ({ ...e })));
+        setLayers(snap.layers.map(l => ({ ...l })));
+        setSelectedLayer('');
+        ctx._setCanUndo(true);
+        ctx._setCanRedo(newIdx < prev.length - 1);
+        return newIdx;
+      });
+      return prev;
+    });
+  }, [ctx]);
+
+  /* Register callbacks with context */
+  useEffect(() => {
+    ctx._setUndoFn(doUndo);
+    ctx._setRedoFn(doRedo);
+
+    /* Save: send project data to backend */
+    ctx._setSaveFn(async () => {
+      const projectData = {
+        elements,
+        layers,
+        canvases,
+        activeCanvasId,
+      };
+      try {
+        ctx.setIsSaving(true);
+        if (ctx.projectId) {
+          // Update existing project
+          await editorApi.updateProject(ctx.projectId, {
+            name: ctx.projectName,
+            fabric_json: JSON.stringify(projectData),
+          });
+        } else {
+          // Create new project
+          const res = await editorApi.createProject({
+            name: ctx.projectName,
+            fabric_json: JSON.stringify(projectData),
+          });
+          ctx.setProjectId(res.data.id);
+        }
+        ctx.setHasUnsavedChanges(false);
+      } catch (e) {
+        console.error('Save failed:', e);
+        // Fallback: save to localStorage
+        const localData = { name: ctx.projectName, ...projectData, savedAt: new Date().toISOString() };
+        const saved = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+        const existingIdx = saved.findIndex((p: { name: string }) => p.name === localData.name);
+        if (existingIdx >= 0) saved[existingIdx] = localData;
+        else saved.push(localData);
+        localStorage.setItem('savedProjects', JSON.stringify(saved));
+        ctx.setHasUnsavedChanges(false);
+      } finally {
+        ctx.setIsSaving(false);
+      }
+    });
+
+    /* Export: download canvas as PNG image */
+    ctx._setExportFn(() => {
+      alert(`导出 "${ctx.projectName}" 为 PNG 图片\n尺寸: ${activeCanvas.w}×${activeCanvas.h}\n\n（实际实现将使用 html2canvas 或 Fabric.js 导出）`);
+    });
+  }, [doUndo, doRedo, ctx, elements, layers, canvases, activeCanvasId, activeCanvas.w, activeCanvas.h, ctx.projectName]);
+
+  /* Move layer */
+  const moveLayer = useCallback((id: string, dir: 'up' | 'down') => {
+    setLayers(prev => {
+      const idx = prev.findIndex(l => l.id === id);
+      if (idx < 0) return prev;
+      const swap = dir === 'up' ? idx + 1 : idx - 1;
+      if (swap < 0 || swap >= prev.length) return prev;
+      const n = [...prev];
+      [n[idx], n[swap]] = [n[swap], n[idx]];
+      setElements(els => {
+        setHistory(h => {
+          const truncated = h.slice(0, historyIdx + 1);
+          const newStack = [...truncated, { elements: [...els], layers: [...n] }].slice(-50);
+          setHistoryIdx(newStack.length - 1);
+          ctx._setCanUndo(true);
+          ctx._setCanRedo(false);
+          return newStack;
+        });
+        return els;
+      });
+      return n;
+    });
+  }, [historyIdx, ctx]);
+
+  /* Keyboard shortcuts */
+  const elementsRef = useRef(elements);
+  const selectedLayerRef = useRef(selectedLayer);
+  elementsRef.current = elements;
+  selectedLayerRef.current = selectedLayer;
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isTextArea = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const sel = selectedLayerRef.current;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) doRedo(); else doUndo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && sel) {
+        e.preventDefault();
+        duplicateEl(sel);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        ctx.triggerSave();
+        return;
+      }
+
+      /* When in text editing mode, only allow Escape */
+      if (isTextArea && !isEditingText) {
+        if (e.key === 'Escape') { e.preventDefault(); flushTextDraft(); setIsEditingText(false); setSelectedLayer(''); }
+        return;
+      }
+      if (isEditingText) {
+        if (e.key === 'Escape') { e.preventDefault(); flushTextDraft(); setIsEditingText(false); }
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (sel) { e.preventDefault(); deleteEl(sel); }
+        return;
+      }
+      if (e.key === 'Escape') { setSelectedLayer(''); flushTextDraft(); setIsEditingText(false); return; }
+
+      /* Arrow key nudging */
+      if (sel && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const el = elementsRef.current.find(x => x.id === sel);
+        if (!el) return;
+        const step = e.shiftKey ? 10 : 1;
+        if (e.key === 'ArrowUp') updateEl(sel, { y: el.y - step });
+        if (e.key === 'ArrowDown') updateEl(sel, { y: el.y + step });
+        if (e.key === 'ArrowLeft') updateEl(sel, { x: el.x - step });
+        if (e.key === 'ArrowRight') updateEl(sel, { x: el.x + step });
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [doUndo, doRedo, deleteEl, duplicateEl, updateEl, flushTextDraft, ctx, isEditingText]);
+
+  /* Filter */
+  const templateCategoryMap: Record<string, string> = {
+    poster: '海报', social: '社交媒体', card: '卡片', banner: '电商', presentation: '演示',
+  };
+  const materialCategoryMap: Record<string, string> = {
+    decoration: '装饰', arrow: '箭头', shape: '形状', interface: '界面',
+  };
+
+  const filteredTemplates = backendTemplates.filter(t => {
+    const catLabel = templateCategoryMap[t.category] || t.category;
+    const matchCat = templateCat === '全部' || catLabel === templateCat;
+    const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  const filteredMaterials = backendMaterials.filter(m => {
+    const catLabel = materialCategoryMap[m.category] || m.category;
+    const matchCat = materialCat === '全部' || catLabel === materialCat;
+    const matchSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchCat && matchSearch;
+  });
+
+  /* ---- Drag & Resize ---- */
+  const [dragging, setDragging] = useState(false);
+  const [dragMode, setDragMode] = useState<'move' | 'resize' | 'rotate'>('move');
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragElStart, setDragElStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  const [resizeHandle, setResizeHandle] = useState('');
+  const originalFontSizeRef = useRef<number>(0);
+
+  const onDragStart = useCallback((e: React.MouseEvent, elId: string, mode: 'move' | 'resize' | 'rotate' = 'move', handle = '') => {
+    e.stopPropagation();
+    e.preventDefault();
+    const layer = canvasLayers.find(l => l.id === elId);
+    if (layer?.locked) return;
+    flushTextDraft();
+    setIsEditingText(false);
+    setSelectedLayer(elId);
+    const el = elements.find(x => x.id === elId);
+    if (!el) return;
+    setDragMode(mode);
+    setResizeHandle(handle);
+    setDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragElStart({ x: el.x, y: el.y, w: el.w, h: el.h });
+    /* Save original font size for text elements during resize */
+    if (mode === 'resize') originalFontSizeRef.current = el.fontSize ?? 14;
+  }, [canvasLayers, elements, flushTextDraft]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e: MouseEvent) => {
+      const scale = ctx.zoom / 100;
+      const dx = (e.clientX - dragStart.x) / scale;
+      const dy = (e.clientY - dragStart.y) / scale;
+      setElements(prev => prev.map(el => {
+        if (el.id !== selectedLayer) return el;
+
+        if (dragMode === 'resize') {
+          const { w: sw, h: sh } = dragElStart;
+          const origFontSize = originalFontSizeRef.current;
+          switch (resizeHandle) {
+            case 'nw': {
+              const nw = Math.max(10, sw - dx);
+              const nh = Math.max(10, sh - dy);
+              const wScale = nw / sw;
+              const newFs = origFontSize > 0 ? Math.max(8, Math.round(origFontSize * wScale)) : undefined;
+              return { ...el, x: dragElStart.x + (sw - nw), y: dragElStart.y + (sh - nh), w: nw, h: nh, ...(newFs !== undefined && { fontSize: newFs }) };
+            }
+            case 'ne': {
+              const nw = Math.max(10, sw + dx);
+              const nh = Math.max(10, sh - dy);
+              const wScale = nw / sw;
+              const newFs = origFontSize > 0 ? Math.max(8, Math.round(origFontSize * wScale)) : undefined;
+              return { ...el, y: dragElStart.y + (sh - nh), w: nw, h: nh, ...(newFs !== undefined && { fontSize: newFs }) };
+            }
+            case 'sw': {
+              const nw = Math.max(10, sw - dx);
+              const nh = Math.max(10, sh + dy);
+              const wScale = nw / sw;
+              const newFs = origFontSize > 0 ? Math.max(8, Math.round(origFontSize * wScale)) : undefined;
+              return { ...el, x: dragElStart.x + (sw - nw), w: nw, h: nh, ...(newFs !== undefined && { fontSize: newFs }) };
+            }
+            case 'se': {
+              const nw = Math.max(10, sw + dx);
+              const nh = Math.max(10, sh + dy);
+              const wScale = nw / sw;
+              const newFs = origFontSize > 0 ? Math.max(8, Math.round(origFontSize * wScale)) : undefined;
+              return { ...el, w: nw, h: nh, ...(newFs !== undefined && { fontSize: newFs }) };
+            }
+            default: return el;
+          }
+        }
+
+        if (dragMode === 'move') {
+          return { ...el, x: Math.round(dragElStart.x + dx), y: Math.round(dragElStart.y + dy) };
+        }
+
+        return el;
+      }));
+    };
+    const onMouseUp = () => {
+      setDragging(false);
+      /* Push history after drag ends */
+      setElements(els => {
+        setLayers(lyrs => {
+          setHistory(h => {
+            const truncated = h.slice(0, historyIdx + 1);
+            const newStack = [...truncated, { elements: [...els], layers: [...lyrs] }].slice(-50);
+            setHistoryIdx(newStack.length - 1);
+            ctx._setCanUndo(true);
+            ctx._setCanRedo(false);
+            return newStack;
+          });
+          return lyrs;
+        });
+        return els;
+      });
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [dragging, dragMode, resizeHandle, dragStart, dragElStart, selectedLayer, ctx.zoom, historyIdx, ctx]);
+
+  /* ============ LAYOUT ============ */
+  return (
+    <div className="flex flex-col h-full">
+      {/* --- main 3-panel area --- */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* LEFT PANEL */}
+        <div className="flex w-72 shrink-0 flex-col border-r bg-card">
+          <div className="flex border-b bg-card shrink-0">
+            {[
+              { id: 'templates', icon: LayoutGrid, label: '模板' },
+              { id: 'elements', icon: Square, label: '元素' },
+              { id: 'text', icon: Type, label: '文字' },
+              { id: 'materials', icon: ImageIcon, label: '素材' },
+              { id: 'backgrounds', icon: Palette, label: '背景' },
+              { id: 'layers', icon: Layers, label: '图层' },
+              { id: 'ai', icon: Wand2, label: 'AI' },
+            ].map(tab => (
+              <button key={tab.id} onClick={() => { setActiveLeftTab(tab.id); setSearchQuery(''); }} className={cn('flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors border-b-2', activeLeftTab === tab.id ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:text-foreground')}>
+                <tab.icon className="h-4 w-4" />{tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-auto">
+            {activeLeftTab === 'templates' && (
+              <div className="p-3">
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="搜索模板..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div className="flex gap-1.5 mb-3 flex-wrap">
+                  {['全部', ...Array.from(new Set(filteredTemplates.map(t => templateCategoryMap[t.category] || t.category)))].map(c => (
+                    <button key={c} onClick={() => setTemplateCat(c)} className={cn('rounded-full px-2.5 py-1 text-xs transition-colors', templateCat === c ? 'bg-primary/10 text-primary font-medium' : 'bg-muted hover:bg-primary/10 hover:text-primary')}>{c}</button>
+                  ))}
+                </div>
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : filteredTemplates.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">暂无模板</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {filteredTemplates.map(t => {
+                      let fabricW = 800, fabricH = 600;
+                      try { const f = JSON.parse(t.fabric_json || '{}'); fabricW = f.width || 800; fabricH = f.height || 600; } catch {}
+                      const bgColors: Record<string, string> = { poster: '#f59e0b', social: '#6366f1', card: '#8b5cf6', banner: '#ec4899', presentation: '#14b8a6' };
+                      const color = bgColors[t.category] || '#6366f1';
+                      return (
+                        <button key={t.id} onClick={() => {
+                          if (!confirm(`使用模板 "${t.name}"？当前编辑内容将被覆盖。`)) return;
+                          ctx.setProjectName(t.name);
+                          setCanvases(prev => prev.map(c2 => c2.id === 'c1' ? { ...c2, w: fabricW, h: fabricH } : c2));
+                          try {
+                            const { elements: newEls, layers: newLyrs } = parseFabricJson(t.fabric_json || '{}', 'c1');
+                            setElements(newEls as ElementAttr[]);
+                            setLayers(newLyrs as LayerItem[]);
+                            setHistory([{ elements: newEls as ElementAttr[], layers: newLyrs as LayerItem[] }]);
+                            setHistoryIdx(0);
+                            ctx._setCanUndo(false);
+                            ctx._setCanRedo(false);
+                          } catch (e) { console.error('Failed to parse template:', e); }
+                        }} className="group flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-all hover:shadow-md hover:border-primary/30">
+                          <div className="aspect-[4/3] flex items-center justify-center text-xs font-medium text-white relative" style={{ background: `linear-gradient(135deg, ${color}, ${color}88)` }}>
+                            <div className="w-8 h-8 rounded bg-white/20" />
+                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"><Plus className="h-4 w-4 text-white" /></div>
+                          </div>
+                          <div className="p-2">
+                            <p className="truncate text-xs font-medium">{t.name}</p>
+                            <div className="mt-0.5 flex items-center justify-between"><span className="text-[10px] text-muted-foreground">{templateCategoryMap[t.category] || t.category}</span><span className="text-[10px] text-muted-foreground">{fabricW}×{fabricH}</span></div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeLeftTab === 'elements' && (
+              <div className="p-3 space-y-4">
+                <h4 className="text-sm font-medium">基本形状</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {elementShapes.map(el => (
+                    <button key={el.id} onClick={() => { setSelectedShape(el.id); addElement(makeShape(el.id, canvasW, canvasH, activeCanvasId)); }} className={cn('flex flex-col items-center gap-1.5 rounded-lg border py-3 transition-colors', selectedShape === el.id ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-accent')}>
+                      <el.icon className="h-5 w-5" /><span className="text-[10px]">{el.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <h4 className="text-sm font-medium">媒体</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => addElement(makeImage(canvasW, canvasH, activeCanvasId))} className="flex flex-col items-center gap-1.5 rounded-lg border bg-card py-4 hover:bg-accent transition-colors">
+                    <Image className="h-5 w-5 text-muted-foreground" /><span className="text-[10px]">图片</span>
+                  </button>
+                </div>
+                <h4 className="text-sm font-medium">装饰元素</h4>
+                {loadingMaterials ? (
+                  <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : backendMaterials.length === 0 ? (
+                  <div className="text-center py-4 text-xs text-muted-foreground">暂无素材</div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {backendMaterials.slice(0, 8).map(m => (
+                      <button key={m.id} onClick={() => {
+                        const id = nextId();
+                        const w = m.width || 64;
+                        const h = m.height || 64;
+                        const newEl: ElementAttr = {
+                          id, name: m.name, type: 'image', canvasId: activeCanvasId,
+                          x: Math.round(canvasW / 2 - w / 2), y: Math.round(canvasH / 2 - h / 2),
+                          w, h, angle: 0, opacity: 100, flipX: false, flipY: false,
+                          fill: undefined, stroke: undefined, strokeWidth: 0,
+                        };
+                        addElement(newEl);
+                      }} className="flex flex-col items-center gap-1 rounded-lg border bg-card p-2 hover:bg-accent hover:shadow-sm transition-all">
+                        {m.url ? (
+                          <img src={m.url} alt={m.name} className="h-6 w-6 object-contain" />
+                        ) : (
+                          <Image className="h-6 w-6 text-muted-foreground" />
+                        )}
+                        <span className="text-[9px] truncate w-full text-center text-muted-foreground">{m.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ n: '对话气泡', i: '💬' }, { n: '价格标签', i: '🏷' }, { n: '箭头集合', i: '➤' }, { n: '徽章', i: '🏅' }].map(s => (
+                    <button key={s.n} onClick={() => alert(`模拟添加装饰: ${s.n}`)} className="flex items-center gap-2 rounded-lg border bg-card p-3 hover:bg-accent transition-colors">
+                      <span className="text-2xl">{s.i}</span><span className="text-xs font-medium">{s.n}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeLeftTab === 'text' && (
+              <div className="p-3 space-y-3">
+                <button onClick={() => addElement(makeText(canvasW, canvasH, activeCanvasId))} className="w-full rounded-lg border-2 border-dashed border-muted-foreground/40 py-5 text-center transition-colors hover:border-primary hover:bg-primary/5 group">
+                  <Plus className="mx-auto mb-2 h-6 w-6 text-muted-foreground group-hover:text-primary" />
+                  <span className="text-sm text-muted-foreground group-hover:text-primary">添加文本框</span>
+                </button>
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">预设文字样式</h4>
+                  <div className="space-y-2">
+                    {[
+                      { nm: '主标题', sz: 36, fw: 'bold', w: 300, h: 44, t: '主标题文字' },
+                      { nm: '副标题', sz: 22, fw: 'semibold', w: 250, h: 30, t: '副标题文字' },
+                      { nm: '正文', sz: 14, fw: 'normal', w: 300, h: 48, t: '正文内容，支持多行文本输入和编辑' },
+                    ].map(p => (
+                      <button key={p.nm} onClick={() => {
+                        const id = nextId();
+                        addElement({ id, name: p.nm, type: 'text', canvasId: activeCanvasId, x: 60, y: 80, w: p.w, h: p.h, angle: 0, opacity: 100, fill: '#0f172a', fontFamily: 'PingFang SC', fontSize: p.sz, fontWeight: p.fw, fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'left', lineHeight: 1.4, text: p.t });
+                      }} className="w-full rounded-lg border bg-card p-4 text-left hover:bg-accent transition-colors">
+                        <span style={{ fontSize: p.sz, fontWeight: p.fw }}>{p.nm}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">艺术字</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => {
+                      const id = nextId();
+                      addElement({ id, name: '渐变文字', type: 'text', canvasId: activeCanvasId, x: 100, y: 100, w: 150, h: 44, angle: 0, opacity: 100, fill: '#6366f1', fontFamily: 'PingFang SC', fontSize: 32, fontWeight: 'black', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'center', lineHeight: 1.2, text: '渐变' });
+                    }} className="rounded-lg border bg-card p-4 text-center hover:bg-accent transition-colors">
+                      <span className="text-xl font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">渐变</span>
+                    </button>
+                    <button onClick={() => {
+                      const id = nextId();
+                      addElement({ id, name: '间距文字', type: 'text', canvasId: activeCanvasId, x: 100, y: 100, w: 200, h: 36, angle: 0, opacity: 100, fill: '#0f172a', fontFamily: 'PingFang SC', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'center', lineHeight: 1.4, text: '间 距' });
+                    }} className="rounded-lg border bg-card p-4 text-center hover:bg-accent transition-colors">
+                      <span className="text-lg font-bold tracking-[0.3em]">间距</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeLeftTab === 'materials' && (
+              <div className="p-3">
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="搜索素材..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div className="flex gap-1.5 mb-3 flex-wrap">
+                  {['全部', ...Array.from(new Set(filteredMaterials.map(m => materialCategoryMap[m.category] || m.category)))].map(c => (
+                    <button key={c} onClick={() => setMaterialCat(c)} className={cn('rounded-full px-2.5 py-1 text-xs transition-colors', materialCat === c ? 'bg-primary/10 text-primary font-medium' : 'bg-muted hover:bg-primary/10 hover:text-primary')}>{c}</button>
+                  ))}
+                </div>
+                {loadingMaterials ? (
+                  <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : filteredMaterials.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">暂无素材</div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {filteredMaterials.map(m => (
+                      <button key={m.id} onClick={() => {
+                        const id = nextId();
+                        const newEl: ElementAttr = {
+                          id, name: m.name, type: 'image', canvasId: activeCanvasId,
+                          x: Math.round(canvasW / 2 - m.width / 4), y: Math.round(canvasH / 2 - m.height / 4),
+                          w: m.width, h: m.height, angle: 0, opacity: 100, flipX: false, flipY: false,
+                          fill: undefined, stroke: undefined, strokeWidth: 0,
+                        };
+                        addElement(newEl);
+                      }} className="flex flex-col items-center gap-1.5 rounded-lg border bg-card p-3 hover:bg-accent hover:shadow-sm transition-all">
+                        {m.url ? (
+                          <img src={m.url} alt={m.name} className="w-10 h-10 object-contain" />
+                        ) : (
+                          <span className="text-2xl">{m.name}</span>
+                        )}
+                        <span className="text-[10px] truncate w-full text-center">{m.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeLeftTab === 'backgrounds' && (
+              <div className="p-3">
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input type="text" placeholder="搜索背景..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div className="flex gap-1.5 mb-3 flex-wrap">
+                  {['全部', '纯色', '渐变', '图案'].map(c => (
+                    <button key={c} onClick={() => setBgCat(c)} className={cn('rounded-full px-2.5 py-1 text-xs transition-colors', bgCat === c ? 'bg-primary/10 text-primary font-medium' : 'bg-muted hover:bg-primary/10 hover:text-primary')}>{c}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {mockBackgrounds.filter(bg => {
+                    if (bgCat === '全部') return true;
+                    if (bgCat === '纯色') return bg.type === 'color';
+                    if (bgCat === '渐变') return bg.type === 'gradient';
+                    if (bgCat === '图案') return bg.type === 'gradient' && bg.value.includes('repeating');
+                    return true;
+                  }).map(bg => (
+                    <button
+                      key={bg.id}
+                      onClick={() => {
+                        const val = bg.value;
+                        setBgColor(val);
+                        setCanvases(prev => prev.map(c2 => c2.id === activeCanvasId ? { ...c2, bgColor: bg.type === 'color' ? val : val, bg: val } : c2));
+                      }}
+                      className={cn('flex flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md',
+                        (activeCanvas.bg ?? activeCanvas.bgColor) === bg.value ? 'border-primary ring-1 ring-primary/20' : 'hover:border-primary/30')}
+                    >
+                      <div className="aspect-[4/3]" style={{ background: bg.value }} />
+                      <div className="px-2 py-1.5 bg-card">
+                        <p className="truncate text-[10px] font-medium">{bg.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeLeftTab === 'layers' && (
+              <div>
+                <div className="flex items-center justify-between px-3 py-2.5 border-b shrink-0">
+                  <span className="text-sm font-medium">图层 ({canvasLayers.length})</span>
+                  <div className="flex items-center gap-0.5">
+                    <button onClick={() => selectedLayer && moveLayer(selectedLayer, 'up')} disabled={!selectedLayer} className="p-1.5 rounded hover:bg-accent text-muted-foreground disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => selectedLayer && moveLayer(selectedLayer, 'down')} disabled={!selectedLayer} className="p-1.5 rounded hover:bg-accent text-muted-foreground disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => selectedLayer && duplicateEl(selectedLayer)} disabled={!selectedLayer} className="p-1.5 rounded hover:bg-accent text-muted-foreground disabled:opacity-30"><Copy className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => selectedLayer && deleteEl(selectedLayer)} disabled={!selectedLayer} className="p-1.5 rounded hover:bg-red-50 text-destructive disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {[...canvasLayers].reverse().map(layer => (
+                    <div key={layer.id} onClick={() => { flushTextDraft(); setIsEditingText(false); setSelectedLayer(layer.id); }} className={cn('flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors', selectedLayer === layer.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}>
+                      <span className={cn('flex h-6 w-6 items-center justify-center rounded text-xs font-bold shrink-0', layerTypeConfig[layer.type]?.color || 'bg-gray-100 text-gray-600')}>{layerTypeConfig[layer.type]?.icon || '?'}</span>
+                      <span className="flex-1 truncate text-sm">{layer.name}</span>
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={e => { e.stopPropagation(); setLayers(p => p.map(l => l.id === layer.id ? { ...l, visible: !l.visible } : l)); setElements(p => p.map(e2 => e2.id === layer.id ? { ...e2, visible: !e2.visible } : e2)); }} className={cn('p-1 rounded hover:bg-background/50', layer.visible ? 'text-muted-foreground' : 'text-muted-foreground/30')}>{layer.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</button>
+                        <button onClick={e => { e.stopPropagation(); setLayers(p => p.map(l => l.id === layer.id ? { ...l, locked: !l.locked } : l)); }} className={cn('p-1 rounded hover:bg-background/50', layer.locked ? 'text-amber-500' : 'text-muted-foreground/30')}>{layer.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeLeftTab === 'ai' && (
+              <div className="p-3 space-y-4">
+                <div className="rounded-xl bg-gradient-to-br from-primary/10 to-purple-50 p-4 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-1.5"><Sparkles className="h-4 w-4 text-primary" /><span className="text-sm font-semibold text-primary">AI 智能创作</span></div>
+                  <p className="text-xs text-muted-foreground">输入描述，AI 帮你生成图片并添加到画布</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">图片描述</label>
+                  <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="描述你想要的图片..." onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (aiPrompt.trim()) { aiGenerate(); } }}} className="w-full rounded-lg border bg-background p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none h-20" />
+                  <p className="text-[10px] text-muted-foreground mt-1">Ctrl+Enter 快速生成</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">图片尺寸</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {['1:1', '16:9', '9:16', '4:3', '3:4', '3:2'].map(r => (
+                      <button key={r} onClick={() => setAiSize(r)} className={cn('rounded-md border py-1.5 text-xs font-medium hover:bg-accent transition-colors', aiSize === r ? 'border-primary bg-primary/5 text-primary' : '')}>{r}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">风格</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {['写实', '插画', '3D', '动漫', '水彩', '像素', '油画', '极简'].map(s => (
+                      <button key={s} onClick={() => setAiStyle(s)} className={cn('rounded-md border py-1.5 text-xs hover:bg-accent transition-colors', aiStyle === s ? 'border-primary bg-primary/5 text-primary' : '')}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={aiGenerate} disabled={!aiPrompt.trim()} className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"><Sparkles className="h-4 w-4" />生成图片</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CENTER CANVAS */}
+        <div className="flex flex-1 flex-col min-w-0 bg-gray-100/60">
+          <div
+            ref={viewportRef}
+            className="flex-1 overflow-auto flex items-start justify-center p-6"
+            onClick={e => { if (e.target === e.currentTarget) { flushTextDraft(); setSelectedLayer(''); } }}
+          >
+            {/* Multi-canvas column */}
+            <div className="flex flex-col items-center gap-4">
+              {canvases.map(c => (
+                <div key={c.id} className="flex flex-col items-center gap-2">
+                  {/* Canvas label */}
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-xs font-medium px-2 py-0.5 rounded', c.id === activeCanvasId ? 'bg-primary/10 text-primary' : 'text-muted-foreground')}>{c.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{c.w} × {c.h}</span>
+                  </div>
+                  {/* Zoom wrapper */}
+                  <div style={{ transform: `scale(${ctx.zoom / 100})`, transformOrigin: 'center center', transition: 'transform 0.15s ease' }}>
+                    <div
+                      ref={c.id === activeCanvasId ? canvasRef : undefined}
+                      className={cn('relative shadow-2xl rounded-sm', c.id === activeCanvasId ? 'ring-2 ring-primary ring-offset-2' : 'opacity-70 hover:opacity-90 cursor-pointer')}
+                      style={{ width: c.w, height: c.h, background: c.bg ?? c.bgColor }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (c.id !== activeCanvasId) {
+                          switchToCanvas(c.id);
+                          return;
+                        }
+                        /* Active canvas — click on bg deselects */
+                        if (e.target === e.currentTarget) { flushTextDraft(); setSelectedLayer(''); }
+                      }}
+                    >
+                      {renderCanvasElements(c.id)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {/* Add canvas button at bottom */}
+              <button onClick={addCanvas} className="flex items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/40 px-6 py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors">
+                <Plus className="h-4 w-4" />添加画板
+              </button>
+            </div>
+          </div>
+          {/* Status bar with zoom controls */}
+          <div className="flex items-center justify-between border-t bg-card px-3 py-0.5 shrink-0 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>{canvasW} × {canvasH}px</span>
+              {selectedLayer && <span>选中: {canvasElements.find(e => e.id === selectedLayer)?.name}</span>}
+              <span>共 {canvasElements.length} 个元素</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => ctx.setZoom(z => Math.max(25, z - 10))} className="hover:text-foreground transition-colors p-0.5"><ZoomOut className="h-3.5 w-3.5" /></button>
+              <input type="range" min={25} max={200} value={ctx.zoom} onChange={e => ctx.setZoom(Number(e.target.value))} className="w-24 accent-primary" />
+              <button onClick={() => ctx.setZoom(z => Math.min(200, z + 10))} className="hover:text-foreground transition-colors p-0.5"><ZoomIn className="h-3.5 w-3.5" /></button>
+              <span className="w-10 text-right font-mono">{ctx.zoom}%</span>
+              <button onClick={() => { const v = viewportRef.current; if (!v) return; const aw = v.clientWidth - 48; const ah = v.clientHeight - 48; if (aw > 0 && ah > 0) ctx.setZoom(Math.round(Math.min(Math.min(aw / canvasW, ah / canvasH) * 100, 100))); }} className="hover:text-foreground transition-colors p-0.5" title="适应画布"><Maximize2 className="h-3.5 w-3.5" /></button>
+              <button onClick={() => ctx.setZoom(100)} className="hover:text-foreground transition-colors px-1" title="100%缩放">1:1</button>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="flex w-72 shrink-0 flex-col border-l bg-card overflow-y-auto">
+          {/* ===== 画板 section (always visible) ===== */}
+          <div className="border-b px-3 py-2.5 shrink-0 flex items-center justify-between">
+            <h3 className="text-sm font-medium">画板</h3>
+            <button onClick={addCanvas} className="flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-1 text-xs font-medium hover:bg-primary/20 transition-colors">
+              <Plus className="h-3 w-3" />添加画板
+            </button>
+          </div>
+
+          {/* Canvas list */}
+          <div className="px-3 py-2 border-b shrink-0">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {canvases.map(c => {
+                const isActive = c.id === activeCanvasId;
+                return (
+                  <div key={c.id} className={cn('flex flex-col items-center gap-1 rounded-lg border p-1.5 cursor-pointer transition-all min-w-[72px]', isActive ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:border-border')}>
+                    <div onClick={(e) => { e.stopPropagation(); switchToCanvas(c.id); }} className="w-12 h-8 rounded-sm shadow-sm flex items-center justify-center" style={{ background: c.bg ?? c.bgColor, aspectRatio: `${c.w}/${c.h}` }}>
+                      <span className="text-[8px] text-muted-foreground">{c.w > 0 ? Math.round((c.w / c.h) * 10) / 10 : ''}</span>
+                    </div>
+                    <span className="text-[10px] truncate w-full text-center">{c.name}</span>
+                    {isActive && (
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={(e) => { e.stopPropagation(); duplicateCanvas(c.id); }} className="p-0.5 rounded hover:bg-accent text-muted-foreground" title="复制"><Copy className="h-2.5 w-2.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteCanvas(c.id); }} className="p-0.5 rounded hover:bg-red-50 text-destructive disabled:opacity-30" title="删除" disabled={canvases.length <= 1}><Trash2 className="h-2.5 w-2.5" /></button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ===== Canvas properties — only when NO element selected ===== */}
+          {!selectedEl && (
+            <>
+              <div className="px-3 py-3 border-b shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold">画板属性</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{activeCanvas.w} × {activeCanvas.h} px</span>
+                </div>
+                {/* Canvas preview thumbnail */}
+                <div className="flex items-center justify-center rounded-lg border bg-muted/30 p-3 mb-3">
+                  <div className="rounded-sm shadow-sm border" style={{ width: Math.min(120, (activeCanvas.w / activeCanvas.h) * 75), height: Math.min(75, (activeCanvas.h / activeCanvas.w) * 120), background: activeCanvas.bg ?? activeCanvas.bgColor, aspectRatio: `${activeCanvas.w}/${activeCanvas.h}` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 mb-3">
+                  <button onClick={() => { setCustomSizeW(String(activeCanvas.w)); setCustomSizeH(String(activeCanvas.h)); setShowSizeModal(true); }} className="flex items-center justify-center gap-1 rounded-md border bg-background py-1.5 text-xs hover:bg-accent transition-colors">
+                    <Crop className="h-3.5 w-3.5" />调整尺寸
+                  </button>
+                  <button onClick={() => setShowSizeTemplateModal(true)} className="flex items-center justify-center gap-1 rounded-md border bg-background py-1.5 text-xs hover:bg-accent transition-colors">
+                    <LayoutGrid className="h-3.5 w-3.5" />尺寸模板
+                  </button>
+                </div>
+                {/* Background color */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground shrink-0">背景色</span>
+                  <input type="color" value={bgColor} onChange={e => { const v = e.target.value; setBgColor(v); setCanvases(prev => prev.map(c2 => c2.id === activeCanvasId ? { ...c2, bgColor: v, bg: v } : c2)); }} className="h-6 w-6 rounded cursor-pointer border-0 shrink-0" />
+                  <div className="flex items-center gap-1 flex-1">
+                    {['#ffffff', '#f8fafc', '#0f172a', '#6366f1', '#ec4899', '#10b981'].map(c => (
+                      <button key={c} onClick={() => { setBgColor(c); setCanvases(prev => prev.map(c2 => c2.id === activeCanvasId ? { ...c2, bgColor: c, bg: c } : c2)); }} className={cn('h-5 w-5 rounded-sm border transition-all', (activeCanvas.bg ?? activeCanvas.bgColor) === c ? 'ring-2 ring-primary ring-offset-1 scale-110' : 'hover:scale-110')} style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                </div>
+                {/* Background image upload */}
+                <div className="mt-2 flex gap-2">
+                  <button onClick={() => alert('模拟上传图片：打开文件选择器选择图片作为背景')} className="flex-1 flex items-center justify-center gap-1 rounded-md border bg-background py-1.5 text-xs hover:bg-accent transition-colors">
+                    <Image className="h-3.5 w-3.5" />上传图片
+                  </button>
+                  <button onClick={() => setActiveLeftTab('backgrounds')} className="flex-1 flex items-center justify-center gap-1 rounded-md border bg-background py-1.5 text-xs hover:bg-accent transition-colors">
+                    <Palette className="h-3.5 w-3.5" />背景模板
+                  </button>
+                </div>
+              </div>
+              {/* Hint when no element selected */}
+              <div className="px-3 py-3">
+                <p className="text-xs text-muted-foreground">点击画布中的元素即可编辑属性</p>
+              </div>
+            </>
+          )}
+
+          {/* ===== Element properties (only when element is selected) ===== */}
+          {selectedEl && (
+            <>
+              {/* Element header */}
+              <div className="border-b px-3 py-2.5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className={cn('flex h-6 w-6 items-center justify-center rounded text-xs font-bold', layerTypeConfig[selectedEl.type]?.color)}>{layerTypeConfig[selectedEl.type]?.icon}</span>
+                  <input type="text" value={selectedEl.name} onChange={e => updateEl(selectedEl.id, { name: e.target.value })} className="text-sm font-semibold bg-transparent border-b border-transparent focus:border-primary/50 focus:outline-none rounded px-0.5 w-28" />
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => duplicateEl(selectedEl.id)} className="p-1.5 rounded hover:bg-accent text-muted-foreground" title="复制"><Copy className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setLayers(p => p.map(l => l.id === selectedEl.id ? { ...l, locked: !l.locked } : l))} className={cn('p-1.5 rounded hover:bg-accent', layers.find(l => l.id === selectedEl.id)?.locked ? 'text-amber-500' : 'text-muted-foreground')} title="锁定">
+                    {layers.find(l => l.id === selectedEl.id)?.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => deleteEl(selectedEl.id)} className="p-1.5 rounded hover:bg-red-50 text-destructive" title="删除"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+
+              {/* Right panel tabs */}
+              <div className="flex border-b shrink-0">
+                <button onClick={() => setActiveRightTab('attr')} className={cn('flex-1 py-1.5 text-xs font-medium border-b-2 transition-colors', activeRightTab === 'attr' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>属性</button>
+                <button onClick={() => setActiveRightTab('style')} className={cn('flex-1 py-1.5 text-xs font-medium border-b-2 transition-colors', activeRightTab === 'style' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>样式</button>
+              </div>
+
+              {activeRightTab === 'attr' && (
+                <>
+                  {/* Position & Size (hide for text elements) */}
+                  {!isText && (
+                    <>
+                      <Divider>位置与尺寸</Divider>
+                      <div className="py-1">
+                        <AttrRow label="X"><NumInput value={selectedEl.x} onChange={v => updateEl(selectedEl.id, { x: v })} min={-2000} max={5000} /></AttrRow>
+                        <AttrRow label="Y"><NumInput value={selectedEl.y} onChange={v => updateEl(selectedEl.id, { y: v })} min={-2000} max={5000} /></AttrRow>
+                        <AttrRow label="宽"><NumInput value={selectedEl.w} onChange={v => updateEl(selectedEl.id, { w: v })} min={1} max={5000} /></AttrRow>
+                        <AttrRow label="高"><NumInput value={selectedEl.h} onChange={v => updateEl(selectedEl.id, { h: v })} min={1} max={5000} /></AttrRow>
+                        <AttrRow label="旋转">
+                          <div className="flex items-center gap-2 flex-1">
+                            <input type="range" min={0} max={360} value={selectedEl.angle} onChange={e => updateEl(selectedEl.id, { angle: Number(e.target.value) })} className="flex-1" />
+                            <span className="text-xs font-mono tabular-nums w-10 text-right">{selectedEl.angle}°</span>
+                          </div>
+                        </AttrRow>
+                      </div>
+                    </>
+                  )}
+
+                  {/* === TEXT PROPERTIES === */}
+                  {isText && (
+                    <>
+                      <Divider>文字属性</Divider>
+                      <div className="py-1">
+                        {/* Font family & size inline */}
+                        <div className="px-3 pb-2 flex gap-2">
+                          <select value={selectedEl.fontFamily} onChange={e => updateEl(selectedEl.id, { fontFamily: e.target.value })} className="flex-1 rounded-md border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30">
+                            <option>PingFang SC</option><option>思源黑体</option><option>微软雅黑</option><option>阿里巴巴普惠体</option><option>思源宋体</option><option>站酷酷黑</option>
+                          </select>
+                          <div className="w-16">
+                            <input type="number" value={selectedEl.fontSize} onChange={e => updateEl(selectedEl.id, { fontSize: Number(e.target.value) })} min={8} max={200} className="w-full rounded-md border bg-background px-2 py-1.5 text-xs font-mono text-center focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                          </div>
+                        </div>
+                        {/* Text formatting toolbar */}
+                        <div className="px-3 pb-2 flex gap-0.5 flex-wrap">
+                          <button onClick={() => updateEl(selectedEl.id, { fontWeight: selectedEl.fontWeight === 'bold' ? 'normal' : 'bold' })} className={cn('flex h-7 w-7 items-center justify-center rounded transition-colors', selectedEl.fontWeight === 'bold' ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}><Bold className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => updateEl(selectedEl.id, { fontStyle: selectedEl.fontStyle === 'italic' ? 'normal' : 'italic' })} className={cn('flex h-7 w-7 items-center justify-center rounded transition-colors', selectedEl.fontStyle === 'italic' ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}><Italic className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => updateEl(selectedEl.id, { underline: !selectedEl.underline })} className={cn('flex h-7 w-7 items-center justify-center rounded transition-colors', selectedEl.underline ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}><Underline className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => updateEl(selectedEl.id, { strikethrough: !selectedEl.strikethrough })} className={cn('flex h-7 w-7 items-center justify-center rounded transition-colors', selectedEl.strikethrough ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}><Strikethrough className="h-3.5 w-3.5" /></button>
+                          <div className="w-px h-5 bg-border mx-1 self-center" />
+                          {(['left', 'center', 'right'] as const).map(al => (
+                            <button key={al} onClick={() => updateEl(selectedEl.id, { textAlign: al })} className={cn('flex h-7 w-7 items-center justify-center rounded transition-colors', selectedEl.textAlign === al ? 'bg-primary/10 text-primary' : 'hover:bg-accent')}>
+                              {al === 'left' ? <AlignLeft className="h-3.5 w-3.5" /> : al === 'center' ? <AlignCenter className="h-3.5 w-3.5" /> : <AlignRight className="h-3.5 w-3.5" />}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Text color */}
+                        <div className="px-3 pb-2">
+                          <label className="text-[10px] text-muted-foreground block mb-1.5">文字颜色</label>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {textColors.map(c => (
+                              <button key={c} onClick={() => updateEl(selectedEl.id, { fill: c })} className={cn('h-6 w-6 rounded-md border-2 transition-all', selectedEl.fill === c ? 'border-primary scale-110' : 'border-transparent hover:border-border')}>
+                                <div className="w-full h-full rounded-sm" style={{ backgroundColor: c }} />
+                              </button>
+                            ))}
+                            <input type="color" value={selectedEl.fill || '#000000'} onChange={e => updateEl(selectedEl.id, { fill: e.target.value })} className="h-6 w-6 rounded cursor-pointer border-0" />
+                          </div>
+                        </div>
+                        {/* Line height */}
+                        <AttrRow label="行高">
+                          <input type="range" min={0.5} max={3} step={0.1} value={selectedEl.lineHeight ?? 1.5} onChange={e => updateEl(selectedEl.id, { lineHeight: Number(e.target.value) })} className="flex-1" />
+                          <span className="text-[10px] font-mono tabular-nums w-8 text-right">{selectedEl.lineHeight}</span>
+                        </AttrRow>
+                      </div>
+
+                      {/* Collapsible: 变形 */}
+                      <details className="border-t" open={textSectionOpen.transform}>
+                        <summary onClick={() => toggleSection('transform')} className="flex items-center justify-between px-3 py-2 cursor-pointer select-none hover:bg-accent/50">
+                          <div className="flex items-center gap-2">
+                            {textSectionOpen.transform ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <h4 className="text-xs font-semibold">变形</h4>
+                          </div>
+                        </summary>
+                        <div className="px-3 pb-3">
+                          <div className="mb-2">
+                            <label className="text-[10px] text-muted-foreground block mb-1">倾斜 X</label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min={-30} max={30} value={skewX} onChange={e => setSkewX(Number(e.target.value))} className="flex-1" />
+                              <span className="text-[10px] font-mono w-8 text-right">{skewX}°</span>
+                            </div>
+                          </div>
+                          <div className="mb-2">
+                            <label className="text-[10px] text-muted-foreground block mb-1">倾斜 Y</label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min={-30} max={30} value={skewY} onChange={e => setSkewY(Number(e.target.value))} className="flex-1" />
+                              <span className="text-[10px] font-mono w-8 text-right">{skewY}°</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground block mb-1">字间距</label>
+                            <div className="flex items-center gap-2">
+                              <input type="range" min={-20} max={100} value={letterSpacing} onChange={e => setLetterSpacing(Number(e.target.value))} className="flex-1" />
+                              <span className="text-[10px] font-mono w-8 text-right">{letterSpacing}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </details>
+
+                      {/* Collapsible: 特效 */}
+                      <details className="border-t" open={textSectionOpen.effects}>
+                        <summary onClick={() => toggleSection('effects')} className="flex items-center justify-between px-3 py-2 cursor-pointer select-none hover:bg-accent/50">
+                          <div className="flex items-center gap-2">
+                            {textSectionOpen.effects ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <h4 className="text-xs font-semibold">特效</h4>
+                          </div>
+                        </summary>
+                        <div className="px-3 pb-3">
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {['描边', '镂空', '渐变', '阴影', '发光', '背景'].map(fx => (
+                              <button key={fx} onClick={() => alert(`模拟应用特效: ${fx}`)} className="rounded-md border py-1.5 text-[10px] hover:bg-accent hover:border-primary/30 transition-colors">{fx}</button>
+                            ))}
+                          </div>
+                        </div>
+                      </details>
+
+                      {/* Collapsible: 投影 */}
+                      <details className="border-t" open={textSectionOpen.shadow}>
+                        <summary onClick={() => toggleSection('shadow')} className="flex items-center justify-between px-3 py-2 cursor-pointer select-none hover:bg-accent/50">
+                          <div className="flex items-center gap-2">
+                            {textSectionOpen.shadow ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <h4 className="text-xs font-semibold">投影</h4>
+                          </div>
+                        </summary>
+                        <div className="px-3 pb-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="text-[10px] text-muted-foreground">启用投影</label>
+                            <div onClick={() => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, enabled: !selectedEl.shadow!.enabled } })} className={cn('w-8 h-4 rounded-full cursor-pointer transition-colors', selectedEl.shadow?.enabled ? 'bg-primary' : 'bg-muted')}>
+                              <div className={cn('w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform', selectedEl.shadow?.enabled ? 'translate-x-4' : 'translate-x-0.5')} />
+                            </div>
+                          </div>
+                          {selectedEl.shadow?.enabled && (
+                            <div className="space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground w-8">颜色</span>
+                                <input type="color" value={selectedEl.shadow.color} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, color: e.target.value } })} className="h-5 w-5 rounded cursor-pointer border-0" />
+                                <input type="text" value={selectedEl.shadow.color} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, color: e.target.value } })} className="flex-1 rounded border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground w-8">模糊</span>
+                                <input type="range" min={0} max={50} value={selectedEl.shadow.blur} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, blur: Number(e.target.value) } })} className="flex-1" />
+                                <span className="text-[10px] font-mono w-8 text-right">{selectedEl.shadow.blur}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground w-8">X</span>
+                                <input type="range" min={-50} max={50} value={selectedEl.shadow.x} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, x: Number(e.target.value) } })} className="flex-1" />
+                                <span className="text-[10px] font-mono w-8 text-right">{selectedEl.shadow.x}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground w-8">Y</span>
+                                <input type="range" min={-50} max={50} value={selectedEl.shadow.y} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, y: Number(e.target.value) } })} className="flex-1" />
+                                <span className="text-[10px] font-mono w-8 text-right">{selectedEl.shadow.y}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </details>
+                    </>
+                  )}
+
+                  {/* === IMAGE PROPERTIES === */}
+                  {isImage && (
+                    <>
+                      <Divider>图片属性</Divider>
+                      <div className="py-1">
+                        {/* Image preview */}
+                        <div className="px-3 pb-2">
+                          <div className="rounded-lg border bg-muted/30 flex items-center justify-center p-4" style={{ height: 80 }}>
+                            <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center rounded">
+                              <Image className="w-8 h-8 text-indigo-300" />
+                            </div>
+                          </div>
+                        </div>
+                        {/* Image tools */}
+                        <div className="px-3 pb-2">
+                          <div className="grid grid-cols-4 gap-1.5 mb-2">
+                            <button onClick={() => alert('模拟裁剪功能：进入裁剪模式')} className="flex flex-col items-center gap-1 rounded-lg border bg-background py-2 text-[10px] hover:bg-accent transition-colors"><Crop className="h-3.5 w-3.5" />裁剪</button>
+                            <button onClick={() => alert('模拟 AI 抠图功能：使用 AI 去除背景')} className="flex flex-col items-center gap-1 rounded-lg border bg-background py-2 text-[10px] hover:bg-accent transition-colors"><Sparkles className="h-3.5 w-3.5" />AI抠图</button>
+                            <button onClick={() => alert('模拟调色功能：打开调色板')} className="flex flex-col items-center gap-1 rounded-lg border bg-background py-2 text-[10px] hover:bg-accent transition-colors"><Palette className="h-3.5 w-3.5" />调色</button>
+                            <button onClick={() => setActiveLeftTab('backgrounds')} className="flex flex-col items-center gap-1 rounded-lg border bg-background py-2 text-[10px] hover:bg-accent transition-colors"><Eye className="h-3.5 w-3.5" />滤镜</button>
+                          </div>
+                        </div>
+                        {/* Replace / Crop */}
+                        <div className="px-3 pb-2 flex gap-2">
+                          <button onClick={() => alert('模拟替换图片：打开图库选择新图片')} className="flex-1 flex items-center justify-center gap-1.5 rounded-md border bg-background py-2 text-xs hover:bg-accent transition-colors"><Replace className="h-3.5 w-3.5" />替换图片</button>
+                          <button onClick={() => alert('模拟裁剪功能')} className="flex-1 flex items-center justify-center gap-1.5 rounded-md border bg-background py-2 text-xs hover:bg-accent transition-colors"><Crop className="h-3.5 w-3.5" />裁剪</button>
+                        </div>
+                        {/* Flip */}
+                        <div className="px-3 pb-2 flex gap-2">
+                          <button onClick={() => updateEl(selectedEl.id, { flipX: !selectedEl.flipX })} className={cn('flex-1 flex items-center justify-center gap-1.5 rounded-md border py-2 text-xs transition-colors', selectedEl.flipX ? 'border-primary bg-primary/5 text-primary' : 'bg-background hover:bg-accent')}><FlipHorizontal className="h-3.5 w-3.5" />水平</button>
+                          <button onClick={() => updateEl(selectedEl.id, { flipY: !selectedEl.flipY })} className={cn('flex-1 flex items-center justify-center gap-1.5 rounded-md border py-2 text-xs transition-colors', selectedEl.flipY ? 'border-primary bg-primary/5 text-primary' : 'bg-background hover:bg-accent')}><FlipVertical className="h-3.5 w-3.5" />垂直</button>
+                        </div>
+                        {/* Filters */}
+                        <div className="px-3 pb-2">
+                          <label className="text-[10px] text-muted-foreground block mb-1.5">滤镜</label>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {['原图', '灰度', '模糊', '锐化', '复古', '暖色', '冷色', '反转'].map(f => (
+                              <button key={f} onClick={() => setActiveFilter(f)} className={cn('rounded-md border py-1.5 text-[10px] hover:bg-accent transition-colors', activeFilter === f ? 'border-primary bg-primary/5 text-primary font-medium' : '')}>{f}</button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* === SHAPE APPEARANCE === */}
+                  {isShape && (
+                    <>
+                      <Divider>外观</Divider>
+                      <div className="py-1">
+                        {(selectedEl.type === 'rect' || selectedEl.type === 'circle' || selectedEl.type === 'star' || selectedEl.type === 'hexagon' || selectedEl.type === 'arrow' || selectedEl.type === 'diamond' || selectedEl.type === 'triangle') && (
+                          <div className="px-3 pb-2">
+                            <label className="text-[10px] text-muted-foreground block mb-1.5">填充颜色</label>
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-md border shadow-sm shrink-0" style={{ backgroundColor: selectedEl.fill }} />
+                              <input type="text" value={selectedEl.fill || ''} onChange={e => updateEl(selectedEl.id, { fill: e.target.value })} className="flex-1 rounded-md border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                              <input type="color" value={selectedEl.fill || '#000000'} onChange={e => updateEl(selectedEl.id, { fill: e.target.value })} className="h-8 w-8 rounded cursor-pointer border-0 shrink-0" />
+                            </div>
+                          </div>
+                        )}
+                        {selectedEl.type === 'line' && (
+                          <div className="px-3 pb-2">
+                            <label className="text-[10px] text-muted-foreground block mb-1.5">线条颜色</label>
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-md border shadow-sm shrink-0" style={{ backgroundColor: selectedEl.stroke }} />
+                              <input type="text" value={selectedEl.stroke || ''} onChange={e => updateEl(selectedEl.id, { stroke: e.target.value })} className="flex-1 rounded-md border bg-background px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                              <input type="color" value={selectedEl.stroke || '#000000'} onChange={e => updateEl(selectedEl.id, { stroke: e.target.value })} className="h-8 w-8 rounded cursor-pointer border-0 shrink-0" />
+                            </div>
+                          </div>
+                        )}
+                        {selectedEl.strokeWidth !== undefined && (
+                          <AttrRow label="描边"><NumInput value={selectedEl.strokeWidth} onChange={v => updateEl(selectedEl.id, { strokeWidth: v })} min={0} max={20} /><span className="text-[10px] text-muted-foreground">px</span></AttrRow>
+                        )}
+                        {selectedEl.type === 'rect' && (
+                          <AttrRow label="圆角"><NumInput value={selectedEl.borderRadius ?? 0} onChange={v => updateEl(selectedEl.id, { borderRadius: v })} min={0} max={9999} /></AttrRow>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {activeRightTab === 'style' && (
+                <>
+                  <Divider>透明度</Divider>
+                  <div className="py-1">
+                    <AttrRow label="透明">
+                      <input type="range" min={0} max={100} value={selectedEl.opacity} onChange={e => updateEl(selectedEl.id, { opacity: Number(e.target.value) })} className="flex-1" />
+                      <span className="text-xs font-mono tabular-nums w-10 text-right">{selectedEl.opacity}%</span>
+                    </AttrRow>
+                  </div>
+
+                  {selectedEl.shadow && (
+                    <>
+                      <Divider>阴影</Divider>
+                      <div className="py-1">
+                        <div className="px-3 pb-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-[10px] text-muted-foreground">启用阴影</label>
+                            <div onClick={() => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, enabled: !selectedEl.shadow!.enabled } })} className={cn('w-8 h-4 rounded-full cursor-pointer transition-colors', selectedEl.shadow!.enabled ? 'bg-primary' : 'bg-muted')}>
+                              <div className={cn('w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform', selectedEl.shadow!.enabled ? 'translate-x-4' : 'translate-x-0.5')} />
+                            </div>
+                          </div>
+                          {selectedEl.shadow!.enabled && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded border shrink-0" style={{ backgroundColor: selectedEl.shadow!.color }} />
+                                <input type="text" value={selectedEl.shadow!.color} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, color: e.target.value } })} className="flex-1 rounded border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div><label className="text-[10px] text-muted-foreground block mb-0.5">模糊</label><input type="number" value={selectedEl.shadow!.blur} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, blur: Number(e.target.value) } })} className="w-full rounded border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" /></div>
+                                <div><label className="text-[10px] text-muted-foreground block mb-0.5">X</label><input type="number" value={selectedEl.shadow!.x} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, x: Number(e.target.value) } })} className="w-full rounded border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" /></div>
+                                <div><label className="text-[10px] text-muted-foreground block mb-0.5">Y</label><input type="number" value={selectedEl.shadow!.y} onChange={e => updateEl(selectedEl.id, { shadow: { ...selectedEl.shadow!, y: Number(e.target.value) } })} className="w-full rounded border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/30" /></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {(selectedEl.type === 'rect' || selectedEl.type === 'circle' || selectedEl.type === 'triangle' || selectedEl.type === 'star' || selectedEl.type === 'hexagon' || selectedEl.type === 'arrow' || selectedEl.type === 'diamond') && (
+                    <>
+                      <Divider>快捷配色</Divider>
+                      <div className="px-3 pb-2">
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {shapeDefaultColors.map(c => (
+                            <button key={c} onClick={() => updateEl(selectedEl.id, { fill: c })} className={cn('h-8 rounded-md border-2 transition-all hover:scale-110', selectedEl.fill === c ? 'border-white ring-2 ring-primary ring-offset-1' : 'border-transparent')}>
+                              <div className="w-full h-full rounded-sm" style={{ backgroundColor: c }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Quick actions */}
+              <div className="border-t mt-2 p-3">
+                <div className="grid grid-cols-4 gap-1.5">
+                  <button onClick={() => duplicateEl(selectedEl.id)} className="flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] text-muted-foreground hover:bg-accent transition-colors"><Copy className="h-4 w-4" />复制</button>
+                  <button onClick={() => { setSelectedLayer(''); }} className="flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] text-muted-foreground hover:bg-accent transition-colors"><Scissors className="h-4 w-4" />剪切</button>
+                  <button onClick={() => alert('模拟编组功能：将多个元素编组')} className="flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] text-muted-foreground hover:bg-accent transition-colors"><Group className="h-4 w-4" />编组</button>
+                  <button onClick={() => deleteEl(selectedEl.id)} className="flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] text-destructive hover:bg-red-50 transition-colors"><Trash2 className="h-4 w-4" />删除</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ===== SIZE MODAL ===== */}
+        {showSizeModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowSizeModal(false)}>
+            <div className="bg-card rounded-xl shadow-2xl border w-80 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <h3 className="text-sm font-semibold">调整画板尺寸</h3>
+                <button onClick={() => setShowSizeModal(false)} className="p-1 rounded hover:bg-accent"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-muted-foreground block mb-1">宽度 (px)</label>
+                    <input type="number" value={customSizeW} onChange={e => setCustomSizeW(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <span className="text-muted-foreground mt-5">×</span>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-muted-foreground block mb-1">高度 (px)</label>
+                    <input type="number" value={customSizeH} onChange={e => setCustomSizeH(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowSizeModal(false)} className="flex-1 rounded-md border bg-background py-2 text-sm hover:bg-accent transition-colors">取消</button>
+                  <button onClick={() => { const w = parseInt(customSizeW) || 800; const h = parseInt(customSizeH) || 500; applyCanvasSize(w, h); setShowSizeModal(false); }} className="flex-1 rounded-md bg-primary text-white py-2 text-sm hover:bg-primary/90 transition-colors">应用</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== SIZE TEMPLATE MODAL ===== */}
+        {showSizeTemplateModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowSizeTemplateModal(false)}>
+            <div className="bg-card rounded-xl shadow-2xl border w-96 max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
+                <h3 className="text-sm font-semibold">选择预设尺寸</h3>
+                <button onClick={() => setShowSizeTemplateModal(false)} className="p-1 rounded hover:bg-accent"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {['海报', '社交媒体', '演示', '视频', '印刷'].map(cat => {
+                  const items = presetSizes.filter(p => p.cat === cat);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={cat} className="mb-4">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">{cat}</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {items.map(p => (
+                          <button
+                            key={p.name}
+                            onClick={() => { applyCanvasSize(p.w, p.h); setShowSizeTemplateModal(false); }}
+                            className={cn('rounded-lg border bg-background p-3 text-left hover:border-primary/50 hover:bg-primary/5 transition-all',
+                              activeCanvas.w === p.w && activeCanvas.h === p.h ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : '')}
+                          >
+                            <div className="text-xs font-medium">{p.name}</div>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-[10px] text-muted-foreground font-mono">{p.w} × {p.h}</span>
+                              <span className="text-[10px] text-muted-foreground">{p.ratio}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============ Factory functions ============ */
+
+function makeShape(type: string, cw: number, ch: number, canvasId: string): ElementAttr {
+  const id = nextId();
+  const shapeInfo = elementShapes.find(s => s.id === type);
+  const colorIdx = _idCounter % shapeDefaultColors.length;
+  const fill = shapeDefaultColors[colorIdx];
+  if (type === 'line') {
+    return { id, name: '线条', type: 'line', canvasId, x: Math.round(cw / 2 - 80), y: Math.round(ch / 2), w: 160, h: 2, angle: 0, opacity: 100, stroke: '#6366f1', strokeWidth: 2 };
+  }
+  return { id, name: shapeInfo?.label || type, type: type as ElementType, canvasId, x: Math.round(cw / 2 - 40), y: Math.round(ch / 2 - 40), w: 80, h: 80, angle: 0, opacity: 100, fill, strokeWidth: 0, shadow: { enabled: false, color: '#000', blur: 10, x: 0, y: 4 } };
+}
+
+function makeText(cw: number, ch: number, canvasId: string): ElementAttr {
+  const id = nextId();
+  return { id, name: '文本', type: 'text', canvasId, x: Math.round(cw / 2 - 80), y: Math.round(ch / 2 - 16), w: 160, h: 32, angle: 0, opacity: 100, fill: '#0f172a', fontFamily: 'PingFang SC', fontSize: 20, fontWeight: 'normal', fontStyle: 'normal', underline: false, strikethrough: false, textAlign: 'center', lineHeight: 1.4, text: '双击编辑' };
+}
+
+function makeImage(cw: number, ch: number, canvasId: string): ElementAttr {
+  const id = nextId();
+  return { id, name: '图片', type: 'image', canvasId, x: Math.round(cw / 2 - 75), y: Math.round(ch / 2 - 75), w: 150, h: 150, angle: 0, opacity: 100, flipX: false, flipY: false };
+}

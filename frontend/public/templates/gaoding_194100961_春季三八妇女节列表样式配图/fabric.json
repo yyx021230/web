@@ -1,0 +1,53 @@
+{
+  "version": "5.3.0",
+  "objects": [
+    {
+      "type": "Image",
+      "src": "https://gd-filems.dancf.com/gaoding/gaoding/90882/d87a1fd4244c49fda58d10d3a27d3f3f.png",
+      "left": -178.12355948626518,
+      "top": -186.6297508969576,
+      "width": 2108,
+      "height": 2103,
+      "scaleX": 0.8157092749123108,
+      "scaleY": 0.9855699269791902,
+      "angle": 0,
+      "opacity": 1,
+      "originX": "left",
+      "originY": "top",
+      "selectable": true,
+      "id": "e89cef1e-be5c-425b-9841-b946e8f3284e",
+      "name": "图片",
+      "shadow": null
+    },
+    {
+      "type": "Textbox",
+      "text": "选择列表样式\n调整大小布局\n收获整齐列表\n妇女节快乐",
+      "left": 257.2616628175519,
+      "top": 498,
+      "width": 743,
+      "height": 660,
+      "fill": "#383838",
+      "fontSize": 82.5,
+      "fontFamily": "sucaijishikangkangti",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "lineHeight": 1.5,
+      "charSpacing": -100,
+      "textAlign": "left",
+      "angle": 0,
+      "opacity": 1,
+      "originX": "left",
+      "originY": "top",
+      "selectable": true,
+      "id": "fe7d1ba3-d9e3-4594-8ccc-d9ceb17918ef",
+      "name": "选择列表样式\n调整大小布局\n收获整齐列表",
+      "shadow": null,
+      "underline": false,
+      "linethrough": false,
+      "overline": false
+    }
+  ],
+  "background": "rgba(255,255,255,0.00)",
+  "width": 1242,
+  "height": 1656
+}

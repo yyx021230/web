@@ -1,0 +1,2048 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.5990338164251208,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "b7fe857a-c824-459d-9142-2099a75271d4",
+      "elements": [
+        {
+          "uuid": "a8186dc1-ed45-4dd3-a394-f8c6c1a2f92e",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "T250318146995-原始文件PSD - 副本",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "2355036226"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "elements": [
+            {
+              "uuid": "f8e50927-bdf3-479a-a87f-ee9af3abac89",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1149.4277109876064,
+              "height": 1058.279253793903,
+              "left": 54,
+              "top": 322,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "6f0ba598-7235-498b-98cc-0088b4ce5055",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1025.467041015625,
+                  "height": 282.28392476875086,
+                  "left": 123.96066997198136,
+                  "top": 117.99532902515227,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "f2802345-6e12-469b-95aa-5cb18e04c9d4",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "明确职业目标",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 276,
+                      "height": 56,
+                      "version": "9.2.0",
+                      "left": 6.526552030294255,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 274052,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211228-ifgif.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211230-abbei.woff",
+                            "fontFamily": "OPPOSans-M",
+                            "type": "font",
+                            "alias": "OPPOSans M",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#252525ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 46,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "明确职业目标",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#252525ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "c84f816f-855d-4692-8095-128ccfb1dd71",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "职业规划：思考自己的兴趣、优势和职业发展方向，明确目标行业和岗位。 岗位要求：研究目标岗位的核心技能、经验和学历要求，确保自己",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 1025.467041015625,
+                      "height": 212,
+                      "version": "9.2.0",
+                      "left": 5.684341886080802e-14,
+                      "top": 70.28392476875086,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 274053,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211711-bakac.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211713-bakcj.woff",
+                            "fontFamily": "OPPOSans-B",
+                            "type": "font",
+                            "alias": "OPPOSans B",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          },
+                          {
+                            "id": 274054,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240124-153942-cfcka.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240124-153943-eeiee.woff",
+                            "fontFamily": "OPPOSans-R",
+                            "type": "font",
+                            "alias": "OPPOSans R",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#252525ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 36,
+                      "lineHeight": 1.47,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "职业规划：思考自己的兴趣、优势和职业发展方向，明确目标行业和岗位。\n岗位要求：研究目标岗位的核心技能、经验和学历要求，确保自己匹配。",
+                      "contents": [
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "职业规划："
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "思考自己的兴趣、优势和职业发展方向，明确目标行业和岗位。\n"
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "岗位要求："
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "研究目标岗位的核心技能、经验和学历要求，确保自己匹配。"
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#252525ff"
+                      ],
+                      "mainColor": "",
+                      "listStyleBackground": {
+                        "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                        "type": "svg",
+                        "naturalWidth": 64,
+                        "naturalHeight": 64,
+                        "colors": [
+                          "#c9c9c9ff"
+                        ],
+                        "size": "small",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      },
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                },
+                {
+                  "uuid": "73f00aab-07f3-48df-9234-779723265d92",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1025.467041015625,
+                  "height": 546.9580019133596,
+                  "left": 123.17265736708384,
+                  "top": 511.3212518805435,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "23e8f06e-b8ce-444c-871c-d7a059bd6f0e",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "提升个人竞争力",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 322,
+                      "height": 56,
+                      "version": "9.2.0",
+                      "left": 8.000000000000028,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 274052,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211228-ifgif.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211230-abbei.woff",
+                            "fontFamily": "OPPOSans-M",
+                            "type": "font",
+                            "alias": "OPPOSans M",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#252525ff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 46,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "提升个人竞争力",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#252525ff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    },
+                    {
+                      "uuid": "2eb887e9-afa0-490c-83f2-e6e398b0e05b",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "简历和求职信：         简历：简洁明了，突出与岗位相关的实习经历、项目的经验、技能证书等。         求职信：针",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 1025.467041015625,
+                      "height": 477,
+                      "version": "9.2.0",
+                      "left": 2.842170943040401e-14,
+                      "top": 69.95800191335957,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 274053,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211711-bakac.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211713-bakcj.woff",
+                            "fontFamily": "OPPOSans-B",
+                            "type": "font",
+                            "alias": "OPPOSans B",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          },
+                          {
+                            "id": 274054,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240124-153942-cfcka.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240124-153943-eeiee.woff",
+                            "fontFamily": "OPPOSans-R",
+                            "type": "font",
+                            "alias": "OPPOSans R",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#252525ff",
+                      "fontFamily": "OPPOSans-B",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 36,
+                      "lineHeight": 1.47,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "简历和求职信：         简历：简洁明了，突出与岗位相关的实习经历、项目的经验、技能证书等。         求职信：针对不同岗位定制，展示你对该岗位的热情和匹配度。\n技能提升：        学习岗位相关专业技能（如编程、设计、数据分析）。         提升软技能（如沟通能力、协作能力、管理能力）。\n实习经验：如果有实习经历，重点突出与岗位相关成果收获。",
+                      "contents": [
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "简历和求职信： ",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "        简历：简洁明了，突出与岗位相关的实习经历、项目的经验、技能证书等。         求职信：针对不同岗位定制，展示你对该岗位的热情和匹配度。\n",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "技能提升： ",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "       学习岗位相关专业技能（如编程、设计、数据分析）。         提升软技能（如沟通能力、协作能力、管理能力）。\n",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-B",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "实习经验：",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        },
+                        {
+                          "color": "#252525ff",
+                          "fontFamily": "OPPOSans-R",
+                          "fontStyle": "normal",
+                          "fontSize": 36,
+                          "fontWeight": 400,
+                          "textDecoration": "none",
+                          "content": "如果有实习经历，重点突出与岗位相关成果收获。",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#c9c9c9ff"
+                            ],
+                            "size": "small",
+                            "metaInfo": {
+                              "materials": []
+                            }
+                          }
+                        }
+                      ],
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#252525ff"
+                      ],
+                      "mainColor": "",
+                      "listStyleBackground": {
+                        "url": "https://cdn.dancf.com/fe-assets/20240910/4acf5c7f080175ba023f57c8a5d35b05.svg",
+                        "type": "svg",
+                        "naturalWidth": 64,
+                        "naturalHeight": 64,
+                        "colors": [
+                          "#c9c9c9ff"
+                        ],
+                        "size": "small",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      },
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 1,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                },
+                {
+                  "uuid": "914e15d9-8a4d-4964-af33-3e2b5fb7ad12",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/30f43436c0bc41999b198db9b866e6f0.png",
+                  "type": "path",
+                  "title": "矩形 3",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1007.9999817609787,
+                  "height": 4.0000319480896,
+                  "left": 119.99998319149017,
+                  "top": 450.99993085861206,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "path": "M0,0h1007.99998v4.00003h-1007.99998z",
+                  "radius": 0,
+                  "effectShadowBlurScale": 1,
+                  "effectStrokeWidthScale": 1,
+                  "pathShape": "pen",
+                  "pathEffects": [
+                    {
+                      "type": "brush",
+                      "offset": {
+                        "x": 0,
+                        "y": 0
+                      },
+                      "skew": {
+                        "enable": false,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "enable": true,
+                      "lineType": "center",
+                      "width": 0,
+                      "color": "#ffffffff",
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#c9c9c9ff"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "uuid": "78354da4-967c-4750-9404-757c1ea67755",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 643.0770418165608,
+                  "height": 97,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "9fcc509b-0fc8-4a69-a8f1-f603b73a2395",
+                      "imageUrl": "",
+                      "type": "image",
+                      "title": "【409543】",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 97,
+                      "height": 97,
+                      "left": 0,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 7,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 409543,
+                            "type": "image"
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/fc463415f45647c88ca0aceba4aef563.png",
+                      "loop": 1,
+                      "imageEffects": [],
+                      "imageTransform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "effectedResult": {
+                        "width": 0,
+                        "height": 0,
+                        "left": 0,
+                        "top": 0
+                      },
+                      "filterInfo": {
+                        "id": -1,
+                        "url": "",
+                        "strong": 0.8,
+                        "intensity": 0.8
+                      },
+                      "mosaic": null,
+                      "shadows": [],
+                      "aggregatedColors": [],
+                      "naturalWidth": 97,
+                      "naturalHeight": 97,
+                      "effectScale": 1,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "enableDragToMask": true,
+                      "resourceType": "image",
+                      "naturalDuration": 0,
+                      "autoMatting": false,
+                      "quality": 100,
+                      "fillOpacity": 1
+                    },
+                    {
+                      "uuid": "65f5d339-8873-4d54-9afc-a5ffb742f0d9",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "已深度思考（用时 5 秒）",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 517,
+                      "height": 56,
+                      "version": "9.2.0",
+                      "left": 126.07704181656084,
+                      "top": 22.931411524323096,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 274052,
+                            "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211228-ifgif.ttf",
+                            "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211230-abbei.woff",
+                            "fontFamily": "OPPOSans-M",
+                            "type": "font",
+                            "alias": "OPPOSans M",
+                            "weight": 400,
+                            "lang": "zh",
+                            "source": "GD",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#9b9b9bff",
+                      "fontFamily": "OPPOSans-M",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 46,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "已深度思考（用时 5 秒）",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#9b9b9bff"
+                      ],
+                      "mainColor": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "quality": 100,
+                      "fillOpacity": 1,
+                      "adjustsFontSize": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "uuid": "4bdc4a97-749b-4c99-83a9-d775855b6324",
+              "imageUrl": "",
+              "type": "text",
+              "title": "用户询问AI怎么找工作",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 534,
+              "height": 64,
+              "version": "9.2.0",
+              "left": 357.6494360616106,
+              "top": 69.8608982816977,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 274053,
+                    "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211711-bakac.ttf",
+                    "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211713-bakcj.woff",
+                    "fontFamily": "OPPOSans-B",
+                    "type": "font",
+                    "alias": "OPPOSans B",
+                    "weight": 400,
+                    "lang": "zh",
+                    "source": "GD",
+                    "fromUser": true
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#252525ff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 53,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "用户询问AI怎么找工作",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#252525ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "fb4c8207-e599-4010-9833-5d5759044ece",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "矩形 2 拷贝",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 52.0000205039978,
+              "height": 24.999977588653564,
+              "left": 56.99993705749512,
+              "top": 89.99997854232788,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#40403eff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/939b4d8607e54e5b9c7e17ee63573684.svg",
+              "content": "",
+              "naturalWidth": 52.0000205039978,
+              "naturalHeight": 24.999977588653564
+            },
+            {
+              "uuid": "06d502fe-4f74-4460-8cec-47078442595f",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "【193947881】",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 47.003173008345556,
+              "height": 50.88848171480628,
+              "left": 1144.9847072084583,
+              "top": 76.93884506375372,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193947881,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#40403eff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/a686b29731164863a168b7dd9d4b0561.svg",
+              "content": "",
+              "naturalWidth": 47.003173008345556,
+              "naturalHeight": 50.88848171480628
+            },
+            {
+              "uuid": "04ed2b65-1ac1-48cb-83d2-89bdddbb370f",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 328.99288058280945,
+              "height": 100.00336503982544,
+              "left": 860.0071156024933,
+              "top": 203.99896430969238,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "5bb66ce3-4953-43df-9a19-4b4c713d3f51",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/657c3ef3d6c4450cb8fbfe2b14c67e95.png",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 328.99288058280945,
+                  "height": 100.00336503982544,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#e8f3feff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/f52679a61c92430691ebe890ef8794ad.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 50,
+                      "top": 50,
+                      "right": 64,
+                      "bottom": 48
+                    }
+                  },
+                  "naturalWidth": 328.99288058280945,
+                  "naturalHeight": 100.00336503982544
+                },
+                {
+                  "uuid": "73bf9f64-d962-446f-b1bd-261b2228eb98",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "怎么找工作",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 230,
+                  "height": 56,
+                  "version": "9.2.0",
+                  "left": 58.36327012055074,
+                  "top": 21.79579680444988,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 274052,
+                        "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211228-ifgif.ttf",
+                        "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211230-abbei.woff",
+                        "fontFamily": "OPPOSans-M",
+                        "type": "font",
+                        "alias": "OPPOSans M",
+                        "weight": 400,
+                        "lang": "zh",
+                        "source": "GD",
+                        "fromUser": true
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#252525ff",
+                  "fontFamily": "OPPOSans-M",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 46,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "right",
+                  "verticalAlign": "top",
+                  "content": "怎么找工作",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#252525ff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                }
+              ]
+            },
+            {
+              "uuid": "03c37c03-1843-44b2-8a12-d60201cddd31",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1141.999966263771,
+              "height": 124.00000333786011,
+              "left": 49.999979853630066,
+              "top": 1463.9999470710754,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "cb24ec06-27c5-458f-9480-9c74829fcc42",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/74244/212fdfd6d6804a92a6cc7751542ba47e.png",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1141.999966263771,
+                  "height": 124.00000333786011,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#f4f5f5ff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/1141d4cdde034ee4b58e017af92185db.svg",
+                  "content": "",
+                  "ninePatch": {
+                    "effectScale": 1,
+                    "imageSlice": {
+                      "left": 62,
+                      "top": 61,
+                      "right": 61,
+                      "bottom": 61
+                    }
+                  },
+                  "naturalWidth": 1141.999966263771,
+                  "naturalHeight": 124.00000333786011
+                },
+                {
+                  "uuid": "5a71bba3-9912-4bda-bed9-afe83fd8b258",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "给 AI 发送消息",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 304,
+                  "height": 56,
+                  "version": "9.2.0",
+                  "left": 58.56185258716299,
+                  "top": 36.56323149157856,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 274052,
+                        "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240116-211228-ifgif.ttf",
+                        "woff": "https://gd-filems.dancf.com/gaoding/editor/20240116-211230-abbei.woff",
+                        "fontFamily": "OPPOSans-M",
+                        "type": "font",
+                        "alias": "OPPOSans M",
+                        "weight": 400,
+                        "lang": "zh",
+                        "source": "GD",
+                        "fromUser": true
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#9b9b9bff",
+                  "fontFamily": "OPPOSans-M",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 46,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "给 AI 发送消息",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#9b9b9bff"
+                  ],
+                  "mainColor": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "quality": 100,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false
+                }
+              ]
+            }
+          ],
+          "userAdded": true,
+          "background": {
+            "color": "#ffffffff",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/74244/c3fcf176e1c54c2d9239fd6fdea840e2.png",
+            "width": 256,
+            "height": 341
+          },
+          "backgroundEffectImage": "",
+          "backgroundColor": "#ffffffff",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}

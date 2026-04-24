@@ -1,0 +1,326 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.653683574879227,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": null,
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "81a6b184-05c2-4c4c-9278-3eb85df37a3d",
+      "imageUrl": "",
+      "title": "",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "1114857867"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "9ca0e0c6-5cc8-4773-928f-f20619ca21a1",
+          "imageUrl": "",
+          "type": "svg",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1122.2,
+          "height": 1564.4,
+          "left": 59.89999999999993,
+          "top": 45.79999999999991,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "colors": [
+            "#ffffffff",
+            "#ffb8d5ff",
+            "#f2f2f2ff",
+            "#d8d8d8ff"
+          ],
+          "url": "https://gdesign-dam.dancf.com/31583516339577971/3841918595.svg",
+          "content": "",
+          "naturalWidth": 1122.2,
+          "naturalHeight": 1564.4
+        },
+        {
+          "uuid": "9c5d7241-694d-4b8f-8a68-94661b996e31",
+          "imageUrl": "",
+          "type": "text",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 767,
+          "height": 660,
+          "version": "9.2.0",
+          "left": 237.5,
+          "top": 478,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#ff7ca4ff",
+          "fontFamily": "JasonWriting",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 110,
+          "lineHeight": 1.5,
+          "letterSpacing": -6,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "left",
+          "verticalAlign": "top",
+          "content": "选择列表样式\n调整大小布局\n收获整齐列表\n妇女节快乐",
+          "contents": null,
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#ff7ca4ff"
+          ],
+          "mainColor": "",
+          "listStyleBackground": {
+            "url": "https://cdn.dancf.com/fe-assets/20240910/e3a4933b398f9b72e34cee82ceab0756.svg",
+            "type": "svg",
+            "naturalWidth": 64,
+            "naturalHeight": 64,
+            "colors": [
+              "#ff7ca4ff"
+            ],
+            "size": "small",
+            "metaInfo": {
+              "materials": []
+            }
+          },
+          "background": null,
+          "textAlignLast": "auto",
+          "autoAdaptive": 3,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "ruleIndex": -1,
+          "scale": 0.6,
+          "boardScale": 0.21,
+          "fillOpacity": 1,
+          "adjustsFontSize": false,
+          "highlight": {
+            "type": "svg",
+            "url": "https://cdn.dancf.com/fe-assets/20240813/608a3ed8d326414d0c4e91d2eb5fe6ef.svg",
+            "width": 37,
+            "height": 2,
+            "renderRect": {
+              "bottom": 0.4,
+              "left": 0,
+              "right": 0.1,
+              "top": 0
+            },
+            "svgInfo": {
+              "colors": [
+                "#ffb8d5ff"
+              ],
+              "strokeWidth": 0.09494949494949494
+            },
+            "style": {
+              "y": 0.92,
+              "height": 0
+            },
+            "repeat": "round",
+            "metaInfo": {
+              "materials": []
+            }
+          }
+        }
+      ],
+      "userAdded": false,
+      "background": {
+        "color": "#ffecf4ff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "backgroundEffectImage": "",
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/03547841f4404a8ab2cacbfe737ae78b.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundColor": "#ffecf4ff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

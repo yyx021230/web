@@ -1,0 +1,2173 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.8633252572322238,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "e7f5c0a4-0957-46da-8bed-c0abb310975b",
+      "imageUrl": "",
+      "title": "T250516234141-原始文件PSD - 副本",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "1631101698"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "userAdded": false,
+      "background": {
+        "color": "#fffff7ff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/a8d7d123697040089e83ad8f1ecda135.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "elements": [
+        {
+          "uuid": "642a833e-e45b-429a-9998-73834321fcef",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1126.9416596889496,
+          "height": 268.00786542892456,
+          "left": 58.02916181087494,
+          "top": 402.0025691986084,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "b00fd59f-1382-4db6-9372-9fbfcae96b2b",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/8a97748468f14739ba1968df9c6b664d.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1126.9416596889496,
+              "height": 268.00786542892456,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#92c8f7ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/f4d42fce0b5a41cabd6d45f3485ef079.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1,
+                "imageSlice": {
+                  "left": 22,
+                  "top": 21,
+                  "right": 21,
+                  "bottom": 21
+                }
+              },
+              "naturalWidth": 1126.9416596889496,
+              "naturalHeight": 268.00786542892456
+            },
+            {
+              "uuid": "ad1b5cb5-2140-4715-818b-a9f46fa55088",
+              "imageUrl": "",
+              "type": "text",
+              "title": "军队文职的 独特优势",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 247.79948785112896,
+              "height": 110,
+              "version": "9.2.0",
+              "left": 29.555469263560582,
+              "top": 79.51276486910893,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#4182bdff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 44,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "军队文职的\n独特优势",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "军队文职的\n"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "独特优势",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#ffe18aff"
+                      ],
+                      "strokeWidth": 0.4828282828282829
+                    },
+                    "renderRect": {
+                      "bottom": 0,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#4182bdff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "42302f9a-601d-40a3-b066-a9a68de3706f",
+              "imageUrl": "",
+              "type": "text",
+              "title": "薪资构成： 本科：9000基本工资+2000住房补贴+3000绩效（一线城市再加2000地区津贴） 职业发展：技术岗可评职称（",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 774,
+              "height": 192,
+              "version": "9.2.0",
+              "left": 315.29045091596566,
+              "top": 39.845468922017346,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#353535ff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 30.9,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "justify",
+              "verticalAlign": "top",
+              "content": "薪资构成：\r本科：9000基本工资+2000住房补贴+3000绩效（一线城市再加2000地区津贴）\r职业发展：技术岗可评职称（助工-工程师-高工）\r管理岗晋升路径：科级副职-正职-处级",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "薪资构成：\r"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "本科："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "9000基本工资+2000住房补贴+3000绩效（一线城市再加2000地区津贴）\r"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "职业发展："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "技术岗可评职称（助工-工程师-高工）\r"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "管理岗晋升路径："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "科级副职-正职-处级"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#353535ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            }
+          ]
+        },
+        {
+          "uuid": "020a27fa-135c-426b-91e0-e741e34e9cf9",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1127.0040661096573,
+          "height": 293.81604194641113,
+          "left": 57.99792158603668,
+          "top": 720.0991258621216,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "62a356b1-ac58-408d-866d-aaec65643bae",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/e2295d9ed14748e38740ac49dba0e190.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1127.0040661096573,
+              "height": 293.81604194641113,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#92c8f7ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/6ae579e3195f42ce9496072d2e0d04ef.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1,
+                "imageSlice": {
+                  "left": 22,
+                  "top": 21,
+                  "right": 22,
+                  "bottom": 20
+                }
+              },
+              "naturalWidth": 1127.0040661096573,
+              "naturalHeight": 293.81604194641113
+            },
+            {
+              "uuid": "599e7673-4e24-48c8-9700-369b7130de42",
+              "imageUrl": "",
+              "type": "text",
+              "title": "笔试科目 突破要点",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 246.65703162161947,
+              "height": 110,
+              "version": "9.2.0",
+              "left": 30.095437603153584,
+              "top": 92.00995820559581,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#4182bdff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 44,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "笔试科目\n突破要点",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "笔试科目\n"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "突破要点",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#ffe18aff"
+                      ],
+                      "strokeWidth": 0.4828282828282829
+                    },
+                    "renderRect": {
+                      "bottom": 0,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#4182bdff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "442e7806-bd38-49de-b35c-3f04f532277b",
+              "imageUrl": "",
+              "type": "text",
+              "title": "公共科目： 国防军队知识：必考《文职人员条例》、军民融合政策 行测精简版：重点准备言语理解（军队公文词汇）、资料分析（军费数据",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 774,
+              "height": 230,
+              "version": "9.2.0",
+              "left": 315.44240501184834,
+              "top": 31.74891225850422,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#353535ff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 30.9,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "justify",
+              "verticalAlign": "top",
+              "content": "公共科目：\n国防军队知识：必考《文职人员条例》、军民融合政策\n行测精简版：重点准备言语理解（军队公文词汇）、资料分析（军费数据解读）\n专业科目：\n护理学：侧重战伤救护（止血带使用标准）",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "公共科目：\n"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "国防军队知识："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "必考《文职人员条例》、军民融合政策\n"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "行测精简版："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "重点准备言语理解（军队公文词汇）、资料分析（军费数据解读）\n"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "专业科目：\n"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "护理学："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "侧重战伤救护（止血带使用标准）"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#353535ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            }
+          ]
+        },
+        {
+          "uuid": "ba6db956-923e-4a12-bd60-641a1bc9a880",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1126.9416596889496,
+          "height": 268.00786542892456,
+          "left": 58.02916181087494,
+          "top": 1064.0025758743286,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "f5e0a951-794f-47ae-91db-c0445049162f",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/8bd140855bdf4d299fb43dec30b38906.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1126.9416596889496,
+              "height": 268.00786542892456,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#92c8f7ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/f4d42fce0b5a41cabd6d45f3485ef079.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1,
+                "imageSlice": {
+                  "left": 22,
+                  "top": 21,
+                  "right": 21,
+                  "bottom": 21
+                }
+              },
+              "naturalWidth": 1126.9416596889496,
+              "naturalHeight": 268.00786542892456
+            },
+            {
+              "uuid": "779c948b-24f6-4c2e-be16-283488917e8a",
+              "imageUrl": "",
+              "type": "text",
+              "title": "体检政审 红线预警",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 247.8153436154165,
+              "height": 110,
+              "version": "9.2.0",
+              "left": 29.969416381416806,
+              "top": 78.85650819338866,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#4182bdff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 44,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "体检政审\n红线预警",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "体检政审\n"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "红线预警",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#ffe18aff"
+                      ],
+                      "strokeWidth": 0.4828282828282829
+                    },
+                    "renderRect": {
+                      "bottom": 0,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#4182bdff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "62dc4a96-71e3-4079-bf30-92f68029e47c",
+              "imageUrl": "",
+              "type": "text",
+              "title": "身高体重：男性≥160cm，女性≥155cm，BMI男性17.5-30，女性17-24 政治审查： 本人及直系亲属无违法犯罪记",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 774,
+              "height": 195,
+              "version": "9.2.0",
+              "left": 315.47700871667064,
+              "top": 39.845462246297075,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#353535ff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 30.9,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "justify",
+              "verticalAlign": "top",
+              "content": "身高体重：男性≥160cm，女性≥155cm，BMI男性17.5-30，女性17-24\r政治审查：\r本人及直系亲属无违法犯罪记录\r社交媒体不得有不当言论（建议提前清理朋友圈）",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "身高体重："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "男性"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "≥"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "160cm，女性"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "≥"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "155cm，BMI男性17.5-30，女性17-24\r"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "政治审查：\r"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "本人及直系亲属无违法犯罪记录\r社交媒体不得有不当言论（建议提前清理朋友圈）"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#353535ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            }
+          ]
+        },
+        {
+          "uuid": "7a62f836-7b49-411e-bcf6-f28bec386249",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1127.0040661096573,
+          "height": 175.69403743743896,
+          "left": 57.99792158603668,
+          "top": 1382.6572122573853,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "73ab2eea-2c1d-4981-b60a-28410aa5b6a5",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/09622/f43faec3f7b646ea8fa10f8eb7de88e6.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1127.0040661096573,
+              "height": 175.69403743743896,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#92c8f7ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/09622/53f8f8ccfc3a4901adef91937ed316cd.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1,
+                "imageSlice": {
+                  "left": 22,
+                  "top": 21,
+                  "right": 22,
+                  "bottom": 20
+                }
+              },
+              "naturalWidth": 1127.0040661096573,
+              "naturalHeight": 175.69403743743896
+            },
+            {
+              "uuid": "4d494589-9f48-48d9-97cc-fbf76c2a4b13",
+              "imageUrl": "",
+              "type": "text",
+              "title": "岗位 报考技巧",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 247.8153436154165,
+              "height": 110,
+              "version": "9.2.0",
+              "left": 30.203781606255063,
+              "top": 32.23312181033202,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#4182bdff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 44,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "岗位\n报考技巧",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "岗位\n"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 44,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "报考技巧",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#ffe18aff"
+                      ],
+                      "strokeWidth": 0.4828282828282829
+                    },
+                    "renderRect": {
+                      "bottom": 0,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#4182bdff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "340296e4-a722-4b80-9843-196b16ac30cd",
+              "imageUrl": "",
+              "type": "text",
+              "title": "冷门单位：军事院校、科研院所（竞争比1:5） 技能岗：司机、炊事员（学历要求低，但需持证上岗）",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 774,
+              "height": 77,
+              "version": "9.2.0",
+              "left": 315.28876917597364,
+              "top": 50.190825863240434,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#353535ff",
+              "fontFamily": "OPPOSans-B",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 30.9,
+              "lineHeight": 1.24,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "justify",
+              "verticalAlign": "top",
+              "content": "冷门单位：军事院校、科研院所（竞争比1:5）\r技能岗：司机、炊事员（学历要求低，但需持证上岗）",
+              "contents": [
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "冷门单位："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "军事院校、科研院所（竞争比1:5）\r"
+                },
+                {
+                  "color": "#4182bdff",
+                  "fontFamily": "OPPOSans-B",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "技能岗："
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "OPPOSans-R",
+                  "fontStyle": "normal",
+                  "fontSize": 30.9,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "司机、炊事员（学历要求低，但需持证上岗）"
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#353535ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 1,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            }
+          ]
+        },
+        {
+          "uuid": "c7443927-81b8-4925-830d-eb49e1290312",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1058,
+          "height": 273.54052628510476,
+          "left": 93.5153524855848,
+          "top": 57.49262825711082,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "3bb11c9d-5579-48e1-b42c-479863c6b6de",
+              "imageUrl": "",
+              "type": "text",
+              "title": "年薪15万的体制内替代方案",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1058,
+              "height": 105,
+              "version": "9.2.0",
+              "left": -2.842170943040401e-14,
+              "top": 168.54052628510476,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#353535ff",
+              "fontFamily": "AlimamaShuHeiTi",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 86.8,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "年薪15万的体制内替代方案",
+              "contents": [
+                {
+                  "color": "#db3b3bff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 86.8,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "年薪15万"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 86.8,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "的体制内"
+                },
+                {
+                  "color": "#353535ff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 86.8,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "替代方案",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240926/d084897fdef3f6e7536d58f2a39ec52b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#c6e4ffff"
+                      ],
+                      "strokeWidth": 0.4828282828282829
+                    },
+                    "renderRect": {
+                      "bottom": 0,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#353535ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            },
+            {
+              "uuid": "a468bf84-3b47-468f-9817-53ff1d74c3a5",
+              "imageUrl": "",
+              "type": "text",
+              "title": "军队文职考试揭秘",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1051,
+              "height": 158,
+              "version": "9.2.0",
+              "left": 3.8402295235773067,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#397ebbff",
+              "fontFamily": "AlimamaShuHeiTi",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 131.3,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "军队文职考试揭秘",
+              "contents": [
+                {
+                  "color": "#397ebbff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 131.3,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "军队文职考试"
+                },
+                {
+                  "color": "#397ebbff",
+                  "fontFamily": "AlimamaShuHeiTi",
+                  "fontStyle": "normal",
+                  "fontSize": 131.3,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "揭秘",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                    "repeat": "round",
+                    "width": 48,
+                    "height": 28,
+                    "svgInfo": {
+                      "colors": [
+                        "#ffe18aff"
+                      ],
+                      "strokeWidth": 0.12717171717171716
+                    },
+                    "renderRect": {
+                      "bottom": 0.5,
+                      "left": -0.15,
+                      "right": 0.15,
+                      "top": -0.3
+                    },
+                    "style": {
+                      "y": 0.5,
+                      "height": 1
+                    },
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#397ebbff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "quality": 100,
+              "fillOpacity": 1,
+              "adjustsFontSize": false
+            }
+          ]
+        }
+      ],
+      "backgroundColor": "#fffff7ff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

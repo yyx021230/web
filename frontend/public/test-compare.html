@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>模板渲染对比测试</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #1a1a2e; color: #eee; margin: 0; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 10px; }
+    .info { text-align: center; color: #888; margin-bottom: 20px; font-size: 14px; }
+    .row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+    .panel { background: #2a2a3e; border-radius: 12px; padding: 15px; text-align: center; }
+    .panel h3 { margin: 0 0 10px 0; font-size: 14px; color: #aaa; }
+    .panel canvas { border: 1px solid #444; border-radius: 4px; }
+    .panel img { border: 1px solid #444; border-radius: 4px; max-width: 310px; max-height: 415px; }
+    .diff { color: #f66; font-size: 13px; margin-top: 8px; }
+    .match { color: #6f6; font-size: 13px; margin-top: 8px; }
+    .note { background: #333; border-radius: 8px; padding: 15px; margin: 20px auto; max-width: 900px; font-size: 14px; line-height: 1.6; }
+    .note code { background: #555; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>模板渲染对比测试</h1>
+  <p class="info" id="status">加载中...</p>
+
+  <div class="note">
+    <strong>测试目的：</strong>对比预生成 fabric.json 和运行时转换后的 JSON 在 Fabric.js 中的渲染效果。<br>
+    <strong>测试模板：</strong><span id="templateName"></span>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <h3>原始预览图 (preview.jpg)</h3>
+      <img id="preview" alt="preview">
+    </div>
+    <div class="panel">
+      <h3>预生成 fabric.json 渲染</h3>
+      <canvas id="canvasPre" width="310" height="415"></canvas>
+      <div id="infoPre" class="match"></div>
+    </div>
+    <div class="panel">
+      <h3>运行时转换 JSON 渲染</h3>
+      <canvas id="canvasOurs" width="310" height="415"></canvas>
+      <div id="infoOurs" class="match"></div>
+    </div>
+  </div>
+
+  <div class="note" id="analysis"></div>
+
+  <script>
+  async function loadJSON(url) {
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  function scaleCanvas(canvasEl, fabricCanvas, maxWidth, maxHeight) {
+    const scale = Math.min(maxWidth / fabricCanvas.width, maxHeight / fabricCanvas.height);
+    canvasEl.style.width = (fabricCanvas.width * scale) + 'px';
+    canvasEl.style.height = (fabricCanvas.height * scale) + 'px';
+  }
+
+  async function main() {
+    const folder = 'gaoding_193254158_母婴知识科普手帐风小红书套装小红书配图';
+    document.getElementById('templateName').textContent = folder;
+    document.getElementById('preview').src = '/templates/' + folder + '/preview.jpg';
+
+    const statusEl = document.getElementById('status');
+
+    try {
+      statusEl.textContent = '加载预生成 fabric.json...';
+      const preFabric = await loadJSON('/templates/' + folder + '/fabric.json');
+      const design = await loadJSON('/templates/' + folder + '/design.json');
+
+      // Replicate our runtime conversion output
+      const ourFabric = JSON.parse(JSON.stringify(preFabric));
+      ourFabric.height = 1656;
+      ourFabric.backgroundImage = {
+        src: '/templates/' + folder + '/images/34c8883daeff4377822d8f416533025a.jpg',
+        scaleX: 1, scaleY: 1, opacity: 1
+      };
+
+      // Render pre-generated
+      statusEl.textContent = '渲染预生成版本...';
+      const canvasPre = new fabric.Canvas('canvasPre', {
+        width: preFabric.width,
+        height: preFabric.height,
+        backgroundColor: preFabric.background || '#fff',
+      });
+
+      await new Promise((resolve) => {
+        canvasPre.loadFromJSON(preFabric, () => {
+          canvasPre.renderAll();
+          resolve();
+        });
+      });
+      scaleCanvas(document.getElementById('canvasPre'), canvasPre, 310, 415);
+      document.getElementById('infoPre').textContent =
+        preFabric.width + 'x' + preFabric.height + ', ' +
+        preFabric.objects.length + ' 对象, 无背景图';
+
+      // Render our version
+      statusEl.textContent = '渲染运行时转换版本...';
+      const canvasOurs = new fabric.Canvas('canvasOurs', {
+        width: ourFabric.width,
+        height: ourFabric.height,
+        backgroundColor: ourFabric.background || '#fff',
+      });
+
+      await new Promise((resolve) => {
+        canvasOurs.loadFromJSON(ourFabric, () => {
+          if (ourFabric.backgroundImage && ourFabric.backgroundImage.src) {
+            fabric.Image.fromURL(ourFabric.backgroundImage.src, function(img) {
+              if (img) {
+                img.set({ selectable: false, evented: false, opacity: ourFabric.backgroundImage.opacity || 1 });
+                img.scaleX = ourFabric.backgroundImage.scaleX;
+                img.scaleY = ourFabric.backgroundImage.scaleY;
+                canvasOurs.setBackgroundImage(img, canvasOurs.renderAll.bind(canvasOurs));
+              }
+              resolve();
+            }, { crossOrigin: 'anonymous' });
+          } else {
+            resolve();
+          }
+        });
+      });
+      scaleCanvas(document.getElementById('canvasOurs'), canvasOurs, 310, 415);
+      document.getElementById('infoOurs').textContent =
+        ourFabric.width + 'x' + ourFabric.height + ', ' +
+        ourFabric.objects.length + ' 对象, 有背景图';
+
+      statusEl.textContent = '完成！请对比左右两边的渲染效果';
+      document.getElementById('analysis').innerHTML =
+        '<h3>差异分析</h3>' +
+        '<p><strong>1. 画布高度：</strong>预生成 ' + preFabric.height + 'px vs 我们 ' + ourFabric.height + 'px (差 ' + (preFabric.height - ourFabric.height) + 'px)</p>' +
+        '<p><strong>2. 背景图：</strong>预生成没有 backgroundImage，我们多了一个 backgroundImage</p>' +
+        '<p><strong>3. Group 内部：</strong>12 个子元素的位置/尺寸/缩放完全一致</p>' +
+        '<h3>如果左右渲染效果不同</h3>' +
+        '<p>差异来自 backgroundImage —— 我们多渲染了一张底层背景图。预生成脚本选择不设置 backgroundImage，可能因为背景图已通过其他方式体现。</p>' +
+        '<p>如果 layout background image 和 Group 内的第一个 Image 是同一张图的不同版本，多设 backgroundImage 会导致重复渲染。</p>';
+
+    } catch (e) {
+      statusEl.textContent = '错误: ' + e.message;
+      console.error(e);
+    }
+  }
+
+  main();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2020 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.39009661835748793,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": 1656,
+      "width": 1242,
+      "backgroundImage": null,
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": null,
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "8d4fb510-15b0-4b7c-9d78-4beeaa285dc6",
+      "imageUrl": "",
+      "title": "",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "970361492"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "9546057b-7a9d-4606-a5c4-8fc232f39688",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1134.6255063741132,
+          "height": 1212,
+          "left": 53.687246812943386,
+          "top": 358,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "571e5684-a137-4780-b416-4ab6269fded2",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/71636/b6cbf439c9874b1898f18f64888b9808.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1134.6255063741132,
+              "height": 1212,
+              "left": 0,
+              "top": 5.684341886080802e-14,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#ffffffff",
+                "#000000ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/1b7f8950a0754a9295f72a21cb5f0ccc.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1.0020006944559268,
+                "imageSlice": {
+                  "left": 435,
+                  "top": 645,
+                  "right": 695,
+                  "bottom": 561
+                }
+              },
+              "naturalWidth": 1132.36,
+              "naturalHeight": 1209.58
+            },
+            {
+              "uuid": "db78368d-6389-43cc-84ba-ac9783579830",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 985.6366729736328,
+              "height": 379.495,
+              "left": 92.31275318705661,
+              "top": 185.625,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "579d8338-a516-4a72-82a8-dec9a1f0e3a1",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 277,
+                  "height": 81.375,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "d5c559c1-68dd-46c4-848d-c25c6af88b71",
+                      "imageUrl": "",
+                      "type": "ninePatch",
+                      "title": "图层 4",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 277,
+                      "height": 63,
+                      "version": "8.1.1-beta.1",
+                      "left": 0,
+                      "top": 18.375,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 7,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/68e763c3c07b45208da75b483a1b42bc.png",
+                      "imageSlice": {
+                        "left": 138,
+                        "top": 31,
+                        "right": 137,
+                        "bottom": 30
+                      },
+                      "originWidth": 277,
+                      "originHeight": 63,
+                      "effectScale": 1,
+                      "backgroundColor": null
+                    },
+                    {
+                      "uuid": "7a1eee4b-5285-4c60-a914-1f9b4f3eba98",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "赏花踏青",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 221,
+                      "height": 66,
+                      "version": "9.2.0",
+                      "left": 30.9375,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 33993924,
+                            "ttf": "https://st0.dancf.com/csc/49/fonts/0/20210008-100107-fa01.ttf",
+                            "woff": "https://st0.dancf.com/csc/49/fonts/0/20210008-100107-cf0b.woff",
+                            "fontFamily": "HelloFont-WenYiHei",
+                            "type": "font",
+                            "alias": "字由文艺黑",
+                            "weight": 400,
+                            "lang": "zh",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#000000ff",
+                      "fontFamily": "HelloFont-WenYiHei",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 55,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "赏花踏青",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#000000ff"
+                      ],
+                      "mainColor": null,
+                      "listStyle": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "backgroundColor": null,
+                      "adjustsFontSize": false,
+                      "quality": 100,
+                      "boundingBox": {
+                        "left": 4.0625,
+                        "right": 216.96875,
+                        "top": -44.875,
+                        "bottom": 6.328125
+                      },
+                      "fillOpacity": 1,
+                      "highlight": null
+                    }
+                  ]
+                },
+                {
+                  "uuid": "43a675ed-11a5-436f-b345-45249987b16e",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "最佳时间：3月中旬至4月中旬 推荐地点： 樱花：南京鸡鸣寺路、北京玉渊潭公园、武汉东湖樱花园 桃花：杭州西湖、成都龙泉山、西安",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 982,
+                  "height": 265,
+                  "version": "9.2.0",
+                  "left": 3.6366729736328125,
+                  "top": 114.495,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 206607,
+                        "ttf": "https://gd-filems.dancf.com/gaoding/editor/20231222-172846-jagfg.ttf",
+                        "woff": "https://gd-filems.dancf.com/gaoding/editor/20231222-172847-gbfbg.woff",
+                        "fontFamily": "SourceHanSansSC-Regular",
+                        "type": "font",
+                        "alias": "思源黑体 常规",
+                        "weight": 400,
+                        "lang": "zh",
+                        "fromUser": true
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 700,
+                  "fontSize": 38,
+                  "lineHeight": 1.74,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "justify",
+                  "verticalAlign": "top",
+                  "content": "最佳时间：3月中旬至4月中旬\n推荐地点：\n樱花：南京鸡鸣寺路、北京玉渊潭公园、武汉东湖樱花园\n桃花：杭州西湖、成都龙泉山、西安骊山",
+                  "contents": [
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "最佳时间：",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240913/5e8e160d2ddba1dd5e1cb91b686fea22.svg",
+                        "width": 37,
+                        "height": 2,
+                        "svgInfo": {
+                          "colors": [
+                            "#fff09dff"
+                          ],
+                          "strokeWidth": 0.503030303030303
+                        },
+                        "renderRect": {
+                          "bottom": 0,
+                          "left": -0.1,
+                          "right": 0.1,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 400,
+                      "textDecoration": "none",
+                      "content": "3月中旬至4月中旬\n"
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "推荐地点：",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240913/5e8e160d2ddba1dd5e1cb91b686fea22.svg",
+                        "width": 37,
+                        "height": 2,
+                        "svgInfo": {
+                          "colors": [
+                            "#fff09dff"
+                          ],
+                          "strokeWidth": 0.503030303030303
+                        },
+                        "renderRect": {
+                          "bottom": 0,
+                          "left": -0.1,
+                          "right": 0.1,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "\n"
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 400,
+                      "textDecoration": "none",
+                      "content": "樱花：南京鸡鸣寺路、北京玉渊潭公园、武汉东湖樱花园\n桃花：杭州西湖、成都龙泉山、西安骊山"
+                    }
+                  ],
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": 1.3633270263671875,
+                    "right": 946.9375,
+                    "top": -1.382537841796875,
+                    "bottom": 232.93936157226562
+                  },
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "a824863c-35dd-4818-8e75-fbbc290a055b",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 703.1674592848123,
+              "height": 444.4474623515871,
+              "left": 92.31275318705656,
+              "top": 593.6725376484128,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "fbe21744-b116-42cb-9355-a1170db15ad9",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 277,
+                  "height": 80.3274623515872,
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "elements": [
+                    {
+                      "uuid": "52f29b7b-33ac-4b4d-9bce-30ed3df0156f",
+                      "imageUrl": "",
+                      "type": "ninePatch",
+                      "title": "图层 4",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 277,
+                      "height": 63,
+                      "version": "8.1.1-beta.1",
+                      "left": 0,
+                      "top": 17.3274623515872,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 7,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/69bf76f91cb64d42ac37dd6846421806.png",
+                      "imageSlice": {
+                        "left": 138,
+                        "top": 31,
+                        "right": 137,
+                        "bottom": 30
+                      },
+                      "originWidth": 277,
+                      "originHeight": 63,
+                      "effectScale": 1,
+                      "backgroundColor": null
+                    },
+                    {
+                      "uuid": "9eb41d88-9f18-418c-9c79-197ec3563551",
+                      "imageUrl": "",
+                      "type": "text",
+                      "title": "春日徒步",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 221,
+                      "height": 66,
+                      "version": "9.2.0",
+                      "left": 30.406443880545424,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 5,
+                      "dragable": true,
+                      "rotatable": true,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": [
+                          {
+                            "id": 33993924,
+                            "ttf": "https://st0.dancf.com/csc/49/fonts/0/20210008-100107-fa01.ttf",
+                            "woff": "https://st0.dancf.com/csc/49/fonts/0/20210008-100107-cf0b.woff",
+                            "fontFamily": "HelloFont-WenYiHei",
+                            "type": "font",
+                            "alias": "字由文艺黑",
+                            "weight": 400,
+                            "lang": "zh",
+                            "fromUser": true
+                          }
+                        ]
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": "blendNormal",
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "color": "#000000ff",
+                      "fontFamily": "HelloFont-WenYiHei",
+                      "fontStyle": "normal",
+                      "fontWeight": 400,
+                      "fontSize": 55,
+                      "lineHeight": 1.2,
+                      "letterSpacing": 0,
+                      "textDecoration": "none",
+                      "writingMode": "horizontal-tb",
+                      "textAlign": "left",
+                      "verticalAlign": "top",
+                      "content": "春日徒步",
+                      "contents": null,
+                      "effectScale": 1,
+                      "textShadow": null,
+                      "autoScale": true,
+                      "textEffects": [],
+                      "shadows": [],
+                      "aggregatedColors": [
+                        "#000000ff"
+                      ],
+                      "mainColor": null,
+                      "listStyle": "",
+                      "textAlignLast": "auto",
+                      "autoAdaptive": 3,
+                      "paragraphSpacing": 0,
+                      "textIndent": 0,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "backgroundColor": null,
+                      "adjustsFontSize": false,
+                      "quality": 100,
+                      "boundingBox": {
+                        "left": 1.59375,
+                        "right": 216.703125,
+                        "top": -43.890625,
+                        "bottom": 5.28125
+                      },
+                      "fillOpacity": 1
+                    }
+                  ]
+                },
+                {
+                  "uuid": "0f491af9-9dd2-4a9b-a60d-faf68a41c281",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "最佳时间：4月初至5月中旬 推荐路线： 黄山：云海、奇松、温泉、怪石 张家界：天子山、袁家界、黄石寨 九寨沟：五花海、珍珠滩瀑",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 700,
+                  "height": 331,
+                  "version": "9.2.0",
+                  "left": 3.1674592848122813,
+                  "top": 113.44746235158709,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": [
+                      {
+                        "id": 206607,
+                        "ttf": "https://gd-filems.dancf.com/gaoding/editor/20231222-172846-jagfg.ttf",
+                        "woff": "https://gd-filems.dancf.com/gaoding/editor/20231222-172847-gbfbg.woff",
+                        "fontFamily": "SourceHanSansSC-Regular",
+                        "type": "font",
+                        "alias": "思源黑体 常规",
+                        "weight": 400,
+                        "lang": "zh",
+                        "fromUser": true
+                      }
+                    ]
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 700,
+                  "fontSize": 38,
+                  "lineHeight": 1.74,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "justify",
+                  "verticalAlign": "top",
+                  "content": "最佳时间：4月初至5月中旬\n推荐路线：\n黄山：云海、奇松、温泉、怪石\n张家界：天子山、袁家界、黄石寨\n九寨沟：五花海、珍珠滩瀑布、长海",
+                  "contents": [
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "最佳时间：",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240913/5e8e160d2ddba1dd5e1cb91b686fea22.svg",
+                        "width": 37,
+                        "height": 2,
+                        "svgInfo": {
+                          "colors": [
+                            "#fff09dff"
+                          ],
+                          "strokeWidth": 0.503030303030303
+                        },
+                        "renderRect": {
+                          "bottom": 0,
+                          "left": -0.1,
+                          "right": 0.1,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 400,
+                      "textDecoration": "none",
+                      "content": "4月初至5月中旬\n"
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "推荐路线：",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240913/5e8e160d2ddba1dd5e1cb91b686fea22.svg",
+                        "width": 37,
+                        "height": 2,
+                        "svgInfo": {
+                          "colors": [
+                            "#fff09dff"
+                          ],
+                          "strokeWidth": 0.503030303030303
+                        },
+                        "renderRect": {
+                          "bottom": 0,
+                          "left": -0.1,
+                          "right": 0.1,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "\n"
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSansSC-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38,
+                      "fontWeight": 400,
+                      "textDecoration": "none",
+                      "content": "黄山：云海、奇松、温泉、怪石\n张家界：天子山、袁家界、黄石寨\n九寨沟：五花海、珍珠滩瀑布、长海"
+                    }
+                  ],
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 1,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": 1.832763671875,
+                    "right": 605.6975708007812,
+                    "top": -1.382537841796875,
+                    "bottom": 297.7981872558594
+                  },
+                  "fillOpacity": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "uuid": "da89714f-e1a2-42e2-be95-cae26c6f266b",
+          "imageUrl": "",
+          "type": "image",
+          "title": "樱花",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 82,
+          "height": 81,
+          "version": "7.5.5",
+          "left": 695,
+          "top": 547,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/5c7993f8b356492f8251fbfc2a2165c1.png",
+          "loop": 0,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0,
+            "right": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "mainColor": null,
+          "naturalWidth": 82,
+          "naturalHeight": 81,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "backgroundColor": null,
+          "speed": 1,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "77f56fb1-1ec0-4733-8bd1-1d5215ee0012",
+          "imageUrl": "",
+          "type": "image",
+          "title": "花",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 333,
+          "height": 323,
+          "version": "7.5.5",
+          "left": 797,
+          "top": 1022,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 48274108,
+                "type": "image"
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/c622a443652c43f29a33827f249746b9.png",
+          "loop": 0,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0,
+            "right": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "mainColor": null,
+          "naturalWidth": 333,
+          "naturalHeight": 323,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "backgroundColor": null,
+          "speed": 1,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "1ce71977-3d78-40cf-b0f2-09f874b0f9d4",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 829.3999999999996,
+          "height": 344.92500213207495,
+          "left": 206.29999999999944,
+          "top": 148.80360188507333,
+          "transform": {
+            "a": 0.9991941242222901,
+            "b": 0.040138536590795505,
+            "c": -0.040138536590795505,
+            "d": 0.9991941242222901,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "a62ba57f-d404-4fb6-b13e-cbd4d319d84f",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/72176/9fcd1d654df14dedb9cd47af300c8639.png",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 829.3999999999996,
+              "height": 344.92500213207495,
+              "left": -1.4210854715202004e-14,
+              "top": 0,
+              "transform": {
+                "a": 0.9999999999999999,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#fff09dff",
+                "#000000ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/a0a3f67cfe924e5e9b63656415095046.svg",
+              "content": "",
+              "ninePatch": {
+                "effectScale": 1.0359041419109076,
+                "imageSlice": {
+                  "left": 674,
+                  "top": 166,
+                  "right": 378,
+                  "bottom": 163
+                }
+              },
+              "naturalWidth": 1055.31,
+              "naturalHeight": 332.97
+            },
+            {
+              "uuid": "71a59e6e-ca9a-4e3c-8492-779f7f275aa7",
+              "imageUrl": "",
+              "type": "text",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 720,
+              "height": 168,
+              "version": "9.2.0",
+              "left": 66.59999999999991,
+              "top": 51.81394092731034,
+              "transform": {
+                "a": 0.9999999999999999,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 206607,
+                    "ttf": "https://gd-filems.dancf.com/gaoding/editor/20231222-172846-jagfg.ttf",
+                    "woff": "https://gd-filems.dancf.com/gaoding/editor/20231222-172847-gbfbg.woff",
+                    "fontFamily": "SourceHanSansSC-Regular",
+                    "type": "font",
+                    "alias": "思源黑体 常规",
+                    "weight": 400,
+                    "lang": "zh",
+                    "fromUser": true
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#000000ff",
+              "fontFamily": "SourceHanSansSC-Regular",
+              "fontStyle": "normal",
+              "fontWeight": 700,
+              "fontSize": 120,
+              "lineHeight": 1.4,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "春日游玩路线",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#000000ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "ruleIndex": -1,
+              "scale": 0.6,
+              "boardScale": 0.21,
+              "fillOpacity": 1,
+              "adjustsFontSize": false,
+              "parents": []
+            }
+          ]
+        },
+        {
+          "uuid": "40d4d969-f4e6-490a-893f-b76c2abf75eb",
+          "imageUrl": "",
+          "type": "text",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 595,
+          "height": 77,
+          "version": "9.2.0",
+          "left": 303.12435873927296,
+          "top": 369.9101884183198,
+          "transform": {
+            "a": 0.99919412422229,
+            "b": 0.0401385365907955,
+            "c": -0.040138536590795505,
+            "d": 0.9991941242222901,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 206607,
+                "ttf": "https://gd-filems.dancf.com/gaoding/editor/20231222-172846-jagfg.ttf",
+                "woff": "https://gd-filems.dancf.com/gaoding/editor/20231222-172847-gbfbg.woff",
+                "fontFamily": "SourceHanSansSC-Regular",
+                "type": "font",
+                "alias": "思源黑体 常规",
+                "weight": 400,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#000000ff",
+          "fontFamily": "SourceHanSansSC-Regular",
+          "fontStyle": "normal",
+          "fontWeight": 700,
+          "fontSize": 55,
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "center",
+          "verticalAlign": "top",
+          "content": "#春天就要上春山",
+          "contents": null,
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#000000ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "ruleIndex": -1,
+          "scale": 0.6,
+          "boardScale": 0.21,
+          "fillOpacity": 1,
+          "adjustsFontSize": false
+        },
+        {
+          "uuid": "101769d9-292c-4ba7-a0de-5cf94cd985c1",
+          "imageUrl": "",
+          "type": "svg",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 222.37018692138875,
+          "height": 146.6331361519517,
+          "left": 871.1674592848121,
+          "top": 71.06000000000006,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "colors": [
+            "#000000ff"
+          ],
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/844ab752a02848eaa0337cf4f6c81390.svg",
+          "content": "",
+          "naturalWidth": 226.46,
+          "naturalHeight": 149.33
+        }
+      ],
+      "userAdded": false,
+      "background": {
+        "color": "#ffffffff",
+        "watermarkEnable": false,
+        "image": {
+          "width": 1242,
+          "height": 1656,
+          "opacity": 1,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/71636/ad302f0d0ebc4e1190e5d6e882a03151.jpg",
+          "left": 0,
+          "top": 0,
+          "naturalWidth": 1242,
+          "naturalHeight": 1656,
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "filterInfo": null,
+          "filter": null,
+          "metaInfo": {
+            "materials": []
+          }
+        }
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "repeatId": null,
+      "repeatGroup": null,
+      "backgroundColor": "#ffffffff",
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/72176/bf702b2908d54a6cae1f6d605f8112cd.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundImage": "https://gd-filems.dancf.com/gaoding/gaoding/71636/ad302f0d0ebc4e1190e5d6e882a03151.jpg",
+      "backgroundImageInfo": {
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        },
+        "width": 1242,
+        "height": 1656,
+        "opacity": 1
+      },
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

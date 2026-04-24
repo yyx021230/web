@@ -1,0 +1,965 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.6102053140096618,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "d429517f-9a17-40a1-aed9-9ee5dfc526e6",
+      "elements": [
+        {
+          "uuid": "f9b6300f-b3dc-4db2-80c3-6b0794e29e14",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "1",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "2563184599"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "elements": [
+            {
+              "uuid": "28d937d8-b7c0-426e-bb38-66d1ae13db00",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1242,
+              "height": 1656,
+              "left": -3.241851231905457e-14,
+              "top": -3.907985046680551e-14,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#e8b897ff",
+                "#cc8f66ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/7fca9975b9f249b9b43392cc56fb999b.svg",
+              "content": "",
+              "naturalWidth": 1242,
+              "naturalHeight": 1656
+            },
+            {
+              "uuid": "3f1b8495-e420-40c8-9bbd-bbee41b9e893",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1156.1599999999999,
+              "height": 1582.81,
+              "left": 42.91999999999996,
+              "top": 27.36120732310735,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "elements": [
+                {
+                  "uuid": "57ea8f01-3db2-47ea-86bb-e7d8a9034231",
+                  "imageUrl": "",
+                  "type": "svg",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 1156.16,
+                  "height": 1582.81,
+                  "left": 5.684341886080802e-14,
+                  "top": 4.973799150320701e-14,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "colors": [
+                    "#e22b3fff",
+                    "#ffffffff",
+                    "#a80b0bff",
+                    "#c2b9b8ff",
+                    "#f8f4d8ff",
+                    "#dbd3d2ff"
+                  ],
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/75d68dd632164a939d7d3e2e7fa26c80.svg",
+                  "content": "",
+                  "naturalWidth": 1156.16,
+                  "naturalHeight": 1582.81
+                },
+                {
+                  "uuid": "efe1fb56-ef41-4346-aff9-c361a5097682",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 789,
+                  "height": 501,
+                  "version": "9.2.0",
+                  "left": 183.58,
+                  "top": 588.9319643740723,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#000000ff",
+                  "fontFamily": "SourceHanSerifSC-Bold",
+                  "fontStyle": "normal",
+                  "fontWeight": 700,
+                  "fontSize": 111.3,
+                  "lineHeight": 1.5,
+                  "letterSpacing": -4.050489119698875,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "选择列表样式\n调整大小布局\n收获整齐列表",
+                  "contents": [
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "选择",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#8ceaffff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "列表样式",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#ff4141ff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "\n",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#ff4141ff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "from": null,
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "调整",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#8ceaffff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "大小布局\n",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#ff4141ff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "from": null,
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "收获",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#8ceaffff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    },
+                    {
+                      "color": "#000000ff",
+                      "fontFamily": "SourceHanSerifSC-Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 111.3,
+                      "fontWeight": 700,
+                      "textDecoration": "none",
+                      "content": "整齐列表",
+                      "highlight": {
+                        "type": "svg",
+                        "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                        "svgInfo": {
+                          "colors": [
+                            "#ff4141ff"
+                          ],
+                          "strokeWidth": 0.17575757575757578
+                        },
+                        "width": 37,
+                        "height": 2,
+                        "renderRect": {
+                          "bottom": 0.4,
+                          "left": 0,
+                          "right": 0,
+                          "top": 0
+                        },
+                        "style": {
+                          "y": 0.92,
+                          "height": 0
+                        },
+                        "repeat": "round",
+                        "from": null,
+                        "metaInfo": {
+                          "materials": []
+                        }
+                      }
+                    }
+                  ],
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": "",
+                  "listStyleBackground": {
+                    "url": "https://cdn.dancf.com/fe-assets/20240910/301bd72dcd673a7771ac2210d9838f05.svg",
+                    "type": "svg",
+                    "naturalWidth": 64,
+                    "naturalHeight": 64,
+                    "colors": [
+                      "#ff5b63ff",
+                      "#ff0000ff"
+                    ],
+                    "size": "small",
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  },
+                  "background": null,
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "ruleIndex": -1,
+                  "scale": 0.6,
+                  "boardScale": 0.21,
+                  "fillOpacity": 1,
+                  "adjustsFontSize": false,
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240816/cb23c3863771782b36cb1c93d1f8d3f4.svg",
+                    "svgInfo": {
+                      "colors": [
+                        "#8ceaffff"
+                      ],
+                      "strokeWidth": 0.17575757575757578
+                    },
+                    "width": 37,
+                    "height": 2,
+                    "renderRect": {
+                      "bottom": 0.4,
+                      "left": 0,
+                      "right": 0,
+                      "top": 0
+                    },
+                    "style": {
+                      "y": 0.92,
+                      "height": 0
+                    },
+                    "repeat": "round",
+                    "metaInfo": {
+                      "materials": []
+                    }
+                  }
+                },
+                {
+                  "uuid": "96551882-09d0-4f21-b544-18c2a566d348",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/90882/f9572bfeb1974ce99777c2709a2dc0ca.png",
+                  "type": "effectText",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 593.7189510143494,
+                  "height": 116.97808328535507,
+                  "version": "9.1.0",
+                  "left": 281.2205244928253,
+                  "top": 130.80358922988887,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "typoWidthRatio": 1,
+                  "typoHeightRatio": 1,
+                  "color": "#000000ff",
+                  "fontFamily": "Dream-PossibleGB Bold",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 110.2,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "center",
+                  "verticalAlign": "top",
+                  "contents": [
+                    {
+                      "color": "#f9f4d8ff",
+                      "fontFamily": "Dream-PossibleGB Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 110.2,
+                      "fontWeight": 400,
+                      "content": "5.1"
+                    },
+                    {
+                      "color": "#ffffffff",
+                      "fontFamily": "Dream-PossibleGB Bold",
+                      "fontStyle": "normal",
+                      "fontSize": 110.2,
+                      "fontWeight": 400,
+                      "content": "劳动节"
+                    }
+                  ],
+                  "effectScale": 1,
+                  "textEffects": [],
+                  "shadows": [],
+                  "deformation": {
+                    "enable": true,
+                    "type": "lateralStretching",
+                    "intensities": [
+                      16
+                    ],
+                    "isFollowTangent": true,
+                    "randomSeed": 0
+                  },
+                  "aggregatedColors": [
+                    "#000000ff"
+                  ],
+                  "mainColor": null,
+                  "image": {
+                    "offset": {
+                      "x": 0,
+                      "y": 0
+                    },
+                    "width": 464.2078179119248,
+                    "height": 140.20149413813914
+                  },
+                  "autoAdaptive": 3,
+                  "autoScale": true,
+                  "content": "5.1劳动节",
+                  "fillOpacity": 1,
+                  "effectedResult": {
+                    "left": -2,
+                    "top": -2,
+                    "width": 596,
+                    "height": 119
+                  }
+                },
+                {
+                  "uuid": "3b91c910-5e91-4623-97d0-de91d06ce78c",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/90882/98c9276d3bbd48739fa8612a922352b5.png",
+                  "type": "effectText",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 272,
+                  "height": 56,
+                  "version": "9.1.0",
+                  "left": 441.5916279069767,
+                  "top": 246.59742913691946,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": true,
+                  "rotatable": true,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "typoWidthRatio": 1,
+                  "typoHeightRatio": 1,
+                  "color": "#ffffffff",
+                  "fontFamily": "LogoSCUnboundedSans-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 38.2,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "center",
+                  "verticalAlign": "top",
+                  "contents": [
+                    {
+                      "color": "#ffffffff",
+                      "fontFamily": "LogoSCUnboundedSans-Regular",
+                      "fontStyle": "normal",
+                      "fontSize": 38.2,
+                      "fontWeight": 400,
+                      "textDecoration": "none",
+                      "content": "Labor Day"
+                    }
+                  ],
+                  "effectScale": 1,
+                  "textEffects": [],
+                  "shadows": [],
+                  "deformation": {
+                    "enable": true,
+                    "type": "lateralStretching",
+                    "intensities": [
+                      16
+                    ],
+                    "isFollowTangent": true,
+                    "randomSeed": 0
+                  },
+                  "aggregatedColors": [
+                    "#ffffffff"
+                  ],
+                  "mainColor": null,
+                  "image": {
+                    "offset": {
+                      "x": 0,
+                      "y": 0
+                    },
+                    "width": 301.62939139040077,
+                    "height": 68.88762609242433
+                  },
+                  "autoAdaptive": 3,
+                  "autoScale": true,
+                  "content": "Labor Day",
+                  "fillOpacity": 1,
+                  "effectedResult": {
+                    "left": -2,
+                    "top": -2,
+                    "width": 274,
+                    "height": 58
+                  }
+                }
+              ]
+            }
+          ],
+          "userAdded": false,
+          "background": {
+            "color": "#00000000",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "backgroundEffectImage": "",
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/90882/cb5b57b5c9214fc7a323dcfa57e7eaaa.png",
+            "width": 256,
+            "height": 341
+          },
+          "backgroundColor": "#00000000",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}

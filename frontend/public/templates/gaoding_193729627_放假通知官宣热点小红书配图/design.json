@@ -1,0 +1,1100 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.38204506399550875,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": 1656,
+      "width": 1242,
+      "backgroundImage": null,
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": null,
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "39702868-b012-4bdf-afc9-c49b3b1c3d15",
+      "imageUrl": "",
+      "title": "",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "1981828214"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "55150380-d6dd-4378-ba2b-c4fc97b8a2a8",
+          "imageUrl": "",
+          "type": "image",
+          "title": "底色",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1659,
+          "version": "7.5.5",
+          "left": -2.1316282072803006e-14,
+          "top": -2.398081733190338e-14,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/80678/6d342da314524d55bf41ee3d38f986bf.jpg",
+          "loop": 0,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0,
+            "right": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "mainColor": null,
+          "naturalWidth": 1242,
+          "naturalHeight": 1659,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "backgroundColor": null,
+          "speed": 1,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "d62d89a1-cc1d-4569-8931-6ab903090497",
+          "imageUrl": "",
+          "type": "image",
+          "title": "线性图框",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1158,
+          "height": 1619,
+          "version": "7.5.5",
+          "left": 42,
+          "top": 19,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": []
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/80678/cd514542cee0449b9f3169c6de8018dc.png",
+          "loop": 0,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0,
+            "right": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "mainColor": null,
+          "naturalWidth": 1158,
+          "naturalHeight": 1619,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "backgroundColor": null,
+          "speed": 1,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "a2c70fcb-d655-491b-9aa3-825e6cbefb6d",
+          "imageUrl": "",
+          "type": "text",
+          "title": "体制内 和外企 该怎么选呢？",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1021.3358764648438,
+          "height": 1117,
+          "version": "9.2.0",
+          "left": 146.62066209409932,
+          "top": 368.06796358723915,
+          "transform": {
+            "a": 0.9999994533672184,
+            "b": -0.0010455932595338962,
+            "c": 0.0010455932595339864,
+            "d": 0.9999994533672184,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 206586,
+                "ttf": "https://gd-filems.dancf.com/gaoding/editor/20221222-201804-bgeae.ttf",
+                "woff": "https://gd-filems.dancf.com/gaoding/editor/20221222-201804-abghb.woff",
+                "fontFamily": "HappyZcool-2016",
+                "type": "font",
+                "alias": "站酷快乐体",
+                "weight": 400,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#000000ff",
+          "fontFamily": "HappyZcool-2016",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 48,
+          "lineHeight": 1.1,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "justify",
+          "verticalAlign": "top",
+          "content": "一、元旦：1月1日（周三）放假1天，不调休。\n二、春节：1月28日（农历除夕、周二）至2月4日（农历正月初七、周二）放假调休，共8天。1月26日（周日）、2月8日（周六）上班。\n三、清明节：4月4日（周五）至6日（周日）放假，共3天。\n四、劳动节：5月1日（周四）至5日（周一）放假调休，共5天。4月27日（周日）上班。\n五、端午节：5月31日（周六）至6月2日（周一）放假，共3天。\n六、国庆节、中秋节：10月1日（周三）至8日（周三）放假调休，共8天。9月28日（周日）、10月11日（周六）上班。",
+          "contents": [
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "一、元旦：1月1日（周三）",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "放假1天，不调休",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "。\n二、春节：1月28日（农历除夕、周二）至2月4日（农历正月初七、周二）放假调休，",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "共8天。",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "1月26日（周日）、2月8日（周六）上班。\n三、清明节：4月4日（周五）至6日（周日）放假，",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "共3天。",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "\n四、劳动节：5月1日（周四）至5日（周一）放假调休，",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "共5天。",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "4月27日（周日）上班。\n五、端午节：5月31日（周六）至6月2日（周一）放假，",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "共3天",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "。\n六、国庆节、中秋节：10月1日（周三）至8日（周三）放假调休，",
+              "highlight": null
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "共8天",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240813/c4db70c1b7a9c2fb1ded5039cbacbf2b.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#e9451aff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "renderRect": {
+                  "bottom": 0.5,
+                  "left": -0.15,
+                  "right": 0.15,
+                  "top": -0.3
+                },
+                "style": {
+                  "y": 0.5,
+                  "height": 1
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontSize": 48,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "。9月28日（周日）、10月11日（周六）上班。",
+              "highlight": null
+            }
+          ],
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#000000ff"
+          ],
+          "mainColor": null,
+          "listStyle": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 1.5,
+          "textIndent": 0,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "backgroundColor": null,
+          "adjustsFontSize": false,
+          "quality": 100,
+          "boundingBox": {
+            "left": -139.875,
+            "right": 123.703125,
+            "top": -37.578125,
+            "bottom": 132.28732299804688
+          },
+          "fillOpacity": 1,
+          "highlight": {
+            "type": "svg",
+            "url": "https://cdn.dancf.com/fe-assets/20240819/0964fc20a458f345a5c2b200aa3709a9.svg",
+            "width": 28,
+            "height": 3,
+            "svgInfo": {
+              "colors": [
+                "#e9451aff"
+              ],
+              "strokeWidth": 0.042222222222222223
+            },
+            "renderRect": {
+              "bottom": 0.4,
+              "left": 0,
+              "right": 0,
+              "top": 0
+            },
+            "style": {
+              "y": 0.9,
+              "height": 0.2
+            },
+            "repeat": "repeat"
+          }
+        },
+        {
+          "uuid": "d6dd3506-5d30-4272-977e-146a2e5fc88f",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 828.7516229200364,
+          "height": 187.0548171555354,
+          "left": 146.03697740648477,
+          "top": 107.25345009846998,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "65caa835-56c7-4f32-a7b6-8e0ef7881c25",
+              "imageUrl": "",
+              "type": "image",
+              "title": "表情1",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 167.74168695549153,
+              "height": 187.05481715553543,
+              "version": "7.5.5",
+              "left": 2.842170943040401e-14,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 48185692,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/80678/8d179feeb53b4891b054a6c62decd585.png",
+              "loop": 0,
+              "imageEffects": [],
+              "imageTransform": {
+                "a": 0.798769937883293,
+                "b": 0,
+                "c": 0,
+                "d": 0.8313547429134908,
+                "tx": 0,
+                "ty": 0
+              },
+              "effectedResult": {
+                "width": 0,
+                "height": 0,
+                "left": 0,
+                "top": 0,
+                "right": 0
+              },
+              "filterInfo": {
+                "id": -1,
+                "url": "",
+                "strong": 0.8,
+                "intensity": 0.8
+              },
+              "mosaic": null,
+              "shadows": [],
+              "aggregatedColors": [],
+              "mainColor": null,
+              "naturalWidth": 210,
+              "naturalHeight": 225,
+              "effectScale": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "enableDragToMask": true,
+              "resourceType": "image",
+              "naturalDuration": 0,
+              "autoMatting": false,
+              "backgroundColor": null,
+              "speed": 1,
+              "quality": 100,
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "6877c4fd-d88c-43cd-a592-f2b3334ca709",
+              "imageUrl": "",
+              "type": "text",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 635,
+              "height": 118,
+              "version": "9.2.0",
+              "left": 193.75162292003637,
+              "top": 34.527408577767716,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 206586,
+                    "ttf": "https://gd-filems.dancf.com/gaoding/editor/20221222-201804-bgeae.ttf",
+                    "woff": "https://gd-filems.dancf.com/gaoding/editor/20221222-201804-abghb.woff",
+                    "fontFamily": "HappyZcool-2016",
+                    "type": "font",
+                    "alias": "站酷快乐体",
+                    "weight": 400,
+                    "lang": "zh",
+                    "fromUser": true
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#000000ff",
+              "fontFamily": "HappyZcool-2016",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 84,
+              "lineHeight": 1.4,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "2025年放假安排",
+              "contents": [
+                {
+                  "color": "#000000ff",
+                  "fontFamily": "HappyZcool-2016",
+                  "fontStyle": "normal",
+                  "fontSize": 84,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "2025年"
+                },
+                {
+                  "color": "#000000ff",
+                  "fontFamily": "HappyZcool-2016",
+                  "fontStyle": "normal",
+                  "fontSize": 84,
+                  "fontWeight": 400,
+                  "textDecoration": "none",
+                  "content": "放假安排",
+                  "highlight": {
+                    "type": "svg",
+                    "url": "https://cdn.dancf.com/fe-assets/20240914/e9f0fcd4410efa04be94cfe6ae5b4d11.svg",
+                    "width": 37,
+                    "height": 2,
+                    "renderRect": {
+                      "bottom": 0.4,
+                      "left": 0,
+                      "right": 0.1,
+                      "top": 0
+                    },
+                    "svgInfo": {
+                      "colors": [
+                        "#ea4c23ff"
+                      ],
+                      "strokeWidth": 0.12717171717171716
+                    },
+                    "style": {
+                      "y": 0.9,
+                      "height": 0.03
+                    },
+                    "repeat": "round"
+                  }
+                }
+              ],
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#000000ff"
+              ],
+              "mainColor": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "ruleIndex": -1,
+              "scale": 0.6,
+              "boardScale": 0.21,
+              "fillOpacity": 1,
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240914/e9f0fcd4410efa04be94cfe6ae5b4d11.svg",
+                "width": 37,
+                "height": 2,
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": 0,
+                  "right": 0.1,
+                  "top": 0
+                },
+                "svgInfo": {
+                  "colors": [
+                    "#ea4c23ff"
+                  ],
+                  "strokeWidth": 0.12717171717171716
+                },
+                "style": {
+                  "y": 0.9,
+                  "height": 0.03
+                },
+                "repeat": "round"
+              }
+            }
+          ]
+        }
+      ],
+      "userAdded": false,
+      "background": {
+        "color": "#ffffffff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "#000000ff",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "repeatId": null,
+      "repeatGroup": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/80678/7ddee01c61ba4f02a1f83699028fa06e.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundColor": "#ffffffff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

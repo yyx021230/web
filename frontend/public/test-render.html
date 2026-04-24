@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Template Render Test</title>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<style>
+body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #eee; }
+h2 { color: #8b5cf6; }
+.container { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
+.panel { background: #2a2a3e; border-radius: 8px; padding: 16px; min-width: 320px; }
+canvas { border: 2px solid #6366f1; border-radius: 4px; display: block; margin: 10px auto; }
+.log { background: #0f0f1a; padding: 12px; border-radius: 4px; max-height: 400px; overflow-y: auto; font-size: 12px; white-space: pre-wrap; }
+.log .error { color: #ef4444; }
+.log .ok { color: #22c55e; }
+.log .warn { color: #f59e0b; }
+img.preview { border: 2px solid #10b981; border-radius: 4px; max-width: 300px; display: block; margin: 10px auto; }
+button { background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+button:hover { background: #818cf8; }
+</style>
+</head>
+<body>
+<h1>🔍 Template Render Test</h1>
+<p>测试预生成的fabric.json直接渲染效果</p>
+
+<div class="container">
+  <div class="panel">
+    <h2>原始预览图</h2>
+    <img class="preview" src="/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE/preview.jpg" alt="preview">
+  </div>
+
+  <div class="panel">
+    <h2>预生成fabric.json渲染</h2>
+    <canvas id="canvas-pre"></canvas>
+    <div id="status-pre" style="text-align:center;font-size:12px;color:#94a3b8"></div>
+    <div id="log-pre" class="log"></div>
+  </div>
+</div>
+
+<script>
+function log(containerId, msg, cls = '') {
+  const el = document.getElementById(containerId);
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadAndRender() {
+  const folder = '/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE';
+  
+  // 加载预生成的fabric.json
+  log('log-pre', 'Fetching fabric.json...');
+  const res = await fetch(`${folder}/fabric.json`, { cache: 'no-store' });
+  if (!res.ok) {
+    log('log-pre', `ERROR: HTTP ${res.status}`, 'error');
+    return;
+  }
+  const fabricJson = await res.json();
+  log('log-pre', `Loaded fabric.json: ${JSON.stringify(fabricJson).length} bytes`, 'ok');
+  log('log-pre', `Canvas: ${fabricJson.width}x${fabricJson.height}`, 'ok');
+  log('log-pre', `Objects: ${fabricJson.objects?.length || 0}`, 'ok');
+
+  // 创建canvas
+  const canvasEl = document.getElementById('canvas-pre');
+  canvasEl.width = fabricJson.width;
+  canvasEl.height = fabricJson.height;
+  
+  const canvas = new fabric.Canvas('canvas-pre', {
+    width: fabricJson.width,
+    height: fabricJson.height,
+    backgroundColor: '#ffffff',
+    preserveObjectStacking: true,
+  });
+
+  log('log-pre', 'Loading JSON onto canvas...');
+  
+  canvas.loadFromJSON(fabricJson, function() {
+    log('log-pre', 'loadFromJSON callback fired', 'ok');
+    log('log-pre', `Canvas objects: ${canvas.getObjects().length}`, 'ok');
+    
+    // 检查图片加载状态
+    canvas.getObjects().forEach((obj, i) => {
+      log('log-pre', `  [${i}] ${obj.type}: left=${obj.left?.toFixed(1)}, top=${obj.top?.toFixed(1)}`);
+      if (obj.type === 'Image') {
+        const el = obj.getElement();
+        log('log-pre', `       Element: ${el ? el.width + 'x' + el.height : 'NOT LOADED'}`, el ? 'ok' : 'warn');
+        log('log-pre', `       src: ${obj.getSrc?.() || 'N/A'}`);
+      }
+      if (obj.type === 'Group') {
+        const children = obj.getObjects ? obj.getObjects() : [];
+        log('log-pre', `       ${children.length} children in group`);
+        children.forEach((child, j) => {
+          if (child.type === 'Image') {
+            const el = child.getElement();
+            log('log-pre', `       [${j}] Image: ${el ? el.width + 'x' + el.height : 'NOT LOADED'}`, el ? 'ok' : 'warn');
+          }
+        });
+      }
+    });
+
+    canvas.renderAll();
+    document.getElementById('status-pre').textContent = `渲染完成: ${canvas.getObjects().length} 个对象`;
+  });
+}
+
+loadAndRender();
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Direct Fabric.js Test</title>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<style>
+body { background: #111; color: #fff; font-family: monospace; margin: 20px; }
+h1 { color: #8b5cf6; }
+.panel { background: #222; padding: 16px; border-radius: 8px; margin: 16px 0; }
+canvas { border: 2px solid #6366f1; display: block; margin: 10px auto; }
+.log { background: #000; padding: 12px; border-radius: 4px; max-height: 600px; overflow-y: auto; font-size: 11px; white-space: pre-wrap; }
+.log .ok { color: #22c55e; }
+.log .error { color: #ef4444; }
+.log .warn { color: #f59e0b; }
+.log .info { color: #60a5fa; }
+img.preview { border: 2px solid #10b981; max-width: 300px; display: block; margin: 10px auto; }
+button { background: #6366f1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+</style>
+</head>
+<body>
+<h1>Fabric.js Direct Test</h1>
+
+<div class="panel">
+  <h2>Original Preview</h2>
+  <img class="preview" src="/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE/preview.jpg">
+</div>
+
+<div class="panel">
+  <h2>Fabric.js Rendering (Pre-generated JSON)</h2>
+  <canvas id="c" width="1242" height="1660"></canvas>
+  <div id="status"></div>
+  <div id="log" class="log"></div>
+</div>
+
+<div class="panel">
+  <h2>Canvas Export (PNG)</h2>
+  <button onclick="exportPNG()">导出PNG</button>
+  <div id="export-area"></div>
+</div>
+
+<script>
+const FOLDER = '/templates/gaoding_193254158_%E6%AF%8D%E5%A9%B4%E7%9F%A5%E8%AF%86%E7%A7%91%E6%99%AE%E6%89%8B%E5%B8%90%E9%A3%8E%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%A5%97%E8%A3%85%E5%B0%8F%E7%BA%A2%E4%B9%A6%E9%85%8D%E5%9B%BE';
+const logEl = document.getElementById('log');
+
+function log(msg, cls='') {
+  const d = document.createElement('div');
+  if(cls) d.className = cls;
+  d.textContent = msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function main() {
+  log('Fetching fabric.json...', 'info');
+  const res = await fetch(FOLDER + '/fabric.json');
+  if(!res.ok) { log('Failed: ' + res.status, 'error'); return; }
+  const json = await res.json();
+  log(`Loaded: ${JSON.stringify(json).length} bytes`, 'ok');
+  log(`Canvas: ${json.width}x${json.height}`, 'ok');
+  log(`Objects: ${json.objects?.length || 0}`, 'ok');
+  
+  // Log all image URLs
+  function findImages(obj, path='') {
+    if(obj.type === 'Image') {
+      log(`  Image${path}: ${obj.src}`, 'info');
+    }
+    if(obj.objects) {
+      obj.objects.forEach((o,i) => findImages(o, `${path}[${i}]`));
+    }
+  }
+  json.objects.forEach((o,i) => findImages(o, `[${i}]`));
+
+  // Create canvas
+  const canvas = new fabric.Canvas('c', {
+    width: json.width,
+    height: json.height,
+    backgroundColor: '#ffffff',
+    preserveObjectStacking: true,
+  });
+
+  log('\nLoading JSON onto canvas...', 'info');
+  canvas.loadFromJSON(json, function() {
+    log('loadFromJSON callback fired', 'ok');
+    log(`Canvas objects: ${canvas.getObjects().length}`, 'ok');
+
+    // Check each object
+    canvas.getObjects().forEach((obj, i) => {
+      log(`  [${i}] ${obj.type}: left=${obj.left?.toFixed(1)}, top=${obj.top?.toFixed(1)}`, 'ok');
+      if(obj.type === 'Image') {
+        const el = obj.getElement();
+        if(el) {
+          log(`    Image loaded: ${el.naturalWidth}x${el.naturalHeight}`, 'ok');
+          log(`    Display: ${(obj.width*obj.scaleX).toFixed(1)}x${(obj.height*obj.scaleY).toFixed(1)}`, 'ok');
+        } else {
+          log(`    Image NOT loaded yet`, 'warn');
+        }
+      }
+      if(obj.type === 'Group') {
+        const children = obj.getObjects ? obj.getObjects() : [];
+        log(`    Group has ${children.length} children`, 'ok');
+        children.forEach((c, j) => {
+          if(c.type === 'Image') {
+            const el = c.getElement();
+            if(el) {
+              log(`    [${j}] Image loaded: ${el.naturalWidth}x${el.naturalHeight}`, 'ok');
+            } else {
+              log(`    [${j}] Image NOT loaded`, 'warn');
+            }
+          }
+        });
+      }
+    });
+
+    canvas.renderAll();
+    document.getElementById('status').textContent = `渲染完成: ${canvas.getObjects().length} 对象`;
+  });
+}
+
+function exportPNG() {
+  const canvas = fabric.Canvas.getInstanceById('c');
+  if(!canvas) return;
+  const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+  document.getElementById('export-area').innerHTML = `<img src="${dataURL}" style="max-width:100%;border:2px solid #6366f1">`;
+}
+
+main();
+</script>
+</body>
+</html>

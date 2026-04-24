@@ -1,0 +1,37 @@
+# Secrets
+.env
+.env.*.local
+
+# Test databases
+*.db
+dev*.db
+test*.db
+softdelete_test.db
+
+# Uploads
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+*.egg/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Alembic runtime
+alembic.ini.bak

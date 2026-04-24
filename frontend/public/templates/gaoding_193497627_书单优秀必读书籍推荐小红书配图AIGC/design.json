@@ -1,0 +1,3967 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.34299516908212563,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": 1660,
+      "width": 1242,
+      "backgroundImage": null,
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": null,
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "e832e111-a080-432c-87d3-656768ee4fce",
+      "imageUrl": "",
+      "title": "画板 1",
+      "category": "",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "2317014100"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "userAdded": false,
+      "background": {
+        "color": "#ffffffff",
+        "watermarkEnable": false,
+        "image": {
+          "height": 1656,
+          "width": 1242,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/cf09ac2e-1d86-4ab2-a395-433c2c7e57ad3513.png",
+          "isApng": false,
+          "isGif": false,
+          "resourceType": "image",
+          "naturalWidth": 1242,
+          "naturalHeight": 1656,
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1.002415458937198,
+            "tx": 0,
+            "ty": 0
+          },
+          "top": 0,
+          "left": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "opacity": 1,
+          "metaInfo": {
+            "materials": []
+          }
+        }
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "repeatId": null,
+      "repeatGroup": null,
+      "backgroundColor": "#ffffffff",
+      "backgroundEffectImage": "",
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/31439/064ab831d0124c728045f2cb97627122.png",
+        "width": 256,
+        "height": 341
+      },
+      "elements": [
+        {
+          "uuid": "162d10d3-4ce2-4c28-8245-1facf0c71d5e",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1021.7724265517711,
+          "height": 280.6628,
+          "version": "7.5.5",
+          "left": 143.1137867241144,
+          "top": 147.6433734939759,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "backgroundColor": null,
+          "elements": [
+            {
+              "uuid": "a9e9188d-e99f-473f-b14e-70ad9530dd85",
+              "imageUrl": "",
+              "type": "text",
+              "title": "《稿定历史》",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 471.4336,
+              "height": 94.886,
+              "version": "9.2.0",
+              "left": 234.7179999999999,
+              "top": 27.86535611365633,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#523126ff",
+              "fontFamily": "SourceHanSansSC-Bold",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 78.4,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "《稿定历史》",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#523126ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -44.97077941894531,
+                "right": -0.6118927001953125,
+                "top": -8,
+                "bottom": 1.2000732421875
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "7341b6da-4040-459d-9c19-b69508d99aee",
+              "imageUrl": "",
+              "type": "text",
+              "title": "作者：高小定",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 299.64,
+              "height": 59.928000000000004,
+              "version": "9.2.0",
+              "left": 275.6687826163292,
+              "top": 145.3254,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#583f37ff",
+              "fontFamily": "SourceHanSansSC-Regular",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 49.9,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "作者：高小定",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#583f37ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -41.772186279296875,
+                "right": -0.262115478515625,
+                "top": -6.8854522705078125,
+                "bottom": 1.0606689453125
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "673b8bd0-3d31-4f75-91f7-553a84bbe6a7",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "形状 1",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 753.0952011906624,
+              "height": 1,
+              "version": "7.5.5",
+              "left": 268.6772253611088,
+              "top": 273.67117070970534,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#b99570ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/c848f9786892447cac7505e7ac437f9e.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 754.0000011920929,
+              "naturalHeight": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "617724ab-3169-432b-946a-70224657e0b6",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 225.7288,
+              "height": 280.6628,
+              "version": "7.5.5",
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "e4e67293-1af5-48ec-a988-42fa193e068c",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/31439/0c768f07fcf2447ea6688146ef9288dc.png",
+                  "type": "image",
+                  "title": "yibeiaivwy_The_book_cover_has_a_light_colored_background_with_s_0d080380-6d0a-4a7c-bac2-6e6650a015fc",
+                  "category": "autoMatting",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 225.7288,
+                  "height": 280.6628,
+                  "version": "7.5.5",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/d507a1dbc3e640a08de2bd33efe9b17f.png",
+                  "loop": 0,
+                  "ruleIndex": -1,
+                  "imageEffects": [
+                    {
+                      "enable": true,
+                      "excludeScale": [],
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0.6366451798561152,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "enable": false,
+                        "type": "color",
+                        "color": "#000000ff"
+                      },
+                      "collapse": false,
+                      "expand": {
+                        "enable": false,
+                        "offset": {
+                          "left": 0,
+                          "top": 0,
+                          "right": 0,
+                          "bottom": 0
+                        },
+                        "scale": 1
+                      },
+                      "mask": {
+                        "type": "circle",
+                        "enable": false,
+                        "image": null,
+                        "height": null,
+                        "width": null,
+                        "radius": 0,
+                        "repeat": "no-repeat"
+                      },
+                      "resize": 1
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "enable": true,
+                        "type": "shadow",
+                        "color": "#927055ff",
+                        "offsetX": -6.208636565237774e-16,
+                        "offsetY": 10.139472980389884,
+                        "blur": 29.964000000000002,
+                        "opacity": 1,
+                        "inset": false
+                      }
+                    }
+                  ],
+                  "imageTransform": {
+                    "a": 0.9988,
+                    "b": 0,
+                    "c": 0,
+                    "d": 0.9988,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "left": -100,
+                    "top": -90,
+                    "width": 427,
+                    "height": 482
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [
+                    {
+                      "enable": true,
+                      "type": "base",
+                      "color": "#927055ff",
+                      "offsetX": -6.208636565237774e-16,
+                      "offsetY": 10.139472980389884,
+                      "blur": 29.964000000000002,
+                      "opacity": 1
+                    }
+                  ],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "naturalWidth": 226,
+                  "naturalHeight": 281,
+                  "effectScale": 0.6374100719424461,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": true,
+                  "backgroundColor": null,
+                  "speed": 1,
+                  "quality": 100
+                },
+                {
+                  "uuid": "3e6076f7-67cc-4fae-8140-90f8fcf73162",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "稿定历史",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 97.8824,
+                  "height": 29.964000000000002,
+                  "version": "9.2.0",
+                  "left": 24.506238947216683,
+                  "top": 206.35871144491242,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#927055ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 24.4,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "稿定历史",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": -35.84490966796875,
+                    "right": -0.37847900390625,
+                    "top": -8.019729614257812,
+                    "bottom": 1.1455078125
+                  },
+                  "parents": [],
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "9ea3b13b-9027-4c63-99be-8694b1dfffd9",
+              "imageUrl": "",
+              "type": "text",
+              "title": "8.5",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 256,
+              "height": 204,
+              "version": "9.2.0",
+              "left": 724.2631208879721,
+              "top": 3.9952000000000285,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ce754eff",
+              "fontFamily": "AlibabaPuHuiTi-Bold",
+              "fontStyle": "italic",
+              "fontWeight": 400,
+              "fontSize": 169.5,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "8.5",
+              "contents": null,
+              "effectScale": 1.1333333333333333,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 0.0009890797470590805,
+                    "y": -0.00013900609323891337
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 7.9904,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#ce754eff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                },
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 7.870651407023939,
+                    "y": 6.149226815552675
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 3.9952,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#fff3cbff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                }
+              ],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ce754eff",
+                "#fff3cbff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -12.93994140625,
+                "right": 0.09765625,
+                "top": -6.34375,
+                "bottom": 0.09375
+              },
+              "parents": [],
+              "ruleIndex": -1,
+              "disableColor": true
+            }
+          ]
+        },
+        {
+          "uuid": "304d55a3-07a8-4bce-8d63-97f76db5c03e",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1021.7724265517711,
+          "height": 280.6628,
+          "version": "7.5.5",
+          "left": 143.1137867241144,
+          "top": 513.7590361445783,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "backgroundColor": null,
+          "elements": [
+            {
+              "uuid": "2ffd104d-b079-4005-93d2-03a599d66669",
+              "imageUrl": "",
+              "type": "text",
+              "title": "《稿定历史》",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 471.4336,
+              "height": 94.886,
+              "version": "9.2.0",
+              "left": 234.7179999999999,
+              "top": 24.53602278032296,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#523126ff",
+              "fontFamily": "SourceHanSansSC-Bold",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 78.4,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "《稿定历史》",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#523126ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -44.97077941894531,
+                "right": -0.6118927001953125,
+                "top": -8,
+                "bottom": 1.2000732421875
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "1cdc4409-a3cb-4113-b550-fd39e7a1ead4",
+              "imageUrl": "",
+              "type": "text",
+              "title": "作者：高小定",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 299.64,
+              "height": 59.928000000000004,
+              "version": "9.2.0",
+              "left": 275.6687826163292,
+              "top": 142.8922599087243,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#583f37ff",
+              "fontFamily": "SourceHanSansSC-Regular",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 49.9,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "作者：高小定",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#583f37ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -41.772186279296875,
+                "right": -0.262115478515625,
+                "top": -6.8854522705078125,
+                "bottom": 1.0606689453125
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "4c787df8-5018-4ee3-b2e6-8c257c7f26bf",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "形状 1 拷贝",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 753.0952011906624,
+              "height": 1,
+              "version": "7.5.5",
+              "left": 268.6772253611088,
+              "top": 270.34179665571844,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#b99570ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/621b70452e6b48efa5d465565cbb9e64.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 754.0000011920929,
+              "naturalHeight": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "d8b845eb-8a09-4daf-bf4d-2107ae427a18",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 225.7288,
+              "height": 280.6628,
+              "version": "7.5.5",
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "99f5a985-752c-4a29-983d-675ef832ad7a",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/31439/a7f0873a0c474a4792084160e42e9c25.png",
+                  "type": "image",
+                  "title": "yibeiaivwy_The_book_cover_has_a_light_colored_background_with_s_20ad57ca-1776-4b36-aa11-fdfbd04c6a65",
+                  "category": "autoMatting",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 225.7288,
+                  "height": 280.6628,
+                  "version": "7.5.5",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/c40760613484422c90bcba51504ffa5c.png",
+                  "loop": 0,
+                  "ruleIndex": -1,
+                  "imageEffects": [
+                    {
+                      "enable": true,
+                      "excludeScale": [],
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0.6366451798561151,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "enable": false,
+                        "type": "color",
+                        "color": "#000000ff"
+                      },
+                      "collapse": false,
+                      "expand": {
+                        "enable": false,
+                        "offset": {
+                          "left": 0,
+                          "top": 0,
+                          "right": 0,
+                          "bottom": 0
+                        },
+                        "scale": 1
+                      },
+                      "mask": {
+                        "type": "circle",
+                        "enable": false,
+                        "image": null,
+                        "height": null,
+                        "width": null,
+                        "radius": 0,
+                        "repeat": "no-repeat"
+                      },
+                      "resize": 1
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "enable": true,
+                        "type": "shadow",
+                        "color": "#927055ff",
+                        "offsetX": -6.208636565237773e-16,
+                        "offsetY": 10.139472980389883,
+                        "blur": 29.964000000000002,
+                        "opacity": 1,
+                        "inset": false
+                      }
+                    }
+                  ],
+                  "imageTransform": {
+                    "a": 0.9988,
+                    "b": 0,
+                    "c": 0,
+                    "d": 0.9988,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "left": -100,
+                    "top": -90,
+                    "width": 427,
+                    "height": 482
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [
+                    {
+                      "enable": true,
+                      "type": "base",
+                      "color": "#927055ff",
+                      "offsetX": -6.208636565237773e-16,
+                      "offsetY": 10.139472980389883,
+                      "blur": 29.964000000000002,
+                      "opacity": 1
+                    }
+                  ],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "naturalWidth": 226,
+                  "naturalHeight": 281,
+                  "effectScale": 0.637410071942446,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": true,
+                  "backgroundColor": null,
+                  "speed": 1,
+                  "quality": 100
+                },
+                {
+                  "uuid": "370360cb-388d-4904-ba3c-7a94ac361e4a",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "稿定历史",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 30,
+                  "height": 98,
+                  "version": "9.2.0",
+                  "left": 176.2834125,
+                  "top": 84.94982414151443,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 3,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#927055ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 24.4,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "vertical-rl",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "稿定历史",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": -4.2670745849609375,
+                    "right": 5.1607208251953125,
+                    "top": -35.293914794921875,
+                    "bottom": -0.0732421875
+                  },
+                  "parents": [],
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "275b69d1-f759-48d6-8f32-bb46159b7cb9",
+              "imageUrl": "",
+              "type": "text",
+              "title": "8.5",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 256,
+              "height": 204,
+              "version": "9.2.0",
+              "left": 724.2631208879721,
+              "top": 2.061459908724188,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ce754eff",
+              "fontFamily": "AlibabaPuHuiTi-Bold",
+              "fontStyle": "italic",
+              "fontWeight": 400,
+              "fontSize": 169.5,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "8.5",
+              "contents": null,
+              "effectScale": 1.1333333333333333,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 0.0009890797470590805,
+                    "y": -0.00013900609323891337
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 7.9904,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#ce754eff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                },
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 7.870651407023939,
+                    "y": 6.149226815552675
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 3.9952,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#fff3cbff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                }
+              ],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ce754eff",
+                "#fff3cbff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -12.93994140625,
+                "right": 0.09765625,
+                "top": -6.34375,
+                "bottom": 0.09375
+              },
+              "parents": [],
+              "ruleIndex": -1,
+              "disableColor": true
+            }
+          ]
+        },
+        {
+          "uuid": "6ced3c96-1cae-4898-ab36-a171bbd990a6",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1021.7724265517711,
+          "height": 280.6628,
+          "version": "7.5.5",
+          "left": 143.1137867241144,
+          "top": 879.5347903614456,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "backgroundColor": null,
+          "elements": [
+            {
+              "uuid": "ded34845-2e6b-4a2d-b6bd-389666f49433",
+              "imageUrl": "",
+              "type": "text",
+              "title": "《稿定历史》",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 471.4336,
+              "height": 94.886,
+              "version": "9.2.0",
+              "left": 234.7179999999999,
+              "top": 24.203089446989587,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#523126ff",
+              "fontFamily": "SourceHanSansSC-Bold",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 78.4,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "《稿定历史》",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#523126ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -44.97077941894531,
+                "right": -0.6118927001953125,
+                "top": -8,
+                "bottom": 1.2000732421875
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "3a20b9e3-18f4-417a-bdb0-85f80e7f9ba8",
+              "imageUrl": "",
+              "type": "text",
+              "title": "作者：高小定",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 299.64,
+              "height": 59.928000000000004,
+              "version": "9.2.0",
+              "left": 275.6687826163292,
+              "top": 140.4591198174486,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#583f37ff",
+              "fontFamily": "SourceHanSansSC-Regular",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 49.9,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "作者：高小定",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#583f37ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -41.772186279296875,
+                "right": -0.262115478515625,
+                "top": -6.8854522705078125,
+                "bottom": 1.0606689453125
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "8343cc46-4ac0-42fa-960f-9e7eadf5e543",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "形状 1 拷贝 2",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 753.0952011906624,
+              "height": 1,
+              "version": "7.5.5",
+              "left": 268.6772253611088,
+              "top": 270.0089935808499,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#b99570ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/70afef26a1fd4e36b1b9990ee821dc1c.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 754.0000011920929,
+              "naturalHeight": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "fc53d395-d3eb-413a-9c70-3c3324519319",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 225.7288,
+              "height": 280.6628,
+              "version": "7.5.5",
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "dcaa90b2-9885-41c6-8945-c0c973e7066e",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/31439/2b8e69b13e4543c5b386fd4ea2e62d88.png",
+                  "type": "image",
+                  "title": "yibeiaivwy_The_book_cover_has_a_light_colored_background_with_s_2f81bd51-7c37-4dc3-9613-4f8eb953cb27",
+                  "category": "autoMatting",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 225.7288,
+                  "height": 280.6628,
+                  "version": "7.5.5",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/736b9cd4e896461f9bbdf7584ebdd7c0.png",
+                  "loop": 0,
+                  "ruleIndex": -1,
+                  "imageEffects": [
+                    {
+                      "enable": true,
+                      "excludeScale": [],
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0.6375690441932167,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "enable": false,
+                        "type": "color",
+                        "color": "#000000ff"
+                      },
+                      "collapse": false,
+                      "expand": {
+                        "enable": false,
+                        "offset": {
+                          "left": 0,
+                          "top": 0,
+                          "right": 0,
+                          "bottom": 0
+                        },
+                        "scale": 1
+                      },
+                      "mask": {
+                        "type": "circle",
+                        "enable": false,
+                        "image": null,
+                        "height": null,
+                        "width": null,
+                        "radius": 0,
+                        "repeat": "no-repeat"
+                      },
+                      "resize": 1
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "enable": true,
+                        "type": "shadow",
+                        "color": "#927055ff",
+                        "offsetX": -6.217646195854853e-16,
+                        "offsetY": 10.154186823799025,
+                        "blur": 29.964000000000002,
+                        "opacity": 1,
+                        "inset": false
+                      }
+                    }
+                  ],
+                  "imageTransform": {
+                    "a": 0.9988,
+                    "b": 0,
+                    "c": 0,
+                    "d": 0.9988,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "left": -100,
+                    "top": -90,
+                    "width": 427,
+                    "height": 482
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [
+                    {
+                      "enable": true,
+                      "type": "base",
+                      "color": "#927055ff",
+                      "offsetX": -6.217646195854853e-16,
+                      "offsetY": 10.154186823799025,
+                      "blur": 29.964000000000002,
+                      "opacity": 1
+                    }
+                  ],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "naturalWidth": 226,
+                  "naturalHeight": 281,
+                  "effectScale": 0.6383350462487152,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": true,
+                  "backgroundColor": null,
+                  "speed": 1,
+                  "quality": 100
+                },
+                {
+                  "uuid": "a530cf06-4b1a-457a-b565-9c73b718bfc9",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "稿定历史",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 30,
+                  "height": 98,
+                  "version": "9.2.0",
+                  "left": 41.445412499999996,
+                  "top": 71.96542414151442,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 3,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#927055ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 24.4,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "vertical-rl",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "稿定历史",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": -4.2670745849609375,
+                    "right": 5.1607208251953125,
+                    "top": -35.293914794921875,
+                    "bottom": -0.0732421875
+                  },
+                  "parents": [],
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "c12a6bbc-8dfa-4d12-966e-af4a74a16dbc",
+              "imageUrl": "",
+              "type": "text",
+              "title": "8.5",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 256,
+              "height": 204,
+              "version": "9.2.0",
+              "left": 724.2631208879721,
+              "top": 0.12771981744837557,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ce754eff",
+              "fontFamily": "AlibabaPuHuiTi-Bold",
+              "fontStyle": "italic",
+              "fontWeight": 400,
+              "fontSize": 169.5,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "8.5",
+              "contents": null,
+              "effectScale": 1.1333333333333333,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 0.0009890797470590805,
+                    "y": -0.00013900609323891337
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 7.9904,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#ce754eff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                },
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 7.870651407023939,
+                    "y": 6.149226815552675
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 3.9952,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#fff3cbff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                }
+              ],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ce754eff",
+                "#fff3cbff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -12.93994140625,
+                "right": 0.09765625,
+                "top": -6.34375,
+                "bottom": 0.09375
+              },
+              "parents": [],
+              "ruleIndex": -1,
+              "disableColor": true
+            }
+          ]
+        },
+        {
+          "uuid": "ad7593dc-1dd0-44f0-8dc7-fc1b3dee6867",
+          "imageUrl": "",
+          "type": "group",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1028.7639838069915,
+          "height": 282.4688202738272,
+          "version": "7.5.5",
+          "left": 139.61800809650424,
+          "top": 1244.8420230996667,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "backgroundColor": null,
+          "elements": [
+            {
+              "uuid": "c5d6677e-25c1-471f-80f1-d805e1d2f614",
+              "imageUrl": "",
+              "type": "text",
+              "title": "《稿定历史》",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 471.4336,
+              "height": 94.886,
+              "version": "9.2.0",
+              "left": 241.70959999999988,
+              "top": 25.676176387483537,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#523126ff",
+              "fontFamily": "SourceHanSansSC-Bold",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 78.4,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "《稿定历史》",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#523126ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -44.97077941894531,
+                "right": -0.6118927001953125,
+                "top": -8,
+                "bottom": 1.2000732421875
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "81c2aa2b-bd03-44d2-98ca-5b985099d91a",
+              "imageUrl": "",
+              "type": "text",
+              "title": "作者：高小定",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 299.64,
+              "height": 59.928000000000004,
+              "version": "9.2.0",
+              "left": 275.6687826163292,
+              "top": 139.832,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#583f37ff",
+              "fontFamily": "SourceHanSansSC-Regular",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 49.9,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "作者：高小定",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#583f37ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -41.772186279296875,
+                "right": -0.262115478515625,
+                "top": -6.8854522705078125,
+                "bottom": 1.0606689453125
+              },
+              "parents": [],
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "7adbdeed-68bd-42c4-b19f-93c29e958cbd",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "形状 1 拷贝 3",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 753.0952011906624,
+              "height": 1,
+              "version": "7.5.5",
+              "left": 275.6687826163292,
+              "top": 271.48201312985293,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#b99570ff"
+              ],
+              "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/64ef669287b2434db524edf59a0204a5.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 754.0000011920929,
+              "naturalHeight": 1,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "4fdeb19e-6226-4bdb-950c-575eaab119b7",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 225.7288,
+              "height": 280.6628,
+              "version": "7.5.5",
+              "left": 0,
+              "top": 1.8060202738272095,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "d91ce4cf-9878-4aaa-8dd3-0a15f080a46e",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/31439/f3e53041bdb8431ea8001c5890c362e9.png",
+                  "type": "image",
+                  "title": "yibeiaivwy_The_book_cover_has_a_light_colored_background_with_s_59c91fc4-7f5d-4399-8589-b2cb5630b4a3",
+                  "category": "autoMatting",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 225.7288,
+                  "height": 280.6628,
+                  "version": "7.5.5",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://gd-filems.dancf.com/gaoding/gaoding/18218/3b678b9cfa2e4a39a3d7d07dc0dfc7c0.png",
+                  "loop": 0,
+                  "ruleIndex": -1,
+                  "imageEffects": [
+                    {
+                      "enable": true,
+                      "excludeScale": [],
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0.6366451798561151,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "enable": false,
+                        "type": "color",
+                        "color": "#000000ff"
+                      },
+                      "collapse": false,
+                      "expand": {
+                        "enable": false,
+                        "offset": {
+                          "left": 0,
+                          "top": 0,
+                          "right": 0,
+                          "bottom": 0
+                        },
+                        "scale": 1
+                      },
+                      "mask": {
+                        "type": "circle",
+                        "enable": false,
+                        "image": null,
+                        "height": null,
+                        "width": null,
+                        "radius": 0,
+                        "repeat": "no-repeat"
+                      },
+                      "resize": 1
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "enable": true,
+                        "type": "shadow",
+                        "color": "#927055ff",
+                        "offsetX": -6.208636565237773e-16,
+                        "offsetY": 10.139472980389883,
+                        "blur": 29.964000000000002,
+                        "opacity": 1,
+                        "inset": false
+                      }
+                    }
+                  ],
+                  "imageTransform": {
+                    "a": 0.9988,
+                    "b": 0,
+                    "c": 0,
+                    "d": 0.9988,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "left": -100,
+                    "top": -90,
+                    "width": 427,
+                    "height": 482
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [
+                    {
+                      "enable": true,
+                      "type": "base",
+                      "color": "#927055ff",
+                      "offsetX": -6.208636565237773e-16,
+                      "offsetY": 10.139472980389883,
+                      "blur": 29.964000000000002,
+                      "opacity": 1
+                    }
+                  ],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "naturalWidth": 226,
+                  "naturalHeight": 281,
+                  "effectScale": 0.637410071942446,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": true,
+                  "backgroundColor": null,
+                  "speed": 1,
+                  "quality": 100
+                },
+                {
+                  "uuid": "a69de052-5e3d-4351-889a-139113567f86",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "稿定历史 拷贝",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 30,
+                  "height": 98,
+                  "version": "9.2.0",
+                  "left": 151.3134125,
+                  "top": 57.982224141514536,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 3,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#927055ff",
+                  "fontFamily": "SourceHanSansSC-Regular",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 24.4,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 0,
+                  "textDecoration": "none",
+                  "writingMode": "vertical-rl",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "稿定历史",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#927055ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "adjustsFontSize": false,
+                  "quality": 100,
+                  "boundingBox": {
+                    "left": -4.2670745849609375,
+                    "right": 5.1607208251953125,
+                    "top": -35.293914794921875,
+                    "bottom": -0.0732421875
+                  },
+                  "parents": [],
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "f85c8402-58e0-426e-b634-9be9087ab0c7",
+              "imageUrl": "",
+              "type": "text",
+              "title": "8.5",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 256,
+              "height": 204,
+              "version": "9.2.0",
+              "left": 724.2631208879721,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": false,
+              "rotatable": false,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ce754eff",
+              "fontFamily": "AlibabaPuHuiTi-Bold",
+              "fontStyle": "italic",
+              "fontWeight": 400,
+              "fontSize": 169.5,
+              "lineHeight": 1.2,
+              "letterSpacing": 0,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "left",
+              "verticalAlign": "top",
+              "content": "8.5",
+              "contents": null,
+              "effectScale": 1.1333333333333333,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 0.0009890797470590805,
+                    "y": -0.00013900609323891337
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 7.9904,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#ce754eff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                },
+                {
+                  "enable": true,
+                  "excludeScale": [],
+                  "offset": {
+                    "enable": true,
+                    "x": 7.870651407023939,
+                    "y": 6.149226815552675
+                  },
+                  "stroke": {
+                    "enable": true,
+                    "color": "#fff3cbff",
+                    "width": 3.9952,
+                    "type": "outer",
+                    "join": "round",
+                    "expansion": 0
+                  },
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#fff3cbff",
+                    "imageContent": {
+                      "repeat": 0,
+                      "scaleX": 1,
+                      "scaleY": 1,
+                      "image": null,
+                      "width": null,
+                      "height": null
+                    },
+                    "gradient": {
+                      "byLine": 0,
+                      "angle": 0,
+                      "stops": [
+                        {
+                          "color": "#ffffffff",
+                          "offset": 0
+                        },
+                        {
+                          "color": "#000000ff",
+                          "offset": 1
+                        }
+                      ]
+                    }
+                  },
+                  "collapse": false
+                }
+              ],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ce754eff",
+                "#fff3cbff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "quality": 100,
+              "boundingBox": {
+                "left": -12.93994140625,
+                "right": 0.09765625,
+                "top": -6.34375,
+                "bottom": 0.09375
+              },
+              "parents": [],
+              "ruleIndex": -1,
+              "disableColor": true
+            }
+          ]
+        }
+      ],
+      "backgroundImage": "https://gd-filems.dancf.com/gaoding/gaoding/18218/cf09ac2e-1d86-4ab2-a395-433c2c7e57ad3513.png",
+      "backgroundImageInfo": {
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1.002415458937198,
+          "tx": 0,
+          "ty": 0
+        },
+        "width": 1242,
+        "height": 1656,
+        "opacity": 1
+      },
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

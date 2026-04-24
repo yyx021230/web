@@ -1,0 +1,35 @@
+{
+  "version": "5.3.0",
+  "objects": [
+    {
+      "type": "Textbox",
+      "text": "选择列表样式\n调整大小布局\n收获整齐列表\n妇女节快乐",
+      "left": 219.50000000000006,
+      "top": 498.00000000000006,
+      "width": 803,
+      "height": 660,
+      "fill": "#000000",
+      "fontSize": 82.5,
+      "fontFamily": "StarLoveMarker",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "lineHeight": 1.5,
+      "charSpacing": 0,
+      "textAlign": "left",
+      "angle": 0,
+      "opacity": 1,
+      "originX": "left",
+      "originY": "top",
+      "selectable": true,
+      "id": "87b5b0f7-2a26-48fe-876d-9402ff63e681",
+      "name": "选择列表样式\n调整大小布局\n收获整齐列表",
+      "shadow": null,
+      "underline": false,
+      "linethrough": false,
+      "overline": false
+    }
+  ],
+  "background": "rgba(255,255,255,0.00)",
+  "width": 1242,
+  "height": 1656
+}

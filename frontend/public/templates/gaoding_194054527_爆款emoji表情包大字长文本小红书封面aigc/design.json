@@ -1,0 +1,2920 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.43875155404333194,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "d0420b2a-3ed6-4a33-aa1e-30821a33bd86",
+      "imageUrl": "",
+      "title": "03",
+      "category": "cover",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "2451508762"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "62531a0f-3689-44f8-8731-2a61403468d3",
+          "imageUrl": "",
+          "type": "group",
+          "title": "横线",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1150.0000548362732,
+          "height": 1657.999966621399,
+          "version": null,
+          "left": 45.9999725818634,
+          "top": 81.000030040741,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 1,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "splitenable": true,
+          "autoGrow": false,
+          "elements": [
+            {
+              "uuid": "ce893db8-5ef5-472b-9508-df62dd42b1cd",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/b248fb5d3b3b444db7a2a04d4b32ddc7.png",
+              "type": "path",
+              "title": "直线 1",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 431.9999957084656,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "d6315eb4-e363-471e-b75e-2dd49a846ccf",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/a5471cdb502641c2a50ae954654020e3.png",
+              "type": "path",
+              "title": "直线 1 拷贝",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 503.9999785423279,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "b1cb7be5-b91c-4dd4-a4bd-57c82434090c",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/6c0d0a2846444447b3a0a9deb3409fcd.png",
+              "type": "path",
+              "title": "直线 1 拷贝 2",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 575.9999613761902,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "42ef5364-ef85-4055-a548-9298a7e40d6c",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/19f6bd543b204aee927d10134383a8e2.png",
+              "type": "path",
+              "title": "直线 1 拷贝 6",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 215.9999485015869,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "ec30005e-4bb8-4ed5-8462-cc286469c134",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/dcda05cbf8ec416698d39751da6620bb.png",
+              "type": "path",
+              "title": "直线 1 拷贝 6",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 287.9999313354492,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "bee143eb-64c1-475f-af91-2bdd469d2bc4",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/7140f5de78fe4c55be5df109b36eac28.png",
+              "type": "path",
+              "title": "直线 1 拷贝 6",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 360.00001287460327,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "cef74618-d29b-4f60-a672-61c98425d16f",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/fededa8363464462b81e70fd966a406c.png",
+              "type": "path",
+              "title": "直线 1 拷贝 7",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 0,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "03520173-17b1-4e12-88f1-9ed0ff0eea69",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/1440f4e971f54bf188ed5d3316558ad7.png",
+              "type": "path",
+              "title": "直线 1 拷贝 7",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 71.9999828338623,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "8f0767a1-a33c-4212-b4e8-455464c7ba71",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/4a3b6462c9a244e594fd830f1ce5a9a8.png",
+              "type": "path",
+              "title": "直线 1 拷贝 7",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 143.9999656677246,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "c88912f8-b55f-4a49-adbb-8f7f4dc0efdf",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/ef2cda2216964d32b3b865b998250717.png",
+              "type": "path",
+              "title": "直线 1 拷贝 3",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 647.9999442100525,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "6ab61e7b-47d6-4f7d-9fe3-0b6906d0bd89",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/287750396e1e41c9ab5d6c08f8419fe3.png",
+              "type": "path",
+              "title": "直线 1 拷贝 3",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 719.9999270439148,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "cdcae5c8-d09f-45e3-8925-18cd15ed6633",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/8f6d278fe0964302a5ec8a6c422465f5.png",
+              "type": "path",
+              "title": "直线 1 拷贝 3",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 792.0000085830688,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "cebb947a-c0d7-4a0c-a387-ce816eb71f7d",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/237c6036a04a4da3b29eee2bbc1a443d.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 863.9999914169312,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "cc0d0856-1453-467f-8cf7-323c74c25060",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/ada32204a4384db4b7dd8ffdd672fff1.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 935.9999742507935,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "b9bc9af5-ad57-4f67-b4e9-36671d989922",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/a2304eeb8d644d6da1646f95ed24db16.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1007.9999570846558,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "0909f847-ca00-40d3-bc28-062ec0bf4b5e",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/148f4e81cbcf40639cc122db932b939b.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 1079.999939918518,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "f5545036-983b-4d44-9969-0a31f0218638",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/2d2335dfd6dc461282eb7a5f79b5f005.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 1151.9999227523804,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "f0489f25-9b08-464b-90ef-6cd2291ccaf6",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/6a8c19fec8784542a1bf844630e7c9da.png",
+              "type": "path",
+              "title": "直线 1 拷贝 4",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1224.0000042915344,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "70365c71-c4e5-4402-b6a2-15a2e3ec70f1",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/9af2e826bc8349b892912f2738465575.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1295.9999871253967,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "2e57e7a2-f5cf-499a-aca6-72a310687214",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/85459efb5e56455397d5e19a7be292d1.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1367.999969959259,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "6bf1b48d-5ba3-44cb-b23d-ae099b5f7c04",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/dabbf60a5dde47ec8e3504ea409cb1d7.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 1439.9999527931213,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "2367786a-d3cc-4422-8287-795389b7bbb9",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/5aa0da768a6c4ec1822cc9c9ab52f1ff.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 2.000065326690674,
+              "version": null,
+              "left": 0,
+              "top": 1511.9999356269836,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,2.00007v-2.00007h1150.00005v2.00007z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "ffea6c4b-d888-4354-86fe-00232ee3bb97",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/8e55b6367e0741e6a4342acbcdbefa4d.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1584.0000171661377,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            },
+            {
+              "uuid": "9c8faf67-5cbb-4d03-a6c1-ba8b0fa9f82e",
+              "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/27453/37dda502494a41cfba511cc6844a0aa9.png",
+              "type": "path",
+              "title": "直线 1 拷贝 5",
+              "category": "",
+              "opacity": 0.12941176470588237,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1150.0000548362732,
+              "height": 1.9999666213989258,
+              "version": null,
+              "left": 0,
+              "top": 1656,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": [
+                  {
+                    "id": 193986768,
+                    "type": "image"
+                  }
+                ]
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": "blendNormal",
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "path": "M0,1.99997v-1.99997h1150.00005v1.99997z",
+              "radius": 0,
+              "effectShadowBlurScale": 1,
+              "effectStrokeWidthScale": 1,
+              "pathShape": "pen",
+              "pathEffects": [
+                {
+                  "type": "brush",
+                  "offset": {
+                    "x": 0,
+                    "y": 0
+                  },
+                  "skew": {
+                    "enable": false,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "enable": true,
+                  "lineType": "center",
+                  "width": 0,
+                  "color": "#ffffffff",
+                  "filling": {
+                    "enable": true,
+                    "type": 0,
+                    "color": "#333333ff"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "uuid": "2436ed8a-cea8-47f1-ac00-95c40db6b43c",
+          "imageUrl": "",
+          "type": "text",
+          "title": "Date:",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 90,
+          "height": 37,
+          "version": "9.2.0",
+          "left": 47.64452142313712,
+          "top": 38.38315952415269,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 274051,
+                "ttf": "https://gd-filems.dancf.com/gaoding/editor/20240124-153927-ggaif.ttf",
+                "woff": "https://gd-filems.dancf.com/gaoding/editor/20240124-153928-fegca.woff",
+                "fontFamily": "OPPOSans-H",
+                "type": "font",
+                "alias": "OPPOSans H",
+                "weight": 400,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#c6c6c6ff",
+          "fontFamily": "OPPOSans-H",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 30.3,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "left",
+          "verticalAlign": "top",
+          "content": "Date:",
+          "contents": null,
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#c6c6c6ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 3,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "quality": 100,
+          "boundingBox": {
+            "left": 3.546875,
+            "right": 131.15438842773438,
+            "top": -34.453125,
+            "bottom": 4.328125
+          },
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "15cda682-17d1-4ec3-a5a9-0d1bcc6fec8b",
+          "imageUrl": "",
+          "type": "text",
+          "title": "最近要出去实习找房子 有的房子很舒服好喜欢，但是稍微有一点贵，不贵的房子条件又没有那么好 但是住贵的话每个月就要节省其他方面的",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1133,
+          "height": 1119,
+          "version": "9.2.0",
+          "left": 57.08129517771829,
+          "top": 183.5385222222222,
+          "transform": {
+            "a": 0.93,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 193408044,
+                "ttf": "https://gd-filems.dancf.com/xi19e5/xi19e5/740/f834e7c8ef434f01a7b4e3ca13a9f6de.ttf",
+                "woff": "https://gd-filems.dancf.com/xi19e5/xi19e5/740/72e3f7e1cfac402c98f50c0a5e87523a.woff",
+                "fontFamily": "DOUYINSANSBOLD-GB",
+                "type": "font",
+                "alias": "抖音美好体",
+                "weight": 700,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#000000ff",
+          "fontFamily": "DOUYINSANSBOLD-GB",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 86.3,
+          "lineHeight": 1.44,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "justify",
+          "verticalAlign": "top",
+          "content": "最近要出去实习找房子\n有的房子很舒服好喜欢，但是稍微有一点贵，不贵的房子条件又没有那么好\n但是住贵的话每个月就要节省其他方面的开销，还没开始工作，也没有太多钱，但是又不想委屈自己\n到底怎么选好纠结！",
+          "contents": [
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "最近要出去"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "实习找房子",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/6493b384911d51df5eb6131f25627910.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 1.0787878787878789
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.58,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "\n有的房子很舒服好喜欢，但是稍微有一点贵，不贵的房子条件又没有那么好\n但是住贵的话每个月就要"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "节省",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240926/f360849f834aa655bb8ca5ec77611907.svg",
+                "repeat": "round",
+                "width": 48,
+                "height": 28,
+                "svgInfo": {
+                  "colors": [
+                    "#f96cffff"
+                  ],
+                  "strokeWidth": 0.16525252525252526
+                },
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": -0.4
+                },
+                "style": {
+                  "y": 0.54,
+                  "height": 1
+                },
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "其他方面的开销，还没开始工作，也没有太多钱，但是又不想委屈自己\n"
+            },
+            {
+              "color": "#000000ff",
+              "fontFamily": "DOUYINSANSBOLD-GB",
+              "fontStyle": "normal",
+              "fontSize": 86.3,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "到底怎么选好纠结！",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240819/0964fc20a458f345a5c2b200aa3709a9.svg",
+                "width": 28,
+                "height": 3,
+                "svgInfo": {
+                  "colors": [
+                    "#f96023ff"
+                  ],
+                  "strokeWidth": 0.20333333333333334
+                },
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": 0,
+                  "right": 0,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.9,
+                  "height": 0.2
+                },
+                "repeat": "repeat",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            }
+          ],
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#000000ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "quality": 100,
+          "boundingBox": {
+            "left": 2.3751373291015625,
+            "right": 1090.84228515625,
+            "top": -6.5201416015625,
+            "bottom": 1115.0281982421875
+          },
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "df0cb512-59f3-430d-9905-2c1d6e49d61e",
+          "imageUrl": "",
+          "type": "image",
+          "title": "表情",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 306,
+          "height": 326,
+          "left": 801,
+          "top": 1195,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/23d40b745885495986f097f6a53f89a0.png",
+          "loop": 1,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "naturalWidth": 306,
+          "naturalHeight": 326,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "quality": 100,
+          "fillOpacity": 1
+        }
+      ],
+      "userAdded": true,
+      "background": {
+        "color": "#ffffffff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/74244/e5a2c7d2e4864db7bfb3d23258684779.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundColor": "#ffffffff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

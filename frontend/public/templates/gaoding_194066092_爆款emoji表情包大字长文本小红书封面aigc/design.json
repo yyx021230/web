@@ -1,0 +1,625 @@
+{
+  "version": "8.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.586352657004831,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": null,
+      "width": null,
+      "backgroundImage": "",
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {},
+    "cover": null,
+    "mode": "design"
+  },
+  "layouts": [
+    {
+      "uuid": "149011eb-95e2-4819-b584-9b6883ef1a31",
+      "imageUrl": "",
+      "title": "251",
+      "category": "cover",
+      "opacity": 1,
+      "padding": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "width": 1242,
+      "height": 1656,
+      "left": 0,
+      "top": 0,
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "d": 1,
+        "tx": 0,
+        "ty": 0
+      },
+      "boxShadow": null,
+      "resize": 7,
+      "dragable": true,
+      "rotatable": true,
+      "editable": true,
+      "frozen": false,
+      "hidden": false,
+      "lock": false,
+      "borderRadius": 0,
+      "watermarkEnable": false,
+      "metaInfo": {
+        "contentHash": "106440019"
+      },
+      "linkId": "",
+      "groupable": true,
+      "flex": null,
+      "backgroundEffect": null,
+      "border": null,
+      "maskInfo": {
+        "enable": false,
+        "showSelf": false,
+        "imageUrl": "",
+        "effectedResult": {
+          "width": 0,
+          "height": 0,
+          "left": 0,
+          "top": 0
+        },
+        "mode": "alpha"
+      },
+      "transitionIn": null,
+      "transitionOut": null,
+      "animations": [],
+      "autoLayout": null,
+      "elements": [
+        {
+          "uuid": "2a5175d0-5d89-4fa1-866f-cfeeb67530c6",
+          "imageUrl": "",
+          "type": "image",
+          "title": "底部涂鸦",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1272,
+          "height": 1415,
+          "left": -15,
+          "top": 113,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/e5b1de8c7f7c49f3b2b995b02c823eac.png",
+          "loop": 1,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "naturalWidth": 1272,
+          "naturalHeight": 1415,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "quality": 100,
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "3f162af1-76bc-48aa-9d0f-c9205bd1e362",
+          "imageUrl": "",
+          "type": "text",
+          "title": "如果可以的话，我想拥有敖闰的美貌，获得敖光的能力，积攒石矶的能量，成为像熬丙一样有责任感的人。",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 763,
+          "height": 908,
+          "version": "9.2.0",
+          "left": 252.68534677133687,
+          "top": 311.4797119416591,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 5,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "materials": [
+              {
+                "id": 100041498,
+                "ttf": "https://gd-filems.dancf.com/saas/xi19e5/2269/4233825e-961b-4517-a155-7a6bae846151475440.ttf",
+                "woff": "https://gd-filems.dancf.com/saas/xi19e5/2269/070e25bd-d973-4fa9-9f45-3d6fd815220a477589.woff",
+                "fontFamily": "シャオライ 等幅 ＳＣ",
+                "type": "font",
+                "alias": "シャオライ 等幅 ＳＣ Regular",
+                "weight": 400,
+                "lang": "zh",
+                "fromUser": true
+              }
+            ]
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "color": "#282828ff",
+          "fontFamily": "シャオライ 等幅 ＳＣ",
+          "fontStyle": "normal",
+          "fontWeight": 400,
+          "fontSize": 108,
+          "lineHeight": 1.2,
+          "letterSpacing": 0,
+          "textDecoration": "none",
+          "writingMode": "horizontal-tb",
+          "textAlign": "justify",
+          "verticalAlign": "top",
+          "content": "如果可以的话，我想拥有敖闰的美貌，获得敖光的能力，积攒石矶的能量，成为像熬丙一样有责任感的人。",
+          "contents": [
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "如果可以的话，我想拥有敖闰的"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "美貌",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/6493b384911d51df5eb6131f25627910.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 1.103030303030303
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.58,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "，获得敖光的"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "能力",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/6493b384911d51df5eb6131f25627910.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 1.103030303030303
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.58,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "，积攒石矶的"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "能量",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240913/6493b384911d51df5eb6131f25627910.svg",
+                "width": 37,
+                "height": 2,
+                "svgInfo": {
+                  "colors": [
+                    "#ffe378ff"
+                  ],
+                  "strokeWidth": 1.103030303030303
+                },
+                "renderRect": {
+                  "bottom": 0,
+                  "left": -0.2,
+                  "right": 0.2,
+                  "top": 0
+                },
+                "style": {
+                  "y": 0.58,
+                  "height": 0
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "，成为像熬丙一样"
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "有责任感",
+              "highlight": {
+                "type": "svg",
+                "url": "https://cdn.dancf.com/fe-assets/20240914/e9f0fcd4410efa04be94cfe6ae5b4d11.svg",
+                "width": 37,
+                "height": 2,
+                "renderRect": {
+                  "bottom": 0.4,
+                  "left": 0,
+                  "right": 0.1,
+                  "top": 0
+                },
+                "svgInfo": {
+                  "colors": [
+                    "#746dffff"
+                  ],
+                  "strokeWidth": 0.11252525252525251
+                },
+                "style": {
+                  "y": 0.9,
+                  "height": 0.03
+                },
+                "repeat": "round",
+                "metaInfo": {
+                  "materials": []
+                }
+              }
+            },
+            {
+              "color": "#282828ff",
+              "fontFamily": "シャオライ 等幅 ＳＣ",
+              "fontStyle": "normal",
+              "fontSize": 108,
+              "fontWeight": 400,
+              "textDecoration": "none",
+              "content": "的人。"
+            }
+          ],
+          "effectScale": 1,
+          "textShadow": null,
+          "autoScale": true,
+          "textEffects": [],
+          "shadows": [],
+          "aggregatedColors": [
+            "#282828ff"
+          ],
+          "mainColor": "",
+          "textAlignLast": "auto",
+          "autoAdaptive": 1,
+          "paragraphSpacing": 0,
+          "textIndent": 0,
+          "quality": 100,
+          "boundingBox": {
+            "left": 3.328125,
+            "right": 660.71875,
+            "top": -3.3317718505859375,
+            "bottom": 766.8401489257812
+          },
+          "fillOpacity": 1
+        },
+        {
+          "uuid": "6e0885ce-d77e-4507-8bc5-20d25a1bda4c",
+          "imageUrl": "",
+          "type": "image",
+          "title": "表情",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 328,
+          "height": 345,
+          "left": 743,
+          "top": 1174,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": null,
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "blendMode": "blendNormal",
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "url": "https://gd-filems.dancf.com/gaoding/gaoding/27453/43eef327f86c45db8bba89f9f7b2aea4.png",
+          "loop": 1,
+          "imageEffects": [],
+          "imageTransform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "effectedResult": {
+            "width": 0,
+            "height": 0,
+            "left": 0,
+            "top": 0
+          },
+          "filterInfo": {
+            "id": -1,
+            "url": "",
+            "strong": 0.8,
+            "intensity": 0.8
+          },
+          "mosaic": null,
+          "shadows": [],
+          "aggregatedColors": [],
+          "naturalWidth": 328,
+          "naturalHeight": 345,
+          "effectScale": 1,
+          "filter": {
+            "contrast": 0,
+            "sharpness": 0,
+            "hueRotate": 0,
+            "saturate": 0,
+            "brightness": 0,
+            "gaussianBlur": 0,
+            "temperature": 0,
+            "tint": 0
+          },
+          "enableDragToMask": true,
+          "resourceType": "image",
+          "naturalDuration": 0,
+          "autoMatting": false,
+          "quality": 100,
+          "fillOpacity": 1
+        }
+      ],
+      "userAdded": true,
+      "background": {
+        "color": "#f4faefff",
+        "watermarkEnable": false
+      },
+      "mosaic": null,
+      "backgroundMask": {
+        "color": "rgb(0, 0, 0)",
+        "opacity": 0
+      },
+      "guides": [],
+      "className": null,
+      "thumbnail": {
+        "url": "https://gd-filems.dancf.com/gaoding/gaoding/74244/460946e14cd541bab8af2bfea792ae56.png",
+        "width": 256,
+        "height": 341
+      },
+      "backgroundEffectImage": "",
+      "backgroundColor": "#f4faefff",
+      "backgroundGradient": null,
+      "backgroundWatermarkEnable": false
+    }
+  ]
+}

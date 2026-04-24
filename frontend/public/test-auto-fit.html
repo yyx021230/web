@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Auto-fit Test</title>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; color: #fff; font-family: monospace; padding: 20px; }
+.viewport {
+  width: 100vw; height: 80vh;
+  border: 2px solid #6366f1;
+  display: flex; align-items: center; justify-content: center;
+  overflow: auto;
+}
+canvas { border: 2px solid red; display: block; }
+.info { margin: 10px 0; background: #222; padding: 10px; font-size: 12px; white-space: pre-wrap; }
+button { background: #6366f1; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 4px; }
+</style>
+</head>
+<body>
+<h1>Canvas Auto-fit Test</h1>
+<div class="viewport" id="viewport">
+  <canvas id="c"></canvas>
+</div>
+<div class="info" id="info">Initializing...</div>
+<button onclick="doFit()">适应 Fit</button>
+<button onclick="do1to1()">1:1</button>
+<script>
+const VIEWPAD = 48;
+const DSETCSS = { cssOnly: true };
+
+// Create canvas
+const canvas = new fabric.Canvas('c', {
+  width: 1242, height: 1660,
+  backgroundColor: '#e8edf5',
+});
+
+// Draw content
+const ctx = canvas.getContext();
+ctx.fillStyle = '#f59e0b';
+ctx.fillRect(0, 0, 1242, 1660);
+ctx.fillStyle = '#000';
+ctx.font = 'bold 60px sans-serif';
+ctx.fillText('FULL CANVAS', 300, 100);
+ctx.fillText('TOP-LEFT', 20, 200);
+ctx.fillText('BOTTOM-RIGHT', 700, 1600);
+
+canvas.renderAll();
+
+function getInfo() {
+  const vp = document.getElementById('viewport');
+  const c = document.getElementById('c');
+  return `Viewport: ${vp.clientWidth}x${vp.clientHeight}\n` +
+    `Canvas buffer: ${canvas.getWidth()}x${canvas.getHeight()}\n` +
+    `Canvas DOM: ${c.width}x${c.height}\n` +
+    `Canvas CSS: ${c.style.width || 'unset'} x ${c.style.height || 'unset'}\n` +
+    `Canvas display: ${c.getBoundingClientRect().width.toFixed(0)}x${c.getBoundingClientRect().height.toFixed(0)}`;
+}
+
+function doFit() {
+  const vp = document.getElementById('viewport');
+  const c = canvas;
+  const w = c.getWidth();
+  const h = c.getHeight();
+  const cw = Math.max(1, vp.clientWidth - VIEWPAD);
+  const ch = Math.max(1, vp.clientHeight - VIEWPAD);
+  const baseFit = Math.min(cw / w, ch / h, 1);
+  const cssW = Math.max(1, w * baseFit);
+  const cssH = Math.max(1, h * baseFit);
+  
+  c.setZoom(1);
+  c.setViewportTransform([1, 0, 0, 1, 0, 0]);
+  c.setDimensions({ width: cssW, height: cssH }, DSETCSS);
+  c.calcOffset();
+  c.requestRenderAll();
+  
+  document.getElementById('info').textContent = 
+    `After FIT:\nbaseFit=${baseFit.toFixed(4)}\nCSS=${cssW.toFixed(0)}x${cssH.toFixed(0)}\n${getInfo()}`;
+}
+
+function do1to1() {
+  const c = canvas;
+  c.setZoom(1);
+  c.setViewportTransform([1, 0, 0, 1, 0, 0]);
+  const w = c.getWidth();
+  const h = c.getHeight();
+  c.setDimensions({ width: w, height: h }, DSETCSS);
+  c.calcOffset();
+  c.requestRenderAll();
+  document.getElementById('info').textContent = `After 1:1\n${getInfo()}`;
+}
+
+setTimeout(() => {
+  document.getElementById('info').textContent = `Initial:\n${getInfo()}`;
+}, 200);
+</script>
+</body>
+</html>

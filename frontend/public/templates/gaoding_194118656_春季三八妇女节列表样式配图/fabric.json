@@ -1,0 +1,53 @@
+{
+  "version": "5.3.0",
+  "objects": [
+    {
+      "type": "Image",
+      "src": "https://gdesign-dam.dancf.com/31583516339577971/3841918595.svg",
+      "left": 59.89999999999993,
+      "top": 45.79999999999991,
+      "width": 1122.2,
+      "height": 1564.4,
+      "scaleX": 1,
+      "scaleY": 1,
+      "angle": 0,
+      "opacity": 1,
+      "originX": "left",
+      "originY": "top",
+      "selectable": true,
+      "id": "9ca0e0c6-5cc8-4773-928f-f20619ca21a1",
+      "name": "图形",
+      "shadow": null
+    },
+    {
+      "type": "Textbox",
+      "text": "选择列表样式\n调整大小布局\n收获整齐列表\n妇女节快乐",
+      "left": 237.5,
+      "top": 478,
+      "width": 767,
+      "height": 660,
+      "fill": "#ff7ca4",
+      "fontSize": 82.5,
+      "fontFamily": "JasonWriting",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "lineHeight": 1.5,
+      "charSpacing": -60,
+      "textAlign": "left",
+      "angle": 0,
+      "opacity": 1,
+      "originX": "left",
+      "originY": "top",
+      "selectable": true,
+      "id": "9c5d7241-694d-4b8f-8a68-94661b996e31",
+      "name": "选择列表样式\n调整大小布局\n收获整齐列表",
+      "shadow": null,
+      "underline": false,
+      "linethrough": false,
+      "overline": false
+    }
+  ],
+  "background": "rgba(255,255,255,0.00)",
+  "width": 1242,
+  "height": 1656
+}

@@ -1,0 +1,2070 @@
+{
+  "version": "11.0.0",
+  "type": "poster",
+  "global": {
+    "zoom": 0.34299516908212563,
+    "dpi": 72,
+    "unit": "px",
+    "showWatermark": false,
+    "referenceLines": [],
+    "layout": {
+      "height": 1660,
+      "width": 1242,
+      "backgroundImage": null,
+      "backgroundColor": "#ffffff00",
+      "backgroundImageInfo": {
+        "opacity": 1,
+        "width": 100,
+        "height": 100,
+        "transform": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "tx": 0,
+          "ty": 0
+        }
+      },
+      "backgroundRepeat": "no-repeat",
+      "backgroundSize": [
+        0,
+        0
+      ],
+      "watermarkEnable": false
+    },
+    "metaInfo": {
+      "materials": []
+    },
+    "cover": null,
+    "mode": "design"
+  },
+  "pages": [
+    {
+      "uuid": "83129efa-9e3a-4345-a904-d94300c7092c",
+      "elements": [
+        {
+          "uuid": "0.667710301712607834",
+          "imageUrl": "",
+          "type": "layout",
+          "title": "",
+          "category": "",
+          "opacity": 1,
+          "padding": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "width": 1242,
+          "height": 1656,
+          "left": 0,
+          "top": 0,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "boxShadow": null,
+          "resize": 7,
+          "dragable": true,
+          "rotatable": true,
+          "editable": true,
+          "frozen": false,
+          "hidden": false,
+          "lock": false,
+          "borderRadius": 0,
+          "watermarkEnable": false,
+          "metaInfo": {
+            "contentHash": "2926921566"
+          },
+          "linkId": "",
+          "groupable": true,
+          "flex": null,
+          "backgroundEffect": null,
+          "border": null,
+          "maskInfo": {
+            "enable": false,
+            "showSelf": false,
+            "imageUrl": "",
+            "effectedResult": {
+              "width": 0,
+              "height": 0,
+              "left": 0,
+              "top": 0
+            },
+            "mode": "alpha"
+          },
+          "transitionIn": null,
+          "transitionOut": null,
+          "animations": [],
+          "autoLayout": null,
+          "userAdded": false,
+          "background": {
+            "color": "#ffffffff",
+            "watermarkEnable": false
+          },
+          "mosaic": null,
+          "backgroundMask": {
+            "color": "rgb(0, 0, 0)",
+            "opacity": 0
+          },
+          "guides": [],
+          "className": null,
+          "repeatId": null,
+          "repeatGroup": null,
+          "backgroundEffectImage": "",
+          "thumbnail": {
+            "url": "https://gd-filems.dancf.com/gaoding/gaoding/31439/803447d54fbb4fa9918a83c4f45f7e19.png",
+            "width": 256,
+            "height": 341
+          },
+          "elements": [
+            {
+              "uuid": "0.47814803797664434",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "背景",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1248.0000072717667,
+              "height": 1667.0000214576721,
+              "version": "7.5.5",
+              "left": -1.999983310699463,
+              "top": -3,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#0084ffff",
+                "#ff6702ff"
+              ],
+              "url": "https://st-gdx.dancf.com/gaodingx/0/uxms/design/20210708-145005-bcec.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 1248.0000072717667,
+              "naturalHeight": 1667.0000214576721,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "0.178270656599123446",
+              "imageUrl": "",
+              "type": "svg",
+              "title": "矩形 2",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 1153.985479996109,
+              "height": 1571.5937112189292,
+              "version": "7.5.5",
+              "left": 44.0072600019455,
+              "top": 42.203144390535385,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 7,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "colors": [
+                "#000000ff",
+                "#ffffffff"
+              ],
+              "url": "https://st-gdx.dancf.com/gaodingx/0/uxms/design/20210708-145005-07dc.svg",
+              "content": "",
+              "ninePatch": null,
+              "naturalWidth": 1155.3719263076782,
+              "naturalHeight": 1573.4818894863129,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "containerTransform": null
+            },
+            {
+              "uuid": "a936f87d-ea96-454b-9224-9a0a54df6a65",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 991.8084,
+              "height": 903.914,
+              "version": "7.5.5",
+              "left": 125.0958,
+              "top": 664.2980481927711,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "0.33080886413400888",
+                  "imageUrl": "https://gd-filems.dancf.com/gaoding/gaoding/31439/844a6ec137cb43659b82df83a9e6098e.png",
+                  "type": "image",
+                  "title": "矩形 3 拷贝 2",
+                  "category": "",
+                  "opacity": 0.12941176470588237,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 991.8084,
+                  "height": 903.914,
+                  "version": "7.5.5",
+                  "left": -1.4193801689543762e-14,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 7,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": "blendNormal",
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "url": "https://st-gdx.dancf.com/gaodingx/0/uxms/design/20210708-145006-0505.png",
+                  "loop": 0,
+                  "imageEffects": [
+                    {
+                      "enable": true,
+                      "collapse": false,
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "skew": {
+                        "enable": false,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "color": "#ff6702ff",
+                        "type": 0,
+                        "enable": true,
+                        "imageContent": {
+                          "repeat": "no-repeat",
+                          "scaleX": 1,
+                          "scaleY": 1,
+                          "image": null,
+                          "width": null,
+                          "height": null
+                        },
+                        "gradient": {
+                          "byLine": 0,
+                          "angle": 0,
+                          "stops": [
+                            {
+                              "color": "#ffffffff",
+                              "offset": 0
+                            },
+                            {
+                              "color": "#000000ff",
+                              "offset": 1
+                            }
+                          ],
+                          "type": "linear"
+                        }
+                      },
+                      "excludeScale": []
+                    },
+                    {
+                      "enable": true,
+                      "collapse": false,
+                      "offset": {
+                        "enable": true,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "skew": {
+                        "enable": false,
+                        "x": 0,
+                        "y": 0
+                      },
+                      "stroke": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "width": 0,
+                        "type": "outer",
+                        "style": "basic",
+                        "expansion": 0
+                      },
+                      "filling": {
+                        "enable": false,
+                        "type": "color",
+                        "color": "#ffffffff",
+                        "imageContent": {
+                          "repeat": 0,
+                          "scaleX": 1,
+                          "scaleY": 1,
+                          "image": null,
+                          "width": null,
+                          "height": null
+                        },
+                        "gradient": {
+                          "byLine": 0,
+                          "angle": 0,
+                          "stops": [
+                            {
+                              "color": "#ffffffff",
+                              "offset": 0
+                            },
+                            {
+                              "color": "#000000ff",
+                              "offset": 1
+                            }
+                          ],
+                          "type": "linear"
+                        }
+                      },
+                      "excludeScale": []
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "enable": false,
+                        "color": "#000000ff",
+                        "offsetX": 0,
+                        "offsetY": 0,
+                        "blur": 0,
+                        "type": "shadow",
+                        "opacity": 1,
+                        "inset": false
+                      }
+                    },
+                    {
+                      "enable": true,
+                      "filling": {
+                        "enable": true,
+                        "type": 0,
+                        "color": "#00000000"
+                      },
+                      "shadow": {
+                        "color": "#000000b0",
+                        "offsetX": 3.9021296720616983,
+                        "offsetY": 11.332607439703171,
+                        "blur": 9.988,
+                        "enable": true,
+                        "type": "shadow",
+                        "opacity": 0.6901960784313725,
+                        "inset": false
+                      }
+                    }
+                  ],
+                  "imageTransform": {
+                    "a": 0.9988,
+                    "b": 0,
+                    "c": 0,
+                    "d": 0.9988,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "effectedResult": {
+                    "left": -22,
+                    "top": -14,
+                    "width": 1044,
+                    "height": 955
+                  },
+                  "filterInfo": {
+                    "id": -1,
+                    "url": "",
+                    "strong": 0.8,
+                    "intensity": 0.8
+                  },
+                  "mosaic": null,
+                  "shadows": [
+                    {
+                      "enable": false,
+                      "color": "#000000ff",
+                      "offsetX": 0,
+                      "offsetY": 0,
+                      "blur": 0,
+                      "type": "base",
+                      "opacity": 1
+                    },
+                    {
+                      "color": "#000000b0",
+                      "offsetX": 3.9021296720616983,
+                      "offsetY": 11.332607439703171,
+                      "blur": 9.988,
+                      "enable": true,
+                      "type": "base",
+                      "opacity": 0.6901960784313725
+                    }
+                  ],
+                  "aggregatedColors": [
+                    "#ff6702ff",
+                    "#000000b0"
+                  ],
+                  "mainColor": null,
+                  "naturalWidth": 993,
+                  "naturalHeight": 905,
+                  "effectScale": 1,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "enableDragToMask": true,
+                  "resourceType": "image",
+                  "naturalDuration": 0,
+                  "autoMatting": false,
+                  "backgroundColor": null,
+                  "speed": 1
+                },
+                {
+                  "uuid": "778ff323-6647-4d9b-9b79-de00d4c0bbd1",
+                  "imageUrl": "",
+                  "type": "group",
+                  "title": "",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "width": 918.8395965454101,
+                  "height": 708.2576729631351,
+                  "version": "7.5.5",
+                  "left": 42.68309375,
+                  "top": 88.90699156882651,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 1,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": null,
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "splitenable": true,
+                  "autoGrow": false,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "backgroundColor": null,
+                  "elements": [
+                    {
+                      "uuid": "0.147851375738773620",
+                      "imageUrl": "",
+                      "type": "group",
+                      "title": "",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 918.0740160156249,
+                      "height": 196.3009683854982,
+                      "version": "7.5.5",
+                      "left": 0.76470625,
+                      "top": 0,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 1,
+                      "dragable": false,
+                      "rotatable": false,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": null,
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "splitenable": true,
+                      "autoGrow": false,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "backgroundColor": null,
+                      "elements": [
+                        {
+                          "uuid": "0.849896605002082610",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "一时熬夜一时爽，一直熬夜一直爽，但是极其影响工作效率 和身体健康！一定要早睡早起规律作息。",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 916.076416015625,
+                          "height": 120,
+                          "version": "9.2.0",
+                          "left": 1.9975999999998866,
+                          "top": 76.30096838549821,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#000000ff",
+                          "fontFamily": "SourceHanSansSC-Regular",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 35.9,
+                          "lineHeight": 1.67,
+                          "letterSpacing": 0.89892,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "justify",
+                          "verticalAlign": "top",
+                          "content": "一时熬夜一时爽，一直熬夜一直爽，但是极其影响工作效率和身体健康！一定要早睡早起规律作息。",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#000000ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        },
+                        {
+                          "uuid": "0.947941521306004312",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "×报复性熬夜",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 331,
+                          "height": 58,
+                          "version": "9.2.0",
+                          "left": 0,
+                          "top": 0,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#ff6702ff",
+                          "fontFamily": "SourceHanSansSC-Bold",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 47.9,
+                          "lineHeight": 1.2,
+                          "letterSpacing": 1.1985600000000003,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "left",
+                          "verticalAlign": "top",
+                          "content": "报复性熬夜",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#ff6702ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/103dfb44ad4c4c2e3bd5dc81a158163e.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#ff6702ff"
+                            ]
+                          },
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 3,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        }
+                      ]
+                    },
+                    {
+                      "uuid": "0.539295317176262924",
+                      "imageUrl": "",
+                      "type": "group",
+                      "title": "",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 918.8394299865723,
+                      "height": 249.77406581591808,
+                      "version": "7.5.5",
+                      "left": 0,
+                      "top": 232.6226065429688,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 1,
+                      "dragable": false,
+                      "rotatable": false,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": null,
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "splitenable": true,
+                      "autoGrow": false,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "backgroundColor": null,
+                      "elements": [
+                        {
+                          "uuid": "0.931690557412540514",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "间歇性安排10分钟的休息时间，让紧绷的大脑得到缓冲，这 种休息一定要低调，否则一不小心就会给领导留下上班摸鱼 的不好印象哦~",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 916.5518798828125,
+                          "height": 180,
+                          "version": "9.2.0",
+                          "left": 2.2875501037598225,
+                          "top": 69.77406581591808,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#000000ff",
+                          "fontFamily": "SourceHanSansSC-Regular",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 35.9,
+                          "lineHeight": 1.67,
+                          "letterSpacing": 0.359568,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "justify",
+                          "verticalAlign": "top",
+                          "content": "间歇性安排10分钟的休息时间，让紧绷的大脑得到缓冲，这种休息一定要低调，否则一不小心就会给领导留下上班摸鱼的不好印象哦~",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#000000ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        },
+                        {
+                          "uuid": "0.848168177229699816",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "√间歇性休闲",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 331,
+                          "height": 58,
+                          "version": "9.2.0",
+                          "left": 0,
+                          "top": 0,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#ff6702ff",
+                          "fontFamily": "SourceHanSansSC-Bold",
+                          "fontStyle": "normal",
+                          "fontWeight": 700,
+                          "fontSize": 47.9,
+                          "lineHeight": 1.2,
+                          "letterSpacing": 1.1985600000000003,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "justify",
+                          "verticalAlign": "top",
+                          "content": "间歇性休闲",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#ff6702ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/49011cce1c3ac3073d6b09479ffe84b7.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#ff6702ff"
+                            ]
+                          },
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 3,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        }
+                      ]
+                    },
+                    {
+                      "uuid": "0.0421697694681428828",
+                      "imageUrl": "",
+                      "type": "group",
+                      "title": "",
+                      "category": "",
+                      "opacity": 1,
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "width": 918.8395965454101,
+                      "height": 192.7364947893068,
+                      "version": "7.5.5",
+                      "left": 0,
+                      "top": 515.5211781738283,
+                      "transform": {
+                        "a": 1,
+                        "b": 0,
+                        "c": 0,
+                        "d": 1,
+                        "tx": 0,
+                        "ty": 0
+                      },
+                      "boxShadow": null,
+                      "resize": 1,
+                      "dragable": false,
+                      "rotatable": false,
+                      "editable": true,
+                      "frozen": false,
+                      "hidden": false,
+                      "lock": false,
+                      "borderRadius": 0,
+                      "watermarkEnable": false,
+                      "metaInfo": {
+                        "materials": []
+                      },
+                      "linkId": "",
+                      "groupable": true,
+                      "flex": null,
+                      "backgroundEffect": null,
+                      "border": null,
+                      "blendMode": null,
+                      "maskInfo": {
+                        "enable": false,
+                        "showSelf": false,
+                        "imageUrl": "",
+                        "effectedResult": {
+                          "width": 0,
+                          "height": 0,
+                          "left": 0,
+                          "top": 0
+                        },
+                        "mode": "alpha"
+                      },
+                      "transitionIn": null,
+                      "transitionOut": null,
+                      "animations": [],
+                      "autoLayout": null,
+                      "splitenable": true,
+                      "autoGrow": false,
+                      "filter": {
+                        "contrast": 0,
+                        "sharpness": 0,
+                        "hueRotate": 0,
+                        "saturate": 0,
+                        "brightness": 0,
+                        "gaussianBlur": 0,
+                        "temperature": 0,
+                        "tint": 0
+                      },
+                      "backgroundColor": null,
+                      "elements": [
+                        {
+                          "uuid": "0.807028619687177218",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "上午可以做些零碎的工作，下午精神容易集中，可以做一些 耗时较长，沉浸式的工作。",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 916.5255737304688,
+                          "height": 120,
+                          "version": "9.2.0",
+                          "left": 2.3140228149414632,
+                          "top": 72.73649478930679,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#000000ff",
+                          "fontFamily": "SourceHanSansSC-Regular",
+                          "fontStyle": "normal",
+                          "fontWeight": 400,
+                          "fontSize": 35.9,
+                          "lineHeight": 1.67,
+                          "letterSpacing": 0.359568,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "justify",
+                          "verticalAlign": "top",
+                          "content": "上午可以做些零碎的工作，下午精神容易集中，可以做一些耗时较长，沉浸式的工作。",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#000000ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 1,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        },
+                        {
+                          "uuid": "0.2181492584769770820",
+                          "imageUrl": "",
+                          "type": "text",
+                          "title": "√合理安排时间",
+                          "category": "",
+                          "opacity": 1,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "width": 380,
+                          "height": 58,
+                          "version": "9.2.0",
+                          "left": 0,
+                          "top": 0,
+                          "transform": {
+                            "a": 1,
+                            "b": 0,
+                            "c": 0,
+                            "d": 1,
+                            "tx": 0,
+                            "ty": 0
+                          },
+                          "boxShadow": null,
+                          "resize": 5,
+                          "dragable": false,
+                          "rotatable": false,
+                          "editable": true,
+                          "frozen": false,
+                          "hidden": false,
+                          "lock": false,
+                          "borderRadius": 0,
+                          "watermarkEnable": false,
+                          "metaInfo": {
+                            "materials": []
+                          },
+                          "linkId": "",
+                          "groupable": true,
+                          "flex": null,
+                          "backgroundEffect": null,
+                          "border": null,
+                          "blendMode": null,
+                          "maskInfo": {
+                            "enable": false,
+                            "showSelf": false,
+                            "imageUrl": "",
+                            "effectedResult": {
+                              "width": 0,
+                              "height": 0,
+                              "left": 0,
+                              "top": 0
+                            },
+                            "mode": "alpha"
+                          },
+                          "transitionIn": null,
+                          "transitionOut": null,
+                          "animations": [],
+                          "autoLayout": null,
+                          "color": "#ff6702ff",
+                          "fontFamily": "SourceHanSansSC-Bold",
+                          "fontStyle": "normal",
+                          "fontWeight": 700,
+                          "fontSize": 47.9,
+                          "lineHeight": 1.2,
+                          "letterSpacing": 1.1985600000000003,
+                          "textDecoration": "none",
+                          "writingMode": "horizontal-tb",
+                          "textAlign": "left",
+                          "verticalAlign": "top",
+                          "content": "合理安排时间",
+                          "contents": null,
+                          "effectScale": 1,
+                          "textShadow": null,
+                          "autoScale": true,
+                          "textEffects": [],
+                          "shadows": [],
+                          "aggregatedColors": [
+                            "#ff6702ff"
+                          ],
+                          "mainColor": null,
+                          "listStyle": "",
+                          "listStyleBackground": {
+                            "url": "https://cdn.dancf.com/fe-assets/20240910/49011cce1c3ac3073d6b09479ffe84b7.svg",
+                            "type": "svg",
+                            "naturalWidth": 64,
+                            "naturalHeight": 64,
+                            "colors": [
+                              "#ff6702ff"
+                            ]
+                          },
+                          "textAlignLast": "auto",
+                          "autoAdaptive": 3,
+                          "paragraphSpacing": 0,
+                          "textIndent": 0,
+                          "filter": {
+                            "contrast": 0,
+                            "sharpness": 0,
+                            "hueRotate": 0,
+                            "saturate": 0,
+                            "brightness": 0,
+                            "gaussianBlur": 0,
+                            "temperature": 0,
+                            "tint": 0
+                          },
+                          "backgroundColor": null,
+                          "adjustsFontSize": false,
+                          "fillOpacity": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "uuid": "0.673597744656328426",
+              "imageUrl": "",
+              "type": "text",
+              "title": "职场生存",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 895.3243200000002,
+              "height": 241.80948000000004,
+              "version": "9.2.0",
+              "left": 173.33783999999991,
+              "top": 207.49879518072288,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 5,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": {
+                "materials": []
+              },
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "color": "#ff6702ff",
+              "fontFamily": "SourceHanSansSC-Heavy",
+              "fontStyle": "normal",
+              "fontWeight": 400,
+              "fontSize": 201,
+              "lineHeight": 1.2,
+              "letterSpacing": 30.163260599999997,
+              "textDecoration": "none",
+              "writingMode": "horizontal-tb",
+              "textAlign": "center",
+              "verticalAlign": "top",
+              "content": "职场生存",
+              "contents": null,
+              "effectScale": 1,
+              "textShadow": null,
+              "autoScale": true,
+              "textEffects": [],
+              "shadows": [],
+              "aggregatedColors": [
+                "#ff6702ff"
+              ],
+              "mainColor": null,
+              "listStyle": "",
+              "textAlignLast": "auto",
+              "autoAdaptive": 3,
+              "paragraphSpacing": 0,
+              "textIndent": 0,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "adjustsFontSize": false,
+              "fillOpacity": 1
+            },
+            {
+              "uuid": "a286f8ef-38b8-418f-a1de-c216b348dbb4",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 931,
+              "height": 112,
+              "version": "7.5.5",
+              "left": 155.35943999999995,
+              "top": 83.79759036144578,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "0.0572855426505813932",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "Career survival",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    29.379078173491198,
+                    36.08860324608,
+                    29.379078173491198,
+                    36.08860324608
+                  ],
+                  "width": 931,
+                  "height": 112,
+                  "version": "9.2.0",
+                  "left": 6.387210760294693e-15,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#ffffffff",
+                  "fontFamily": "SourceHanSansSC-Bold",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 53.9,
+                  "lineHeight": 1,
+                  "letterSpacing": 26.9676,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "CAREER SURVIVAL",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#ffffffff",
+                    "#fd641eff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "background": {
+                    "svg": {
+                      "naturalWidth": 117,
+                      "naturalHeight": 70,
+                      "url": "https://cdn.dancf.com/fe-assets/20241017/tb/974a553cd4ce9793a8b821ee25f3515f.svg",
+                      "colors": [
+                        "#fd641eff"
+                      ],
+                      "opacity": 1
+                    },
+                    "enable": true
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "adjustsFontSize": false,
+                  "fillOpacity": 1
+                }
+              ]
+            },
+            {
+              "uuid": "e2b0dd0e-b3a5-4711-9875-1b807e26ee68",
+              "imageUrl": "",
+              "type": "group",
+              "title": "",
+              "category": "",
+              "opacity": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "width": 984.8168,
+              "height": 156.8116,
+              "version": "7.5.5",
+              "left": 128.59160000000003,
+              "top": 491.8120481927711,
+              "transform": {
+                "a": 1,
+                "b": 0,
+                "c": 0,
+                "d": 1,
+                "tx": 0,
+                "ty": 0
+              },
+              "boxShadow": null,
+              "resize": 1,
+              "dragable": true,
+              "rotatable": true,
+              "editable": true,
+              "frozen": false,
+              "hidden": false,
+              "lock": false,
+              "borderRadius": 0,
+              "watermarkEnable": false,
+              "metaInfo": null,
+              "linkId": "",
+              "groupable": true,
+              "flex": null,
+              "backgroundEffect": null,
+              "border": null,
+              "blendMode": null,
+              "maskInfo": {
+                "enable": false,
+                "showSelf": false,
+                "imageUrl": "",
+                "effectedResult": {
+                  "width": 0,
+                  "height": 0,
+                  "left": 0,
+                  "top": 0
+                },
+                "mode": "alpha"
+              },
+              "transitionIn": null,
+              "transitionOut": null,
+              "animations": [],
+              "autoLayout": null,
+              "splitenable": true,
+              "autoGrow": false,
+              "filter": {
+                "contrast": 0,
+                "sharpness": 0,
+                "hueRotate": 0,
+                "saturate": 0,
+                "brightness": 0,
+                "gaussianBlur": 0,
+                "temperature": 0,
+                "tint": 0
+              },
+              "backgroundColor": null,
+              "elements": [
+                {
+                  "uuid": "0.83327730621223124",
+                  "imageUrl": "",
+                  "type": "text",
+                  "title": "如何成为时间管理大师",
+                  "category": "",
+                  "opacity": 1,
+                  "padding": [
+                    32.410560649643266,
+                    39.84147374956954,
+                    32.410560649643266,
+                    39.84147374956954
+                  ],
+                  "width": 984.8168,
+                  "height": 156.8116,
+                  "version": "9.2.0",
+                  "left": 0,
+                  "top": 0,
+                  "transform": {
+                    "a": 1,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "tx": 0,
+                    "ty": 0
+                  },
+                  "boxShadow": null,
+                  "resize": 5,
+                  "dragable": false,
+                  "rotatable": false,
+                  "editable": true,
+                  "frozen": false,
+                  "hidden": false,
+                  "lock": false,
+                  "borderRadius": 0,
+                  "watermarkEnable": false,
+                  "metaInfo": {
+                    "materials": []
+                  },
+                  "linkId": "",
+                  "groupable": true,
+                  "flex": null,
+                  "backgroundEffect": null,
+                  "border": null,
+                  "blendMode": null,
+                  "maskInfo": {
+                    "enable": false,
+                    "showSelf": false,
+                    "imageUrl": "",
+                    "effectedResult": {
+                      "width": 0,
+                      "height": 0,
+                      "left": 0,
+                      "top": 0
+                    },
+                    "mode": "alpha"
+                  },
+                  "transitionIn": null,
+                  "transitionOut": null,
+                  "animations": [],
+                  "autoLayout": null,
+                  "color": "#ffffffff",
+                  "fontFamily": "SourceHanSansSC-Bold",
+                  "fontStyle": "normal",
+                  "fontWeight": 400,
+                  "fontSize": 76.8,
+                  "lineHeight": 1.2,
+                  "letterSpacing": 15.361544000000002,
+                  "textDecoration": "none",
+                  "writingMode": "horizontal-tb",
+                  "textAlign": "left",
+                  "verticalAlign": "top",
+                  "content": "如何成为时间管理大师",
+                  "contents": null,
+                  "effectScale": 1,
+                  "textShadow": null,
+                  "autoScale": true,
+                  "textEffects": [],
+                  "shadows": [],
+                  "aggregatedColors": [
+                    "#ffffffff",
+                    "#000000ff"
+                  ],
+                  "mainColor": null,
+                  "listStyle": "",
+                  "background": {
+                    "svg": {
+                      "naturalWidth": 117,
+                      "naturalHeight": 70,
+                      "url": "https://cdn.dancf.com/fe-assets/20241017/tb/974a553cd4ce9793a8b821ee25f3515f.svg",
+                      "colors": [
+                        "#000000ff"
+                      ],
+                      "opacity": 1
+                    },
+                    "enable": true
+                  },
+                  "textAlignLast": "auto",
+                  "autoAdaptive": 3,
+                  "paragraphSpacing": 0,
+                  "textIndent": 0,
+                  "filter": {
+                    "contrast": 0,
+                    "sharpness": 0,
+                    "hueRotate": 0,
+                    "saturate": 0,
+                    "brightness": 0,
+                    "gaussianBlur": 0,
+                    "temperature": 0,
+                    "tint": 0
+                  },
+                  "adjustsFontSize": false,
+                  "fillOpacity": 1
+                }
+              ]
+            }
+          ],
+          "backgroundColor": "#ffffffff",
+          "backgroundGradient": null,
+          "backgroundWatermarkEnable": false
+        }
+      ],
+      "guides": [],
+      "mode": "normal",
+      "version": "",
+      "unit": "px",
+      "dpi": 72,
+      "title": ""
+    }
+  ]
+}
