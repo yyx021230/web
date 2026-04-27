@@ -18,6 +18,10 @@ interface GalleryImage {
   width: number;
   height: number;
   folder: 'drafts' | 'templates' | 'car-models';
+  /** 是否为编辑器设计稿 */
+  isDesign?: boolean;
+  /** 设计稿的完整 JSON（用于跳转编辑器时还原） */
+  designJson?: Record<string, unknown> | null;
   // Car model specific fields
   brand?: string;
   model?: string;
@@ -152,7 +156,7 @@ export default function GalleryPage() {
   const [carBrands, setCarBrands] = useState<string[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [carModels, setCarModels] = useState<Record<string, string[]>>({});
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('all');
   const [carImages, setCarImages] = useState<GalleryImage[]>([]);
   const [carData, setCarData] = useState<Record<string, Record<string, { label: string; url: string }[]>> | null>(null);
 
@@ -176,10 +180,12 @@ export default function GalleryPage() {
         const drafts: GalleryImage[] = allMaterials.map(m => ({
           id: m.id,
           name: m.name,
-          url: m.url,
-          width: m.width,
-          height: m.height,
+          url: m.url || '',
+          width: m.width || 1200,
+          height: m.height || 800,
           folder: 'drafts' as const,
+          isDesign: m.type === 'design',
+          designJson: m.design_json,
           liked: false,
           createdAt: m.created_at,
           format: m.type,
@@ -197,11 +203,9 @@ export default function GalleryPage() {
           setSelectedBrand(brands[0]);
           const modelsRes = await carModelsApi.getModels(brands[0]);
           setCarModels(modelsRes.data);
-          const modelList = Object.values(modelsRes.data)[0] || [];
-          if (modelList.length > 0) {
-            setSelectedModel(modelList[0]);
-            await fetchCarImages(brands[0], modelList[0]);
-          }
+          // 默认选择"全部"车型
+          setSelectedModel('all');
+          await fetchCarImages(brands[0]);
         }
       } catch (e) {
         console.error('Failed to fetch gallery data:', e);
@@ -213,19 +217,19 @@ export default function GalleryPage() {
   }, []);
 
   // Fetch car images when brand/model changes
-  const fetchCarImages = async (brand: string, model: string) => {
+  const fetchCarImages = async (brand: string, model?: string) => {
     try {
       const res = await carModelsApi.getCarImages(brand, model);
       const data = res.data;
       const images: GalleryImage[] = (data.images || []).map((img, idx) => ({
-        id: `${data.brand}-${data.model}-${idx}`,
-        name: `${data.brand} ${data.model} - ${img.label}`,
+        id: `${data.brand}-${img.model || data.model}-${idx}`,
+        name: `${data.brand} ${img.model || data.model} - ${img.label}`,
         url: img.url,
         width: 1920,
         height: 1080,
         folder: 'car-models' as const,
         brand: data.brand,
-        model: data.model,
+        model: img.model || data.model,
         angle: img.label,
       }));
       setCarImages(images);
@@ -238,26 +242,23 @@ export default function GalleryPage() {
   // Brand selection change
   const handleBrandChange = async (brand: string) => {
     setSelectedBrand(brand);
-    setSelectedModel('');
+    setSelectedModel('all');
     setCarImages([]);
     try {
       const modelsRes = await carModelsApi.getModels(brand);
       setCarModels(modelsRes.data);
-      const modelList = Object.values(modelsRes.data)[0] || [];
-      if (modelList.length > 0) {
-        setSelectedModel(modelList[0]);
-        await fetchCarImages(brand, modelList[0]);
-      }
+      await fetchCarImages(brand);
     } catch (e) {
       console.error('Failed to fetch models:', e);
     }
   };
 
   // Model selection change
-  const handleModelChange = async (model: string) => {
+  const handleModelChange = (model: string) => {
     setSelectedModel(model);
     if (selectedBrand && model) {
-      await fetchCarImages(selectedBrand, model);
+      // model 为 'all' 时不传，获取该品牌下所有车型
+      fetchCarImages(selectedBrand, model === 'all' ? undefined : model);
     }
   };
 
@@ -353,10 +354,20 @@ export default function GalleryPage() {
 
   const deleteDraft = (id: number) => {
     if (!confirm('确定要删除这个素材吗？')) return;
+    if (previewImg && String(previewImg.id) === String(id)) setPreviewImg(null);
+    // 设计稿和普通图片删除逻辑一样
     editorApi.deleteMaterial(id).catch(() => {});
     setDraftImages(prev => prev.filter(img => img.id !== id));
     setSelectedImages(prev => { const n = new Set(prev); n.delete(String(id)); return n; });
-    if (previewImg && String(previewImg.id) === String(id)) setPreviewImg(null);
+  };
+
+  /** 打开设计稿到编辑器 */
+  const openDesignInEditor = async (img: GalleryImage) => {
+    if (!img.isDesign || !img.designJson) return;
+    // 跳转到编辑器页面并携带设计数据
+    const params = new URLSearchParams();
+    params.set('designId', String(img.id));
+    window.location.href = `/editor?${params.toString()}`;
   };
 
   const deleteSelected = () => {
@@ -515,15 +526,30 @@ export default function GalleryPage() {
               emptyText="无匹配品牌"
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">车型:</span>
-            <SearchableSelect
-              options={carModels[selectedBrand] || []}
-              value={selectedModel}
-              onChange={handleModelChange}
-              placeholder="选择车型..."
-              emptyText="无匹配车型"
-            />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleModelChange('all')}
+                className={cn(
+                  'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+                  selectedModel === 'all'
+                    ? 'bg-primary text-primary-foreground border-primary font-medium'
+                    : 'hover:border-primary/50 text-muted-foreground'
+                )}
+              >
+                全部
+              </button>
+              <span className="text-xs text-muted-foreground">|</span>
+              <SearchableSelect
+                options={carModels[selectedBrand] || []}
+                value={selectedModel === 'all' ? '' : selectedModel}
+                onChange={(v) => handleModelChange(v)}
+                placeholder="选择车型..."
+                emptyText="无匹配车型"
+                className="min-w-[140px]"
+              />
+            </div>
             <span className="text-xs text-muted-foreground ml-2">
-              {carImages.length} 张图片（5角度）
+              {carImages.length} 张图片{selectedModel === 'all' ? '（全部车型）' : '（5角度）'}
             </span>
           </div>
         )}
@@ -565,14 +591,37 @@ export default function GalleryPage() {
                       : 'hover:shadow-md'
                   )}
                 >
+                  {/* 点击：设计稿跳转到编辑器，普通图片打开预览 */}
                   <div
-                    onClick={() => setPreviewImg(img)}
+                    onClick={() => {
+                      if (img.isDesign) {
+                        openDesignInEditor(img);
+                      } else {
+                        setPreviewImg(img);
+                      }
+                    }}
                     className="w-full h-full flex items-center justify-center bg-muted"
                   >
-                    <img src={img.url} alt={img.name} className="w-full h-full object-contain p-2" />
+                    {img.isDesign && img.url ? (
+                      <img src={img.url} alt={img.name} className="w-full h-full object-contain p-2" />
+                    ) : img.isDesign ? (
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <Palette className="h-8 w-8 mb-1 opacity-30" />
+                        <span className="text-[10px] opacity-50">{img.name}</span>
+                      </div>
+                    ) : (
+                      <img src={img.url} alt={img.name} className="w-full h-full object-contain p-2" />
+                    )}
                   </div>
-                  {/* Checkbox (only for drafts) */}
-                  {activeFolder === 'drafts' && (
+                  {/* 设计稿标识 */}
+                  {img.isDesign && (
+                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/90 text-white text-[9px] font-medium">
+                      <Palette className="h-2.5 w-2.5" />
+                      <span>设计稿</span>
+                    </div>
+                  )}
+                  {/* Checkbox (only for drafts, not designs) */}
+                  {activeFolder === 'drafts' && !img.isDesign && (
                     <label
                       onClick={(e) => { e.stopPropagation(); toggleSelect(String(img.id), e); }}
                       className="absolute top-2 left-2 z-10"
@@ -593,7 +642,31 @@ export default function GalleryPage() {
                     {img.angle && (
                       <p className="text-[10px] text-white/70">{img.angle}</p>
                     )}
+                    {img.isDesign && (
+                      <p className="text-[10px] text-primary/80">点击打开编辑</p>
+                    )}
                   </div>
+                  {/* 设计稿快速操作按钮 */}
+                  {img.isDesign && (
+                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openDesignInEditor(img); }}
+                        className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-primary/90"
+                      >
+                        <Palette className="h-2.5 w-2.5" />打开编辑
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const draftId = Number(img.id);
+                          deleteDraft(draftId);
+                        }}
+                        className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-red-600"
+                      >
+                        <Trash2 className="h-2.5 w-2.5" />删除
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

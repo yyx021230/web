@@ -8,7 +8,10 @@ export interface GenerateImageParams {
   height?: number;
   style?: string;
   quality?: string;  // low / medium / high
-  image_data?: string; // 参考图片 base64（图生图模式）
+  image_data?: string; // 单张参考图片 base64（图生图模式）
+  images_data?: string[]; // 多张参考图片 base64/URL（Seedream 支持最多 10 张）
+  image_url?: string; // 单张参考图片 URL（图库模式）
+  image_urls?: string[]; // 多张参考图片 URL（图库多图模式）
 }
 
 export interface ImageTaskResponse {

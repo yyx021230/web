@@ -1,4 +1,3 @@
-from __future__ import annotations
 """AI 生图 API"""
 
 from typing import Optional
@@ -56,6 +55,8 @@ async def generate_image(
                 "style": req.style,
                 "quality": req.quality,
                 "image_data": req.image_data,
+                "image_url": req.image_url,
+                "images_data": req.images_data,
             },
             user_id=current_user.id if current_user else 0,
         )
@@ -130,6 +131,6 @@ async def list_models():
 
 
 @router.get("/queue/status")
-async def get_queue_status():
+async def get_queue_status_endpoint():
     """获取生图队列状态（用于监控排队情况）"""
     return ApiResponse(data=image_generation_queue.get_status())

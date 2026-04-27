@@ -74,6 +74,8 @@ class SeedreamAdapter(AIModelAdapter):
         height: int = 2048,
         style: str | None = None,
         image_data: str | None = None,
+        image_url: str | None = None,
+        images_data: list[str] | None = None,
         **kwargs,
     ) -> dict:
         """调用 Seedream API 生成图片
@@ -81,7 +83,8 @@ class SeedreamAdapter(AIModelAdapter):
         Args:
             prompt: 文字提示
             image_data: 可选，参考图片 base64（格式 data:image/...;base64,...）
-                       传入则使用图生图模式，否则文生图
+            image_url: 可选，参考图片 URL 地址（与 image_data 二选一）
+            images_data: 可选，多张参考图片（base64 或 URL 数组，最多 10 张）
         """
         if not settings.seedream_api_key:
             raise ValueError("SEEDREAM_API_KEY 未配置，请在 .env 中设置")
@@ -94,12 +97,18 @@ class SeedreamAdapter(AIModelAdapter):
             "prompt": prompt,
             "size": size,
             "response_format": "url",
-            "watermark": False,          # 默认去水印
+            "watermark": False,
         }
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt
-        if image_data:
-            payload["image"] = image_data   # 图生图模式
+
+        # 多图优先，其次单图 base64，最后单图 URL
+        if images_data and len(images_data) > 0:
+            payload["image"] = images_data[:10]  # Seedream 最多支持 10 张参考图
+        elif image_data:
+            payload["image"] = image_data
+        elif image_url:
+            payload["image"] = image_url
 
         headers = {
             "Authorization": f"Bearer {settings.seedream_api_key}",
@@ -135,13 +144,12 @@ class SeedreamAdapter(AIModelAdapter):
                 "image_urls": image_urls,
             }
 
-        # 错误处理: 火山引擎可能返回 { "error": {...} } 或 { "request_id": "...", "error": {...} }
+        # 错误处理
         if "error" in result:
             err = result["error"]
             if isinstance(err, dict):
                 code = err.get("code", "")
                 msg = err.get("message", str(err))
-                # 常见错误码人性化提示
                 if code == 500341:
                     msg = f"速率限制（{code}）：请求过于频繁，请稍后重试。如果持续失败，请检查 API 配额是否已用完"
                 elif code in (500001, 500002, 500003):

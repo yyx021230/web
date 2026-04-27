@@ -158,6 +158,14 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
 
       // Apply viewport CSS synchronously before first paint
       applyCanvasViewportCss();
+      console.log('[init]', {
+        width: canvas.width, height: canvas.height,
+        bufferW: bufferWRef.current, bufferH: bufferHRef.current,
+        objs: canvas.getObjects().length,
+        viewport: canvas.viewportTransform,
+        zoom: canvas.getZoom(),
+        cssW: canvas.getElement()?.style.width, cssH: canvas.getElement()?.style.height,
+      });
 
       requestAnimationFrame(() => {
         pushHistory();
@@ -237,6 +245,7 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
     const cssW = Math.ceil(w * scale);
     const cssH = Math.ceil(h * scale);
     const el = c.getElement();
+    console.log('[viewport]', { cw, ch, bufferW: w, bufferH: h, baseFit, zp, scale, cssW, cssH, elW: el?.style.width, elH: el?.style.height });
     if (el) { el.style.width = `${cssW}px`; el.style.height = `${cssH}px`; }
     if ((c as any).upperCanvasEl) {
       (c as any).upperCanvasEl.style.width = `${cssW}px`;
@@ -289,8 +298,10 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(rect);
+    rect.setCoords();
     c.setActiveObject(rect);
     c.renderAll();
+    console.log('[addRect]', { objs: c.getObjects().length, left: rect.left, top: rect.top, w: rect.width, fill: rect.fill, visible: rect.visible, cssW: c.getElement()?.style.width, cssH: c.getElement()?.style.height });
     return rect;
   }, []);
 
@@ -304,8 +315,10 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(circle);
+    circle.setCoords();
     c.setActiveObject(circle);
     c.renderAll();
+    console.log('[addCircle]', { objs: c.getObjects().length, left: circle.left, top: circle.top, r: circle.radius, cssW: c.getElement()?.style.width });
     return circle;
   }, []);
 
@@ -319,8 +332,10 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(tri);
+    tri.setCoords();
     c.setActiveObject(tri);
     c.renderAll();
+    console.log('[addTriangle]', { objs: c.getObjects().length, left: tri.left, top: tri.top, cssW: c.getElement()?.style.width });
     return tri;
   }, []);
 
@@ -334,8 +349,10 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(t);
+    t.setCoords();
     c.setActiveObject(t);
     c.renderAll();
+    console.log('[addText]', { objs: c.getObjects().length, left: t.left, top: t.top, fill: t.fill, cssW: c.getElement()?.style.width });
     return t;
   }, []);
 
@@ -359,8 +376,10 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
         img.scale(scale);
       }
       c.add(img);
+      img.setCoords();
       c.setActiveObject(img);
       c.renderAll();
+      console.log('[addImage]', { objs: c.getObjects().length, cssW: c.getElement()?.style.width });
     });
   }, [options.width, options.height]);
 
@@ -374,6 +393,7 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(line);
+    line.setCoords();
     c.setActiveObject(line);
     c.renderAll();
     return line;
@@ -389,6 +409,7 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       ...attrs,
     });
     c.add(tb);
+    tb.setCoords();
     c.setActiveObject(tb);
     c.renderAll();
     return tb;
@@ -401,6 +422,27 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       console.warn('[loadFromJSON] canvas not initialized yet');
       return;
     }
+
+    // Handle double-encoded JSON: if input is a quoted string (starts with "), unwrap it
+    let inputStr = jsonStr;
+    if (typeof inputStr === 'string' && inputStr.startsWith('"') && inputStr.endsWith('"')) {
+      try {
+        inputStr = JSON.parse(inputStr);
+        console.log('[loadFromJSON] Detected and unwrapped double-encoded JSON');
+      } catch { /* not a double-encoded string */ }
+    }
+    // Handle object input (should be stringified first)
+    if (typeof inputStr !== 'string') {
+      try {
+        inputStr = JSON.stringify(inputStr);
+        console.log('[loadFromJSON] Converted object input to JSON string');
+      } catch (e) {
+        console.error('[loadFromJSON] Failed to stringify input:', e);
+        return;
+      }
+    }
+
+    console.log('[loadFromJSON] Input length:', inputStr.length, 'first 100 chars:', inputStr.slice(0, 100));
 
     const doFitViewport = () => {
       pixel1to1Ref.current = false;
@@ -457,7 +499,7 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
 
     try {
       c.clear();
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(inputStr);
 
       // Use declared canvas dimensions from JSON only
       const correctW = typeof parsed.width === 'number' ? parsed.width : c.width;
@@ -477,7 +519,7 @@ export function useFabricCanvas(options: UseFabricCanvasOptions) {
       }
 
       // Load JSON — canvas is already the correct size
-      c.loadFromJSON(jsonStr, () => {
+      c.loadFromJSON(inputStr, () => {
         c.setZoom(1);
         c.setViewportTransform([1, 0, 0, 1, 0, 0]);
         // Ensure buffer dimensions are correct after loadFromJSON

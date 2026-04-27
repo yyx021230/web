@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { fabric } from "fabric";
 import { cn } from "@/lib/utils";
 import {
   LayoutGrid, Square, Type, ImageIcon, Layers, Wand2,
@@ -13,6 +14,7 @@ import {
   ZoomIn, ZoomOut, Palette, Maximize2,
   FlipHorizontal, FlipVertical,
   Loader2, Undo2, Redo2, Save, Download,
+  ChevronDown,
 } from "lucide-react";
 import { useEditorContext } from "@/contexts/EditorContext";
 import { editorApi, type Template as BackendTemplate, type Material as BackendMaterial } from "@/services/editorApi";
@@ -97,8 +99,454 @@ const layerTypeConfig: Record<string, { icon: string; color: string }> = {
   group: { icon: "▤", color: "bg-cyan-100 text-cyan-600" },
 };
 
+/* ============ 艺术字样式定义 ============ */
+/**
+ * 设计思路：艺术字 = 描边 + 投影 + 纹理 + 渐变 + 发光 + 3D + 背景框
+ * 每种样式是这些基础效果的组合
+ *
+ * fabricProps 使用纯 JSON 定义（不使用 fabric.* 对象），
+ * 在 onClick 中动态创建 fabric.Gradient / fabric.Shadow
+ */
+
+interface GradientDef {
+  type: 'linear' | 'radial';
+  coords: { x1: number; y1: number; x2: number; y2: number };
+  colorStops: { offset: number; color: string }[];
+}
+
+interface ShadowDef {
+  color: string;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+interface ArtTextStyleDef {
+  id: string;
+  name: string;
+  sample: string;
+  /** 卡片背景 */
+  cardBg?: React.CSSProperties;
+  /** 预览文字大小 */
+  fontSize?: number;
+  /** 字重 */
+  fontWeight?: string;
+  /** Fabric 属性（纯 JSON，运行时转换为 fabric.Gradient/fabric.Shadow） */
+  fabricProps: {
+    fill?: string | GradientDef;
+    fontWeight?: string;
+    fontSize?: number;
+    shadow?: ShadowDef;
+    stroke?: string;
+    strokeWidth?: number;
+  };
+  /** 效果标签 */
+  effects: string[];
+}
+
+/** 将 JSON 定义的 fabricProps 转换为 Fabric.js 对象 */
+function convertFabricProps(props: ArtTextStyleDef['fabricProps']): Partial<fabric.ITextOptions> {
+  const result: Partial<fabric.ITextOptions> = {};
+  if (props.fill) {
+    if (typeof props.fill === 'object' && 'type' in props.fill) {
+      result.fill = new fabric.Gradient({
+        type: props.fill.type,
+        coords: props.fill.coords,
+        colorStops: props.fill.colorStops,
+      });
+    } else {
+      result.fill = props.fill;
+    }
+  }
+  if (props.fontWeight) result.fontWeight = props.fontWeight;
+  if (props.fontSize) result.fontSize = props.fontSize;
+  if (props.stroke) result.stroke = props.stroke;
+  if (props.strokeWidth) result.strokeWidth = props.strokeWidth;
+  if (props.shadow) {
+    result.shadow = new fabric.Shadow({
+      color: props.shadow.color,
+      blur: props.shadow.blur,
+      offsetX: props.shadow.offsetX,
+      offsetY: props.shadow.offsetY,
+    });
+  }
+  return result;
+}
+
+const artTextStyles: ArtTextStyleDef[] = [
+  // ===== 电商类 =====
+  {
+    id: 'ecom-gold-red', name: '金红大促', sample: '限时抢购',
+    cardBg: { background: 'linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 40 },
+        colorStops: [
+          { offset: 0, color: '#f7d774' },
+          { offset: 0.3, color: '#e8b84f' },
+          { offset: 0.6, color: '#c8952e' },
+          { offset: 1, color: '#f7d774' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影', '背景'],
+  },
+  {
+    id: 'ecom-flash-sale', name: '闪电促销', sample: '全场5折',
+    cardBg: { background: 'linear-gradient(135deg, #f39c12 0%, #e74c3c 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(0,0,0,0.3)', blur: 4, offsetX: 0, offsetY: 3 },
+    },
+    effects: ['投影', '背景'],
+  },
+  {
+    id: 'ecom-neon-sale', name: '霓虹促销', sample: '爆款热卖',
+    cardBg: { background: '#1a1a2e' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 200, y2: 0 },
+        colorStops: [
+          { offset: 0, color: '#f7d774' },
+          { offset: 0.5, color: '#f0c27f' },
+          { offset: 1, color: '#e8b84f' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(240,194,127,0.5)', blur: 12, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['渐变', '发光'],
+  },
+
+  // ===== 节日类 =====
+  {
+    id: 'fest-new-year', name: '春节喜庆', sample: '新年快乐',
+    cardBg: { background: 'linear-gradient(135deg, #c0392b 0%, #a93226 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 40 },
+        colorStops: [
+          { offset: 0, color: '#ffd700' },
+          { offset: 0.4, color: '#ff8c00' },
+          { offset: 0.7, color: '#ffd700' },
+          { offset: 1, color: '#ffcc00' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影'],
+  },
+  {
+    id: 'fest-christmas', name: '圣诞铃铛', sample: '圣诞快乐',
+    cardBg: { background: 'linear-gradient(135deg, #1a5e1a 0%, #2d8e2d 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(255,255,255,0.5)', blur: 8, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['发光', '投影'],
+  },
+
+  // ===== 酷炫类 =====
+  {
+    id: 'cool-cyber-neon', name: '赛博霓虹', sample: '赛博朋克',
+    cardBg: { background: '#0a0a0a' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'bold', fontSize: 48,
+      shadow: { color: '#0fa', blur: 8, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['发光', '霓虹'],
+  },
+  {
+    id: 'cool-pink-neon', name: '粉色霓虹', sample: '粉色霓虹',
+    cardBg: { background: '#0a0a0a' },
+    fontSize: 28, fontWeight: 'normal',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'normal', fontSize: 48,
+      shadow: { color: '#ff00de', blur: 10, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['发光', '霓虹'],
+  },
+  {
+    id: 'cool-blue-tech', name: '蓝色科技', sample: '未来科技',
+    cardBg: { background: 'linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#00d4ff', fontWeight: 'bold', fontSize: 48,
+      shadow: { color: 'rgba(0,212,255,0.6)', blur: 15, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['发光'],
+  },
+  {
+    id: 'cool-fire-text', name: '火焰文字', sample: '燃烧',
+    cardBg: { background: 'linear-gradient(180deg, #0a0a0a 0%, #1a0505 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#ffffff' },
+          { offset: 0.15, color: '#fff700' },
+          { offset: 0.4, color: '#ff8800' },
+          { offset: 0.7, color: '#ff0000' },
+          { offset: 1, color: '#8b0000' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(255,136,0,0.6)', blur: 8, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['渐变', '发光'],
+  },
+  {
+    id: 'cool-ice-text', name: '冰霜文字', sample: '冰霜',
+    cardBg: { background: 'linear-gradient(180deg, #0a1628 0%, #0d2137 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#ffffff' },
+          { offset: 0.2, color: '#b3e5fc' },
+          { offset: 0.5, color: '#4fc3f7' },
+          { offset: 0.8, color: '#0288d1' },
+          { offset: 1, color: '#01579b' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(79,195,247,0.5)', blur: 12, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['渐变', '发光'],
+  },
+
+  // ===== 金属类 =====
+  {
+    id: 'metal-gold', name: '黄金质感', sample: '黄金',
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#f7d774' },
+          { offset: 0.1, color: '#c8952e' },
+          { offset: 0.2, color: '#f7d774' },
+          { offset: 0.35, color: '#e8b84f' },
+          { offset: 0.5, color: '#f7d774' },
+          { offset: 0.65, color: '#c8952e' },
+          { offset: 0.8, color: '#f7d774' },
+          { offset: 0.9, color: '#a87b22' },
+          { offset: 1, color: '#f7d774' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影'],
+  },
+  {
+    id: 'metal-rose-gold', name: '玫瑰金', sample: '玫瑰金',
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#f5c6a0' },
+          { offset: 0.15, color: '#c8816a' },
+          { offset: 0.3, color: '#f5c6a0' },
+          { offset: 0.45, color: '#e8a87c' },
+          { offset: 0.6, color: '#f5c6a0' },
+          { offset: 0.75, color: '#b87355' },
+          { offset: 1, color: '#f5c6a0' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影'],
+  },
+  {
+    id: 'metal-silver', name: '银色金属', sample: '银色',
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#e8e8e8' },
+          { offset: 0.15, color: '#a0a0a0' },
+          { offset: 0.3, color: '#e8e8e8' },
+          { offset: 0.45, color: '#c0c0c0' },
+          { offset: 0.6, color: '#e8e8e8' },
+          { offset: 0.75, color: '#909090' },
+          { offset: 1, color: '#e8e8e8' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影'],
+  },
+
+  // ===== 3D立体 =====
+  {
+    id: '3d-red', name: '红色3D', sample: '3D立体',
+    cardBg: { background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#e74c3c', fontWeight: 'bold', fontSize: 52,
+      shadow: { color: '#922b21', blur: 0, offsetX: 5, offsetY: 5 },
+    },
+    effects: ['3D', '投影'],
+  },
+  {
+    id: '3d-blue', name: '蓝色3D', sample: '蓝色3D',
+    cardBg: { background: 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#2980b9', fontWeight: 'bold', fontSize: 52,
+      shadow: { color: '#1a5276', blur: 0, offsetX: 5, offsetY: 5 },
+    },
+    effects: ['3D', '投影'],
+  },
+  {
+    id: '3d-candy', name: '糖果3D', sample: '糖果3D',
+    cardBg: { background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#ff6b9d', fontWeight: 'bold', fontSize: 52,
+      shadow: { color: '#e84393', blur: 0, offsetX: 0, offsetY: 6 },
+    },
+    effects: ['3D', '投影'],
+  },
+  {
+    id: '3d-heavymetal', name: '重金属3D', sample: '重金属',
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#e8e8e8' },
+          { offset: 0.3, color: '#a0a0a0' },
+          { offset: 0.6, color: '#c0c0c0' },
+          { offset: 1, color: '#909090' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: '#555', blur: 0, offsetX: 5, offsetY: 5 },
+    },
+    effects: ['渐变', '3D', '投影'],
+  },
+
+  // ===== 描边类（用 Fabric shadow 模拟外轮廓描边，不用 stroke） =====
+  {
+    id: 'stroke-white-black', name: '白字黑描边', sample: '经典描边',
+    cardBg: { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(0,0,0,0.8)', blur: 6, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['投影', '描边'],
+  },
+  {
+    id: 'stroke-hollow', name: '空心镂空', sample: '空心文字',
+    cardBg: { background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
+    fontSize: 28, fontWeight: 'bold',
+    fabricProps: {
+      fill: 'transparent', fontWeight: 'bold', fontSize: 52,
+      stroke: '#f0c27f', strokeWidth: 2,
+    },
+    effects: ['描边'],
+  },
+
+  // ===== 可爱类 =====
+  {
+    id: 'cute-kawaii', name: '卡哇伊', sample: '可爱文字',
+    cardBg: { background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
+    fontSize: 30, fontWeight: 'normal',
+    fabricProps: {
+      fill: '#ff6b9d', fontWeight: 'normal', fontSize: 52,
+      shadow: { color: 'rgba(255,107,157,0.4)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['投影'],
+  },
+  {
+    id: 'cute-bubble', name: '泡泡字', sample: '泡泡',
+    cardBg: { background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)' },
+    fontSize: 30, fontWeight: 'normal',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'normal', fontSize: 52,
+      shadow: { color: 'rgba(161,140,209,0.5)', blur: 6, offsetX: 0, offsetY: 3 },
+    },
+    effects: ['投影', '发光'],
+  },
+
+  // ===== 复古类 =====
+  {
+    id: 'retro-poster', name: '复古海报', sample: '复古风格',
+    cardBg: { background: 'linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%)' },
+    fontSize: 30, fontWeight: 'bold',
+    fabricProps: {
+      fill: { type: 'linear' as const, coords: { x1: 0, y1: 0, x2: 0, y2: 50 },
+        colorStops: [
+          { offset: 0, color: '#f7d774' },
+          { offset: 0.5, color: '#c8952e' },
+          { offset: 1, color: '#a87b22' },
+        ],
+      },
+      fontWeight: 'bold', fontSize: 52,
+      shadow: { color: 'rgba(0,0,0,0.5)', blur: 4, offsetX: 0, offsetY: 2 },
+    },
+    effects: ['渐变', '投影'],
+  },
+
+  // ===== 游戏/像素 =====
+  {
+    id: 'game-pixel', name: '像素风', sample: 'PIXEL',
+    cardBg: { background: 'linear-gradient(135deg, #2d1b69 0%, #11998e 100%)' },
+    fontSize: 22, fontWeight: 'normal',
+    fabricProps: {
+      fill: '#ffffff', fontWeight: 'normal', fontSize: 32,
+      shadow: { color: '#ff0044', blur: 0, offsetX: 3, offsetY: 3 },
+    },
+    effects: ['投影'],
+  },
+  {
+    id: 'game-arcade', name: '街机风', sample: 'ARCADE',
+    cardBg: { background: '#1a1a1a' },
+    fontSize: 22, fontWeight: 'normal',
+    fabricProps: {
+      fill: '#ffff00', fontWeight: 'normal', fontSize: 32,
+      shadow: { color: '#ff8800', blur: 8, offsetX: 0, offsetY: 0 },
+    },
+    effects: ['发光', '投影'],
+  },
+];
+
 const textColors = ["#0f172a", "#64748b", "#94a3b8", "#ffffff", "#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4"];
 const shapeDefaultColors = ["#6366f1", "#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"];
+
+/** 字体选择器数据 — 每种字体用实际字体显示预览 */
+const allFonts = [
+  { value: 'system-ui, -apple-system, sans-serif', label: '系统黑体', preview: '预览 Preview' },
+  { value: '"Noto Sans SC", sans-serif', label: '思源黑体', preview: '预览 Preview' },
+  { value: '"Noto Serif SC", serif', label: '思源宋体', preview: '预览 Preview' },
+  { value: '"Songti SC", serif', label: '系统宋体', preview: '预览 Preview' },
+  { value: '"Ma Shan Zheng", cursive', label: '马善政毛笔', preview: '预览 Preview' },
+  { value: '"Long Cang", cursive', label: '龙藏草书', preview: '预览 Preview' },
+  { value: '"Zhi Mang Xing", cursive', label: '志莽行书', preview: '预览 Preview' },
+  { value: '"ZCOOL KuaiLe", cursive', label: '站酷快乐体', preview: '预览 Preview' },
+  { value: '"ZCOOL XiaoWei", serif', label: '站酷小薇体', preview: '预览 Preview' },
+  { value: '"Pacifico", cursive', label: 'Pacifico', preview: 'Preview' },
+  { value: '"Dancing Script", cursive', label: 'Dancing', preview: 'Preview' },
+  { value: '"Lobster", cursive', label: 'Lobster', preview: 'Preview' },
+  { value: '"Fredoka One", cursive', label: 'Fredoka', preview: 'Preview' },
+  { value: '"Bebas Neue", cursive', label: 'Bebas', preview: 'PREVIEW' },
+  { value: '"Playfair Display", serif', label: 'Playfair', preview: 'Preview' },
+  { value: '"Orbitron", sans-serif', label: 'Orbitron', preview: 'PREVIEW' },
+  { value: '"Black Ops One", cursive', label: 'Black Ops', preview: 'PREVIEW' },
+  { value: '"Press Start 2P", cursive', label: 'Pixel', preview: 'PREVIEW' },
+  { value: 'Arial', label: 'Arial', preview: 'Preview' },
+  { value: 'Georgia', label: 'Georgia', preview: 'Preview' },
+  { value: 'Verdana', label: 'Verdana', preview: 'Preview' },
+];
 /** 与稿定 layouts 常见画板一致，全编辑器默认画板 */
 const DEFAULT_CANVAS_W = 1242;
 const DEFAULT_CANVAS_H = 1656;
@@ -117,6 +565,124 @@ const presetSizes = [
   { name: "名片", w: 900, h: 540, ratio: "5:3", cat: "印刷" },
   { name: "A4 文档", w: 794, h: 1123, ratio: "A4", cat: "印刷" },
 ];
+
+/* ============ 文字特效选择器 ============ */
+
+/** 预设文字特效模板 */
+const TEXT_EFFECT_PRESETS = [
+  { id: 'none', name: '无特效', icon: '✕' },
+  { id: 'shadow-basic', name: '基础投影', shadow: { color: 'rgba(0,0,0,0.3)', blur: 4, offsetX: 2, offsetY: 2 } },
+  { id: 'shadow-heavy', name: '重投影', shadow: { color: 'rgba(0,0,0,0.5)', blur: 8, offsetX: 3, offsetY: 3 } },
+  { id: 'glow-blue', name: '蓝色发光', shadow: { color: 'rgba(59,130,246,0.6)', blur: 12, offsetX: 0, offsetY: 0 } },
+  { id: 'glow-red', name: '红色发光', shadow: { color: 'rgba(239,68,68,0.5)', blur: 10, offsetX: 0, offsetY: 0 } },
+  { id: 'glow-green', name: '绿色发光', shadow: { color: 'rgba(34,197,94,0.5)', blur: 10, offsetX: 0, offsetY: 0 } },
+  { id: 'glow-purple', name: '紫色发光', shadow: { color: 'rgba(168,85,247,0.5)', blur: 12, offsetX: 0, offsetY: 0 } },
+  { id: 'neon-cyan', name: '霓虹青', shadow: { color: '#0fa', blur: 8, offsetX: 0, offsetY: 0 } },
+  { id: 'neon-pink', name: '霓虹粉', shadow: { color: '#ff00de', blur: 10, offsetX: 0, offsetY: 0 } },
+  { id: '3d-red', name: '红色3D', shadow: { color: '#922b21', blur: 0, offsetX: 5, offsetY: 5 } },
+  { id: '3d-blue', name: '蓝色3D', shadow: { color: '#1a5276', blur: 0, offsetX: 5, offsetY: 5 } },
+  { id: '3d-dark', name: '深色3D', shadow: { color: '#333', blur: 0, offsetX: 4, offsetY: 4 } },
+  { id: 'stroke-black', name: '白字黑描边', stroke: '#000000', strokeWidth: 3 },
+  { id: 'stroke-red', name: '红描边', stroke: '#ef4444', strokeWidth: 2 },
+  { id: 'stroke-gold', name: '金描边', stroke: '#f59e0b', strokeWidth: 2 },
+  { id: 'stroke-white', name: '黑字白描边', stroke: '#ffffff', strokeWidth: 3 },
+  { id: 'combo-shadow-stroke', name: '投影+描边', shadow: { color: 'rgba(0,0,0,0.4)', blur: 4, offsetX: 2, offsetY: 2 }, stroke: '#ffffff', strokeWidth: 2 },
+  { id: 'combo-glow-stroke', name: '发光+描边', shadow: { color: 'rgba(59,130,246,0.5)', blur: 8, offsetX: 0, offsetY: 0 }, stroke: '#ffffff', strokeWidth: 2 },
+];
+
+interface TextEffectPickerProps {
+  selectedEl: Record<string, any>;
+  updateProp: (key: string, value: any) => void;
+}
+
+function TextEffectPicker({ selectedEl, updateProp }: TextEffectPickerProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const applyEffect = (preset: typeof TEXT_EFFECT_PRESETS[number]) => {
+    if (preset.id === 'none') {
+      updateProp('shadow', undefined);
+      updateProp('stroke', undefined);
+      updateProp('strokeWidth', 0);
+      setOpen(false);
+      return;
+    }
+    if (preset.shadow) {
+      updateProp('shadow', new fabric.Shadow({
+        color: preset.shadow.color,
+        blur: preset.shadow.blur,
+        offsetX: preset.shadow.offsetX,
+        offsetY: preset.shadow.offsetY,
+      }));
+    } else {
+      updateProp('shadow', undefined);
+    }
+    if (preset.stroke) {
+      updateProp('stroke', preset.stroke);
+      updateProp('strokeWidth', preset.strokeWidth || 1);
+    } else if (preset.id !== 'none') {
+      // Only reset stroke if this preset doesn't define one
+      updateProp('stroke', undefined);
+      updateProp('strokeWidth', 0);
+    }
+    setOpen(false);
+  };
+
+  const hasShadow = !!selectedEl._fabricObject?.shadow;
+  const hasStroke = selectedEl.stroke && selectedEl.strokeWidth > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm hover:border-primary/50 transition-colors"
+      >
+        <span className="text-xs">
+          {!hasShadow && !hasStroke && '无特效'}
+          {hasShadow && !hasStroke && '投影'}
+          {!hasShadow && hasStroke && '描边'}
+          {hasShadow && hasStroke && '投影 + 描边'}
+        </span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white rounded-lg border shadow-lg max-h-72 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-1 p-2">
+            {TEXT_EFFECT_PRESETS.map(preset => {
+              const isActive = (preset.id === 'none' && !hasShadow && !hasStroke) ||
+                (preset.id.startsWith('shadow') && hasShadow && !hasStroke) ||
+                (preset.id.startsWith('glow') && hasShadow && !hasStroke) ||
+                (preset.id.startsWith('neon') && hasShadow && !hasStroke) ||
+                (preset.id.startsWith('3d') && hasShadow && !hasStroke) ||
+                (preset.id.startsWith('stroke') && hasStroke && !hasShadow) ||
+                (preset.id.startsWith('combo') && hasShadow && hasStroke);
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => applyEffect(preset)}
+                  className={`rounded-md px-2 py-1.5 text-xs text-left transition-colors ${
+                    isActive ? 'bg-primary/10 text-primary font-medium border border-primary/20' : 'hover:bg-accent border border-transparent'
+                  }`}
+                >
+                  {preset.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ============ Component ============ */
 
@@ -155,8 +721,19 @@ export default function EditorPage() {
   const canvasW = activeCanvas?.w || DEFAULT_CANVAS_W;
   const canvasH = activeCanvas?.h || DEFAULT_CANVAS_H;
 
+  // Refs for save function — ensures we always read latest values regardless of closure timing
+  const canvasesRef = useRef(canvases);
+  canvasesRef.current = canvases;
+  const activeCanvasIdRef = useRef(activeCanvasId);
+  activeCanvasIdRef.current = activeCanvasId;
+
   /* Size modal */
   const [showSizeTemplateModal, setShowSizeTemplateModal] = useState(false);
+
+  /** 当前正在编辑的设计稿 ID（从草稿箱打开时记录，保存时用于覆盖而不是新建） */
+  const [editingMaterialId, setEditingMaterialId] = useState<number | null>(null);
+  const editingMaterialIdRef = useRef<number | null>(null);
+  editingMaterialIdRef.current = editingMaterialId;
 
   /* ===== Fabric Canvas Hook ===== */
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -180,6 +757,139 @@ export default function EditorPage() {
       // Auto-switch right panel based on selection
     },
   });
+
+  /* ===== 全局键盘快捷键 ===== */
+  useEffect(() => {
+    let clipboardData: string | null = null;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+      // 撤销: Cmd/Ctrl + Z
+      if (cmdOrCtrl && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        fabricHook.undo();
+        return;
+      }
+      // 重做: Cmd/Ctrl + Shift + Z  或  Cmd/Ctrl + Y
+      if ((cmdOrCtrl && e.key === 'z' && e.shiftKey) || (cmdOrCtrl && e.key === 'y')) {
+        e.preventDefault();
+        fabricHook.redo();
+        return;
+      }
+      // 复制: Cmd/Ctrl + C
+      if (cmdOrCtrl && e.key === 'c') {
+        const active = fabricHook.fabricCanvas.current?.getActiveObject();
+        if (active) {
+          e.preventDefault();
+          try { clipboardData = JSON.stringify(active.toJSON()); } catch { /* ignore */ }
+        }
+        return;
+      }
+      // 粘贴: Cmd/Ctrl + V
+      if (cmdOrCtrl && e.key === 'v') {
+        if (clipboardData) {
+          e.preventDefault();
+          try {
+            const canvas = fabricHook.fabricCanvas.current;
+            if (!canvas) return;
+            const tmpObj = JSON.parse(clipboardData);
+            tmpObj.left = (tmpObj.left || 0) + 20;
+            tmpObj.top = (tmpObj.top || 0) + 20;
+            canvas.loadFromJSON(JSON.stringify({ version: '5.3.0', objects: [tmpObj] }), () => {
+              canvas.renderAll();
+            });
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+      // 快速复制副本: Cmd/Ctrl + D
+      if (cmdOrCtrl && e.key === 'd') {
+        e.preventDefault();
+        fabricHook.cloneSelected();
+        return;
+      }
+      // 全选: Cmd/Ctrl + A
+      if (cmdOrCtrl && e.key === 'a') {
+        e.preventDefault();
+        const canvas = fabricHook.fabricCanvas.current;
+        if (canvas) {
+          canvas.discardActiveObject();
+          const all = canvas.getObjects().filter(o => o.selectable !== false);
+          if (all.length > 0) {
+            const activeSel = new fabric.ActiveSelection(all, { canvas });
+            canvas.setActiveObject(activeSel);
+            canvas.renderAll();
+          }
+        }
+        return;
+      }
+      // 删除: Delete 或 Backspace
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const active = fabricHook.fabricCanvas.current?.getActiveObject();
+        if (active) {
+          e.preventDefault();
+          fabricHook.deleteSelected();
+          return;
+        }
+      }
+      // 保存: Cmd/Ctrl + S
+      if (cmdOrCtrl && e.key === 's') {
+        e.preventDefault();
+        ctx.triggerSave();
+        return;
+      }
+    }
+
+    // 拦截浏览器默认的粘贴事件（支持外部图片粘贴、文本粘贴）
+    function handlePaste(e: ClipboardEvent) {
+      const canvas = fabricHook.fabricCanvas.current;
+      if (!canvas) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const blob = items[i].getAsFile();
+            if (blob) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                fabricHook.addImage(reader.result as string, {
+                  left: (canvas.width || 1242) / 2 - 50,
+                  top: (canvas.height || 1656) / 2 - 50,
+                });
+              };
+              reader.readAsDataURL(blob);
+            }
+            return;
+          }
+        }
+      }
+
+      const text = e.clipboardData?.getData('text');
+      if (text && !(canvas.getActiveObject() as any)?.isEditing) {
+        e.preventDefault();
+        fabricHook.addText(text, {
+          left: (canvas.width || 1242) / 2 - 50,
+          top: (canvas.height || 1656) / 2 - 15,
+        });
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [fabricHook, ctx]);
 
   /* ===== Fetch backend data ===== */
   useEffect(() => {
@@ -368,6 +1078,53 @@ export default function EditorPage() {
         sessionStorage.removeItem("selectedTemplate");
       }
     } else {
+      // 检查 URL 参数中是否有 designId（从草稿箱打开设计稿）
+      const urlParams = new URLSearchParams(window.location.search);
+      const designId = urlParams.get('designId');
+      if (designId) {
+        const matId = Number(designId);
+        setEditingMaterialId(matId);
+        editorApi.getMaterial(matId)
+          .then(res => {
+            const m = res.data;
+            if (m && m.design_json) {
+              const design = m.design_json as any;
+              ctx.setProjectName(design.projectName || m.name);
+              // 加载画布信息
+              if (design.canvases && design.canvases.length > 0) {
+                // 恢复多画布状态
+                const restoredCanvases = design.canvases.map((c: any) => ({
+                  id: c.id,
+                  name: c.name,
+                  w: c.width,
+                  h: c.height,
+                  bgColor: c.bgColor || '#ffffff',
+                  contentJson: c.contentJson,
+                }));
+                setCanvases(restoredCanvases);
+                // 恢复激活画布
+                if (design.activeCanvasId) {
+                  setActiveCanvasId(design.activeCanvasId);
+                }
+                // 加载激活画布的 Fabric JSON
+                const activeCanvas = restoredCanvases.find((c: any) => c.id === (design.activeCanvasId || restoredCanvases[0].id));
+                if (activeCanvas?.contentJson) {
+                  // contentJson 已经是 JSON 字符串（fabricHook.toJSON() 返回），不要再次 stringify
+                  const jsonStr = typeof activeCanvas.contentJson === 'string'
+                    ? activeCanvas.contentJson
+                    : JSON.stringify(activeCanvas.contentJson);
+                  console.log('[Editor] 加载画布内容，contentJson 类型:', typeof activeCanvas.contentJson, '长度:', activeCanvas.contentJson.length);
+                  fabricHook.loadFromJSON(jsonStr);
+                }
+                setTemplateLoadKey(k => k + 1);
+              }
+              console.log('[Editor] 设计稿已从草稿箱加载:', m.name);
+            }
+          })
+          .catch(e => {
+            console.error('Failed to load design from drafts:', e);
+          });
+      } else {
       // Try loading saved project — but don't block if backend is unavailable
       editorApi.getProjects(1, 1)
         .then(res => {
@@ -388,6 +1145,7 @@ export default function EditorPage() {
           // Backend might not be running — this is OK
           console.log("[Editor] Backend not available, using blank canvas");
         });
+      }
     }
   }, [fabricHook.isReady]);
 
@@ -432,37 +1190,93 @@ export default function EditorPage() {
     ctx._setUndoFn(fabricHook.undo);
     ctx._setRedoFn(fabricHook.redo);
     ctx._setSaveFn(async () => {
+      const currentCanvases = canvasesRef.current;
+      const currentActiveCanvasId = activeCanvasIdRef.current;
+      const currentEditingMaterialId = editingMaterialIdRef.current;
+
       ctx.setHasUnsavedChanges(false);
       ctx.setIsSaving(true);
       try {
-        const json = fabricHook.toJSON();
-        if (!json) return;
-        if (ctx.projectId) {
-          await editorApi.updateProject(ctx.projectId, {
+        // 先保存当前激活画布的内容到 canvases 状态
+        const activeJson = fabricHook.toJSON();
+        console.log('[Save] activeJson 长度:', activeJson?.length ?? 'null/undefined');
+
+        const updatedCanvases = currentCanvases.map(c =>
+          c.id === currentActiveCanvasId ? { ...c, contentJson: activeJson || c.contentJson } : c
+        );
+
+        // 构建完整的设计稿 JSON（包含所有画布及其内容）
+        const designJson = {
+          version: "1.0",
+          saveTime: new Date().toISOString(),
+          projectName: ctx.projectName,
+          activeCanvasId: currentActiveCanvasId,
+          canvases: updatedCanvases.map(c => ({
+            id: c.id,
+            name: c.name,
+            width: c.w,
+            height: c.h,
+            bgColor: c.bgColor,
+            contentJson: c.contentJson,  // 每个画布的完整 Fabric JSON
+          })),
+        };
+
+        console.log('[Save] designJson canvases:', designJson.canvases.length, '个画布, materialId:', currentEditingMaterialId);
+
+        // 生成缩略图（当前激活画布）
+        const thumbnail = fabricHook.toDataURL("jpeg", 0.3);
+        const activeCanvasData = updatedCanvases.find(c => c.id === currentActiveCanvasId);
+
+        // 保存逻辑：有 editingMaterialId 时覆盖，否则新建
+        if (currentEditingMaterialId) {
+          await editorApi.updateMaterial(currentEditingMaterialId, {
             name: ctx.projectName,
-            fabric_json: json,
-            thumbnail: fabricHook.toDataURL("jpeg", 0.3),
+            design_json: designJson,
+            thumbnail,
+            width: activeCanvasData?.w,
+            height: activeCanvasData?.h,
           });
+          console.log('[Save] 设计稿已覆盖更新, materialId:', currentEditingMaterialId);
+          alert('✅ 已保存');
         } else {
-          const res = await editorApi.createProject({
+          const res = await editorApi.saveDesign({
             name: ctx.projectName,
-            fabric_json: json,
-            thumbnail: fabricHook.toDataURL("jpeg", 0.3),
+            design_json: designJson,
+            thumbnail,
+            width: activeCanvasData?.w,
+            height: activeCanvasData?.h,
           });
-          ctx.setProjectId(res.data.id);
+          // 新建后记录 ID，后续保存将覆盖同一条
+          if (res?.data?.id) {
+            setEditingMaterialId(res.data.id);
+            console.log('[Save] 设计稿已新建到草稿箱, ID:', res.data.id);
+          } else {
+            console.warn('[Save] 新建成功但返回数据中无 id, res.data:', res?.data);
+          }
+          alert('✅ 已保存到草稿箱');
         }
       } catch (e) {
+        const errorMsg = (e as Error)?.message || '保存失败';
         console.error("Save failed:", e);
-        localStorage.setItem("editor_draft", JSON.stringify({
-          canvases,
-          activeCanvasId,
-          fabric_json: fabricHook.toJSON(),
-        }));
+        alert('保存失败: ' + errorMsg + '\n已保存到浏览器本地缓存');
+        // 保存失败时降级到 localStorage
+        try {
+          const activeJson = fabricHook.toJSON();
+          const curCanvases = canvasesRef.current;
+          const curActiveId = activeCanvasIdRef.current;
+          localStorage.setItem("editor_draft", JSON.stringify({
+            canvases: curCanvases.map(c =>
+              c.id === curActiveId ? { ...c, contentJson: activeJson } : c
+            ),
+            activeCanvasId: curActiveId,
+            projectName: ctx.projectName,
+          }));
+        } catch { /* ignore */ }
       } finally {
         ctx.setIsSaving(false);
       }
     });
-  }, [fabricHook]);
+  }, [fabricHook]); // Refs used internally — only need fabricHook to register undo/redo/save
 
   /* ===== Selection for property panel ===== */
   const [selectedEl, setSelectedEl] = useState<Record<string, any> | null>(null);
@@ -612,7 +1426,7 @@ export default function EditorPage() {
   });
 
   const filteredMaterials = backendMaterials.filter(m => {
-    const catLabel = materialCategoryMap[m.category] || m.category;
+    const catLabel = materialCategoryMap[m.category ?? ""] || m.category || "";
     const matchCat = materialCat === "全部" || catLabel === materialCat;
     const matchSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (m.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -837,7 +1651,7 @@ export default function EditorPage() {
                   <div className="grid grid-cols-4 gap-2">
                     {backendMaterials.slice(0, 8).map(m => (
                       <button key={m.id} onClick={() => {
-                        fabricHook.addImage(m.url, { left: canvasW / 2 - (m.width || 50) / 2, top: canvasH / 2 - (m.height || 50) / 2, name: m.name });
+                        if (m.url) fabricHook.addImage(m.url, { left: canvasW / 2 - (m.width || 50) / 2, top: canvasH / 2 - (m.height || 50) / 2, name: m.name });
                       }} className="flex flex-col items-center gap-1 rounded-lg border bg-card p-2 hover:bg-accent hover:shadow-sm transition-all">
                         {m.url ? (
                           <img src={m.url} alt={m.name} className="h-6 w-6 object-contain" />
@@ -877,13 +1691,69 @@ export default function EditorPage() {
                 </div>
                 <div>
                   <h4 className="mb-2 text-sm font-medium">艺术字</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => fabricHook.addText("渐变", { left: 100, top: 100, fontSize: 32, fontWeight: "black", fill: "#6366f1", textAlign: "center" })} className="rounded-lg border bg-card p-4 text-center hover:bg-accent transition-colors">
-                      <span className="text-xl font-black bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">渐变</span>
-                    </button>
-                    <button onClick={() => fabricHook.addText("间距", { left: 100, top: 100, fontSize: 20, fontWeight: "bold", fill: "#0f172a", textAlign: "center" })} className="rounded-lg border bg-card p-4 text-center hover:bg-accent transition-colors">
-                      <span className="text-lg font-bold tracking-[0.3em]">间距</span>
-                    </button>
+                  <div className="space-y-2">
+                    {artTextStyles.map(style => {
+                      const fp = style.fabricProps;
+                      // Build CSS gradient for preview
+                      let cssFill: string | undefined;
+                      if (typeof fp.fill === 'string') {
+                        cssFill = fp.fill;
+                      } else if (fp.fill && typeof fp.fill === 'object') {
+                        const stops = fp.fill.colorStops.map(s => `${s.color} ${(s.offset * 100).toFixed(0)}%`).join(', ');
+                        cssFill = `linear-gradient(90deg, ${stops})`;
+                      }
+                      // Build CSS shadow for preview
+                      let cssShadow: string | undefined;
+                      if (fp.shadow) {
+                        const s = fp.shadow;
+                        cssShadow = `${s.offsetX}px ${s.offsetY}px ${s.blur}px ${s.color}`;
+                      }
+                      // Build CSS stroke for preview
+                      let cssStroke: string | undefined;
+                      let cssStrokeWidth: number | undefined;
+                      if (fp.stroke) {
+                        cssStroke = fp.stroke;
+                        cssStrokeWidth = fp.strokeWidth || 1;
+                      }
+
+                      return (
+                      <button key={style.id} onClick={() => {
+                        fabricHook.addText(style.sample, {
+                          left: canvasW / 2 - 100,
+                          top: canvasH / 2 - 25,
+                          textAlign: 'center',
+                          ...convertFabricProps(style.fabricProps),
+                        } as Partial<fabric.ITextOptions>);
+                      }} className="w-full rounded-xl border border-[#e8eaec] overflow-hidden hover:shadow-md transition-all text-left group">
+                        {/* 效果展示区 */}
+                        <div className="flex items-center justify-center py-4 px-3 min-h-[56px]" style={style.cardBg || { background: '#f8f9fa' }}>
+                          <span style={{
+                            fontFamily: '"Noto Sans SC", sans-serif',
+                            fontSize: style.fontSize || 24,
+                            fontWeight: style.fontWeight || 700,
+                            color: cssFill === 'transparent' ? 'transparent' : cssFill || undefined,
+                            WebkitTextStrokeColor: cssStroke,
+                            WebkitTextStrokeWidth: cssStrokeWidth ? `${cssStrokeWidth}px` : undefined,
+                            textShadow: cssShadow,
+                            background: cssFill && !cssFill.startsWith('#') && !cssFill.startsWith('rgba') ? cssFill : undefined,
+                            WebkitBackgroundClip: cssFill && !cssFill.startsWith('#') && !cssFill.startsWith('rgba') ? 'text' : undefined,
+                            WebkitTextFillColor: cssFill && !cssFill.startsWith('#') && !cssFill.startsWith('rgba') ? 'transparent' : undefined,
+                          }}>
+                            {style.sample}
+                          </span>
+                        </div>
+                        {/* 底部标签 */}
+                        <div className="px-2.5 py-1.5 bg-[#fafbfc] border-t border-[#e8eaec] flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-[#4c535c]">{style.name}</span>
+                          <div className="flex gap-0.5">
+                            {style.effects.map(e => (
+                              <span key={e} className="text-[9px] px-1 py-px rounded bg-[#f0f6ff] text-[#2254f4]">{e}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -897,7 +1767,7 @@ export default function EditorPage() {
                   <input type="text" placeholder="搜索素材..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div className="flex gap-1.5 mb-3 flex-wrap">
-                  {["全部", ...Array.from(new Set(filteredMaterials.map(m => materialCategoryMap[m.category] || m.category)))].map(c => (
+                  {["全部", ...Array.from(new Set(filteredMaterials.map(m => materialCategoryMap[m.category ?? ""] || m.category || "")))].map(c => (
                     <button key={c} onClick={() => setMaterialCat(c)} className={cn("rounded-full px-2.5 py-1 text-xs transition-colors", materialCat === c ? "bg-primary/10 text-primary font-medium" : "bg-muted hover:bg-primary/10 hover:text-primary")}>{c}</button>
                   ))}
                 </div>
@@ -909,7 +1779,7 @@ export default function EditorPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {filteredMaterials.map(m => (
                       <button key={m.id} onClick={() => {
-                        fabricHook.addImage(m.url, { left: canvasW / 2 - (m.width || 50) / 2, top: canvasH / 2 - (m.height || 50) / 2, name: m.name });
+                        if (m.url) fabricHook.addImage(m.url, { left: canvasW / 2 - (m.width || 50) / 2, top: canvasH / 2 - (m.height || 50) / 2, name: m.name });
                       }} className="flex flex-col items-center gap-1.5 rounded-lg border bg-card p-3 hover:bg-accent hover:shadow-sm transition-all">
                         {m.url ? (
                           <img src={m.url} alt={m.name} className="w-10 h-10 object-contain" />
@@ -1302,43 +2172,37 @@ export default function EditorPage() {
 
               {activeRightTab === "style" && (
                 <div className="p-3 space-y-4">
-                  {/* Fill Color */}
-                  {selectedEl.fill && typeof selectedEl.fill === "string" && selectedEl.fill.startsWith("#") && (
-                    <div>
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2">填充颜色</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {shapeDefaultColors.map(c => (
-                          <button key={c} onClick={() => updateProp("fill", c)} className={cn("h-6 w-6 rounded-sm border transition-all", selectedEl.fill === c ? "ring-2 ring-primary scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
-                        ))}
-                        <input type="color" value={selectedEl.fill} onChange={e => updateProp("fill", e.target.value)} className="h-6 w-8 rounded cursor-pointer border-0" />
-                      </div>
-                    </div>
-                  )}
-                  {/* Stroke */}
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">描边</h4>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={selectedEl.stroke && typeof selectedEl.stroke === "string" ? selectedEl.stroke : "#000000"} onChange={e => updateProp("stroke", e.target.value)} className="h-6 w-8 rounded cursor-pointer border" />
-                      <input type="number" min={0} max={20} value={selectedEl.strokeWidth || 0} onChange={e => updateProp("strokeWidth", Number(e.target.value))} className="w-16 rounded border bg-background px-2 py-1 text-xs" />
-                      <span className="text-[10px] text-muted-foreground">px</span>
-                    </div>
-                  </div>
                   {/* Text-specific */}
                   {selectedEl.type?.includes("text") && (
                     <>
+                      {/* 字体选择器 — 简单下拉列表 */}
                       <div>
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">字体</h4>
-                        <select value={selectedEl.fontFamily || "PingFang SC"} onChange={e => updateProp("fontFamily", e.target.value)} className="w-full rounded border bg-background px-2 py-1 text-xs">
-                          <option value="PingFang SC">PingFang SC</option>
-                          <option value="Microsoft YaHei">Microsoft YaHei</option>
-                          <option value="Arial">Arial</option>
-                          <option value="Helvetica">Helvetica</option>
-                          <option value="Georgia">Georgia</option>
+                        <select
+                          value={selectedEl.fontFamily || ''}
+                          onChange={e => updateProp("fontFamily", e.target.value)}
+                          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        >
+                          <option value="">系统默认</option>
+                          {allFonts.map(font => (
+                            <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                              {font.label} — {font.preview}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">字号</h4>
                         <input type="number" value={selectedEl.fontSize || 24} onChange={e => updateProp("fontSize", Number(e.target.value))} className="w-full rounded border bg-background px-2 py-1 text-xs" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">文字颜色</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {textColors.map(c => (
+                            <button key={c} onClick={() => updateProp("fill", c)} className={cn("h-6 w-6 rounded-sm border transition-all", selectedEl.fill === c ? "ring-2 ring-primary scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
+                          ))}
+                          <input type="color" value={typeof selectedEl.fill === 'string' && selectedEl.fill.startsWith('#') ? selectedEl.fill : '#000000'} onChange={e => updateProp("fill", e.target.value)} className="h-6 w-8 rounded cursor-pointer border-0" />
+                        </div>
                       </div>
                       <div>
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">对齐</h4>
@@ -1356,12 +2220,38 @@ export default function EditorPage() {
                           <button onClick={() => updateProp("underline", !selectedEl.underline)} className={cn("flex-1 p-1.5 rounded border transition-colors", selectedEl.underline && "bg-primary/10 border-primary text-primary")}><Underline className="h-4 w-4" /></button>
                         </div>
                       </div>
+                      {/* 特效下拉 */}
                       <div>
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">文字颜色</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {textColors.map(c => (
-                            <button key={c} onClick={() => updateProp("fill", c)} className={cn("h-6 w-6 rounded-sm border transition-all", selectedEl.fill === c ? "ring-2 ring-primary scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
-                          ))}
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">特效</h4>
+                        <TextEffectPicker
+                          selectedEl={selectedEl}
+                          updateProp={updateProp}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {/* Shape-specific: Fill + Stroke (only for non-text) */}
+                  {!selectedEl.type?.includes("text") && (
+                    <>
+                      {/* Fill Color */}
+                      {selectedEl.fill && typeof selectedEl.fill === "string" && selectedEl.fill.startsWith("#") && (
+                        <div>
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">填充颜色</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {shapeDefaultColors.map(c => (
+                              <button key={c} onClick={() => updateProp("fill", c)} className={cn("h-6 w-6 rounded-sm border transition-all", selectedEl.fill === c ? "ring-2 ring-primary scale-110" : "hover:scale-110")} style={{ backgroundColor: c }} />
+                            ))}
+                            <input type="color" value={selectedEl.fill} onChange={e => updateProp("fill", e.target.value)} className="h-6 w-8 rounded cursor-pointer border-0" />
+                          </div>
+                        </div>
+                      )}
+                      {/* Stroke */}
+                      <div>
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">描边</h4>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={selectedEl.stroke && typeof selectedEl.stroke === "string" ? selectedEl.stroke : "#000000"} onChange={e => updateProp("stroke", e.target.value)} className="h-6 w-8 rounded cursor-pointer border" />
+                          <input type="number" min={0} max={20} value={selectedEl.strokeWidth || 0} onChange={e => updateProp("strokeWidth", Number(e.target.value))} className="w-16 rounded border bg-background px-2 py-1 text-xs" />
+                          <span className="text-[10px] text-muted-foreground">px</span>
                         </div>
                       </div>
                     </>

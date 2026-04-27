@@ -34,13 +34,15 @@ export interface Material {
   id: number;
   name: string;
   type: string;
-  url: string;
+  url: string | null;
   width: number;
   height: number;
   thumbnail: string | null;
-  category: string;
+  category: string | null;
   tags: string[];
   created_at: string;
+  /** 设计稿的完整 Fabric JSON（type === 'design' 时有值） */
+  design_json?: Record<string, unknown> | null;
 }
 
 export const editorApi = {
@@ -96,4 +98,32 @@ export const editorApi = {
 
   deleteMaterial: (id: number) =>
     api.delete(`/materials/${id}`),
+
+  /** 保存编辑器设计稿到草稿箱 */
+  saveDesign: (data: {
+    name: string;
+    design_json: unknown;
+    thumbnail?: string;
+    width?: number;
+    height?: number;
+  }) =>
+    api.post('/materials/design', data),
+
+  /** 更新已有的设计稿 */
+  updateMaterial: (id: number, data: {
+    name?: string;
+    design_json?: unknown;
+    thumbnail?: string;
+    width?: number;
+    height?: number;
+  }) =>
+    api.put(`/materials/${id}`, data),
+
+  /** 获取单个素材详情（用于加载设计稿） */
+  getMaterial: (id: number) =>
+    api.get<Material>(`/materials/${id}`),
+
+  /** 批量删除所有素材（清空草稿箱） */
+  deleteAllMaterials: () =>
+    api.delete('/materials/all'),
 };

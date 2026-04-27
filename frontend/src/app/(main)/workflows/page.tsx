@@ -5,24 +5,11 @@ import yaml from 'js-yaml';
 import { cn } from '@/lib/utils';
 import {
   Plus, Play, Trash2, Edit2, X, Search,
-  Clock, ArrowRight, Loader2, GripVertical,
-  PanelRightClose, PanelRightOpen, CheckCircle2, XCircle, AlertCircle,
+  Clock, ArrowRight, Loader2,
+  PanelRightClose, CheckCircle2, XCircle,
   Zap, FileText, ListTodo, MoreVertical,
 } from 'lucide-react';
 import { difyApi, type DifyWorkflowLog } from '@/services/difyApi';
-
-function useClickOutside(handler: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const listener = (e: MouseEvent) => {
-      if (!ref.current || ref.current.contains(e.target as Node)) return;
-      handler();
-    };
-    document.addEventListener('mousedown', listener);
-    return () => document.removeEventListener('mousedown', listener);
-  }, [handler]);
-  return ref;
-}
 
 interface Workflow {
   id: number;

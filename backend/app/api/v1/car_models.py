@@ -42,15 +42,31 @@ async def get_models(
 @router.get("/images", response_model=ApiResponse[dict])
 async def get_car_images(
     brand: str = Query(..., description="品牌"),
-    model: str = Query(..., description="车型"),
+    model: Optional[str] = Query(None, description="车型，不传则返回该品牌下所有车型图片"),
 ):
-    """获取指定车型的图片（5角度）"""
+    """获取指定车型的图片（5角度），不传model则返回品牌下所有车型"""
     data = _load_data()
     if brand not in data:
         raise HTTPException(status_code=404, detail=f"品牌不存在: {brand}")
+
+    if not model or model == 'all':
+        # 返回该品牌下所有车型图片
+        all_images = []
+        for model_name, images in data[brand].items():
+            for img in images:
+                all_images.append({
+                    **img,
+                    "model": model_name,
+                })
+        return ApiResponse(data={
+            "brand": brand,
+            "model": "all",
+            "images": all_images,
+        })
+
     if model not in data[brand]:
         raise HTTPException(status_code=404, detail=f"车型不存在: {brand} - {model}")
-    
+
     images = data[brand][model]
     return ApiResponse(data={
         "brand": brand,

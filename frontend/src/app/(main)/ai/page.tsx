@@ -4,9 +4,16 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Sparkles, Download, Heart, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
-  ImagePlus, Trash2, Image as ImageIcon,
+  ImagePlus, Trash2, Image as ImageIcon, FolderOpen,
 } from 'lucide-react';
 import { aiApi, type ImageTaskResponse, type QueueStatus } from '@/services/aiApi';
+import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
+
+interface RefImageItem {
+  data: string; // base64 or URL
+  name: string;
+  source: 'local' | 'gallery';
+}
 
 interface ChatMessage {
   id: string;
@@ -15,7 +22,8 @@ interface ChatMessage {
   images: AIImageResult[];
   timestamp: string;
   params?: { model: string; size: string; style: string; count: number; quality?: string };
-  refImage?: string; // 参考图片 base64（用于图生图）
+  refImages?: RefImageItem[]; // 参考图片列表（用于图生图）
+  taskId?: string; // 异步任务的 task_id（用于恢复轮询）
 }
 
 interface AIImageResult {
@@ -55,9 +63,20 @@ const styles = ['写实', '插画', '3D', '动漫', '水彩', '像素', '油画'
 const POLL_INTERVAL = 2000;
 const MAX_POLLS = 60; // 最多轮询 2 分钟
 const STORAGE_KEY = 'ai_image_messages';
+const GENERATION_KEY = 'ai_generation_active';
 
 /** 持久化相关常量 */
 const MAX_HISTORY = 50; // 最多保留 50 条消息（含 prompt + result）
+
+interface ActiveGeneration {
+  prompt: string;
+  model: string;
+  size: string;
+  style: string;
+  promptMsgId: string;
+  resultMsgId: string;
+  timestamp: number;
+}
 
 export default function AIPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -71,54 +90,180 @@ export default function AIPage() {
   const [selectedQuality, setSelectedQuality] = useState('low');
   const [imageCount, setImageCount] = useState(1);
   const [previewImage, setPreviewImage] = useState<AIImageResult | null>(null);
-  const [refImage, setRefImage] = useState<string | null>(null); // 参考图片 base64
-  const [refImageName, setRefImageName] = useState<string>('');
+  const [refImages, setRefImages] = useState<RefImageItem[]>([]); // 参考图片列表
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /** 处理图片文件上传为 base64 */
+  /** 处理图片文件上传为 base64（支持多选） */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      alert('图片大小不能超过 10MB');
-      return;
-    }
-    setRefImageName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setRefImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const remainingSlots = 10 - refImages.length;
+    const toProcess = files.slice(0, remainingSlots);
+
+    const promises = toProcess.map(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`图片 "${file.name}" 大小不能超过 10MB`);
+        return Promise.resolve(null);
+      }
+      return new Promise<RefImageItem | null>(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ data: reader.result as string, name: file.name, source: 'local' as const });
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises).then(results => {
+      const newImages = results.filter(Boolean) as RefImageItem[];
+      if (newImages.length > 0) setRefImages(prev => [...prev, ...newImages]);
+    });
     // 重置 input 以便重新选择同一文件
     e.target.value = '';
   };
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
 
-  // 客户端首次加载时从 localStorage 恢复历史记录
+  /** 启动轮询任务状态直到完成 */
+  const startPoll = useCallback((taskId: string, model: string, resultMsgId: string, width: number, height: number) => {
+    let polls = 0;
+    const timer = setInterval(async () => {
+      polls += 1;
+      if (polls > MAX_POLLS) {
+        clearInterval(timer);
+        setMessages(prev => {
+          const updated = prev.map(msg =>
+            msg.id === resultMsgId
+              ? { ...msg, content: '生成超时，请稍后重试', taskId: undefined }
+              : msg
+          );
+          const hasPending = updated.some(m => m.type === 'result' && m.taskId);
+          if (!hasPending) setIsGenerating(false);
+          return updated;
+        });
+        localStorage.removeItem(GENERATION_KEY);
+        return;
+      }
+
+      try {
+        const res = await aiApi.getTaskStatus(taskId, model);
+        const data = res.data as ImageTaskResponse;
+
+        if (data.status === 'completed' && data.image_urls && data.image_urls.length > 0) {
+          clearInterval(timer);
+          const images: AIImageResult[] = data.image_urls.map((url, i) => ({
+            id: `${taskId}-${i}`, url, width, height, liked: false,
+          }));
+          setMessages(prev => {
+            const updated = prev.map(msg =>
+              msg.id === resultMsgId ? { ...msg, images, taskId: undefined } : msg
+            );
+            const hasPending = updated.some(m => m.type === 'result' && m.taskId);
+            if (!hasPending) setIsGenerating(false);
+            return updated;
+          });
+          localStorage.removeItem(GENERATION_KEY);
+        } else if (data.status === 'failed') {
+          clearInterval(timer);
+          setMessages(prev => {
+            const updated = prev.map(msg =>
+              msg.id === resultMsgId
+                ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, taskId: undefined }
+                : msg
+            );
+            const hasPending = updated.some(m => m.type === 'result' && m.taskId);
+            if (!hasPending) setIsGenerating(false);
+            return updated;
+          });
+          localStorage.removeItem(GENERATION_KEY);
+        }
+      } catch {
+        // 轮询请求失败，继续重试
+      }
+    }, POLL_INTERVAL);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 客户端首次加载时从 localStorage 恢复历史记录 + 进行中的任务
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as ChatMessage[];
-        const completed = parsed.filter(
-          m => m.type === 'prompt' || (m.type === 'result' && m.images?.length > 0) || (m.type === 'result' && m.content?.startsWith('生成失败'))
+        setMessages(parsed);
+
+        // 查找进行中的任务并恢复轮询
+        const pendingTasks = parsed.filter(
+          m => m.type === 'result' && (!m.content || m.content === '') && (!m.images || m.images.length === 0) && m.taskId
         );
-        setMessages(completed);
+        if (pendingTasks.length > 0) {
+          setIsGenerating(true);
+          for (const pendingMsg of pendingTasks) {
+            const taskModel = pendingMsg.params?.model?.toLowerCase() || 'seedream';
+            const sizeParts = pendingMsg.params?.size?.split('×') ?? ['2048', '2048'];
+            const width = parseInt(sizeParts[0]) || 2048;
+            const height = parseInt(sizeParts[1]) || 2048;
+            startPoll(pendingMsg.taskId!, taskModel, pendingMsg.id, width, height);
+          }
+        }
+      }
+
+      // 也检查独立的 generation state（处理切页面丢失状态的情况）
+      const genState = localStorage.getItem(GENERATION_KEY);
+      if (genState) {
+        const gen = JSON.parse(genState) as ActiveGeneration;
+
+        // 异步恢复：查询后端历史并兜底清理
+        (async () => {
+          try {
+            const res = await aiApi.getHistory(1, 1);
+            const items = res.data?.items ?? [];
+            if (items.length > 0) {
+              const latest = items[0];
+              if (latest.result_urls && Array.isArray(latest.result_urls) && latest.result_urls.length > 0) {
+                // 任务已完成，恢复图片
+                const images: AIImageResult[] = latest.result_urls.map((url: string, i: number) => ({
+                  id: `${latest.id}-${i}`, url, width: 2048, height: 2048, liked: false,
+                }));
+                setMessages(prev => prev.map(msg =>
+                  msg.id === gen.resultMsgId ? { ...msg, images } : msg
+                ));
+              } else if (latest.error || latest.status === 'failed') {
+                // 任务失败，恢复错误信息
+                setMessages(prev => prev.map(msg =>
+                  msg.id === gen.resultMsgId
+                    ? { ...msg, content: `生成失败: ${latest.error || '未知错误'}` }
+                    : msg
+                ));
+              }
+              // 有其他状态（queued/processing）则保留等待状态
+            }
+          } catch {
+            // 查询失败，不清理（保留等待状态）
+          } finally {
+            // 无论成功/失败/无结果，都结束生成状态
+            setIsGenerating(false);
+            localStorage.removeItem(GENERATION_KEY);
+          }
+        })();
       }
     } catch { /* ignore */ }
     setLoaded(true);
-  }, []);
+  }, [startPoll]);
 
-  // 持久化到 localStorage（仅客户端加载完成后）
+  // 持久化到 localStorage（包含进行中的任务）
   useEffect(() => {
     if (!loaded) return;
     try {
-      const completedMessages = messages.filter(
-        m => m.type === 'prompt' || (m.type === 'result' && m.images.length > 0) || (m.type === 'result' && m.content.startsWith('生成失败'))
+      const allMessages = messages.filter(
+        m => m.type === 'prompt' || (m.type === 'result' && (m.images.length > 0 || m.content.startsWith('生成失败') || m.content.startsWith('生成超时')))
       ).slice(-MAX_HISTORY);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(completedMessages));
+      // 追加进行中的任务
+      const inProgress = messages.filter(
+        m => m.type === 'result' && (!m.content || m.content === '') && (!m.images || m.images.length === 0) && m.taskId
+      );
+      const toSave = [...allMessages, ...inProgress];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     } catch { /* ignore storage errors */ }
   }, [messages, loaded]);
 
@@ -135,49 +280,10 @@ export default function AIPage() {
     return () => clearInterval(timer);
   }, []);
 
-  /** 轮询任务状态直到完成 */
+  /** 轮询任务状态直到完成（向后兼容） */
   const pollTask = useCallback(async (taskId: string, model: string, resultMsgId: string, width: number, height: number) => {
-    let polls = 0;
-    const timer = setInterval(async () => {
-      polls += 1;
-      if (polls > MAX_POLLS) {
-        clearInterval(timer);
-        setMessages(prev => prev.map(msg =>
-          msg.id === resultMsgId
-            ? { ...msg, content: '生成超时，请稍后重试', images: [] }
-            : msg
-        ));
-        setIsGenerating(false);
-        return;
-      }
-
-      try {
-        const res = await aiApi.getTaskStatus(taskId, model);
-        const data = res.data as ImageTaskResponse;
-
-        if (data.status === 'completed' && data.image_urls && data.image_urls.length > 0) {
-          clearInterval(timer);
-          const images: AIImageResult[] = data.image_urls.map((url, i) => ({
-            id: `${taskId}-${i}`, url, width, height, liked: false,
-          }));
-          setMessages(prev => prev.map(msg =>
-            msg.id === resultMsgId ? { ...msg, images } : msg
-          ));
-        } else if (data.status === 'failed') {
-          clearInterval(timer);
-          setMessages(prev => prev.map(msg =>
-            msg.id === resultMsgId
-              ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [] }
-              : msg
-          ));
-        }
-        // status === 'processing' / 'pending' -> 继续轮询
-      } catch {
-        // 轮询请求失败，继续重试
-      }
-    }, POLL_INTERVAL);
-    return () => clearInterval(timer);
-  }, []);
+    startPoll(taskId, model, resultMsgId, width, height);
+  }, [startPoll]);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating || !loaded) return;
@@ -185,19 +291,18 @@ export default function AIPage() {
     const width = parseInt(sizeParts[0]) || 1024;
     const height = parseInt(sizeParts[1]) || 1024;
 
-    const currentRefImage = refImage;
+    const currentRefImages = refImages;
     const promptMessage: ChatMessage = {
       id: Date.now().toString(), type: 'prompt', content: prompt, images: [],
       timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       params: { model: models.find(m => m.id === selectedModel)?.name || selectedModel, size: selectedSize, style: selectedStyle, count: imageCount, quality: selectedModel === 'gptimage2' ? selectedQuality : undefined },
-      refImage: currentRefImage || undefined,
+      refImages: currentRefImages.length > 0 ? [...currentRefImages] : undefined,
     };
     setMessages(prev => [...prev, promptMessage]);
     setIsGenerating(true);
     const currentPrompt = prompt;
     setPrompt('');
-    setRefImage(null);
-    setRefImageName('');
+    setRefImages([]);
 
     const resultMsgId = (Date.now() + 1).toString();
     // 先显示一个加载中的结果占位
@@ -206,15 +311,43 @@ export default function AIPage() {
       timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
     }]);
 
+    // 保存生成状态到 localStorage，防止切页面丢失
+    const modelName = models.find(m => m.id === selectedModel)?.name || selectedModel;
+    const activeGen: ActiveGeneration = {
+      prompt: currentPrompt,
+      model: modelName,
+      size: selectedSize,
+      style: selectedStyle,
+      promptMsgId: Date.now().toString(),
+      resultMsgId,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(GENERATION_KEY, JSON.stringify(activeGen));
+
     try {
       const fullPrompt = selectedStyle ? `${currentPrompt}, ${selectedStyle}风格` : currentPrompt;
+
+      // 构建参考图片参数
+      const refParams: Record<string, unknown> = {};
+      if (currentRefImages.length > 0) {
+        const allImages = currentRefImages.map(img => img.data);
+        if (allImages.length === 1) {
+          // 单图：用兼容字段保持向后兼容
+          const img = currentRefImages[0];
+          refParams[img.source === 'gallery' ? 'image_url' : 'image_data'] = img.data;
+        } else {
+          // 多图：发 images_data 数组（后端 images_data 支持 base64 和 URL 混合）
+          refParams.images_data = allImages;
+        }
+      }
+
       const res = await aiApi.generateImage({
         prompt: fullPrompt,
         model: selectedModel,
         width,
         height,
         ...(selectedModel === 'gptimage2' ? { quality: selectedQuality } : {}),
-        ...(currentRefImage ? { image_data: currentRefImage } : {}),
+        ...refParams,
       });
 
       const data = res.data as ImageTaskResponse;
@@ -227,14 +360,19 @@ export default function AIPage() {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId ? { ...msg, images } : msg
         ));
+        localStorage.removeItem(GENERATION_KEY);
       } else if (data.status === 'failed') {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
             ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [] }
             : msg
         ));
+        localStorage.removeItem(GENERATION_KEY);
       } else {
-        // 异步模型，启动轮询
+        // 异步模型，先更新 taskId 以便恢复轮询
+        setMessages(prev => prev.map(msg =>
+          msg.id === resultMsgId ? { ...msg, taskId: data.task_id } : msg
+        ));
         await pollTask(data.task_id, selectedModel, resultMsgId, width, height);
       }
     } catch (e) {
@@ -244,6 +382,7 @@ export default function AIPage() {
           ? { ...msg, content: `生成失败: ${errorMsg}`, images: [] }
           : msg
       ));
+      localStorage.removeItem(GENERATION_KEY);
     } finally {
       setIsGenerating(false);
     }
@@ -273,6 +412,32 @@ export default function AIPage() {
     if (!confirm('确定要清空所有对话记录吗？')) return;
     setMessages([]);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(GENERATION_KEY);
+  };
+
+  /** 从图库选择参考图（单选） */
+  const handleGallerySelect = (image: GalleryPickerImage) => {
+    setRefImages(prev => [...prev, { data: image.url, name: image.name, source: 'gallery' }]);
+    setGalleryPickerOpen(false);
+  };
+
+  /** 从图库多选参考图 */
+  const handleGalleryMultiSelect = (images: GalleryPickerImage[]) => {
+    setRefImages(prev => [
+      ...prev,
+      ...images.map(img => ({ data: img.url, name: img.name, source: 'gallery' as const })),
+    ]);
+    setGalleryPickerOpen(false);
+  };
+
+  /** 清除参考图 */
+//  const _clearRefImage = () => {
+//    setRefImages([]);
+//  };
+
+  /** 移除单张参考图 */
+  const removeRefImage = (index: number) => {
+    setRefImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const deleteMessage = (msgId: string) => {
@@ -393,41 +558,55 @@ export default function AIPage() {
         </div>
         <div className="border-t p-4">
           {/* 参考图片预览 */}
-          {refImage && (
-            <div className="mb-3 relative group">
-              <div className="flex items-start gap-3 p-2 rounded-lg border bg-muted/50">
-                <div className="relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border">
-                  <img src={refImage} alt="参考图" className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{refImageName || '参考图片'}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">图生图模式</p>
-                </div>
-                <button onClick={() => { setRefImage(null); setRefImageName(''); }}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+          {refImages.length > 0 && (
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-2">
+                {refImages.map((img, idx) => (
+                  <div key={`${img.data}-${idx}`} className="group relative w-16 h-16 rounded-lg overflow-hidden border bg-muted/50">
+                    <img src={img.data} alt={img.name} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-0.5">
+                      <span className="text-[9px] text-white truncate">{img.name || '参考图'}</span>
+                    </div>
+                    <button onClick={() => removeRefImage(idx)}
+                      className="absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-background/90 border shadow-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 hover:bg-red-50">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                    {img.source === 'gallery' && (
+                      <span className="absolute top-0.5 left-0.5 text-[8px] text-primary bg-primary/20 px-1 rounded">图库</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-[10px] text-muted-foreground">图生图模式 · {refImages.length} 张参考图</span>
               </div>
             </div>
           )}
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
           <div className="flex gap-2">
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
-              placeholder={refImage ? "描述你想要的修改..." : "描述你想要的图片..."}
+              placeholder={refImages.length > 0 ? "描述你想要的修改..." : "描述你想要的图片..."}
               className="flex-1 resize-none rounded-xl border bg-background p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 h-20" />
           </div>
           <div className="flex gap-2 mt-2">
             <button onClick={() => fileInputRef.current?.click()}
               className={cn('flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
-                refImage ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground hover:bg-accent/80')}>
+                refImages.length > 0 ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground hover:bg-accent/80')}>
               <ImagePlus className="h-3.5 w-3.5" />
-              {refImage ? '换图' : '上传参考图'}
+              {refImages.length > 0 ? `已选 ${refImages.length} 张` : '上传参考图'}
+            </button>
+            <button onClick={() => setGalleryPickerOpen(true)} disabled={refImages.length >= 10}
+              className={cn('flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
+                refImages.length > 0 ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground hover:bg-accent/80',
+                refImages.length >= 10 && 'opacity-50 cursor-not-allowed')}>
+              <FolderOpen className="h-3.5 w-3.5" />
+              {refImages.length > 0 ? '从图库追加' : '从图库选择'}
             </button>
             <button onClick={handleGenerate} disabled={!prompt.trim() || isGenerating}
               className={cn('flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
                 prompt.trim() && !isGenerating ? 'bg-primary text-white hover:bg-primary-hover shadow-sm' : 'bg-muted text-muted-foreground cursor-not-allowed')}>
-              {isGenerating ? (<><Loader2 className="h-4 w-4 animate-spin" />生成中...</>) : (<><Sparkles className="h-4 w-4" />{refImage ? '图生图' : '生成图片'}</>)}
+              {isGenerating ? (<><Loader2 className="h-4 w-4 animate-spin" />生成中...</>) : (<><Sparkles className="h-4 w-4" />{refImages.length > 0 ? `图生图 (${refImages.length}张)` : '生成图片'}</>)}
             </button>
           </div>
         </div>
@@ -451,14 +630,21 @@ export default function AIPage() {
                   </div>
                   <div className="flex-1">
                     <div className="rounded-xl bg-card border px-4 py-3 group/bubble relative">
-                      {msg.refImage && (
+                      {msg.refImages && msg.refImages.length > 0 && (
                         <div className="mb-2 flex items-start gap-2 p-2 rounded-lg bg-muted/50">
-                          <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden border">
-                            <img src={msg.refImage} alt="" className="w-full h-full object-cover" />
-                          </div>
+                          {msg.refImages.slice(0, 4).map((img, idx) => (
+                            <div key={`${img.data}-${idx}`} className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden border">
+                              <img src={img.data} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {msg.refImages.length > 4 && (
+                            <div className="w-12 h-12 shrink-0 rounded-md overflow-hidden border bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">+{msg.refImages.length - 4}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1 text-[10px] text-primary">
                             <ImageIcon className="h-3 w-3" />
-                            <span>参考图</span>
+                            <span>{msg.refImages.length} 张参考图</span>
                           </div>
                         </div>
                       )}
@@ -611,6 +797,15 @@ export default function AIPage() {
           </div>
         </div>
       )}
+
+      {/* ===== 图库选择器弹窗 ===== */}
+      <GalleryPicker
+        open={galleryPickerOpen}
+        onClose={() => setGalleryPickerOpen(false)}
+        onSelect={handleGallerySelect}
+        multiSelect
+        onMultiSelect={handleGalleryMultiSelect}
+      />
     </div>
   );
 }
