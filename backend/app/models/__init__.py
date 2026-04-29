@@ -8,3 +8,7 @@ from app.models.dify_workflow import DifyWorkflowConfig
 from app.models.dify_run_log import DifyRunLog
 from app.models.dify_task import DifyTask
 from app.models.ai_task import AITask
+from app.models.copywriting import Copywriting
+from app.models.user_workflow import user_workflow_access
+from app.models.prompt import PromptCategory, PromptExample
+from app.models.prompt_moderation import PromptReport, PromptAuditLog

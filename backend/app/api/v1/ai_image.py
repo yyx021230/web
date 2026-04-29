@@ -43,10 +43,10 @@ async def generate_image(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """生成图片（登录用户自动关联，匿名用户也可使用）"""
+    """提交生图任务（登录用户自动关联，匿名用户也可使用）"""
     try:
         service = AIImageService(model_name=req.model, db=db)
-        result = await service.generate(
+        result = await service.submit(
             prompt=req.prompt,
             params={
                 "negative_prompt": req.negative_prompt,
@@ -68,8 +68,13 @@ async def generate_image(
 
 
 @router.get("/tasks/{task_id}", response_model=ApiResponse[ImageTaskResponse])
-async def get_task_status(task_id: str, model: str = "seedream"):
+async def get_task_status(task_id: str, model: str = "seedream", db: AsyncSession = Depends(get_db)):
     """查询任务状态"""
+    if task_id.isdigit():
+        service = AIImageService(model_name=model, db=db)
+        local = await service.get_local_task_status(int(task_id))
+        if local is not None:
+            return ApiResponse(data=ImageTaskResponse(**local))
     service = AIImageService(model_name=model)
     result = await service.get_status(task_id)
     return ApiResponse(data=ImageTaskResponse(**result))

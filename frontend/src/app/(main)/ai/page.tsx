@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Sparkles, Download, Heart, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
-  ImagePlus, Trash2, Image as ImageIcon, FolderOpen,
+  Sparkles, Download, Share2, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
+  ImagePlus, Trash2, Image as ImageIcon, FolderOpen, Save, BookOpen,
 } from 'lucide-react';
 import { aiApi, type ImageTaskResponse, type QueueStatus } from '@/services/aiApi';
+import { editorApi } from '@/services/editorApi';
+import { promptsApi } from '@/services/promptsApi';
+import { toast } from '@/lib/toast';
 import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
 
 interface RefImageItem {
@@ -23,7 +27,7 @@ interface ChatMessage {
   timestamp: string;
   params?: { model: string; size: string; style: string; count: number; quality?: string };
   refImages?: RefImageItem[]; // 参考图片列表（用于图生图）
-  taskId?: string; // 异步任务的 task_id（用于恢复轮询）
+  taskId?: string; // 异步任务的 task_id（用于轮询）
 }
 
 interface AIImageResult {
@@ -47,42 +51,82 @@ const qualities = [
   { id: 'high', label: '高', desc: '精细/最贵' },
 ];
 
-const sizes = [
-  { label: '1:1',    w: 2048, h: 2048 },   // 4.2MP
-  { label: '16:9',   w: 2560, h: 1440 },   // 3.7MP
-  { label: '9:16',   w: 1440, h: 2560 },   // 3.7MP
-  { label: '4:3',    w: 2240, h: 1680 },   // 3.8MP
-  { label: '3:4',    w: 1680, h: 2240 },   // 3.8MP
-  { label: '3:2',    w: 2400, h: 1600 },   // 3.8MP
-  { label: '2:3',    w: 1600, h: 2400 },   // 3.8MP
+const seedreamSizes = [
+  { label: '1:1',    w: 2048, h: 2048 },
+  { label: '16:9',   w: 2560, h: 1440 },
+  { label: '9:16',   w: 1440, h: 2560 },
+  { label: '4:3',    w: 2240, h: 1680 },
+  { label: '3:4',    w: 1680, h: 2240 },
+  { label: '3:2',    w: 2400, h: 1600 },
+  { label: '2:3',    w: 1600, h: 2400 },
 ];
+
+const gptimage2Sizes = [
+  { label: '1:1',    w: 1024, h: 1024 },
+  { label: '2:3',    w: 1024, h: 1536 },
+  { label: '3:2',    w: 1536, h: 1024 },
+  { label: '3:4',    w: 1536, h: 2048 },
+  { label: '2K 1:1', w: 2048, h: 2048 },
+  { label: '4K 16:9',w: 3840, h: 2160 },
+  { label: '4K 9:16',w: 2160, h: 3840 },
+];
+
+const getSizesForModel = (model: string) => model === 'gptimage2' ? gptimage2Sizes : seedreamSizes;
+const getDefaultSize = (model: string) => model === 'gptimage2' ? '1024×1024' : '2048×2048';
 
 const styles = ['写实', '插画', '3D', '动漫', '水彩', '像素', '油画', '极简', '赛博朋克', '扁平化'];
 
 /** 轮询间隔(ms)和最大次数 */
 const POLL_INTERVAL = 2000;
 const MAX_POLLS = 60; // 最多轮询 2 分钟
-const STORAGE_KEY = 'ai_image_messages';
-const GENERATION_KEY = 'ai_generation_active';
+const STORAGE_KEY_BASE = 'ai_image_messages';
+const PENDING_KEY_BASE = 'ai_pending_generation';
+const PROMPT_MAX_LEN = 8000;
 
 /** 持久化相关常量 */
 const MAX_HISTORY = 50; // 最多保留 50 条消息（含 prompt + result）
 
-interface ActiveGeneration {
+interface PendingGenerationState {
+  promptMsgId: string;
+  resultMsgId: string;
   prompt: string;
   model: string;
   size: string;
   style: string;
-  promptMsgId: string;
-  resultMsgId: string;
   timestamp: number;
+  taskId?: string;
+  status?: 'reconciling' | 'pending';
+}
+
+function getUserScopedKey(base: string): string {
+  try {
+    const raw = localStorage.getItem('app_current_user');
+    if (raw) {
+      const u = JSON.parse(raw) as { id?: number; username?: string };
+      if (u?.id != null) return `${base}:uid:${u.id}`;
+      if (u?.username) return `${base}:user:${u.username}`;
+    }
+  } catch {
+    // ignore
+  }
+  return `${base}:guest`;
+}
+
+function getFallbackKeys(base: string, primary: string): string[] {
+  const keys = [primary, base, `${base}:guest`];
+  const uniq: string[] = [];
+  for (const k of keys) {
+    if (!uniq.includes(k)) uniq.push(k);
+  }
+  return uniq;
 }
 
 export default function AIPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [reconcilingPending, setReconcilingPending] = useState(false);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [selectedModel, setSelectedModel] = useState('seedream');
   const [selectedSize, setSelectedSize] = useState('2048×2048');
@@ -92,8 +136,103 @@ export default function AIPage() {
   const [previewImage, setPreviewImage] = useState<AIImageResult | null>(null);
   const [refImages, setRefImages] = useState<RefImageItem[]>([]); // 参考图片列表
   const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
+  const hasPendingTasks = messages.some(m => m.type === 'result' && Boolean(m.taskId));
+  /** 保存模版状态 */
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [scopedKeys, setScopedKeys] = useState<{ storageKey: string; pendingKey: string } | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
+  const activePollTaskIdRef = useRef<string | null>(null);
+  const deletedPendingRef = useRef<{ promptMsgId?: string; resultMsgId?: string } | null>(null);
+  const pendingCancelRef = useRef<PendingGenerationState | null>(null);
+  const debugStorageRef = useRef(false);
+
+  const logDebug = useCallback((msg: string, extra?: Record<string, unknown>) => {
+    if (!debugStorageRef.current) return;
+    // eslint-disable-next-line no-console
+    console.log(`[AIStorage] ${msg}`, extra || {});
+  }, []);
+
+  const getActiveKeys = useCallback(() => {
+    if (scopedKeys) return scopedKeys;
+    return {
+      storageKey: getUserScopedKey(STORAGE_KEY_BASE),
+      pendingKey: getUserScopedKey(PENDING_KEY_BASE),
+    };
+  }, [scopedKeys]);
+
+  const clearPendingState = useCallback(() => {
+    const { pendingKey } = getActiveKeys();
+    try {
+      const pendingCandidates = getFallbackKeys(PENDING_KEY_BASE, pendingKey);
+      pendingCandidates.forEach(k => localStorage.removeItem(k));
+    } catch {
+      // ignore
+    }
+    if (pollTimerRef.current !== null) {
+      window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    activePollTaskIdRef.current = null;
+    logDebug('clearPendingState', { pendingKey });
+  }, [getActiveKeys, logDebug]);
+
+  const persistMessages = useCallback((source: ChatMessage[]) => {
+    const { storageKey } = getActiveKeys();
+    try {
+      const toSave = source.filter(
+        m => m.type === 'prompt' || (m.type === 'result' && (m.images.length > 0 || m.content.startsWith('生成失败') || m.content.startsWith('生成超时')))
+      ).slice(-MAX_HISTORY);
+      localStorage.setItem(storageKey, JSON.stringify(toSave));
+      const candidates = getFallbackKeys(STORAGE_KEY_BASE, storageKey);
+      candidates.forEach(k => {
+        if (k !== storageKey) localStorage.removeItem(k);
+      });
+      logDebug('persistMessages', { storageKey, count: toSave.length });
+    } catch {
+      // ignore storage errors
+    }
+  }, [getActiveKeys, logDebug]);
+
+  const upsertPendingMessages = useCallback((pending: PendingGenerationState, taskId?: string) => {
+    const ts = new Date(pending.timestamp || Date.now()).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    setMessages(prev => {
+      const hasPrompt = prev.some(m => m.id === pending.promptMsgId);
+      const hasResult = prev.some(m => m.id === pending.resultMsgId);
+      const next = [...prev];
+      if (!hasPrompt) {
+        next.push({
+          id: pending.promptMsgId,
+          type: 'prompt',
+          content: pending.prompt || '恢复中的任务',
+          images: [],
+          timestamp: ts,
+          params: { model: pending.model || 'seedream', size: pending.size || '2048×2048', style: pending.style || '写实', count: 1 },
+        });
+      }
+      if (!hasResult) {
+        next.push({
+          id: pending.resultMsgId,
+          type: 'result',
+          content: '正在生成图片，请稍候...',
+          images: [],
+          timestamp: ts,
+          taskId,
+        });
+      } else {
+        for (let i = 0; i < next.length; i += 1) {
+          if (next[i].id === pending.resultMsgId) {
+            next[i] = { ...next[i], taskId, content: next[i].images.length > 0 ? '' : '正在生成图片，请稍候...' };
+            break;
+          }
+        }
+      }
+      return next;
+    });
+  }, []);
 
   /** 处理图片文件上传为 base64（支持多选） */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,24 +263,45 @@ export default function AIPage() {
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
 
+  useEffect(() => {
+    try {
+      debugStorageRef.current = Boolean((window as Window & { __AI_DEBUG_STORAGE__?: boolean }).__AI_DEBUG_STORAGE__);
+    } catch {
+      debugStorageRef.current = false;
+    }
+    const next = {
+      storageKey: getUserScopedKey(STORAGE_KEY_BASE),
+      pendingKey: getUserScopedKey(PENDING_KEY_BASE),
+    };
+    setScopedKeys(next);
+    logDebug('scopedKeysReady', next as unknown as Record<string, unknown>);
+  }, [logDebug]);
+
   /** 启动轮询任务状态直到完成 */
   const startPoll = useCallback((taskId: string, model: string, resultMsgId: string, width: number, height: number) => {
+    if (activePollTaskIdRef.current === taskId && pollTimerRef.current !== null) return;
+    if (pollTimerRef.current !== null) {
+      window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    activePollTaskIdRef.current = taskId;
     let polls = 0;
-    const timer = setInterval(async () => {
+    pollTimerRef.current = window.setInterval(async () => {
       polls += 1;
       if (polls > MAX_POLLS) {
-        clearInterval(timer);
+        if (pollTimerRef.current !== null) {
+          window.clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
         setMessages(prev => {
           const updated = prev.map(msg =>
             msg.id === resultMsgId
               ? { ...msg, content: '生成超时，请稍后重试', taskId: undefined }
               : msg
           );
-          const hasPending = updated.some(m => m.type === 'result' && m.taskId);
-          if (!hasPending) setIsGenerating(false);
           return updated;
         });
-        localStorage.removeItem(GENERATION_KEY);
+        clearPendingState();
         return;
       }
 
@@ -150,122 +310,205 @@ export default function AIPage() {
         const data = res.data as ImageTaskResponse;
 
         if (data.status === 'completed' && data.image_urls && data.image_urls.length > 0) {
-          clearInterval(timer);
+          if (pollTimerRef.current !== null) {
+            window.clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
           const images: AIImageResult[] = data.image_urls.map((url, i) => ({
             id: `${taskId}-${i}`, url, width, height, liked: false,
           }));
           setMessages(prev => {
             const updated = prev.map(msg =>
-              msg.id === resultMsgId ? { ...msg, images, taskId: undefined } : msg
+              msg.id === resultMsgId ? { ...msg, images, taskId: undefined, content: '' } : msg
             );
-            const hasPending = updated.some(m => m.type === 'result' && m.taskId);
-            if (!hasPending) setIsGenerating(false);
             return updated;
           });
-          localStorage.removeItem(GENERATION_KEY);
+          clearPendingState();
         } else if (data.status === 'failed') {
-          clearInterval(timer);
+          if (pollTimerRef.current !== null) {
+            window.clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
           setMessages(prev => {
             const updated = prev.map(msg =>
               msg.id === resultMsgId
                 ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, taskId: undefined }
                 : msg
             );
-            const hasPending = updated.some(m => m.type === 'result' && m.taskId);
-            if (!hasPending) setIsGenerating(false);
             return updated;
           });
-          localStorage.removeItem(GENERATION_KEY);
+          clearPendingState();
         }
       } catch {
         // 轮询请求失败，继续重试
       }
     }, POLL_INTERVAL);
-    return () => clearInterval(timer);
-  }, []);
+  }, [clearPendingState]);
 
-  // 客户端首次加载时从 localStorage 恢复历史记录 + 进行中的任务
+  // 客户端首次加载时从 localStorage 恢复历史记录
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!scopedKeys) return;
+      const { storageKey, pendingKey } = scopedKeys;
+      const storageCandidates = getFallbackKeys(STORAGE_KEY_BASE, storageKey);
+      let saved: string | null = null;
+      let savedFrom = storageKey;
+      for (const k of storageCandidates) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          saved = val;
+          savedFrom = k;
+          break;
+        }
+      }
       if (saved) {
         const parsed = JSON.parse(saved) as ChatMessage[];
         setMessages(parsed);
-
-        // 查找进行中的任务并恢复轮询
-        const pendingTasks = parsed.filter(
-          m => m.type === 'result' && (!m.content || m.content === '') && (!m.images || m.images.length === 0) && m.taskId
-        );
-        if (pendingTasks.length > 0) {
-          setIsGenerating(true);
-          for (const pendingMsg of pendingTasks) {
-            const taskModel = pendingMsg.params?.model?.toLowerCase() || 'seedream';
-            const sizeParts = pendingMsg.params?.size?.split('×') ?? ['2048', '2048'];
-            const width = parseInt(sizeParts[0]) || 2048;
-            const height = parseInt(sizeParts[1]) || 2048;
-            startPoll(pendingMsg.taskId!, taskModel, pendingMsg.id, width, height);
-          }
+        if (savedFrom !== storageKey) {
+          localStorage.setItem(storageKey, saved);
+          localStorage.removeItem(savedFrom);
         }
+        logDebug('loadMessages', { savedFrom, storageKey, count: parsed.length });
       }
 
-      // 也检查独立的 generation state（处理切页面丢失状态的情况）
-      const genState = localStorage.getItem(GENERATION_KEY);
-      if (genState) {
-        const gen = JSON.parse(genState) as ActiveGeneration;
-
-        // 异步恢复：查询后端历史并兜底清理
+      const pendingCandidates = getFallbackKeys(PENDING_KEY_BASE, pendingKey);
+      let pendingRaw: string | null = null;
+      let pendingFrom = pendingKey;
+      for (const k of pendingCandidates) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          pendingRaw = val;
+          pendingFrom = k;
+          break;
+        }
+      }
+      if (pendingRaw) {
+        if (pendingFrom !== pendingKey) {
+          localStorage.setItem(pendingKey, pendingRaw);
+          localStorage.removeItem(pendingFrom);
+        }
+        const pending = JSON.parse(pendingRaw) as PendingGenerationState;
+        if (
+          deletedPendingRef.current &&
+          (deletedPendingRef.current.promptMsgId === pending.promptMsgId ||
+            deletedPendingRef.current.resultMsgId === pending.resultMsgId)
+        ) {
+          clearPendingState();
+          return;
+        }
+        setReconcilingPending(true);
         (async () => {
           try {
-            const res = await aiApi.getHistory(1, 1);
-            const items = res.data?.items ?? [];
-            if (items.length > 0) {
-              const latest = items[0];
-              if (latest.result_urls && Array.isArray(latest.result_urls) && latest.result_urls.length > 0) {
-                // 任务已完成，恢复图片
-                const images: AIImageResult[] = latest.result_urls.map((url: string, i: number) => ({
-                  id: `${latest.id}-${i}`, url, width: 2048, height: 2048, liked: false,
+            const sizeParts = (pending.size || '2048×2048').split('×');
+            const width = parseInt(sizeParts[0]) || 2048;
+            const height = parseInt(sizeParts[1]) || 2048;
+            if (pending.taskId) {
+              const statusRes = await aiApi.getTaskStatus(pending.taskId, (pending.model || 'seedream').toLowerCase());
+              const statusData = statusRes.data as ImageTaskResponse;
+              if (statusData.status === 'completed' && statusData.image_urls && statusData.image_urls.length > 0) {
+                if (
+                  deletedPendingRef.current &&
+                  (deletedPendingRef.current.promptMsgId === pending.promptMsgId ||
+                    deletedPendingRef.current.resultMsgId === pending.resultMsgId)
+                ) {
+                  clearPendingState();
+                  return;
+                }
+                const images: AIImageResult[] = statusData.image_urls.map((url, i) => ({
+                  id: `${pending.taskId}-${i}`, url, width, height, liked: false,
                 }));
                 setMessages(prev => prev.map(msg =>
-                  msg.id === gen.resultMsgId ? { ...msg, images } : msg
+                  msg.id === pending.resultMsgId ? { ...msg, images, content: '', taskId: undefined } : msg
                 ));
-              } else if (latest.error || latest.status === 'failed') {
-                // 任务失败，恢复错误信息
-                setMessages(prev => prev.map(msg =>
-                  msg.id === gen.resultMsgId
-                    ? { ...msg, content: `生成失败: ${latest.error || '未知错误'}` }
-                    : msg
-                ));
+                clearPendingState();
+                return;
               }
-              // 有其他状态（queued/processing）则保留等待状态
+              if (statusData.status === 'failed') {
+                setMessages(prev => prev.map(msg =>
+                  msg.id === pending.resultMsgId ? { ...msg, content: `生成失败: ${statusData.error || '未知错误'}`, taskId: undefined } : msg
+                ));
+                clearPendingState();
+                return;
+              }
+              upsertPendingMessages(pending, pending.taskId);
+              localStorage.setItem(pendingKey, JSON.stringify({ ...pending, status: 'pending' }));
+              startPoll(pending.taskId, (pending.model || 'seedream').toLowerCase(), pending.resultMsgId, width, height);
+              return;
             }
+
+            const res = await aiApi.getHistory(1, 20);
+            const items = (res.data?.items || []) as Array<Record<string, unknown>>;
+            const matched = items.find((it) => {
+              const modelName = String(it.model_name || '');
+              const promptText = String(it.prompt || '');
+              return modelName === pending.model && (
+                promptText.includes(pending.prompt || '') || (pending.prompt || '').includes(promptText)
+              );
+            });
+
+            if (!matched) {
+              setMessages(prev => prev.map(msg =>
+                msg.id === pending.resultMsgId
+                  ? { ...msg, content: '生成状态丢失，请重新发起', taskId: undefined }
+                  : msg
+              ));
+              clearPendingState();
+              return;
+            }
+
+            const matchedId = String(matched.id || '');
+            const status = String(matched.status || '');
+            const urls = (matched.result_urls as string[] | undefined) || [];
+            const error = String(matched.error || '');
+            if (!matchedId) return;
+
+            if (status === 'completed' && urls.length > 0) {
+              if (
+                deletedPendingRef.current &&
+                (deletedPendingRef.current.promptMsgId === pending.promptMsgId ||
+                  deletedPendingRef.current.resultMsgId === pending.resultMsgId)
+              ) {
+                clearPendingState();
+                return;
+              }
+              const images: AIImageResult[] = urls.map((url, i) => ({
+                id: `${matchedId}-${i}`, url, width, height, liked: false,
+              }));
+              setMessages(prev => prev.map(msg =>
+                msg.id === pending.resultMsgId ? { ...msg, images, content: '', taskId: undefined } : msg
+              ));
+              clearPendingState();
+              return;
+            }
+            if (status === 'failed') {
+              setMessages(prev => prev.map(msg =>
+                msg.id === pending.resultMsgId ? { ...msg, content: `生成失败: ${error || '未知错误'}`, taskId: undefined } : msg
+              ));
+              clearPendingState();
+              return;
+            }
+
+            upsertPendingMessages(pending, matchedId);
+            localStorage.setItem(pendingKey, JSON.stringify({ ...pending, taskId: matchedId, status: 'pending' }));
+            startPoll(matchedId, (pending.model || 'seedream').toLowerCase(), pending.resultMsgId, width, height);
           } catch {
-            // 查询失败，不清理（保留等待状态）
+            // ignore
           } finally {
-            // 无论成功/失败/无结果，都结束生成状态
-            setIsGenerating(false);
-            localStorage.removeItem(GENERATION_KEY);
+            setReconcilingPending(false);
           }
         })();
       }
     } catch { /* ignore */ }
     setLoaded(true);
-  }, [startPoll]);
+  }, [clearPendingState, logDebug, scopedKeys, startPoll, upsertPendingMessages]);
+
+  const isGenerating = hasPendingTasks || reconcilingPending;
 
   // 持久化到 localStorage（包含进行中的任务）
   useEffect(() => {
-    if (!loaded) return;
-    try {
-      const allMessages = messages.filter(
-        m => m.type === 'prompt' || (m.type === 'result' && (m.images.length > 0 || m.content.startsWith('生成失败') || m.content.startsWith('生成超时')))
-      ).slice(-MAX_HISTORY);
-      // 追加进行中的任务
-      const inProgress = messages.filter(
-        m => m.type === 'result' && (!m.content || m.content === '') && (!m.images || m.images.length === 0) && m.taskId
-      );
-      const toSave = [...allMessages, ...inProgress];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    } catch { /* ignore storage errors */ }
-  }, [messages, loaded]);
+    if (!loaded || !scopedKeys) return;
+    persistMessages(messages);
+  }, [messages, loaded, persistMessages, scopedKeys]);
 
   // 轮询队列状态（每 2 秒）
   useEffect(() => {
@@ -286,7 +529,7 @@ export default function AIPage() {
   }, [startPoll]);
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || isGenerating || !loaded) return;
+    if (!prompt.trim() || hasPendingTasks || !loaded || prompt.length > PROMPT_MAX_LEN) return;
     const sizeParts = selectedSize.split('×');
     const width = parseInt(sizeParts[0]) || 1024;
     const height = parseInt(sizeParts[1]) || 1024;
@@ -299,7 +542,6 @@ export default function AIPage() {
       refImages: currentRefImages.length > 0 ? [...currentRefImages] : undefined,
     };
     setMessages(prev => [...prev, promptMessage]);
-    setIsGenerating(true);
     const currentPrompt = prompt;
     setPrompt('');
     setRefImages([]);
@@ -307,22 +549,21 @@ export default function AIPage() {
     const resultMsgId = (Date.now() + 1).toString();
     // 先显示一个加载中的结果占位
     setMessages(prev => [...prev, {
-      id: resultMsgId, type: 'result', content: '', images: [],
+      id: resultMsgId, type: 'result', content: '正在生成图片，请稍候...', images: [],
       timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
     }]);
 
-    // 保存生成状态到 localStorage，防止切页面丢失
-    const modelName = models.find(m => m.id === selectedModel)?.name || selectedModel;
-    const activeGen: ActiveGeneration = {
+    const { pendingKey } = getActiveKeys();
+    localStorage.setItem(pendingKey, JSON.stringify({
+      promptMsgId: promptMessage.id,
+      resultMsgId,
       prompt: currentPrompt,
-      model: modelName,
+      model: selectedModel,
       size: selectedSize,
       style: selectedStyle,
-      promptMsgId: Date.now().toString(),
-      resultMsgId,
       timestamp: Date.now(),
-    };
-    localStorage.setItem(GENERATION_KEY, JSON.stringify(activeGen));
+      status: 'pending',
+    } as PendingGenerationState));
 
     try {
       const fullPrompt = selectedStyle ? `${currentPrompt}, ${selectedStyle}风格` : currentPrompt;
@@ -360,19 +601,26 @@ export default function AIPage() {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId ? { ...msg, images } : msg
         ));
-        localStorage.removeItem(GENERATION_KEY);
+        clearPendingState();
       } else if (data.status === 'failed') {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
             ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [] }
             : msg
         ));
-        localStorage.removeItem(GENERATION_KEY);
+        clearPendingState();
       } else {
-        // 异步模型，先更新 taskId 以便恢复轮询
+        // 异步模型，更新 taskId 并开始轮询
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId ? { ...msg, taskId: data.task_id } : msg
         ));
+        try {
+          const raw = localStorage.getItem(pendingKey);
+          if (raw) {
+            const pending = JSON.parse(raw) as PendingGenerationState;
+            localStorage.setItem(pendingKey, JSON.stringify({ ...pending, taskId: data.task_id, status: 'pending' }));
+          }
+        } catch {}
         await pollTask(data.task_id, selectedModel, resultMsgId, width, height);
       }
     } catch (e) {
@@ -382,18 +630,29 @@ export default function AIPage() {
           ? { ...msg, content: `生成失败: ${errorMsg}`, images: [] }
           : msg
       ));
-      localStorage.removeItem(GENERATION_KEY);
-    } finally {
-      setIsGenerating(false);
+      clearPendingState();
     }
   };
 
-  const toggleLike = (imageId: string) => {
-    setMessages(prev => prev.map(msg => ({
-      ...msg, images: msg.images.map(img => img.id === imageId ? { ...img, liked: !img.liked } : img),
-    })));
-    if (previewImage && previewImage.id === imageId) {
-      setPreviewImage(prev => prev ? { ...prev, liked: !prev.liked } : null);
+  const shareToPromptLibrary = async (img: AIImageResult, resultMsgId: string) => {
+    if (sharingImageId) return;
+    setSharingImageId(img.id);
+    try {
+      const promptMsg = getPromptMessageByResultId(resultMsgId);
+      const rawPrompt = promptMsg?.content?.replace(/,\s*\S+风格$/, '')?.trim() || 'AI 生图分享';
+      await promptsApi.createPrompt({
+        title: rawPrompt.slice(0, 60),
+        chinese: rawPrompt,
+        english: '',
+        category: 'AI生图分享',
+        image_url: img.url,
+        param_type: promptMsg?.params?.style || '通用',
+      });
+      toast.success('已分享到提示词宝库');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '分享失败');
+    } finally {
+      setSharingImageId(null);
     }
   };
 
@@ -411,8 +670,10 @@ export default function AIPage() {
   const handleClearHistory = () => {
     if (!confirm('确定要清空所有对话记录吗？')) return;
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(GENERATION_KEY);
+    const { storageKey } = getActiveKeys();
+    const storageCandidates = getFallbackKeys(STORAGE_KEY_BASE, storageKey);
+    storageCandidates.forEach(k => localStorage.removeItem(k));
+    clearPendingState();
   };
 
   /** 从图库选择参考图（单选） */
@@ -440,7 +701,91 @@ export default function AIPage() {
     setRefImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const deleteMessage = (msgId: string) => {
+  /** 保存 AI 生图结果：弹出选择草稿箱/模版库 */
+  const [saveModal, setSaveModal] = useState<{
+    img: AIImageResult;
+    resultMsgId: string;
+  } | null>(null);
+  const [saveTarget, setSaveTarget] = useState<'drafts' | 'templates'>('templates');
+  const [saveTag, setSaveTag] = useState('');
+  const [saveFolders, setSaveFolders] = useState<string[]>([]);
+  const [sharingImageId, setSharingImageId] = useState<string | null>(null);
+
+  const getPromptMessageByResultId = useCallback((resultMsgId: string): ChatMessage | null => {
+    const msgs = messagesRef.current;
+    const resultIdx = msgs.findIndex(m => m.id === resultMsgId);
+    if (resultIdx > 0 && msgs[resultIdx]?.type === 'result') {
+      const prev = msgs[resultIdx - 1];
+      if (prev?.type === 'prompt') return prev;
+    }
+    return null;
+  }, []);
+
+  /** 打开保存对话框 */
+  const openSaveDialog = (img: AIImageResult, resultMsgId: string) => {
+    setSaveModal({ img, resultMsgId });
+    setSaveTarget('templates');
+    setSaveTag('');
+    // 从 localStorage 读取用户创建的文件夹
+    try {
+      const stored = localStorage.getItem('user_created_folders');
+      setSaveFolders(stored ? JSON.parse(stored) : []);
+    } catch {
+      setSaveFolders([]);
+    }
+  };
+
+  /** 确认保存 */
+  const confirmSave = async () => {
+    if (!saveModal) return;
+    const { img, resultMsgId } = saveModal;
+    setSavingTemplate(true);
+    try {
+      const promptMsg = getPromptMessageByResultId(resultMsgId);
+      const rawPrompt = promptMsg?.content?.replace(/,\s*\S+风格$/, '')?.trim() ?? '';
+
+      if (saveTarget === 'drafts') {
+        // 保存到草稿箱（设计稿格式）
+        await editorApi.saveDesign({
+          name: rawPrompt.slice(0, 50) || 'AI 设计稿',
+          design_json: null,
+          thumbnail: img.url,
+          width: img.width,
+          height: img.height,
+        });
+        alert('✅ 已保存到草稿箱');
+      } else {
+        // 保存到模版库，带标签
+        const tags = saveTag ? [saveTag] : [];
+        await editorApi.saveAITemplate({
+          name: rawPrompt.slice(0, 50) || 'AI 模版',
+          url: img.url,
+          width: img.width,
+          height: img.height,
+          tags,
+          ai_meta: rawPrompt ? {
+            prompt: rawPrompt,
+            ref_images: promptMsg?.refImages?.map(r => r.data) ?? [],
+            model: promptMsg?.params?.model ?? '',
+            size: promptMsg?.params?.size ?? '',
+            style: promptMsg?.params?.style ?? '',
+            count: promptMsg?.params?.count,
+            quality: promptMsg?.params?.quality,
+          } : undefined,
+        });
+        alert('✅ 已保存到模版库');
+      }
+      setSaveModal(null);
+    } catch (e) {
+      const errorMsg = (e as Error)?.message || '保存失败';
+      alert('❌ 保存失败: ' + errorMsg);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const deleteMessage = async (msgId: string) => {
+    pendingCancelRef.current = null;
     setMessages(prev => {
       const idx = prev.findIndex(m => m.id === msgId);
       if (idx === -1) return prev;
@@ -454,17 +799,44 @@ export default function AIPage() {
       } else if (msg.type === 'result' && idx > 0) {
         toDelete.add(prev[idx - 1].id);
       }
-      const filtered = prev.filter(m => !toDelete.has(m.id));
-      // 同步 localStorage
       try {
-        const completed = filtered.filter(
-          m => m.type === 'prompt' || (m.type === 'result' && m.images?.length > 0) || (m.type === 'result' && m.content?.startsWith('生成失败'))
-        ).slice(-MAX_HISTORY);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
-      } catch { /* ignore */ }
+        const { pendingKey } = getActiveKeys();
+        const raw = localStorage.getItem(pendingKey);
+        if (raw) {
+          const pending = JSON.parse(raw) as PendingGenerationState;
+          if (toDelete.has(pending.promptMsgId) || toDelete.has(pending.resultMsgId)) {
+            pendingCancelRef.current = pending;
+            deletedPendingRef.current = { promptMsgId: pending.promptMsgId, resultMsgId: pending.resultMsgId };
+            clearPendingState();
+          }
+        }
+      } catch {
+        // ignore
+      }
+      const filtered = prev.filter(m => !toDelete.has(m.id));
+      persistMessages(filtered);
       return filtered;
     });
+    const pendingToCancel = pendingCancelRef.current as PendingGenerationState | null;
+    pendingCancelRef.current = null;
+    if (pendingToCancel && pendingToCancel.taskId) {
+      try {
+        await aiApi.cancelTask(pendingToCancel.taskId, (pendingToCancel.model || 'seedream').toLowerCase());
+        logDebug('cancelTaskOnDelete', { taskId: pendingToCancel.taskId });
+      } catch (e) {
+        logDebug('cancelTaskOnDeleteFailed', { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current !== null) {
+        window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="flex h-full">
@@ -476,6 +848,11 @@ export default function AIPage() {
             <h2 className="text-sm font-semibold">AI 智能创作</h2>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => router.push('/prompts')}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+              title="提示词宝库">
+              <BookOpen className="h-3.5 w-3.5" /> 提示词宝库
+            </button>
             {queueStatus && (queueStatus.processing || queueStatus.pending > 0) && (
               <div className="flex items-center gap-1.5 text-xs text-amber-600">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -493,7 +870,11 @@ export default function AIPage() {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">AI 模型</label>
             <div className="relative">
-              <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
+              <select value={selectedModel} onChange={(e) => {
+                const next = e.target.value;
+                setSelectedModel(next);
+                setSelectedSize(getDefaultSize(next));
+              }}
                 className="w-full appearance-none rounded-lg border bg-background px-3 py-2.5 pr-8 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30">
                 {models.map(m => (
                   <option key={m.id} value={m.id} disabled={m.id === 'midjourney' || m.id === 'dall-e'}>
@@ -507,7 +888,7 @@ export default function AIPage() {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">图片尺寸</label>
             <div className="flex flex-wrap gap-2">
-              {sizes.map(s => (
+              {getSizesForModel(selectedModel).map(s => (
                 <button key={s.label} onClick={() => setSelectedSize(`${s.w}×${s.h}`)}
                   className={cn('rounded-lg border px-3 py-1.5 text-xs font-medium transition-all',
                     selectedSize === `${s.w}×${s.h}` ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-accent')}>
@@ -587,7 +968,10 @@ export default function AIPage() {
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
               placeholder={refImages.length > 0 ? "描述你想要的修改..." : "描述你想要的图片..."}
-              className="flex-1 resize-none rounded-xl border bg-background p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 h-20" />
+              className="flex-1 resize-none rounded-xl border bg-background p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 h-28" />
+          </div>
+          <div className={cn('mt-1 text-right text-xs', prompt.length > PROMPT_MAX_LEN ? 'text-red-600' : 'text-muted-foreground')}>
+            {prompt.length}/{PROMPT_MAX_LEN}
           </div>
           <div className="flex gap-2 mt-2">
             <button onClick={() => fileInputRef.current?.click()}
@@ -603,10 +987,10 @@ export default function AIPage() {
               <FolderOpen className="h-3.5 w-3.5" />
               {refImages.length > 0 ? '从图库追加' : '从图库选择'}
             </button>
-            <button onClick={handleGenerate} disabled={!prompt.trim() || isGenerating}
+            <button onClick={handleGenerate} disabled={!prompt.trim() || hasPendingTasks || isGenerating || prompt.length > PROMPT_MAX_LEN}
               className={cn('flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-                prompt.trim() && !isGenerating ? 'bg-primary text-white hover:bg-primary-hover shadow-sm' : 'bg-muted text-muted-foreground cursor-not-allowed')}>
-              {isGenerating ? (<><Loader2 className="h-4 w-4 animate-spin" />生成中...</>) : (<><Sparkles className="h-4 w-4" />{refImages.length > 0 ? `图生图 (${refImages.length}张)` : '生成图片'}</>)}
+                prompt.trim() && !hasPendingTasks && !isGenerating && prompt.length <= PROMPT_MAX_LEN ? 'bg-primary text-white hover:bg-primary-hover shadow-sm' : 'bg-muted text-muted-foreground cursor-not-allowed')}>
+              {hasPendingTasks || isGenerating ? (<><Loader2 className="h-4 w-4 animate-spin" />生成中...</>) : (<><Sparkles className="h-4 w-4" />{refImages.length > 0 ? `图生图 (${refImages.length}张)` : '生成图片'}</>)}
             </button>
           </div>
         </div>
@@ -614,6 +998,11 @@ export default function AIPage() {
 
       {/* ===== 右侧：对话式结果 ===== */}
       <div className="flex flex-1 flex-col bg-background">
+        {reconcilingPending && (
+          <div className="border-b bg-amber-50/60 px-6 py-2 text-xs text-amber-700">
+            正在同步任务状态...
+          </div>
+        )}
         <div ref={scrollRef} className="flex-1 overflow-auto p-6 space-y-6">
           {messages.length === 0 && !isGenerating && loaded && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
@@ -678,12 +1067,14 @@ export default function AIPage() {
               {msg.type === 'result' && (
                 <div className="flex gap-3 items-start">
                   <div className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mt-0.5">
-                    {msg.images.length > 0 ? (
+                    {msg.taskId ? (
+                      <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                    ) : msg.images.length > 0 ? (
                       <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    ) : msg.content ? (
+                    ) : msg.content.startsWith('生成失败') || msg.content.startsWith('生成超时') ? (
                       <AlertCircle className="h-3.5 w-3.5 text-white" />
                     ) : (
-                      <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                     )}
                   </div>
                   <div className="flex-1">
@@ -693,7 +1084,7 @@ export default function AIPage() {
                           'rounded-xl border px-4 py-3 text-sm mb-3',
                           msg.content.startsWith('生成失败') || msg.content.startsWith('生成超时')
                             ? 'bg-red-50 border-red-200 text-red-600'
-                            : 'bg-card border'
+                            : msg.taskId ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-card border'
                         )}>
                           {msg.content}
                           {/* 删除按钮 - 右下角 */}
@@ -708,19 +1099,26 @@ export default function AIPage() {
                         <div className="relative">
                           <div className="grid grid-cols-2 gap-3">
                             {msg.images.map((img) => (
-                              <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border bg-muted cursor-zoom-in" onClick={() => setPreviewImage(img)}>
+                              <div key={img.id} className="group relative rounded-xl overflow-hidden border bg-muted cursor-zoom-in" style={{ aspectRatio: `${img.width} / ${img.height}` }} onClick={() => setPreviewImage(img)}>
                                 <img src={img.url} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                                   <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 p-3">
-                                    <button onClick={(e) => { e.stopPropagation(); toggleLike(img.id); }}
-                                      className={cn('flex h-8 w-8 items-center justify-center rounded-full transition-colors',
-                                        img.liked ? 'bg-red-500 text-white' : 'bg-white/20 text-white hover:bg-white/30')}>
-                                      <Heart className={cn('h-4 w-4', img.liked && 'fill-current')} />
+                                    <button onClick={(e) => { e.stopPropagation(); shareToPromptLibrary(img, msg.id); }}
+                                      disabled={sharingImageId === img.id}
+                                      className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors disabled:opacity-50"
+                                      title="分享到提示词宝库">
+                                      {sharingImageId === img.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
                                       className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
                                       title="下载">
                                       <Download className="h-4 w-4" />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); openSaveDialog(img, msg.id); }}
+                                      disabled={savingTemplate}
+                                      className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors disabled:opacity-50"
+                                      title="保存">
+                                      {savingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); setPreviewImage(img); }}
                                       className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
@@ -754,21 +1152,7 @@ export default function AIPage() {
               )}
             </div>
           ))}
-          {isGenerating && (
-            <div className="flex gap-3 items-start">
-              <div className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mt-0.5">
-                <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /><span>正在生成图片，请稍候...</span>
-                </div>
-                <div className="mt-2 w-48 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '60%' }} />
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -778,20 +1162,122 @@ export default function AIPage() {
           <button onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
             <X className="h-5 w-5" />
           </button>
-          <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center max-w-lg w-full mx-4">
-            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-muted">
-              <img src={previewImage.url} alt="" className="w-full h-full object-cover" />
+          <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center max-w-xl w-full mx-4">
+            <div className="w-full rounded-2xl overflow-hidden bg-muted border">
+              <img src={previewImage.url} alt="" className="w-full h-auto" />
             </div>
             <div className="flex items-center gap-3 mt-4">
-              <button onClick={() => toggleLike(previewImage.id)}
-                className={cn('flex items-center gap-1.5 rounded-lg py-2 px-4 text-sm font-medium transition-colors',
-                  previewImage.liked ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20')}>
-                <Heart className={cn('h-4 w-4', previewImage.liked && 'fill-current')} />
-                {previewImage.liked ? '已收藏' : '收藏'}
+              <button
+                onClick={() => shareToPromptLibrary(
+                  previewImage,
+                  messages.find(m => m.images?.some(i => i.id === previewImage.id))?.id || ''
+                )}
+                disabled={sharingImageId === previewImage.id}
+                className="flex items-center gap-1.5 rounded-lg py-2 px-4 text-sm font-medium bg-white/10 text-white hover:bg-white/20 transition-colors disabled:opacity-50">
+                {sharingImageId === previewImage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                分享到提示词宝库
+              </button>
+              <button onClick={() => openSaveDialog(previewImage, messages.find(m => m.images?.some(i => i.id === previewImage.id))?.id || '')}
+                disabled={savingTemplate}
+                className="flex items-center gap-1.5 rounded-lg bg-white/10 text-white py-2 px-4 text-sm font-medium hover:bg-white/20 transition-colors disabled:opacity-50">
+                {savingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存
               </button>
               <button onClick={() => handleDownload(previewImage)}
                 className="flex items-center gap-1.5 rounded-lg bg-white/10 text-white py-2 px-4 text-sm font-medium hover:bg-white/20 transition-colors">
                 <Download className="h-4 w-4" />下载
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 保存选择弹窗 ===== */}
+      {saveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSaveModal(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-80 rounded-xl border bg-card shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-sm font-semibold">保存到</h3>
+              <button onClick={() => setSaveModal(null)} className="p-1 rounded hover:bg-accent transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* 预览图 */}
+            <div className="px-4 pt-3">
+              <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted border">
+                <img src={saveModal.img.url} alt="" className="w-full h-full object-cover" />
+              </div>
+            </div>
+
+            {/* 草稿箱 / 模版库 选择 */}
+            <div className="px-4 pt-3 pb-2 flex gap-2">
+              <button
+                onClick={() => setSaveTarget('drafts')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-medium transition-colors',
+                  saveTarget === 'drafts'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'hover:bg-accent'
+                )}
+              >
+                <ImagePlus className="h-3.5 w-3.5" />草稿箱
+              </button>
+              <button
+                onClick={() => setSaveTarget('templates')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-medium transition-colors',
+                  saveTarget === 'templates'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'hover:bg-accent'
+                )}
+              >
+                <Save className="h-3.5 w-3.5" />模版库
+              </button>
+            </div>
+
+            {/* 模版库：选择文件夹标签 */}
+            {saveTarget === 'templates' && (
+              <div className="px-4 pb-3">
+                <label className="text-xs text-muted-foreground mb-1.5 block">选择文件夹标签</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {/* 无标签选项 */}
+                  <button
+                    onClick={() => setSaveTag('')}
+                    className={cn(
+                      'rounded-lg border px-2.5 py-1.5 text-xs transition-colors',
+                      !saveTag
+                        ? 'border-primary bg-primary/5 text-primary font-medium'
+                        : 'hover:bg-accent'
+                    )}
+                  >
+                    未分类
+                  </button>
+                  {saveFolders.map(tag => (
+                    <button key={tag}
+                      onClick={() => setSaveTag(tag)}
+                      className={cn(
+                        'rounded-lg border px-2.5 py-1.5 text-xs transition-colors',
+                        saveTag === tag
+                          ? 'border-primary bg-primary/5 text-primary font-medium'
+                          : 'hover:bg-accent'
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 底部按钮 */}
+            <div className="flex gap-2 px-4 py-3 border-t">
+              <button onClick={() => setSaveModal(null)}
+                className="flex-1 rounded-lg border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent transition-colors">
+                取消
+              </button>
+              <button onClick={confirmSave} disabled={savingTemplate}
+                className="flex-1 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-50">
+                {savingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '确认保存'}
               </button>
             </div>
           </div>

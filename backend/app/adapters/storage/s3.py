@@ -30,10 +30,16 @@ class S3StorageAdapter(StorageAdapter):
         if not self.client.bucket_exists(self.bucket):
             self.client.make_bucket(self.bucket)
 
-    async def save(self, file_content: bytes, filename: str, content_type: str = "") -> str:
-        """上传文件到 S3"""
+    async def save(self, file_content: bytes, filename: str, content_type: str = "", subdir: str = "") -> str:
+        """上传文件到 S3
+
+        Args:
+            subdir: 子目录前缀（如 'drafts', 'templates'），实现逻辑隔离。
+        """
         ext = Path(filename).suffix or ".jpg"
         unique_name = f"{uuid.uuid4().hex}{ext}"
+        if subdir:
+            unique_name = f"{subdir}/{unique_name}"
 
         data = io.BytesIO(file_content)
         await asyncio.to_thread(
@@ -48,8 +54,9 @@ class S3StorageAdapter(StorageAdapter):
 
     async def delete(self, url: str) -> None:
         """从 S3 删除文件"""
-        filename = url.split("/")[-1]
-        await asyncio.to_thread(self.client.remove_object, self.bucket, filename)
+        # Extract object key from URL: http://endpoint/bucket/subdir/filename.ext
+        full_path = url.replace(f"{settings.s3_endpoint}/{self.bucket}/", "")
+        await asyncio.to_thread(self.client.remove_object, self.bucket, full_path)
 
     async def get_url(self, filename: str, expires: int = 3600) -> str:
         """获取预签名 URL"""

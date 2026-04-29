@@ -7,7 +7,8 @@ import {
   Palette, Settings, Download,
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize, User,
   Sparkles, GalleryHorizontalEnd, Workflow, LogIn, Save, LogOut,
-  LayoutGrid,
+  LayoutGrid, FileText, BookOpen, Shield,
+  Loader2,
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
 import { EditorProvider, useEditorContext } from '@/contexts/EditorContext';
@@ -17,6 +18,8 @@ const navItems = [
   { id: 'library', icon: LayoutGrid, label: '模板库', href: '/library' },
   { id: 'gallery', icon: GalleryHorizontalEnd, label: '我的图库', href: '/gallery' },
   { id: 'ai', icon: Sparkles, label: 'AI 生图', href: '/ai' },
+  { id: 'prompts', icon: BookOpen, label: '提示词宝库', href: '/prompts' },
+  { id: 'copywriting', icon: FileText, label: '文案库', href: '/copywriting' },
   { id: 'workflows', icon: Workflow, label: '工作流', href: '/workflows' },
 ];
 
@@ -63,7 +66,7 @@ function EditorToolbar() {
 function HeaderActions() {
   const ctx = useEditorContext();
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ username: string; role?: string } | null>(null);
 
   useEffect(() => {
     try {
@@ -77,6 +80,8 @@ function HeaderActions() {
     setCurrentUser(null);
     window.location.href = '/';
   };
+
+  const canAccessAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username === 'dev');
 
   return (
     <div className="flex items-center gap-1.5">
@@ -105,6 +110,16 @@ function HeaderActions() {
       )}
       {currentUser ? (
         <div className="flex items-center gap-2">
+          {canAccessAdmin && (
+            <a
+              href="/admin"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+              title="进入管理后台"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              管理后台
+            </a>
+          )}
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent/50">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
               <User className="h-3.5 w-3.5" />
@@ -150,6 +165,8 @@ function MainLayoutInner({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith('/library')) return 'library';
     if (pathname.startsWith('/gallery')) return 'gallery';
     if (pathname.startsWith('/ai')) return 'ai';
+    if (pathname.startsWith('/prompts')) return 'prompts';
+    if (pathname.startsWith('/copywriting')) return 'copywriting';
     if (pathname.startsWith('/workflows')) return 'workflows';
     return 'editor';
   };
@@ -212,14 +229,77 @@ function MainLayoutInner({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* Auth guard: completely bypassed for development */
+/* Dev mode auto-login: ensures API requests have a valid token */
+function DevAutoLogin() {
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === 'development'
+      && process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === 'true'
+      && !localStorage.getItem('token')
+    ) {
+      fetch('/api/backend/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'yuxuan', password: 'dev123' }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.code === 0 && data.data?.access_token) {
+            localStorage.setItem('token', data.data.access_token);
+            localStorage.setItem('app_current_user', JSON.stringify({ username: 'dev' }));
+            window.location.reload();
+          }
+        })
+        .catch(() => { /* Will fail gracefully — user can login manually */ });
+    }
+  }, []);
+  return null;
+}
+
+/* Main app auth guard */
 function AuthGuard({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (pathname === '/') {
+      setChecking(false);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/';
+      return;
+    }
+
+    authApi.getMe()
+      .then((res) => {
+        localStorage.setItem('app_current_user', JSON.stringify(res.data));
+        setChecking(false);
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('app_current_user');
+        window.location.href = '/';
+      });
+  }, [pathname]);
+
+  if (checking) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <EditorProvider>
+      <DevAutoLogin />
       <AuthGuard>
         <MainLayoutInner>{children}</MainLayoutInner>
       </AuthGuard>

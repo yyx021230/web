@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import yaml from 'js-yaml';
 import { cn } from '@/lib/utils';
 import {
-  Plus, Play, Trash2, Edit2, X, Search,
-  Clock, ArrowRight, Loader2,
+  Play, Search, Loader2, X, Trash2,
   PanelRightClose, CheckCircle2, XCircle,
-  Zap, FileText, ListTodo, MoreVertical,
+  Zap, FileText, ListTodo, Copy, Download, History,
 } from 'lucide-react';
 import { difyApi, type DifyWorkflowLog } from '@/services/difyApi';
+import { toast } from '@/lib/toast';
 
 interface Workflow {
   id: number;
@@ -18,19 +17,19 @@ interface Workflow {
   appType: string;
   enabled: boolean;
   inputsSchema: Record<string, unknown> | null;
-  apiKey?: string;
 }
 
 interface Task {
   id: number;
   workflow_id: number;
-  status: 'pending' | 'running' | 'succeeded' | 'failed';
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'queued' | 'cancelled';
   inputs: Record<string, unknown>;
   outputs: Record<string, unknown>;
   error?: string;
   progress: string;
   elapsed_ms?: number;
   viewed?: number;
+  queue_position?: number;
   created_at: string;
   finished_at?: string;
   workflow_name?: string;
@@ -41,13 +40,7 @@ type WorkflowLog = DifyWorkflowLog;
 const typeIcons: Record<string, typeof Zap> = {
   workflow: Zap,
   chat: FileText,
-  completion: ArrowRight,
-};
-
-const typeColors: Record<string, string> = {
-  workflow: 'from-violet-500 to-purple-600',
-  chat: 'from-sky-500 to-blue-600',
-  completion: 'from-emerald-500 to-green-600',
+  completion: Zap,
 };
 
 const statusConfig: Record<string, {
@@ -59,7 +52,9 @@ const statusConfig: Record<string, {
   succeeded: { label: '成功', icon: CheckCircle2, dot: 'bg-emerald-500', text: 'text-emerald-600' },
   failed: { label: '失败', icon: XCircle, dot: 'bg-red-500', text: 'text-red-600' },
   running: { label: '运行中', icon: Loader2, dot: 'bg-blue-500', text: 'text-blue-600' },
-  pending: { label: '排队中', icon: Clock, dot: 'bg-amber-500', text: 'text-amber-600' },
+  queued: { label: '排队中', icon: Loader2, dot: 'bg-amber-500', text: 'text-amber-600' },
+  pending: { label: '排队中', icon: Loader2, dot: 'bg-amber-500', text: 'text-amber-600' },
+  cancelled: { label: '已取消', icon: XCircle, dot: 'bg-neutral-400', text: 'text-neutral-500' },
 };
 
 function formatDateTime(dateStr: string): string {
@@ -103,16 +98,6 @@ function formatTaskTime(dateStr: string): string {
   }
 }
 
-interface WorkflowField {
-  variable: string;
-  label: string;
-  type: 'text-input' | 'paragraph' | 'number' | 'select';
-  required: boolean;
-  placeholder: string;
-  hint: string;
-  options: string;
-}
-
 /* ============================================================
    MAIN PAGE
    ============================================================ */
@@ -122,28 +107,12 @@ export default function WorkflowsPage() {
   const [logs, setLogs] = useState<WorkflowLog[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [runningWorkflow, setRunningWorkflow] = useState<Workflow | null>(null);
   const [logSearch, setLogSearch] = useState('');
   const [showTaskPanel, setShowTaskPanel] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<'workflows' | 'logs'>('workflows');
-  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const pollRef = useRef<number>();
-  const pageRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (openDropdown === null) return;
-      if (pageRef.current && !pageRef.current.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [openDropdown]);
 
   const fetchWorkflows = async () => {
     try {
@@ -189,16 +158,16 @@ export default function WorkflowsPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [tasks, fetchTasks]);
 
-  const runningCount = tasks.filter(t => t.status === 'running' || t.status === 'pending').length;
+  const runningCount = tasks.filter(t => t.status === 'running' || t.status === 'pending' || t.status === 'queued').length;
 
   const handleDeleteTask = async (taskId: number, status: string) => {
-    if (status === 'running' || status === 'pending') return;
-    if (!confirm('确定要删除此任务记录吗？')) return;
+    if (status === 'running') return;
+    if (!confirm(status === 'queued' ? '确定要取消此排队中的任务吗？' : '确定要删除此任务记录吗？')) return;
     try {
       await difyApi.deleteTask(String(taskId));
       setTasks(prev => prev.filter(t => t.id !== taskId));
-    } catch (e: any) {
-      alert('删除失败: ' + (e?.message || '未知错误'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '操作失败');
     }
   };
 
@@ -217,18 +186,8 @@ export default function WorkflowsPage() {
       await difyApi.runTask(String(wf.id), { inputs });
       await fetchTasks();
       setShowTaskPanel(true);
-    } catch (e: any) {
-      alert('提交失败: ' + (e?.response?.data?.detail || e?.message || '未知错误'));
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除此工作流吗？')) return;
-    try {
-      await difyApi.deleteWorkflow(String(id));
-      setWorkflows(prev => prev.filter(w => w.id !== id));
-    } catch (e: any) {
-      alert('删除失败: ' + (e?.message || '未知错误'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '提交失败');
     }
   };
 
@@ -239,7 +198,7 @@ export default function WorkflowsPage() {
   });
 
   return (
-    <div ref={pageRef} className="flex h-full bg-[#fafafa]">
+    <div className="flex h-full bg-[#fafafa]">
       {/* ---- Main Area ---- */}
       <div className={cn('flex-1 flex flex-col min-w-0 transition-all', showTaskPanel && 'mr-96')}>
         {/* Header */}
@@ -268,7 +227,7 @@ export default function WorkflowsPage() {
               </div>
             )}
             {(() => {
-              const unviewedCount = tasks.filter(t => !t.viewed && t.status !== 'running' && t.status !== 'pending').length;
+              const unviewedCount = tasks.filter(t => !t.viewed && t.status !== 'running' && t.status !== 'pending' && t.status !== 'queued').length;
               return (
                 <button onClick={() => setShowTaskPanel(!showTaskPanel)}
                   className={cn(
@@ -290,12 +249,6 @@ export default function WorkflowsPage() {
                 </button>
               );
             })()}
-            {activeTab === 'workflows' && (
-              <button onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-foreground text-white hover:bg-foreground/90 transition-colors">
-                <Plus className="h-4 w-4" /> 新建工作流
-              </button>
-            )}
           </div>
         </div>
 
@@ -313,19 +266,15 @@ export default function WorkflowsPage() {
                     <Zap className="h-10 w-10 text-violet-500" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">暂无工作流</h3>
-                  <p className="text-sm text-muted-foreground mb-6">创建第一个 Dify 工作流，开启 AI 能力</p>
-                  <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-white hover:bg-foreground/90 transition-colors">
-                    <Plus className="h-4 w-4" /> 新建工作流
-                  </button>
+                  <p className="text-sm text-muted-foreground">请联系管理员添加工作流</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {workflows.map(wf => {
                     const Icon = typeIcons[wf.appType] || Zap;
-                    const gradient = typeColors[wf.appType] || typeColors.workflow;
+                    const gradient = 'from-violet-500 to-purple-600';
                     const wfTasks = tasks.filter(t => t.workflow_id === wf.id);
-                    const hasRunning = wfTasks.some(t => t.status === 'running' || t.status === 'pending');
+                    const hasRunning = wfTasks.some(t => t.status === 'running' || t.status === 'pending' || t.status === 'queued');
                     const lastTask = wfTasks.length > 0 ? wfTasks[0] : null;
                     return (
                       <div key={wf.id}
@@ -336,35 +285,6 @@ export default function WorkflowsPage() {
                           'transition-all duration-200 cursor-default',
                           hasRunning && 'border-blue-300 shadow-md shadow-blue-100/50',
                         )}>
-                        {/* Three dots menu (top-right) */}
-                        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenDropdown(openDropdown === wf.id ? null : wf.id);
-                            }}
-                            className="rounded-md p-1 hover:bg-neutral-100 transition-colors"
-                          >
-                            <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
-                          </button>
-                          {openDropdown === wf.id && (
-                            <div className="absolute right-0 top-full mt-1 w-28 rounded-lg border bg-white shadow-lg py-1 z-20">
-                              <button
-                                onClick={() => { setEditingWorkflow(wf); setOpenDropdown(null); }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-neutral-50 transition-colors"
-                              >
-                                <Edit2 className="h-3 w-3" /> 编辑
-                              </button>
-                              <button
-                                onClick={() => { handleDelete(wf.id); setOpenDropdown(null); }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="h-3 w-3" /> 删除
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
                         {/* Gradient Icon */}
                         <div className={cn(
                           'h-14 w-14 rounded-2xl bg-gradient-to-br flex items-center justify-center mb-3',
@@ -393,24 +313,18 @@ export default function WorkflowsPage() {
                         </div>
 
                         {/* Run button */}
-                        {!hasRunning && (
-                          <div className="absolute inset-x-3 bottom-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <button onClick={() => setRunningWorkflow(wf)}
-                              className="w-full flex items-center justify-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 transition-colors">
-                              <Play className="h-3 w-3" /> 运行
-                            </button>
-                          </div>
-                        )}
+                        <div className={cn(
+                          "inset-x-3 bottom-2.5 transition-opacity duration-200",
+                          hasRunning ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}>
+                          <button onClick={() => setRunningWorkflow(wf)}
+                            className="w-full flex items-center justify-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 transition-colors">
+                            <Play className="h-3 w-3" /> {hasRunning ? '继续运行' : '运行'}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
-
-                  {/* Add Card */}
-                  <button onClick={() => setShowAddModal(true)}
-                    className="rounded-2xl border-2 border-dashed border-neutral-200 p-4 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:border-neutral-300 hover:text-foreground hover:bg-white/50 transition-all min-h-[200px]">
-                    <Plus className="h-8 w-8" />
-                    <span className="text-sm font-medium">新建工作流</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -493,18 +407,20 @@ export default function WorkflowsPage() {
               <div className="text-center py-16 text-sm text-muted-foreground">暂无任务</div>
             ) : (
               [...tasks].sort((a, b) => {
-                const o: Record<string, number> = { running: 0, pending: 1, succeeded: 2, failed: 3 };
-                return (o[a.status] ?? 4) - (o[b.status] ?? 4);
+                const o: Record<string, number> = { running: 0, queued: 1, pending: 2, succeeded: 3, failed: 4, cancelled: 5 };
+                return (o[a.status] ?? 6) - (o[b.status] ?? 6);
               }).map(task => {
                 const s = statusConfig[task.status] || statusConfig.failed;
-                const canDelete = task.status !== 'running' && task.status !== 'pending';
+                const canDelete = task.status !== 'running';
                 return (
                   <div key={task.id}
                     className={cn(
                       'rounded-xl border transition-all overflow-hidden',
                       task.status === 'running' ? 'border-blue-200 bg-blue-50/40' :
+                      task.status === 'queued' || task.status === 'pending' ? 'border-amber-200 bg-amber-50/40' :
                       task.status === 'succeeded' ? 'border-emerald-100 bg-emerald-50/30' :
                       task.status === 'failed' ? 'border-red-100 bg-red-50/30' :
+                      task.status === 'cancelled' ? 'border-neutral-200 bg-neutral-50/30' :
                       'border-neutral-100',
                     )}>
                     {/* Clickable header */}
@@ -517,7 +433,7 @@ export default function WorkflowsPage() {
                             <span className={cn('h-1.5 w-1.5 rounded-full', s.dot)} />
                             {s.label}
                           </span>
-                          {!task.viewed && task.status !== 'running' && task.status !== 'pending' && (
+                          {!task.viewed && task.status !== 'running' && task.status !== 'pending' && task.status !== 'queued' && (
                             <span className="relative flex h-3 w-3">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 ring-2 ring-blue-100"></span>
@@ -530,6 +446,12 @@ export default function WorkflowsPage() {
                         <div className="flex items-center gap-2 text-[11px] text-blue-600 mb-1.5">
                           <Loader2 className="h-3 w-3 animate-spin" />
                           {task.progress || '正在执行...'}
+                        </div>
+                      )}
+                      {(task.status === 'queued' || task.status === 'pending') && task.queue_position && (
+                        <div className="flex items-center gap-2 text-[11px] text-amber-600 mb-1.5">
+                          <Loader2 className="h-3 w-3" />
+                          排队中，第 {task.queue_position} 位
                         </div>
                       )}
                       {task.status === 'succeeded' && task.outputs && (
@@ -549,12 +471,12 @@ export default function WorkflowsPage() {
                       </div>
                     </button>
 
-                    {/* Delete button */}
+                    {/* Action button */}
                     {canDelete && (
                       <div className="px-3.5 pb-3 pt-0">
                         <button onClick={() => handleDeleteTask(task.id, task.status)}
                           className="w-full flex items-center justify-center gap-1.5 rounded-md bg-white/60 border border-neutral-100 py-1.5 text-[11px] text-muted-foreground hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors">
-                          <Trash2 className="h-3 w-3" /> 删除记录
+                          <Trash2 className="h-3 w-3" /> {task.status === 'queued' ? '取消排队' : '删除记录'}
                         </button>
                       </div>
                     )}
@@ -567,17 +489,9 @@ export default function WorkflowsPage() {
       )}
 
       {/* ---- Modals ---- */}
-      {showAddModal && (
-        <AddWorkflowModal onClose={() => setShowAddModal(false)}
-          onSaved={() => { setShowAddModal(false); fetchWorkflows(); }} />
-      )}
-      {editingWorkflow && (
-        <EditWorkflowModal workflow={editingWorkflow}
-          onClose={() => setEditingWorkflow(null)}
-          onSaved={() => { setEditingWorkflow(null); fetchWorkflows(); }} />
-      )}
       {runningWorkflow && (
         <RunWorkflowModal workflow={runningWorkflow}
+          lastTask={tasks.find(t => t.workflow_id === runningWorkflow.id && t.status === 'succeeded')}
           onClose={() => setRunningWorkflow(null)}
           onRun={async (inputs) => {
             await handleRun(runningWorkflow, inputs);
@@ -593,225 +507,10 @@ export default function WorkflowsPage() {
 }
 
 /* ============================================================
-   ADD WORKFLOW MODAL
-   ============================================================ */
-
-function AddWorkflowModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [name, setName] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [appType, setAppType] = useState('workflow');
-  const [description, setDescription] = useState('');
-  const [fields, setFields] = useState<WorkflowField[]>([]);
-  const dslInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImportDSL = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        const dsl = file.name.endsWith('.json') ? JSON.parse(content) : yaml.load(content);
-        const nodes = dsl?.app?.workflow?.graph?.nodes || dsl?.workflow?.graph?.nodes || dsl?.workflow?.nodes || dsl?.graph?.nodes;
-        if (!nodes) throw new Error('无法解析 DSL');
-        const startNode = nodes.find((n: any) => n.data?.type === 'start');
-        if (!startNode) throw new Error('未找到 Start 节点');
-        const variables = startNode.data?.variables || [];
-        if (!variables.length) { alert('Start 节点没有定义变量'); return; }
-        setFields(variables.map((v: any) => ({
-          variable: v.variable || v.name || '', label: v.label || v.variable || v.name || '',
-          type: ['text-input', 'paragraph', 'number', 'select'].includes(v.type) ? v.type : 'text-input',
-          required: v.required || false, placeholder: v.placeholder || '',
-          hint: v.hint || '', options: Array.isArray(v.options) ? v.options.join(', ') : '',
-        })));
-        if (!name.trim()) setName(dsl.app?.name || dsl.workflow?.name || file.name.replace(/\.(yml|yaml|json)$/, ''));
-      } catch (err: any) { alert('DSL 解析失败: ' + err.message); }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const addField = () => setFields(p => [...p, { variable: '', label: '', type: 'text-input', required: false, placeholder: '', hint: '', options: '' }]);
-  const removeField = (i: number) => setFields(p => p.filter((_, idx) => idx !== i));
-  const updateField = (i: number, key: keyof WorkflowField, val: string | boolean) => setFields(p => p.map((f, idx) => idx === i ? { ...f, [key]: val } : f));
-
-  const handleAdd = async () => {
-    if (!name.trim() || !apiKey.trim()) return;
-    const vars = fields.map(f => f.variable.trim()).filter(Boolean);
-    if (new Set(vars).size !== vars.length) { alert('变量名不能重复'); return; }
-    const inputsSchema: Record<string, any> = {};
-    for (const f of fields) {
-      if (!f.variable.trim()) continue;
-      inputsSchema[f.variable.trim()] = {
-        label: f.label.trim() || f.variable.trim(), type: f.type, required: f.required,
-        placeholder: f.placeholder.trim(), hint: f.hint.trim(), max_length: null,
-        options: f.options.split(',').map(s => s.trim()).filter(Boolean), default: '',
-      };
-    }
-    try {
-      await difyApi.createWorkflow({
-        api_key: apiKey.trim(), app_name: name, app_type: appType,
-        description: description || undefined,
-        inputs_schema: Object.keys(inputsSchema).length > 0 ? inputsSchema : undefined,
-      });
-      onSaved();
-    } catch (e: any) { alert('添加失败: ' + (e?.response?.data?.detail || e?.message || '未知错误')); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl border w-[580px] overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold">新建工作流</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="p-5 space-y-4 overflow-auto flex-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">API Key</label>
-              <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="app-xxx-xxx"
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">名称</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="小红书文案生成"
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">类型</label>
-              <select value={appType} onChange={e => setAppType(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all">
-                <option value="workflow">Workflow</option><option value="chat">Chat</option><option value="completion">Completion</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">描述（可选）</label>
-              <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium">输入字段</label>
-              <div className="flex items-center gap-3">
-                <button onClick={() => dslInputRef.current?.click()} className="text-xs text-muted-foreground hover:text-foreground transition-colors">导入 DSL</button>
-                <button onClick={addField} className="text-xs text-blue-600 hover:text-blue-700 transition-colors">+ 添加字段</button>
-              </div>
-            </div>
-            <input ref={dslInputRef} type="file" accept=".yml,.yaml,.json" className="hidden" onChange={handleImportDSL} />
-            {fields.length === 0 && (
-              <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">暂无字段，可手动添加或导入 DSL 文件</div>
-            )}
-            <div className="space-y-2 mt-2">
-              {fields.map((f, idx) => (
-                <div key={idx} className="rounded-lg border bg-neutral-50 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-muted-foreground">字段 {idx + 1}</span>
-                    <button onClick={() => removeField(idx)} className="text-[10px] text-red-500 hover:underline">删除</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={f.variable} onChange={e => updateField(idx, 'variable', e.target.value)} placeholder="变量名"
-                      className="rounded-lg border bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-foreground/10" />
-                    <input type="text" value={f.label} onChange={e => updateField(idx, 'label', e.target.value)} placeholder="显示名称"
-                      className="rounded-lg border bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-foreground/10" />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <select value={f.type} onChange={e => updateField(idx, 'type', e.target.value)}
-                      className="rounded-lg border bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-foreground/10">
-                      <option value="text-input">文本</option><option value="paragraph">多行</option><option value="number">数字</option><option value="select">选择</option>
-                    </select>
-                    <input type="text" value={f.placeholder} onChange={e => updateField(idx, 'placeholder', e.target.value)} placeholder="占位提示"
-                      className="rounded-lg border bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-foreground/10" />
-                    <label className="flex items-center gap-1.5 text-xs pt-1.5 cursor-pointer">
-                      <input type="checkbox" checked={f.required} onChange={e => updateField(idx, 'required', e.target.checked)} className="rounded" /> 必填
-                    </label>
-                  </div>
-                  {f.type === 'select' && (
-                    <input type="text" value={f.options} onChange={e => updateField(idx, 'options', e.target.value)} placeholder="选项（逗号分隔）"
-                      className="w-full rounded-lg border bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-foreground/10" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 p-5 border-t">
-          <button onClick={onClose} className="flex-1 rounded-lg border py-2 text-sm hover:bg-neutral-50 transition-colors">取消</button>
-          <button onClick={handleAdd} disabled={!name.trim() || !apiKey.trim()}
-            className="flex-1 rounded-lg bg-foreground text-white py-2 text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50">创建</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   EDIT WORKFLOW MODAL
-   ============================================================ */
-
-function EditWorkflowModal({ workflow, onClose, onSaved }: { workflow: Workflow; onClose: () => void; onSaved: () => void }) {
-  const [name, setName] = useState(workflow.name);
-  const [apiKey, setApiKey] = useState(workflow.apiKey || '');
-  const [appType, setAppType] = useState(workflow.appType);
-  const [description, setDescription] = useState(workflow.description || '');
-
-  const handleSave = async () => {
-    if (!name.trim() || !apiKey.trim()) return;
-    try {
-      await difyApi.updateWorkflow(String(workflow.id), { api_key: apiKey, app_name: name, app_type: appType, description: description || undefined });
-      onSaved();
-    } catch (e: any) { alert('保存失败: ' + (e?.response?.data?.detail || e?.message || '未知错误')); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl border w-[460px] overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold">编辑工作流</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">API Key</label>
-            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="app-xxx-xxx"
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">名称</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">类型</label>
-              <select value={appType} onChange={e => setAppType(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all">
-                <option value="workflow">Workflow</option><option value="chat">Chat</option><option value="completion">Completion</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">描述</label>
-            <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button onClick={onClose} className="flex-1 rounded-lg border py-2 text-sm hover:bg-neutral-50 transition-colors">取消</button>
-            <button onClick={handleSave} disabled={!name.trim() || !apiKey.trim()}
-              className="flex-1 rounded-lg bg-foreground text-white py-2 text-sm hover:bg-foreground/90 transition-colors disabled:opacity-50">保存</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
    RUN WORKFLOW MODAL
    ============================================================ */
 
-function RunWorkflowModal({ workflow, onClose, onRun }: { workflow: Workflow; onClose: () => void; onRun: (inputs: Record<string, string>) => Promise<void> }) {
+function RunWorkflowModal({ workflow, lastTask, onClose, onRun }: { workflow: Workflow; lastTask?: Task; onClose: () => void; onRun: (inputs: Record<string, string>) => Promise<void> }) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const schema = workflow.inputsSchema || {};
@@ -825,13 +524,25 @@ function RunWorkflowModal({ workflow, onClose, onRun }: { workflow: Workflow; on
     setFormData(defaults);
   }, [schema]);
 
+  const handleUseLast = () => {
+    if (!lastTask?.inputs) return;
+    const newFormData = { ...formData };
+    for (const [key, val] of Object.entries(lastTask.inputs)) {
+      if (key in schema) {
+        newFormData[key] = String(val);
+      }
+    }
+    setFormData(newFormData);
+    toast.success('已加载上次成功运行的参数');
+  };
+
   const handleRun = async () => {
     for (const [key, val] of Object.entries(schema)) {
       const v = val as any;
-      if (v.required && !formData[key]?.trim()) { alert('请填写必填项: ' + (v.label || key)); return; }
+      if (v.required && !formData[key]?.trim()) { toast.error('请填写必填项: ' + (v.label || key)); return; }
     }
     setRunning(true);
-    try { await onRun(formData); } catch (e: any) { alert('运行失败: ' + (e.message || '未知错误')); }
+    try { await onRun(formData); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '运行失败'); }
     finally { setRunning(false); }
   };
 
@@ -863,7 +574,19 @@ function RunWorkflowModal({ workflow, onClose, onRun }: { workflow: Workflow; on
             <h3 className="text-sm font-semibold">{workflow.name}</h3>
             <p className="text-[10px] text-muted-foreground">{workflow.appType}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-2">
+            {lastTask && (
+              <button
+                onClick={handleUseLast}
+                title="加载上次成功的参数"
+                className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors border border-blue-100 flex items-center gap-1 text-[10px] font-medium"
+              >
+                <History className="h-3.5 w-3.5" />
+                使用上次参数
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
+          </div>
         </div>
         <div className="p-5 space-y-4 max-h-[60vh] overflow-auto">
           {Object.keys(schema).length === 0 ? (
@@ -905,6 +628,29 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
   const s = statusConfig[task.status] || statusConfig.failed;
   const wfName = workflows.find(w => w.id === task.workflow_id)?.name || '#' + task.workflow_id;
 
+  const handleCopy = () => {
+    const outputText = extractOutput(task.outputs);
+    navigator.clipboard.writeText(outputText).then(() => {
+      toast.success('已复制到剪贴板');
+    }).catch(() => {
+      toast.error('复制失败');
+    });
+  };
+
+  const handleExport = () => {
+    const outputText = extractOutput(task.outputs);
+    const blob = new Blob([outputText], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workflow-result-${task.id}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('正在下载...');
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl border w-[520px] overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -916,13 +662,11 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-5 space-y-4 max-h-[60vh] overflow-auto">
-          {/* Workflow name */}
           <div className="rounded-lg bg-neutral-50 p-3">
             <div className="text-[10px] font-medium text-muted-foreground mb-1">工作流</div>
             <div className="text-sm font-semibold">{wfName}</div>
           </div>
 
-          {/* Status */}
           <div className="rounded-lg bg-neutral-50 p-3">
             <div className="text-[10px] font-medium text-muted-foreground mb-1">状态</div>
             <span className={cn('flex items-center gap-1.5 text-xs font-medium', s.text)}>
@@ -931,7 +675,6 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
             </span>
           </div>
 
-          {/* Time info */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-neutral-50 p-3">
               <div className="text-[10px] font-medium text-muted-foreground mb-1">创建时间</div>
@@ -949,7 +692,6 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
             </div>
           )}
 
-          {/* Inputs */}
           {task.inputs && Object.keys(task.inputs).length > 0 && (
             <div className="rounded-lg bg-neutral-50 p-3">
               <div className="text-[10px] font-medium text-muted-foreground mb-2">输入参数</div>
@@ -964,10 +706,19 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
             </div>
           )}
 
-          {/* Outputs */}
           {task.outputs && Object.keys(task.outputs).length > 0 && (
-            <div className="rounded-lg bg-neutral-50 p-3">
-              <div className="text-[10px] font-medium text-muted-foreground mb-2">输出结果</div>
+            <div className="rounded-lg bg-neutral-50 p-3 relative group/output">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-medium text-muted-foreground">输出结果</div>
+                <div className="flex items-center gap-2 opacity-0 group-hover/output:opacity-100 transition-opacity">
+                  <button onClick={handleCopy} className="p-1 rounded bg-white border shadow-sm hover:bg-neutral-50 text-neutral-600 transition-colors" title="复制结果">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                  <button onClick={handleExport} className="p-1 rounded bg-white border shadow-sm hover:bg-neutral-50 text-neutral-600 transition-colors" title="导出为 Markdown">
+                    <Download className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
               {Object.entries(task.outputs).map(([key, val]) => {
                 const text = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
                 const isUrl = text.startsWith('http');
@@ -985,7 +736,6 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
             </div>
           )}
 
-          {/* Error */}
           {task.error && (
             <div className="rounded-lg bg-red-50 p-3 border border-red-100">
               <div className="text-[10px] font-medium text-red-500 mb-1">错误信息</div>
@@ -993,7 +743,6 @@ function TaskDetailModal({ task, workflows, onClose }: { task: Task; workflows: 
             </div>
           )}
 
-          {/* Progress */}
           {task.progress && task.status === 'running' && (
             <div className="rounded-lg bg-blue-50 p-3 border border-blue-100">
               <div className="flex items-center gap-1.5 text-[10px] font-medium text-blue-600 mb-1">

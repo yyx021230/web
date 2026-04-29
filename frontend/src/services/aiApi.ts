@@ -29,10 +29,24 @@ export interface QueueStatus {
 }
 
 export const aiApi = {
-  generateImage: (params: GenerateImageParams) =>
-    api.post<ImageTaskResponse>('/ai-image/generate', params, {
-      timeout: 300000, // 生图慢，给 5 分钟
-    }),
+  generateImage: async (params: GenerateImageParams) => {
+    // Use direct API route for generate (avoids Next.js rewrite 1MB body limit)
+    // Other calls go through the proxy which is fine (they don't have large bodies)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch('/api/ai-image/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params),
+    });
+    const data = await res.json();
+    // Unwrap the { code, message, data } envelope to match axios api behavior
+    if (data?.code === 0) {
+      return { data: data.data } as { data: ImageTaskResponse };
+    }
+    throw new Error(data?.message || '请求失败');
+  },
 
   getTaskStatus: (taskId: string, model?: string) => {
     const qs = model ? `?model=${model}` : '';

@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     email: str
     avatar: Optional[str] = None
     is_active: bool
+    role: str
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

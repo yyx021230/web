@@ -1,7 +1,8 @@
 import axios, { type AxiosInstance } from 'axios';
+import { toast } from '@/lib/toast';
 
 const api: AxiosInstance = axios.create({
-  baseURL: '/api/backend',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE || '/api/backend',
   timeout: 900000,
   headers: {
     'Content-Type': 'application/json',
@@ -32,6 +33,7 @@ api.interceptors.response.use(
         const err = new Error(msg) as Error & { status?: number; response?: { data?: unknown } };
         err.status = body.code;
         err.response = { data: body };
+        toast.error(msg);
         throw err;
       }
     }
@@ -42,6 +44,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('app_current_user');
+      toast.error('登录已过期，请重新登录');
       window.location.href = '/';
     }
     // Prefer detail from FastAPI HTTPException, or message from envelope

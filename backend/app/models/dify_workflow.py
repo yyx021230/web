@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, func, Boolean
+from sqlalchemy.orm import relationship
 from app.db.base import Base
+from app.models.user_workflow import user_workflow_access
 
 
 class DifyWorkflowConfig(Base):
@@ -15,3 +17,10 @@ class DifyWorkflowConfig(Base):
     is_enabled = Column(Boolean, default=True)
     created_by = Column(Integer, index=True)
     created_at = Column(DateTime, server_default=func.now())
+
+    # Relationships
+    users = relationship(
+        "User",
+        secondary=user_workflow_access,
+        back_populates="workflows"
+    )

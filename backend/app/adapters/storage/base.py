@@ -3,8 +3,12 @@ from abc import ABC, abstractmethod
 
 class StorageAdapter(ABC):
     @abstractmethod
-    async def save(self, file_content: bytes, filename: str, content_type: str = "") -> str:
-        """保存文件，返回访问 URL"""
+    async def save(self, file_content: bytes, filename: str, content_type: str = "", subdir: str = "") -> str:
+        """保存文件，返回访问 URL
+
+        Args:
+            subdir: Optional subdirectory (e.g. 'drafts', 'templates') for physical isolation.
+        """
         pass
 
     @abstractmethod

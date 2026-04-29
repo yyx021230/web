@@ -40,7 +40,7 @@ export const difyApi = {
     api.post(`/workflows/${appId}/chat`, { query, conversation_id: conversationId }),
 
   // Stop task
-  stopTask: (taskId: string) =>
+  stopTask: (taskId: string | number) =>
     api.post(`/workflows/tasks/${taskId}/stop`),
 
   // Delete task
@@ -84,6 +84,8 @@ export const difyApi = {
     app_type?: string;
     description?: string;
     inputs_schema?: Record<string, any>;
+    base_url?: string;
+    is_enabled?: boolean;
   }) => api.put(`/workflows/${workflowId}`, data),
 
   // Delete workflow

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 import json
+import asyncio
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
@@ -11,7 +12,7 @@ CST = timezone(timedelta(hours=8))
 
 
 def now_cst():
-    return datetime.now(CST)
+    return datetime.now(CST).replace(tzinfo=None)
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,10 +30,22 @@ from app.services.dify.workflow_service import DifyWorkflowService
 from app.services.dify.dify_client import DifyClient
 from app.models.user import User
 from app.models.dify_workflow import DifyWorkflowConfig
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, require_admin
 from sqlalchemy import select
 
 router = APIRouter()
+
+# ---- Task Queue Manager ----
+# 每个 workflow_id 对应一个 asyncio.Lock，确保同一工作流的任务串行执行
+_workflow_locks: dict[int, asyncio.Lock] = {}
+# 记录每个 workflow 当前是否有任务在运行
+_workflow_running: dict[int, bool] = {}
+
+
+def _get_workflow_lock(wid: int) -> asyncio.Lock:
+    if wid not in _workflow_locks:
+        _workflow_locks[wid] = asyncio.Lock()
+    return _workflow_locks[wid]
 
 
 def _parse_dify_params(params_data: dict) -> dict:
@@ -89,10 +102,31 @@ def _parse_dify_params(params_data: dict) -> dict:
 # --- Workflow Configs ---
 
 @router.get("")
-async def list_workflows(db: AsyncSession = Depends(get_db)):
-    """列出所有工作流"""
-    service = DifyWorkflowService(db)
-    workflows = await service.list_workflows()
+async def list_workflows(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """列出当前用户有权访问的已启用工作流"""
+    from sqlalchemy import true
+    from sqlalchemy.orm import selectinload
+    
+    if current_user.role == "admin":
+        # 管理员看到所有已启用的
+        result = await db.execute(
+            select(DifyWorkflowConfig).where(DifyWorkflowConfig.is_enabled == true())
+        )
+        workflows = list(result.scalars().all())
+    else:
+        # 普通用户只看到分配给他们的
+        stmt = (
+            select(User)
+            .options(selectinload(User.workflows))
+            .where(User.id == current_user.id)
+        )
+        result = await db.execute(stmt)
+        user = result.scalar_one()
+        workflows = [w for w in user.workflows if w.is_enabled]
+
     return ApiResponse(data=[
         {
             "id": w.id,
@@ -101,7 +135,6 @@ async def list_workflows(db: AsyncSession = Depends(get_db)):
             "description": w.description,
             "enabled": w.is_enabled,
             "inputsSchema": w.inputs_schema,
-            "apiKey": w.api_key,
         }
         for w in workflows
     ])
@@ -111,7 +144,7 @@ async def list_workflows(db: AsyncSession = Depends(get_db)):
 async def fetch_workflow_params(
     req: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     """从 Dify 获取工作流参数定义"""
     base_url = req.get("base_url", "http://8.163.58.214/v1")
@@ -137,7 +170,7 @@ async def fetch_workflow_params(
 async def create_workflow(
     req: DifyWorkflowCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     """添加工作流（需登录）"""
     service = DifyWorkflowService(db)
@@ -168,7 +201,7 @@ async def update_workflow(
     workflow_id: int,
     req: DifyWorkflowUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     """更新工作流（需登录）"""
     result = await db.execute(select(DifyWorkflowConfig).where(DifyWorkflowConfig.id == workflow_id))
@@ -189,7 +222,7 @@ async def update_workflow(
 async def delete_workflow(
     workflow_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
     """删除工作流（需登录）"""
     service = DifyWorkflowService(db)
@@ -208,17 +241,16 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """创建后台任务（异步执行）"""
+    """创建后台任务（同一工作流的任务会排队，不同工作流可并行）"""
     from app.models.dify_task import DifyTask
     from sqlalchemy import select as _select
     from app.models.dify_workflow import DifyWorkflowConfig
-    import asyncio
 
     # Create task record
     task = DifyTask(
         workflow_id=workflow_id,
         user_id=current_user.id,
-        status="pending",
+        status="queued",
         inputs=req.get("inputs", {}),
         created_at=now_cst(),
     )
@@ -227,44 +259,65 @@ async def create_task(
     await db.refresh(task)
     task_id = task.id
 
-    # Start background execution
-    async def run_in_background():
-        import logging
-        import traceback as _tb
-        from sqlalchemy import select, desc, func
-        from app.db.session import async_session as _async_session
-        from app.services.dify.dify_client import DifyClient
-        from app.models.dify_run_log import DifyRunLog
-        from app.models.dify_workflow import DifyWorkflowConfig
-        from app.models.dify_task import DifyTask
+    # Start background executor — 每个 workflow 串行，不同 workflow 并行
+    asyncio.create_task(_execute_queued_task(workflow_id, task_id, req.get("inputs", {}), current_user.id))
 
-        logger = logging.getLogger(__name__)
+    return ApiResponse(data={"task_id": task.id, "status": "queued"})
+
+
+async def _execute_queued_task(workflow_id: int, task_id: int, inputs: dict, user_id: int):
+    """从队列中执行指定任务。同一 workflow_id 串行，不同 workflow 并行。"""
+    import logging
+    import traceback as _tb
+    from sqlalchemy import select, desc, func
+    from app.db.session import async_session as _async_session
+    from app.services.dify.dify_client import DifyClient
+    from app.models.dify_run_log import DifyRunLog
+    from app.models.dify_workflow import DifyWorkflowConfig
+    from app.models.dify_task import DifyTask
+
+    logger = logging.getLogger(__name__)
+    lock = _get_workflow_lock(workflow_id)
+
+    # 等待同一工作流的前置任务完成
+    async with lock:
+        # 检查任务是否已被取消
+        async with _async_session() as check_db:
+            result = await check_db.execute(select(DifyTask).where(DifyTask.id == task_id))
+            t = result.scalar_one_or_none()
+            if not t or t.status == "cancelled":
+                logger.info(f"Task {task_id} was cancelled before execution")
+                return
+
+        # 标记为 running
+        async with _async_session() as bg_db:
+            task_result = await bg_db.execute(select(DifyTask).where(DifyTask.id == task_id))
+            task_rec = task_result.scalar_one()
+            task_rec.status = "running"
+            task_rec.progress = "正在执行..."
+            await bg_db.commit()
+
+        # 执行 Dify API 调用
         try:
             async with _async_session() as bg_db:
-                result = await bg_db.execute(
+                wf_result = await bg_db.execute(
                     select(DifyWorkflowConfig).where(DifyWorkflowConfig.id == workflow_id)
                 )
-                wf = result.scalar_one_or_none()
+                wf = wf_result.scalar_one_or_none()
                 if not wf:
-                    return
-
-                task_result = await bg_db.execute(select(DifyTask).where(DifyTask.id == task_id))
-                task_rec = task_result.scalar_one()
-                task_rec.status = "running"
-                task_rec.progress = "正在执行..."
-                await bg_db.commit()
+                    raise ValueError(f"Workflow {workflow_id} not found")
 
                 client = DifyClient(base_url=wf.base_url, api_key=wf.api_key)
                 is_streaming = False
                 start_time = time.time()
 
                 if wf.app_type == "workflow":
-                    result_data = await client.run_workflow(inputs=req.get("inputs", {}), streaming=is_streaming)
+                    result_data = await client.run_workflow(inputs=inputs, streaming=is_streaming)
                 elif wf.app_type == "chat":
-                    query = req.get("inputs", {}).get("query", "")
-                    result_data = await client.chat(query=query, inputs=req.get("inputs", {}), streaming=is_streaming)
+                    query = inputs.get("query", "")
+                    result_data = await client.chat(query=query, inputs=inputs, streaming=is_streaming)
                 elif wf.app_type == "completion":
-                    result_data = await client.completion(inputs=req.get("inputs", {}), streaming=is_streaming)
+                    result_data = await client.completion(inputs=inputs, streaming=is_streaming)
                 else:
                     raise ValueError(f"Unsupported app type: {wf.app_type}")
 
@@ -296,8 +349,8 @@ async def create_task(
 
                 log = DifyRunLog(
                     workflow_id=workflow_id,
-                    user_id=current_user.id,
-                    inputs=req.get("inputs", {}),
+                    user_id=user_id,
+                    inputs=inputs,
                     outputs=outputs if isinstance(outputs, dict) else {"result": outputs},
                     status="failed" if error else "succeeded",
                     task_id=str(task_id_str),
@@ -326,11 +379,6 @@ async def create_task(
             except Exception:
                 pass
 
-    # Schedule background task
-    asyncio.create_task(run_in_background())
-
-    return ApiResponse(data={"task_id": task.id, "status": "pending"})
-
 
 @router.get("/tasks")
 async def list_tasks(
@@ -356,6 +404,23 @@ async def list_tasks(
     result = await db.execute(stmt)
     tasks = list(result.scalars().all())
 
+    # 计算每个 queued 任务的排队位置
+    # 按 workflow_id 分组，统计每个 workflow 下 queued 任务的数量和顺序
+    queued_by_workflow: dict[int, list[int]] = {}
+    for t in tasks:
+        if t.status == "queued":
+            queued_by_workflow.setdefault(t.workflow_id, []).append(t.id)
+
+    # 反转以获取创建时间升序（排在前面的是先创建的）
+    for wid in queued_by_workflow:
+        queued_by_workflow[wid].reverse()
+
+    # 构建 task_id -> queue_position 映射
+    queue_positions: dict[int, int] = {}
+    for wid, task_ids in queued_by_workflow.items():
+        for idx, tid in enumerate(task_ids):
+            queue_positions[tid] = idx + 1
+
     return ApiResponse(data={
         "items": [
             {
@@ -368,6 +433,7 @@ async def list_tasks(
                 "progress": t.progress,
                 "elapsed_ms": t.elapsed_ms,
                 "viewed": t.viewed,
+                "queue_position": queue_positions.get(t.id),
                 "created_at": str(t.created_at),
                 "finished_at": str(t.finished_at) if t.finished_at else None,
             }
@@ -516,12 +582,32 @@ async def chat_workflow(
 
 @router.post("/tasks/{task_id}/stop")
 async def stop_task(
-    task_id: str,
+    task_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """停止任务（需登录）"""
-    # TODO: 校验任务所有权
+    """停止/取消任务（需登录）"""
+    from app.models.dify_task import DifyTask
+
+    result = await db.execute(select(DifyTask).where(DifyTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 所有权校验
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权操作")
+
+    if task.status in ("succeeded", "failed", "cancelled"):
+        return ApiResponse(message=f"任务已{task.status}，无法停止")
+
+    # 取消排队中的任务
+    if task.status in ("queued", "running"):
+        task.status = "cancelled"
+        task.finished_at = now_cst()
+        await db.commit()
+        return ApiResponse(message="任务已取消")
+
     return ApiResponse(message="已停止")
 
 
@@ -531,15 +617,31 @@ async def delete_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """删除任务记录（需登录），执行中的任务不允许删除"""
+    """删除或取消任务记录（需登录）
+
+    - queued 任务：取消并删除
+    - running 任务：不允许删除
+    - 已完成任务：直接删除
+    """
     from app.models.dify_task import DifyTask
 
     result = await db.execute(select(DifyTask).where(DifyTask.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    if task.status in ("running", "pending"):
+
+    # 所有权校验
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权操作")
+
+    if task.status == "running":
         raise HTTPException(status_code=400, detail="执行中的任务不允许删除")
+
+    # queued 任务先取消再删除
+    if task.status == "queued":
+        task.status = "cancelled"
+        task.finished_at = now_cst()
+        await db.commit()
 
     await db.delete(task)
     await db.commit()

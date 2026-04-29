@@ -86,7 +86,8 @@ web/
 │   │   └── core/      # 核心工具
 │   └── CLAUDE.md      # AI 编码规则
 └── docs/              # 项目文档
-    └── DESIGN_SYSTEM.md # 设计规范
+    ├── DESIGN_SYSTEM.md # 设计规范
+    └── DATA_ISOLATION.md # 数据隔离与共享设计规范
 ```
 
 ## API 文档

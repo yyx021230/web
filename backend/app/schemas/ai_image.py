@@ -3,8 +3,8 @@ from typing import Optional
 
 
 class GenerateImageRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=2000, description="提示词")
-    negative_prompt: Optional[str] = Field(None, max_length=2000, description="负向提示词")
+    prompt: str = Field(..., min_length=1, max_length=8000, description="提示词")
+    negative_prompt: Optional[str] = Field(None, max_length=8000, description="负向提示词")
     model: str = Field(default="seedream", description="模型名称")
     width: int = Field(default=2048, ge=256, le=4096, description="宽度")
     height: int = Field(default=2048, ge=256, le=4096, description="高度")

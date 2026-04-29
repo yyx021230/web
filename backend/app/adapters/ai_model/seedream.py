@@ -116,12 +116,44 @@ class SeedreamAdapter(AIModelAdapter):
         }
 
         async with httpx.AsyncClient(timeout=180.0) as client:
-            response = await client.post(
-                settings.seedream_api_url,
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
+            try:
+                response = await client.post(
+                    settings.seedream_api_url,
+                    headers=headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                # Handle HTTP errors (403, 429, etc.) with friendly messages
+                status = e.response.status_code
+                body = e.response.text[:200]
+                if status == 403:
+                    return {
+                        "task_id": "",
+                        "status": "failed",
+                        "image_urls": [],
+                        "error": "API 配额已用尽或权限不足，请检查 API Key 是否有效",
+                    }
+                elif status == 429:
+                    return {
+                        "task_id": "",
+                        "status": "failed",
+                        "image_urls": [],
+                        "error": "请求过于频繁，请稍后再试",
+                    }
+                elif status >= 500:
+                    return {
+                        "task_id": "",
+                        "status": "failed",
+                        "image_urls": [],
+                        "error": "AI 服务暂时不可用，请稍后重试",
+                    }
+                return {
+                    "task_id": "",
+                    "status": "failed",
+                    "image_urls": [],
+                    "error": f"API 错误 ({status})，请稍后重试",
+                }
             result = response.json()
 
         # 成功: { "data": [{ "url": "..." }], "model": "...", "created": ... }

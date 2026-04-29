@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   X, Search, Loader2, ImagePlus, Check,
-  FileImage, Car, ChevronDown,
+  FileImage, Car, ChevronDown, Layers,
 } from 'lucide-react';
 import { editorApi, type Material } from '@/services/editorApi';
 import { carModelsApi } from '@/services/carModelsApi';
@@ -15,7 +15,7 @@ export interface GalleryPickerImage {
   url: string;
   width: number;
   height: number;
-  source: 'drafts' | 'car-models';
+  source: 'drafts' | 'car-models' | 'templates';
   brand?: string;
   model?: string;
   angle?: string;
@@ -33,10 +33,11 @@ interface GalleryPickerProps {
   existingIds?: string[];
 }
 
-type TabKey = 'drafts' | 'car-models';
+type TabKey = 'drafts' | 'car-models' | 'templates';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'drafts', label: '草稿箱', icon: <FileImage className="h-3.5 w-3.5" /> },
+  { key: 'templates', label: '模版库', icon: <Layers className="h-3.5 w-3.5" /> },
   { key: 'car-models', label: '车型库', icon: <Car className="h-3.5 w-3.5" /> },
 ];
 
@@ -115,6 +116,8 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
 
   // Drafts
   const [draftImages, setDraftImages] = useState<GalleryPickerImage[]>([]);
+  // Templates
+  const [templateImages, setTemplateImages] = useState<GalleryPickerImage[]>([]);
   // Car models
   const [carBrands, setCarBrands] = useState<string[]>([]);
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -129,7 +132,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       let page = 1;
       let hasMore = true;
       while (hasMore) {
-        const res = await editorApi.getMaterials(undefined, page, 50);
+        const res = await editorApi.getMaterials(undefined, page, 50, false, 'ai-template');
         all.push(...res.data.items);
         hasMore = res.data.items.length === 50;
         page++;
@@ -144,6 +147,34 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       })));
     } catch (e) {
       console.error('Failed to fetch drafts:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    try {
+      const all: Material[] = [];
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const res = await editorApi.getMaterials('ai-template', page, 50, true);
+        const items = res.data.items;
+        all.push(...items);
+        hasMore = items.length === 50;
+        page++;
+      }
+      setTemplateImages(all.map(m => ({
+        id: String(m.id),
+        name: m.name,
+        url: m.url || '',
+        width: m.width || 2048,
+        height: m.height || 2048,
+        source: 'templates' as const,
+      })));
+    } catch (e) {
+      console.error('Failed to fetch templates:', e);
     } finally {
       setLoading(false);
     }
@@ -180,6 +211,8 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
 
     if (activeTab === 'drafts') {
       fetchDrafts();
+    } else if (activeTab === 'templates') {
+      fetchTemplates();
     } else {
       setLoading(true);
       setCarImages([]);
@@ -203,7 +236,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
         .catch(() => { /* ignore */ })
         .finally(() => { setLoading(false); });
     }
-  }, [open, activeTab, fetchDrafts, fetchCarImages]);
+  }, [open, activeTab, fetchDrafts, fetchTemplates, fetchCarImages]);
 
   // Brand change
   const handleBrandChange = async (brand: string) => {
@@ -231,7 +264,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
 
   // Filter
   const currentImages = (() => {
-    const images = activeTab === 'drafts' ? draftImages : carImages;
+    const images = activeTab === 'drafts' ? draftImages : activeTab === 'templates' ? templateImages : carImages;
     if (!searchQuery) return images;
     const q = searchQuery.toLowerCase();
     return images.filter(img =>
@@ -246,14 +279,14 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
   const handleConfirm = () => {
     if (multiSelect && onMultiSelect) {
       if (multiSelected.size === 0) return;
-      const allImages = [...draftImages, ...carImages];
+      const allImages = [...draftImages, ...templateImages, ...carImages];
       const selectedImages = allImages.filter(img => multiSelected.has(img.id));
       if (selectedImages.length > 0) {
         onMultiSelect(selectedImages);
       }
     } else {
       if (!selected) return;
-      const img = [...draftImages, ...carImages].find(i => i.id === selected);
+      const img = [...draftImages, ...templateImages, ...carImages].find(i => i.id === selected);
       if (img) onSelect(img);
     }
   };
@@ -353,7 +386,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <ImagePlus className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <p className="text-sm text-muted-foreground">
-                {activeTab === 'drafts' ? '暂无草稿图片' : '暂无车型图片'}
+                {activeTab === 'drafts' ? '暂无草稿图片' : activeTab === 'templates' ? '暂无模版图片' : '暂无车型图片'}
               </p>
             </div>
           ) : (

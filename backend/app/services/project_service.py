@@ -46,13 +46,21 @@ class ProjectService:
         return result.scalar_one_or_none()
 
     async def create(
-        self, user_id: int, name: str, fabric_json: str | None = None,
+        self,
+        user_id: int,
+        name: str,
+        fabric_json: str | None = None,
+        thumbnail: str | None = None,
+        status: str | None = None,
     ) -> Project:
         """创建项目"""
+        project_status = status or "draft"
         project = Project(
             user_id=user_id,
             name=name,
             fabric_json=fabric_json,
+            thumbnail=thumbnail,
+            status=project_status,
         )
         self.db.add(project)
         await self.db.commit()

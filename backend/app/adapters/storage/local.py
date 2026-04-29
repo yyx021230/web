@@ -16,22 +16,40 @@ class LocalStorageAdapter(StorageAdapter):
         self.storage_path = Path(settings.storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-    async def save(self, file_content: bytes, filename: str, content_type: str = "") -> str:
-        """保存文件到本地目录"""
-        # 生成唯一文件名，保留原始扩展名
+    async def save(self, file_content: bytes, filename: str, content_type: str = "", subdir: str = "") -> str:
+        """保存文件到本地目录
+
+        Args:
+            subdir: 子目录（如 'drafts', 'templates'），实现物理隔离。
+        """
         ext = Path(filename).suffix or ".jpg"
         unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = self.storage_path / unique_name
+
+        if subdir:
+            dir_path = self.storage_path / subdir
+            dir_path.mkdir(parents=True, exist_ok=True)
+            file_path = dir_path / unique_name
+        else:
+            file_path = self.storage_path / unique_name
 
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(file_content)
 
-        return f"/uploads/{unique_name}"
+        path_prefix = f"/{subdir}" if subdir else ""
+        return f"/uploads{path_prefix}/{unique_name}"
 
     async def delete(self, url: str) -> None:
         """删除本地文件"""
-        filename = url.split("/")[-1]
-        file_path = self.storage_path / filename
+        # url format: /uploads[/subdir]/filename.ext
+        parts = url.rstrip("/").split("/")
+        filename = parts[-1]
+        # Check if there's a subdir component
+        # /uploads/subdir/filename  ->  parts = ['', 'uploads', 'subdir', 'filename']
+        if len(parts) >= 4 and parts[1] == "uploads":
+            subdir = parts[2]
+            file_path = self.storage_path / subdir / filename
+        else:
+            file_path = self.storage_path / filename
         if file_path.exists():
             file_path.unlink()
 

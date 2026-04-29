@@ -16,11 +16,20 @@ class MaterialService:
 
     async def get_list(
         self, page: int = 1, limit: int = 20, category: str | None = None,
+        user_id: int | None = None, exclude_category: str | None = None,
     ) -> tuple[list[Material], int]:
-        """获取素材列表（分页）"""
+        """获取素材列表（分页）
+
+        user_id: 指定时按创建者过滤（草稿箱/模版库需要），不传时返回所有（车型库共享）
+        exclude_category: 排除指定 category（草稿箱需要排除 'ai-template'）
+        """
         conditions = [Material.deleted_at.is_(None)]
         if category:
             conditions.append(Material.category == category)
+        if exclude_category:
+            conditions.append(Material.category != exclude_category)
+        if user_id is not None:
+            conditions.append(Material.created_by == user_id)
 
         count_stmt = select(func.count(Material.id)).where(*conditions)
         total_result = await self.db.execute(count_stmt)
@@ -56,6 +65,7 @@ class MaterialService:
         height: int | None = None,
         category: str | None = None,
         tags: list | None = None,
+        file_size: int = 0,
         user_id: int | None = None,
     ) -> Material:
         """创建素材记录"""
@@ -67,6 +77,7 @@ class MaterialService:
             height=height,
             category=category,
             tags=tags or [],
+            file_size=file_size,
             created_by=user_id,
         )
         self.db.add(material)
@@ -112,6 +123,7 @@ class MaterialService:
         thumbnail: str | None = None,
         width: int | None = None,
         height: int | None = None,
+        tags: list | None = None,
         user_id: int | None = None,
     ) -> Material | None:
         """更新已有的设计稿（覆盖）"""
@@ -140,6 +152,8 @@ class MaterialService:
             material.width = width
         if height is not None:
             material.height = height
+        if tags is not None:
+            material.tags = tags
 
         await self.db.commit()
         await self.db.refresh(material)
@@ -196,3 +210,103 @@ class MaterialService:
 
         await self.db.commit()
         return count
+
+    async def create_template(
+        self,
+        name: str,
+        url: str,
+        ai_meta: dict | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        tags: list | None = None,
+        user_id: int | None = None,
+    ) -> Material:
+        """创建 AI 生图模版（保存到模版库）
+
+        - url: 生成图片的 URL
+        - ai_meta: AI 生图元数据，包含 prompt、ref_images、model、size、style 等
+        """
+        material = Material(
+            name=name,
+            type="template",
+            url=url,
+            width=width,
+            height=height,
+            category="ai-template",
+            tags=tags or [],
+            ai_meta=ai_meta,
+            created_by=user_id,
+        )
+        self.db.add(material)
+        await self.db.commit()
+        await self.db.refresh(material)
+        return material
+
+    async def get_storage_usage(self, user_id: int) -> tuple[int, int, int]:
+        """获取用户存储使用情况
+
+        Returns:
+            (已用字节数, 文件数量, 素材总数)
+        """
+        # 查询用户所有未删除的素材
+        conditions = [
+            Material.created_by == user_id,
+            Material.deleted_at.is_(None),
+        ]
+        stmt = select(Material).where(*conditions)
+        result = await self.db.execute(stmt)
+        materials = list(result.scalars().all())
+
+        total_size = sum(m.file_size or 0 for m in materials)
+        file_count = len([m for m in materials if m.url and not m.url.startswith("data:")])
+        total_items = len(materials)
+
+        return total_size, file_count, total_items
+
+    async def rename_folder(self, old_name: str, new_name: str, user_id: int) -> int:
+        """重命名模版文件夹（更新所有素材的 tags）
+
+        Returns:
+            受影响的素材数量
+        """
+        conditions = [
+            Material.created_by == user_id,
+            Material.deleted_at.is_(None),
+        ]
+        stmt = select(Material).where(*conditions)
+        result = await self.db.execute(stmt)
+        materials = list(result.scalars().all())
+
+        count = 0
+        for m in materials:
+            if m.tags and old_name in m.tags:
+                m.tags = [new_name if t == old_name else t for t in m.tags]
+                count += 1
+
+        if count > 0:
+            await self.db.commit()
+        return count
+
+    async def delete_folder(self, folder_name: str, user_id: int) -> dict:
+        """删除模版文件夹（将该文件夹的 tag 从所有素材中移除）
+
+        Returns:
+            { "affected_count": 受影响素材数, "moved_to_unclassified": 移至未分类数 }
+        """
+        conditions = [
+            Material.created_by == user_id,
+            Material.deleted_at.is_(None),
+        ]
+        stmt = select(Material).where(*conditions)
+        result = await self.db.execute(stmt)
+        materials = list(result.scalars().all())
+
+        count = 0
+        for m in materials:
+            if m.tags and folder_name in m.tags:
+                m.tags = [t for t in m.tags if t != folder_name]
+                count += 1
+
+        if count > 0:
+            await self.db.commit()
+        return {"affected_count": count, "moved_to_unclassified": count}

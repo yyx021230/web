@@ -113,5 +113,5 @@ class RateLimitedQueue:
 
 
 # 全局单例 - 生图请求队列
-# min_interval=3.0 表示两次请求之间至少间隔 3 秒
-image_generation_queue = RateLimitedQueue(max_concurrent=1, min_interval=3.0)
+# min_interval=10.0 表示两次请求之间至少间隔 10 秒（避免触发 Seedream API 速率限制）
+image_generation_queue = RateLimitedQueue(max_concurrent=1, min_interval=10.0)

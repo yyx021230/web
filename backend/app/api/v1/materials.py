@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+import asyncio
+from io import BytesIO
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -24,16 +28,53 @@ ALLOWED_CONTENT_TYPES = {
 }
 
 
+async def _download_remote_image(url: str) -> tuple[bytes, str, str]:
+    """下载远程图片到本地存储
+
+    Returns:
+        (file_content, filename, content_type)
+    """
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"下载图片失败: HTTP {resp.status_code}")
+
+        content = resp.content
+        content_type = resp.headers.get("content-type", "image/jpeg")
+
+        # 从 URL 提取文件名
+        filename = url.split("/")[-1].split("?")[0] or "downloaded.jpg"
+        if not filename.endswith((".jpg", ".png", ".gif", ".webp", ".svg")):
+            ext = ".jpg"
+            if "png" in content_type:
+                ext = ".png"
+            elif "gif" in content_type:
+                ext = ".gif"
+            elif "webp" in content_type:
+                ext = ".webp"
+            filename = filename + ext
+
+        return content, filename, content_type
+
+
 @router.get("")
 async def get_materials(
     page: int = 1,
     limit: int = 20,
     category: str | None = None,
+    exclude_category: str | None = Query(default=None, description="排除指定 category"),
+    owner: bool = Query(False, description="只返回当前用户的素材"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """获取素材列表"""
+    """获取素材列表
+
+    owner: 只返回当前用户的素材（草稿箱/模版库使用）
+    不传 owner 时返回所有素材（车型库共享）
+    """
     service = MaterialService(db)
-    items, total = await service.get_list(page, limit, category)
+    user_id = current_user.id if owner else None
+    items, total = await service.get_list(page, limit, category, user_id=user_id, exclude_category=exclude_category)
     return ApiResponse(data={
         "items": [
             {
@@ -48,12 +89,33 @@ async def get_materials(
                 "created_at": str(m.created_at),
                 # 设计类素材包含 design_json（用于编辑器加载还原）
                 "design_json": m.design_json,
+                # AI 模版包含 ai_meta（用于显示 prompt、参考图等）
+                "ai_meta": m.ai_meta,
             }
             for m in items
         ],
         "total": total,
         "page": page,
         "limit": limit,
+    })
+
+
+@router.get("/storage-usage")
+async def get_storage_usage(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取当前用户的存储使用情况"""
+    service = MaterialService(db)
+    total_size, file_count, total_items = await service.get_storage_usage(current_user.id)
+    return ApiResponse(data={
+        "used_bytes": total_size,
+        "used_mb": round(total_size / (1024 * 1024), 2),
+        "file_count": file_count,
+        "total_items": total_items,
+        "limit_bytes": 5 * 1024 * 1024 * 1024,  # 5GB
+        "limit_mb": 5120,
+        "percent": round(total_size / (5 * 1024 * 1024 * 1024) * 100, 1),
     })
 
 
@@ -84,6 +146,7 @@ async def get_material(
 @router.post("/upload")
 async def upload_material(
     file: UploadFile = File(...),
+    target: str = Form(default="drafts", description="目标库: drafts 或 templates"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -104,7 +167,9 @@ async def upload_material(
             detail=f"不支持的文件类型: {content_type}",
         )
 
-    url = await storage.save(file_content, file.filename or "upload", content_type)
+    subdir = "templates" if target == "templates" else "drafts"
+    url = await storage.save(file_content, file.filename or "upload", content_type, subdir=subdir)
+    category = "ai-template" if target == "templates" else None
 
     # 推断素材类型
     if content_type.startswith("image"):
@@ -119,6 +184,8 @@ async def upload_material(
         name=file.filename or "upload",
         material_type=material_type,
         url=url,
+        category=category,
+        file_size=len(file_content),
         user_id=current_user.id,
     )
     return ApiResponse(data={
@@ -204,6 +271,7 @@ async def update_material(
     - thumbnail: 设计缩略图
     - width: 画布宽度
     - height: 画布高度
+    - tags: 标签列表
     """
     service = MaterialService(db)
     material = await service.update_design(
@@ -213,6 +281,7 @@ async def update_material(
         thumbnail=data.get("thumbnail"),
         width=data.get("width"),
         height=data.get("height"),
+        tags=data.get("tags"),
         user_id=current_user.id,
     )
     if not material:
@@ -225,4 +294,131 @@ async def update_material(
         "width": material.width,
         "height": material.height,
         "category": material.category,
+        "tags": material.tags,
     })
+
+
+@router.post("/template")
+async def save_template(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """保存 AI 生图结果到模版库
+
+    请求体:
+    - name: 模版名称
+    - url: 生成图片的 URL（远程图片会自动下载到本地）
+    - ai_meta: AI 生图元数据（包含 prompt, ref_images, model, size, style 等）
+    - width: 图片宽度
+    - height: 图片高度
+    - tags: 标签列表
+    """
+    service = MaterialService(db)
+
+    # 如果 URL 是远程的（http/https），先下载到本地
+    image_url = data.get("url")
+    if image_url and image_url.startswith(("http://", "https://")):
+        try:
+            content, filename, content_type = await _download_remote_image(image_url)
+            local_url = await storage.save(content, filename, content_type, subdir="templates")
+            image_url = local_url
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"下载图片失败: {e}")
+
+    material = await service.create_template(
+        name=data.get("name", "AI 模版"),
+        url=image_url,
+        ai_meta=data.get("ai_meta"),
+        width=data.get("width"),
+        height=data.get("height"),
+        tags=data.get("tags"),
+        user_id=current_user.id,
+    )
+    return ApiResponse(data={
+        "id": material.id,
+        "name": material.name,
+        "type": material.type,
+        "url": material.url,
+        "width": material.width,
+        "height": material.height,
+        "ai_meta": material.ai_meta,
+        "created_at": str(material.created_at),
+    })
+
+
+@router.post("/{material_id}/download")
+async def download_remote_image(
+    material_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """下载远程图片到本地（用于过期链接重下载）
+
+    请求体:
+    - url: 远程图片 URL
+    """
+    service = MaterialService(db)
+    material = await service.get_by_id(material_id)
+    if not material or material.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="素材不存在")
+
+    # 所有权校验
+    if material.created_by is not None and material.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="无权操作")
+
+    remote_url = data.get("url") or material.url
+    if not remote_url or not remote_url.startswith(("http://", "https://")):
+        return ApiResponse(message="图片已保存在本地，无需重新下载", data={"url": material.url})
+
+    content, filename, content_type = await _download_remote_image(remote_url)
+    local_url = await storage.save(content, filename, content_type, subdir="templates")
+
+    # 更新数据库记录
+    material.url = local_url
+    await db.commit()
+    await db.refresh(material)
+
+    return ApiResponse(message="图片已下载到本地", data={
+        "id": material.id,
+        "url": material.url,
+    })
+
+
+@router.put("/folders/{folder_name}")
+async def rename_folder(
+    folder_name: str,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """重命名模版文件夹
+
+    请求体:
+    - new_name: 新文件夹名称
+    """
+    new_name = data.get("new_name", "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="文件夹名称不能为空")
+
+    service = MaterialService(db)
+    count = await service.rename_folder(folder_name, new_name, current_user.id)
+    return ApiResponse(message=f"已将 {count} 个素材移至「{new_name}」", data={"count": count})
+
+
+@router.delete("/folders/{folder_name}")
+async def delete_folder(
+    folder_name: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """删除模版文件夹（仅移除标签，图片保留为未分类）"""
+    service = MaterialService(db)
+    result = await service.delete_folder(folder_name, current_user.id)
+    return ApiResponse(
+        message=f"已删除文件夹，{result['affected_count']} 个素材移至未分类",
+        data=result,
+    )

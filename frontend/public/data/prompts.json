@@ -1,0 +1,3516 @@
+{
+  "scrapedAt": "2026-04-28T01:56:30.983Z",
+  "totalPrompts": 390,
+  "prompts": [
+    {
+      "id": 1,
+      "title": "游戏行业提示词 - 角色设计",
+      "chinese": "荒漠游侠，穿着沙色斗篷，背景为无尽的沙丘和黄昏的天空",
+      "english": "Desert ranger, wearing a sandy cloak, with a background of endless dunes and a twilight sky",
+      "image_url": "/prompts-images/1_1.png",
+      "category": "游戏行业提示词",
+      "param_type": "角色设计"
+    },
+    {
+      "id": 2,
+      "title": "游戏行业提示词 - 角色设计",
+      "chinese": "水下城市的居民，拥有透明的鱼鳍和发光的眼睛，周围是色彩斑斓的珊瑚礁",
+      "english": "Resident of an underwater city, with translucent fins and glowing eyes, surrounded by colorful coral reefs",
+      "image_url": "/prompts-images/1_2.png",
+      "category": "游戏行业提示词",
+      "param_type": "角色设计"
+    },
+    {
+      "id": 3,
+      "title": "游戏行业提示词 - 角色设计",
+      "chinese": "未来战士，身着反光战甲，手持激光枪，站在战场废墟上",
+      "english": "Future warrior, wearing reflective armor, holding a laser gun, standing on the ruins of a battlefield",
+      "image_url": "/prompts-images/1_3.png",
+      "category": "游戏行业提示词",
+      "param_type": "角色设计"
+    },
+    {
+      "id": 4,
+      "title": "游戏行业提示词 - 角色设计",
+      "chinese": "古代巫师，头戴羽毛装饰的帽子，手持木雕法杖，背景是神秘的部落祭坛",
+      "english": "Ancient shaman, wearing a feather-adorned hat, holding a wooden staff, with a background of a mysterious tribal altar",
+      "image_url": "/prompts-images/1_4.png",
+      "category": "游戏行业提示词",
+      "param_type": "角色设计"
+    },
+    {
+      "id": 5,
+      "title": "游戏行业提示词 - 角色设计",
+      "chinese": "外星探险家，皮肤呈现异色，穿着太空服，背景是奇异的星球地表",
+      "english": "Alien explorer, with iridescent skin, wearing a spacesuit, set against the surface of a strange planet",
+      "image_url": "/prompts-images/1_5.png",
+      "category": "游戏行业提示词",
+      "param_type": "角色设计"
+    },
+    {
+      "id": 6,
+      "title": "游戏行业提示词 - 场景设计",
+      "chinese": "冬季的魔法森林，树木覆盖着白雪，空中飘着闪光的雪花",
+      "english": "Winter magic forest, trees covered with snow, with sparkling snowflakes floating in the air",
+      "image_url": "/prompts-images/1_6.png",
+      "category": "游戏行业提示词",
+      "param_type": "场景设计"
+    },
+    {
+      "id": 7,
+      "title": "游戏行业提示词 - 场景设计",
+      "chinese": "废弃的工业区夜景，霓虹灯光与旧仓库的阴影交错",
+      "english": "Abandoned industrial area at night, neon lights intermingling with the shadows of old warehouses",
+      "image_url": "/prompts-images/1_7.png",
+      "category": "游戏行业提示词",
+      "param_type": "场景设计"
+    },
+    {
+      "id": 8,
+      "title": "游戏行业提示词 - 场景设计",
+      "chinese": "古老书店的内部，书架满载尘封的书籍，昏黄的灯光照亮阅读角落",
+      "english": "Interior of an ancient bookstore, shelves filled with dusty books, dim light illuminating the reading corner",
+      "image_url": "/prompts-images/1_8.png",
+      "category": "游戏行业提示词",
+      "param_type": "场景设计"
+    },
+    {
+      "id": 9,
+      "title": "游戏行业提示词 - 场景设计",
+      "chinese": "幽暗的地下城市，照明仅由间歇性的火光和发光的霓虹管提供",
+      "english": "Dark underground city, illuminated only by intermittent flames and glowing neon tubes",
+      "image_url": "/prompts-images/1_9.png",
+      "category": "游戏行业提示词",
+      "param_type": "场景设计"
+    },
+    {
+      "id": 10,
+      "title": "游戏行业提示词 - 场景设计",
+      "chinese": "荒废的未来都市，高楼大厦部分倒塌，街道上荒草丛生",
+      "english": "Abandoned future city, with partially collapsed skyscrapers and overgrown streets",
+      "image_url": "/prompts-images/1_10.png",
+      "category": "游戏行业提示词",
+      "param_type": "场景设计"
+    },
+    {
+      "id": 11,
+      "title": "游戏行业提示词 - 道具设计",
+      "chinese": "古老的卷轴，表面充满神秘符号，轻微发光",
+      "english": "Ancient scroll, covered with mysterious symbols, faintly glowing",
+      "image_url": "/prompts-images/1_11.png",
+      "category": "游戏行业提示词",
+      "param_type": "道具设计"
+    },
+    {
+      "id": 12,
+      "title": "游戏行业提示词 - 道具设计",
+      "chinese": "机械战斗盔甲，表面刻有复杂线条，装备有能量核心",
+      "english": "Mechanical combat armor, engraved with complex lines, equipped with an energy core",
+      "image_url": "/prompts-images/1_12.png",
+      "category": "游戏行业提示词",
+      "param_type": "道具设计"
+    },
+    {
+      "id": 13,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "现代风格的客厅，简约的家具，大窗户带来充足的自然光",
+      "english": "Modern living room, minimalist furniture, large windows providing ample natural light",
+      "image_url": "/prompts-images/2_1.png",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 14,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "小户型的厨房，利用空间最大化存储，带有折叠餐桌的设计",
+      "english": "Small kitchen, space-maximizing storage solutions, with a foldable dining table design",
+      "image_url": "/prompts-images/2_2.png",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 15,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "卧室内部，以柔和的灰蓝色调为主，配有大号床和艺术挂画",
+      "english": "Bedroom interior in soft gray-blue tones, equipped with a king-size bed and artistic wall hangings",
+      "image_url": "/prompts-images/2_3.png",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 16,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "复古风格的浴室，铜质水龙头和马赛克瓷砖装饰",
+      "english": "Retro-style bathroom with copper fixtures and mosaic tile decorations",
+      "image_url": "/prompts-images/2_4.png",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 17,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "儿童房间，色彩明亮，墙面装饰有动画人物壁画",
+      "english": "Children's room, bright colors, walls decorated with cartoon character murals",
+      "image_url": "/prompts-images/2_5.png",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 18,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "开放式书房设计，书架与工作区一体，背景为宁静的花园视图",
+      "english": "Open-plan study design, bookshelves integrated with work area, background featuring a serene garden view",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 19,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "走廊空间优化设计，内置储物柜和镜子，简洁实用",
+      "english": "Hallway space optimization design, built-in storage cabinets and mirrors, sleek and practical",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 20,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "极简主义风格的客厅，黑白色调，现代艺术装饰品",
+      "english": "Minimalist living room in black and white tones, modern art decorations",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 21,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "乡村风格的厨房，木质橱柜和石材台面，温馨家庭氛围",
+      "english": "Country-style kitchen with wooden cabinets and stone countertops, warm family atmosphere",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 22,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "豪华的主卧室，有壁炉和私人阳台，装饰豪华",
+      "english": "Luxurious master bedroom with a fireplace and private balcony, opulent decorations",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 23,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "工业风格的餐厅，裸露的砖墙和金属家具，现代感十足",
+      "english": "Industrial-style dining room, exposed brick walls and metal furniture, very contemporary",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 24,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "宽敞的玄关设计，简约风格，搭配温暖的灯光和装饰植物",
+      "english": "Spacious entryway design, minimalist style, paired with warm lighting and decorative plants",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 25,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "现代办公室家居设计，整洁的线条和智能家居设备",
+      "english": "Modern office home design, clean lines and smart home devices",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 26,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "地中海风格的阳台，蓝白配色，放置休闲椅和小桌",
+      "english": "Mediterranean-style balcony, blue and white color scheme, furnished with lounge chairs and a small table",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 27,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "精品酒店风格的客房，优雅的装饰和高级布料",
+      "english": "Boutique hotel-style guest room, elegant decorations and high-end fabrics",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 28,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "艺术家工作室，墙上挂满了画作和灵感板",
+      "english": "Artist's studio, walls covered with paintings and inspiration boards",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 29,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "现代浴室设计，采用环保材料，功能性强",
+      "english": "Modern bathroom design using eco-friendly materials, highly functional",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 30,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "天花板设计特别，使用吊灯和隐形灯光营造氛围",
+      "english": "Special ceiling design, using chandeliers and recessed lighting to create ambiance",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 31,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "奢华影音室，配备最先进的音响系统和舒适的观影座椅",
+      "english": "Luxurious home theater, equipped with state-of-the-art sound system and comfortable viewing seats",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 32,
+      "title": "室内装修行业提示词 - 通用",
+      "chinese": "节能环保的居家设计，采用太阳能板和可再生材料",
+      "english": "Energy-efficient and eco-friendly home design, utilizing solar panels and renewable materials",
+      "image_url": "",
+      "category": "室内装修行业提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 33,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "现代都市风格的男士西装，简洁线条，采用深灰色羊毛面料",
+      "english": "Modern urban men's suit, clean lines, made of dark grey wool fabric",
+      "image_url": "/prompts-images/3_1.png",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 34,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "女士夏季波西米亚长裙，多彩花朵图案，轻盈雪纺材质",
+      "english": "Women's summer bohemian long dress, colorful floral patterns, lightweight chiffon material",
+      "image_url": "/prompts-images/3_2.png",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 35,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "高端时尚晚礼服，亮片装饰，优雅的深蓝色调",
+      "english": "High-end fashion evening gown, sequin embellishments, elegant deep blue hue",
+      "image_url": "/prompts-images/3_3.png",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 36,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "复古风格皮夹克，摇滚元素设计，带有金属拉链和纽扣",
+      "english": "Retro style leather jacket, rock elements design, with metal zippers and buttons",
+      "image_url": "/prompts-images/3_4.png",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 37,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "春季女装风衣，淡粉色调，带有腰带和大口袋设计",
+      "english": "Spring women's trench coat, light pink tone, with a belt and large pockets design",
+      "image_url": "/prompts-images/3_5.png",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 38,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "运动风格男士外套，透气网眼面料，明亮的色彩条纹",
+      "english": "Sporty men's jacket, breathable mesh fabric, bright colored stripes",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 39,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "儿童动物图案套装，舒适棉质，活泼的颜色和图案",
+      "english": "Children's animal pattern set, comfortable cotton, lively colors and patterns",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 40,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "秋季男士针织毛衣，格子图案，温暖的棕色调",
+      "english": "Autumn men's knitted sweater, checkered pattern, warm brown tones",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 41,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "高级订制婚纱，精细手工刺绣，纯白色轻纱覆盖",
+      "english": "High-end custom wedding dress, fine hand embroidery, pure white tulle overlay",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 42,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "街头风格的印花T恤，大胆的图形和口号，柔软的棉质",
+      "english": "Street style printed T-shirt, bold graphics and slogans, soft cotton material",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 43,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "青春休闲风格的连衣裙，条纹设计，绑带领口",
+      "english": "Youthful casual style dress, striped design, tie-up neckline",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 44,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "男士商务休闲装，经典格子衬衫配棉质西裤",
+      "english": "Men's business casual outfit, classic plaid shirt paired with cotton trousers",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 45,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "冬季女士羽绒服，带有可拆卸帽子，保暖且时尚",
+      "english": "Winter women's down jacket, with a removable hood, warm and fashionable",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 46,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "环保时尚设计，采用回收材料制作的夹克",
+      "english": "Eco-friendly fashion design, jacket made from recycled materials",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 47,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "夏季海滩风格连身泳衣，热带植物图案，高腰剪裁",
+      "english": "Summer beach style one-piece swimsuit, tropical plant pattern, high-waisted cut",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 48,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "传统民族风格服装，精美的刺绣和手工编织元素",
+      "english": "Traditional ethnic style clothing, exquisite embroidery and hand-woven elements",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 49,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "宴会场合的男士正装，深色天鹅绒西装外套，配丝质领带",
+      "english": "Men's formal attire for banquets, dark velvet suit jacket, paired with a silk tie",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 50,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "职业女性的套装，尖领西装外套，烟管裤，专业且现代",
+      "english": "Professional women's suit, pointed collar blazer, cigarette pants, professional and modern",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 51,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "复古风格的茶长度裙，波点图案，蓬松裙摆",
+      "english": "Vintage style tea-length skirt, polka dot pattern, flouncy hem",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 52,
+      "title": "服装设计提示词 - 通用",
+      "chinese": "设计师限量版手提包，精选皮革，手工缝制细节",
+      "english": "Designer limited edition handbag, select leather, hand-stitched details",
+      "image_url": "",
+      "category": "服装设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 53,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工编织的毛线围巾，采用多彩的条纹设计",
+      "english": "Hand-knitted scarf, featuring colorful striped patterns",
+      "image_url": "/prompts-images/4_1.png",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 54,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "陶瓷手工艺品，精美的青花瓷花瓶，传统工艺",
+      "english": "Ceramic handicraft, exquisite blue and white porcelain vase, traditional craftsmanship",
+      "image_url": "/prompts-images/4_2.png",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 55,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的皮革钱包，天然材料，细致缝制",
+      "english": "Handmade leather wallet, natural materials, meticulously stitched",
+      "image_url": "/prompts-images/4_3.png",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 56,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "木雕工艺品，精细的动物雕像，手工打磨和涂漆",
+      "english": "Wood carving crafts, detailed animal statues, hand-sanded and painted",
+      "image_url": "/prompts-images/4_4.png",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 57,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工编织的篮子，使用天然柳条，适用于野餐或家居收纳",
+      "english": "Handwoven baskets, made from natural willow, suitable for picnics or home storage",
+      "image_url": "/prompts-images/4_5.png",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 58,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "彩绘玻璃工艺品，手工制作的窗饰，五彩斑斓",
+      "english": "Stained glass crafts, handmade window decorations, brightly colored",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 59,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "定制的银质首饰，手工锻造和刻印，独特的设计",
+      "english": "Custom silver jewelry, hand-forged and engraved, unique designs",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 60,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的陶土花盆，自然土色，透气孔设计",
+      "english": "Handcrafted terracotta flower pots, natural clay color, with air holes",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 61,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手绘丝巾，采用自然染料，每一件都是独一无二的艺术品",
+      "english": "Hand-painted scarves, using natural dyes, each piece is a unique artwork",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 62,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工打造的铁艺灯具，复古风格，提供温暖的照明",
+      "english": "Hand-forged iron lamps, vintage style, providing warm lighting",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 63,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "传统手工编织的草帽，适合夏日防晒，风格简约",
+      "english": "Traditionally handwoven straw hats, suitable for summer sun protection, simple style",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 64,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的木质相框，复古风格，可定制尺寸",
+      "english": "Handmade wooden picture frames, vintage style, customizable sizes",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 65,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的布娃娃，环保材料，亲子互动玩具",
+      "english": "Handmade cloth dolls, eco-friendly materials, interactive toys for parents and children",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 66,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "自制的蜡烛，采用天然蜂蜡，散发淡淡蜂蜜香",
+      "english": "Homemade candles, made from natural beeswax, with a honey scent",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 67,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工打造的竹制风铃，清脆悦耳的声音，适合户外或室内装饰",
+      "english": "Handcrafted bamboo wind chimes, crisp and pleasant sounds, suitable for outdoor or indoor decoration",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 68,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的石雕，采用天然岩石，适用于花园装饰",
+      "english": "Handmade stone sculptures, using natural rocks, suitable for garden decorations",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 69,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "个性化手工皮革挂件，适用于钥匙链或包装饰",
+      "english": "Personalized handmade leather tags, suitable for keychains or bag accessories",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 70,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工制作的金属书签，精细切割和抛光，镶有小宝石",
+      "english": "Handcrafted metal bookmarks, finely cut and polished, inset with small gemstones",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 71,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "传统织物工艺，手工制作的民族风图案，色彩丰富",
+      "english": "Traditional fabric crafts, handmade ethnic patterns, rich in colors",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 72,
+      "title": "手工/工艺品提示词 - 通用",
+      "chinese": "手工编织的地毯，使用回收材料，多功能家居用品",
+      "english": "Handwoven rugs, made from recycled materials, multipurpose home goods",
+      "image_url": "",
+      "category": "手工/工艺品提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 73,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "卡通猫咪角色，大眼睛，毛茸茸的尾巴，活泼可爱",
+      "english": "Cartoon cat character, large eyes, fluffy tail, lively and cute",
+      "image_url": "/prompts-images/5_1.png",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 74,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "科幻机器人角色，装备先进科技武器，未来感设计",
+      "english": "Sci-fi robot character, equipped with advanced technology weapons, futuristic design",
+      "image_url": "/prompts-images/5_2.png",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 75,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "魔法小精灵角色，翅膀闪烁，擅长施法，神秘氛围",
+      "english": "Magical fairy character, wings that sparkle, skilled in casting spells, mysterious aura",
+      "image_url": "/prompts-images/5_3.png",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 76,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "古代战士角色，身穿传统盔甲，手持长矛，英勇无畏",
+      "english": "Ancient warrior character, dressed in traditional armor, wielding a spear, brave and fearless",
+      "image_url": "/prompts-images/5_4.png",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 77,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "未来赛车手角色，穿着赛车服，速度感十足，追求极速",
+      "english": "Future racer character, wearing a racing suit, full of speed, in pursuit of extreme velocity",
+      "image_url": "/prompts-images/5_5.png",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 78,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "可爱的动物团队，各具特色的动物朋友，合作冒险",
+      "english": "Cute animal team, distinctive animal friends, cooperating on adventures",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 79,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "虚拟偶像，拥有独特的音乐才能，流行风格",
+      "english": "Virtual idol, possesses unique musical talents, pop style",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 80,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "幽灵侦探角色，解决超自然事件，神秘且机智",
+      "english": "Ghost detective character, solves supernatural events, mysterious and witty",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 81,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "宇宙探险家角色，探索未知星球，勇敢且好奇",
+      "english": "Cosmic explorer character, explores unknown planets, brave and curious",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 82,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "传统民间故事角色，经典形象重新解读，现代视角",
+      "english": "Traditional folk story character, classic image reinterpreted, modern perspective",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 83,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "奇幻森林守护者角色，保护自然的英雄，与动物沟通",
+      "english": "Fantasy forest guardian character, hero who protects nature, communicates with animals",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 84,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "数字世界的战士角色，战斗于虚拟现实，技术高超",
+      "english": "Digital world warrior character, battles in virtual reality, highly skilled",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 85,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "儿童书籍主角，教育儿童环保知识，友善环境形象",
+      "english": "Children's book protagonist, educates children about environmental protection, eco-friendly image",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 86,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "史诗级海盗船长角色，探险海洋，寻找宝藏",
+      "english": "Epic pirate captain character, adventures across the seas, seeking treasure",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 87,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "时间旅行者角色，穿梭不同历史时期，智慧与勇气",
+      "english": "Time traveler character, shuttles through different historical periods, wisdom and courage",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 88,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "荒岛求生者角色，展现生存技巧，乐观坚韧",
+      "english": "Desert island survivor character, displays survival skills, optimistic and resilient",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 89,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "古怪发明家角色，创造奇妙发明，风趣幽默",
+      "english": "Quirky inventor character, creates wonderful inventions, humorous and fun",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 90,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "神秘魔术师角色，表演惊人魔术，迷人魅力",
+      "english": "Mysterious magician character, performs astonishing magic, enchanting charm",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 91,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "热爱环保的青年角色，推动社区可持续发展，积极行动",
+      "english": "Environmentally passionate youth character, promotes sustainable community development, proactive actions",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 92,
+      "title": "IP形象设计提示词 - 通用",
+      "chinese": "迷你怪兽角色，超能力能量，萌态可掬，引发奇妙事件",
+      "english": "Mini monster character, superpower energy, adorably cute, triggers magical events",
+      "image_url": "",
+      "category": "IP形象设计提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 93,
+      "title": "植物提示词 - 通用",
+      "chinese": "热带雨林中的罕见兰花，鲜艳的色彩，细致的花瓣",
+      "english": "Rare orchid in the tropical rainforest, vibrant colors, delicate petals",
+      "image_url": "/prompts-images/6_1.png",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 94,
+      "title": "植物提示词 - 通用",
+      "chinese": "沙漠中的仙人掌，坚韧的生存者，具有独特的水分储存能力",
+      "english": "Cactus in the desert, a tough survivor, unique water storage capabilities",
+      "image_url": "/prompts-images/6_2.png",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 95,
+      "title": "植物提示词 - 通用",
+      "chinese": "高山地区的野生花朵，适应寒冷气候，小巧而坚韧",
+      "english": "Wildflowers in mountainous areas, adapted to cold climates, small and resilient",
+      "image_url": "/prompts-images/6_3.png",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 96,
+      "title": "植物提示词 - 通用",
+      "chinese": "城市花园中的玫瑰，多种颜色，芬芳四溢",
+      "english": "Roses in an urban garden, various colors, fragrant",
+      "image_url": "/prompts-images/6_4.png",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 97,
+      "title": "植物提示词 - 通用",
+      "chinese": "水生植物莲花，象征纯洁和美丽，平静的池塘中盛开",
+      "english": "Lotus, an aquatic plant symbolizing purity and beauty, blooming in a tranquil pond",
+      "image_url": "/prompts-images/6_5.png",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 98,
+      "title": "植物提示词 - 通用",
+      "chinese": "古老的森林中的巨大红杉，高大且壮观",
+      "english": "Giant sequoias in an ancient forest, tall and majestic",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 99,
+      "title": "植物提示词 - 通用",
+      "chinese": "挂在城市阳台上的吊篮，种满了多彩的矮生花卉",
+      "english": "Hanging baskets on a city balcony, filled with colorful dwarf flowers",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 100,
+      "title": "植物提示词 - 通用",
+      "chinese": "农田中的麦田，金黄色的麦穗随风摇曳",
+      "english": "Wheat field in farmland, golden wheat ears swaying in the wind",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 101,
+      "title": "植物提示词 - 通用",
+      "chinese": "盆栽中的多肉植物，小巧玲珑，易于养护",
+      "english": "Succulents in pots, small and exquisite, easy to care for",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 102,
+      "title": "植物提示词 - 通用",
+      "chinese": "森林里的苔藓，覆盖在古树和石头上，生态多样",
+      "english": "Moss in the forest, covering old trees and stones, ecologically diverse",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 103,
+      "title": "植物提示词 - 通用",
+      "chinese": "花园中的薰衣草，紫色花海，吸引蜜蜂和蝴蝶",
+      "english": "Lavender in the garden, a sea of purple flowers, attracting bees and butterflies",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 104,
+      "title": "植物提示词 - 通用",
+      "chinese": "南瓜藤上挂满了橙色的南瓜，节庆的象征",
+      "english": "Pumpkin vines laden with orange pumpkins, a symbol of festivity",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 105,
+      "title": "植物提示词 - 通用",
+      "chinese": "生长在崎岖岩石上的野生蕨类植物，生命力顽强",
+      "english": "Wild ferns growing on rugged rocks, tenacious vitality",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 106,
+      "title": "植物提示词 - 通用",
+      "chinese": "园艺爱好者的温室，种植各类珍稀植物",
+      "english": "Greenhouse of a gardening enthusiast, cultivating various rare plants",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 107,
+      "title": "植物提示词 - 通用",
+      "chinese": "熱带雨林的观赏性藤蔓，缠绕在树干上，绿意盎然",
+      "english": "Decorative vines in a tropical rainforest, winding around tree trunks, lush and green",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 108,
+      "title": "植物提示词 - 通用",
+      "chinese": "城市公园的樱花树，春季盛开，游客如织",
+      "english": "Cherry trees in a city park, blooming in spring, crowded with visitors",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 109,
+      "title": "植物提示词 - 通用",
+      "chinese": "沿海地区的盐生植物，适应咸水环境，生长在沙滩和岩石上",
+      "english": "Halophytes in coastal areas, adapted to saline environments, growing on beaches and rocks",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 110,
+      "title": "植物提示词 - 通用",
+      "chinese": "高原地区的野生灌木，耐寒耐旱，生存于恶劣环境",
+      "english": "Wild shrubs in high-altitude areas, cold and drought tolerant, surviving in harsh environments",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 111,
+      "title": "植物提示词 - 通用",
+      "chinese": "草本植物的医用花园，种植多种草药，具有治疗效用",
+      "english": "Herbal garden with medicinal plants, cultivating various herbs with therapeutic effects",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 112,
+      "title": "植物提示词 - 通用",
+      "chinese": "垂直花园墙面，用于都市环境，提供空气净化和美化效果",
+      "english": "Vertical garden walls, used in urban environments, providing air purification and beautification effects",
+      "image_url": "",
+      "category": "植物提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 113,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "非洲草原上的狮子，雄壮的身姿，伟岸的鬃毛",
+      "english": "Lion on the African savannah, majestic stature, magnificent mane",
+      "image_url": "/prompts-images/7_1.png",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 114,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "北极的白熊，游弋在冰冷的海域，寻找食物",
+      "english": "Polar bear in the Arctic, roaming the icy waters, searching for food",
+      "image_url": "/prompts-images/7_2.png",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 115,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "热带雨林中的巨蟒，潜伏在茂密的树木间，等待猎物",
+      "english": "Python in the tropical rainforest, lurking among dense trees, waiting for prey",
+      "image_url": "/prompts-images/7_3.png",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 116,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "草原上奔跑的羚羊，优雅而迅速，群体行动",
+      "english": "Antelopes running on the plains, elegant and swift, moving as a group",
+      "image_url": "/prompts-images/7_4.png",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 117,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "深海中的章鱼，灵活的触手，探索海底世界",
+      "english": "Octopus in the deep sea, flexible tentacles, exploring the ocean floor",
+      "image_url": "/prompts-images/7_5.png",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 118,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "山区的山羊，攀爬陡峭的岩壁，寻找食物",
+      "english": "Mountain goats in the highlands, climbing steep cliffs, in search of food",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 119,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "城市公园的松鼠，快速跳跃，搜寻食物",
+      "english": "Squirrels in urban parks, jumping quickly, foraging for food",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 120,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "沙漠中的骆驼，适应干旱环境，长途负重",
+      "english": "Camels in the desert, adapted to arid conditions, carrying loads over long distances",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 121,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "森林中的狼群，夜间活动，群体狩猎",
+      "english": "Wolves in the forest, nocturnal, hunting in packs",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 122,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "湖泊中的白鹭，优雅地在水面觅食，宁静的环境",
+      "english": "Egrets in the lake, feeding gracefully on the water, tranquil environment",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 123,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "亚马逊雨林的毒箭蛙，鲜艳的颜色，警示潜在的危险",
+      "english": "Poison dart frogs in the Amazon rainforest, vivid colors warning of potential dangers",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 124,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "高原上的野牦牛，耐寒的厚毛，生活在苛刻的环境中",
+      "english": "Wild yaks on the plateau, thick fur resistant to cold, living in harsh conditions",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 125,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "海洋中的海豚，群体游泳，智慧的社交动物",
+      "english": "Dolphins in the ocean, swimming in groups, intelligent social animals",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 126,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "夜间活动的猫头鹰，犀利的目光，静默的猎手",
+      "english": "Owls active at night, sharp eyes, silent hunters",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 127,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "稻田中的青蛙，鸣叫声填充夜空，生态农业的一部分",
+      "english": "Frogs in the rice paddies, calls filling the night air, part of ecological farming",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 128,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "热带鱼，色彩斑斓的鳞片，游弋在珊瑚礁之间",
+      "english": "Tropical fish, colorful scales, swimming among coral reefs",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 129,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "农场中的马匹，快速奔跑，力量和速度的象征",
+      "english": "Horses on a farm, running fast, symbols of strength and speed",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 130,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "草丛中的野兔，警觉地监听四周，迅速逃跑的能力",
+      "english": "Wild rabbits in the bushes, alertly listening to their surroundings, ability to escape quickly",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 131,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "冰川上的企鹅，社交行为丰富，适应极端寒冷",
+      "english": "Penguins on glaciers, rich social behaviors, adapted to extreme cold",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 132,
+      "title": "描写动物的提示词 - 通用",
+      "chinese": "花园中的蜜蜂，采集花粉，重要的授粉者",
+      "english": "Bees in the garden, collecting pollen, important pollinators",
+      "image_url": "",
+      "category": "描写动物的提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 133,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "童话故事中的城堡插画，细腻的线条和柔和的色彩",
+      "english": "Illustration of a fairy tale castle, intricate lines and soft colors",
+      "image_url": "/prompts-images/8_1.png",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 134,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘动物插画，采用自然色调和细致的笔触",
+      "english": "Hand-drawn animal illustration, using natural tones and detailed brushwork",
+      "image_url": "/prompts-images/8_2.png",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 135,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "幻想风格的手绘龙，翅膀张开，背景为神秘的天空",
+      "english": "Fantasy-style hand-drawn dragon, wings spread, with a mysterious sky background",
+      "image_url": "/prompts-images/8_3.png",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 136,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "复古风格的手绘花卉图案，复杂的细节和鲜艳的颜色",
+      "english": "Vintage-style hand-drawn floral patterns, intricate details and vibrant colors",
+      "image_url": "/prompts-images/8_4.png",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 137,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "儿童书籍插画，充满生动的色彩和可爱的角色设计",
+      "english": "Children's book illustration, full of vibrant colors and adorable character designs",
+      "image_url": "/prompts-images/8_5.png",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 138,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘城市风景插画，精细的建筑细节和动态的城市生活",
+      "english": "Hand-drawn cityscape illustration, detailed architectural elements and dynamic urban life",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 139,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "卡通风格的手绘人物插画，夸张的表情和简洁的线条",
+      "english": "Cartoon-style hand-drawn character illustration, exaggerated expressions and simple lines",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 140,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "科幻题材的插画，未来感十足的飞船和外星场景",
+      "english": "Sci-fi themed illustration, futuristic spaceships and alien landscapes",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 141,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘食物插画，温暖的色调和诱人的细节",
+      "english": "Hand-drawn food illustration, warm tones and tempting details",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 142,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘自然景观，森林和山脉的静谧之美",
+      "english": "Hand-drawn natural landscape, the serene beauty of forests and mountains",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 143,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "梦幻风格的手绘插画，星空和银河中的奇妙生物",
+      "english": "Dreamy-style hand-drawn illustration, fantastic creatures in the starry sky and galaxy",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 144,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘漫画风格插画，活泼的动作和生动的对白气泡",
+      "english": "Hand-drawn comic-style illustration, lively actions and vivid speech bubbles",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 145,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘纹理背景，适用于包装设计和书籍封面",
+      "english": "Hand-drawn textured background, suitable for packaging design and book covers",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 146,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "插画中加入水彩元素，柔和的色彩渐变和透明效果",
+      "english": "Illustration with watercolor elements, soft color gradients and transparent effects",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 147,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘中世纪主题插画，骑士和城堡的史诗场景",
+      "english": "Hand-drawn medieval-themed illustration, epic scenes of knights and castles",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 148,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘肖像插画，真实的面部表情和细腻的笔触",
+      "english": "Hand-drawn portrait illustration, realistic facial expressions and delicate brushwork",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 149,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘植物插画，详细的叶片和花朵结构描绘",
+      "english": "Hand-drawn botanical illustration, detailed depiction of leaves and flower structures",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 150,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘海洋生物插画，色彩鲜艳的鱼类和珊瑚",
+      "english": "Hand-drawn marine life illustration, brightly colored fish and coral",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 151,
+      "title": "插画/手绘类提示词 - 通用",
+      "chinese": "手绘节日主题插画，温馨的节日气氛和细致的装饰",
+      "english": "Hand-drawn holiday-themed illustration, warm festive atmosphere and detailed decorations",
+      "image_url": "",
+      "category": "插画/手绘类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 152,
+      "title": "美食提示词 - 通用",
+      "chinese": "经典意大利披萨，薄脆的饼底，上面覆盖着丰富的奶酪和新鲜的番茄酱",
+      "english": "Classic Italian pizza, with a crispy thin crust, topped with rich cheese and fresh tomato sauce",
+      "image_url": "/prompts-images/9_1.png",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 153,
+      "title": "美食提示词 - 通用",
+      "chinese": "日式拉面，鲜美的汤底，配有嫩滑的叉烧和温泉蛋",
+      "english": "Japanese ramen, with a savory broth, served with tender chashu pork and a soft-boiled egg",
+      "image_url": "/prompts-images/9_2.png",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 154,
+      "title": "美食提示词 - 通用",
+      "chinese": "法式马卡龙，色彩缤纷的甜点，外脆内软，充满香甜的夹心",
+      "english": "French macarons, colorful desserts, crisp on the outside, soft inside, filled with sweet fillings",
+      "image_url": "/prompts-images/9_3.png",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 155,
+      "title": "美食提示词 - 通用",
+      "chinese": "泰式冬阴功汤，辛辣酸爽，配有鲜虾、蘑菇和香茅",
+      "english": "Thai tom yum soup, spicy and sour, with shrimp, mushrooms, and lemongrass",
+      "image_url": "/prompts-images/9_4.png",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 156,
+      "title": "美食提示词 - 通用",
+      "chinese": "美式经典汉堡，厚实的牛肉饼，夹在松软的面包之间，配有生菜和番茄",
+      "english": "Classic American burger, with a juicy beef patty, sandwiched between soft buns, served with lettuce and tomato",
+      "image_url": "/prompts-images/9_5.png",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 157,
+      "title": "美食提示词 - 通用",
+      "chinese": "中式宫保鸡丁，香辣的鸡肉块，配以脆花生和青椒",
+      "english": "Chinese kung pao chicken, spicy chicken chunks, served with crunchy peanuts and green peppers",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 158,
+      "title": "美食提示词 - 通用",
+      "chinese": "西班牙海鲜饭，色彩丰富的米饭，加入虾、鱿鱼和红辣椒",
+      "english": "Spanish paella, colorful rice dish, with shrimp, squid, and red peppers",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 159,
+      "title": "美食提示词 - 通用",
+      "chinese": "法式牛角面包，金黄酥脆的外皮，搭配香浓的黄油味",
+      "english": "French croissant, golden and flaky on the outside, with a rich buttery taste",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 160,
+      "title": "美食提示词 - 通用",
+      "chinese": "印度咖喱鸡，浓郁的咖喱酱，配上香软的白米饭",
+      "english": "Indian chicken curry, rich curry sauce, served with fragrant white rice",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 161,
+      "title": "美食提示词 - 通用",
+      "chinese": "墨西哥玉米饼，内包裹着烤肉、鳄梨酱和奶酪",
+      "english": "Mexican tacos, filled with grilled meat, guacamole, and cheese",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 162,
+      "title": "美食提示词 - 通用",
+      "chinese": "韩国泡菜炒饭，辛辣的泡菜与香米饭混合， topped with a fried egg",
+      "english": "Korean kimchi fried rice, spicy kimchi mixed with fragrant rice, topped with a fried egg",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 163,
+      "title": "美食提示词 - 通用",
+      "chinese": "意大利提拉米苏，层层叠叠的咖啡风味蛋糕和奶油",
+      "english": "Italian tiramisu, layers of coffee-flavored cake and cream",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 164,
+      "title": "美食提示词 - 通用",
+      "chinese": "越南春卷，米纸包裹着鲜虾、猪肉和新鲜的蔬菜",
+      "english": "Vietnamese spring rolls, rice paper wrapped around shrimp, pork, and fresh vegetables",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 165,
+      "title": "美食提示词 - 通用",
+      "chinese": "美国苹果派，酥脆的外皮包裹着香甜的苹果馅",
+      "english": "American apple pie, crispy crust filled with sweet apple filling",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 166,
+      "title": "美食提示词 - 通用",
+      "chinese": "中式红烧排骨，入口即化的猪排骨，配以浓郁的红烧酱汁",
+      "english": "Chinese braised pork ribs, melt-in-your-mouth pork ribs, with a rich braising sauce",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 167,
+      "title": "美食提示词 - 通用",
+      "chinese": "法国洋葱汤，烤的金黄的面包片，撒上融化的奶酪",
+      "english": "French onion soup, topped with golden toast, sprinkled with melted cheese",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 168,
+      "title": "美食提示词 - 通用",
+      "chinese": "日本寿司卷，夹有新鲜的生鱼片、黄瓜和米饭",
+      "english": "Japanese sushi rolls, filled with fresh sashimi, cucumber, and rice",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 169,
+      "title": "美食提示词 - 通用",
+      "chinese": "比利时华夫饼，松软的华夫饼搭配新鲜的草莓和鲜奶油",
+      "english": "Belgian waffles, soft waffles topped with fresh strawberries and whipped cream",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 170,
+      "title": "美食提示词 - 通用",
+      "chinese": "中国小笼包，薄皮多汁，内含肉馅和热气腾腾的汤汁",
+      "english": "Chinese soup dumplings (xiaolongbao), thin-skinned and juicy, filled with meat and steaming broth",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 171,
+      "title": "美食提示词 - 通用",
+      "chinese": "希腊沙拉，新鲜的番茄、黄瓜、橄榄和羊奶酪，调以橄榄油",
+      "english": "Greek salad, fresh tomatoes, cucumbers, olives, and feta cheese, dressed with olive oil",
+      "image_url": "",
+      "category": "美食提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 172,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "充满动态线条和色彩的抽象画作，表现能量的流动",
+      "english": "Abstract painting filled with dynamic lines and colors, representing the flow of energy",
+      "image_url": "/prompts-images/10_1.png",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 173,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "几何形状与对比色彩的交织，创造出错视效果",
+      "english": "Interweaving geometric shapes and contrasting colors, creating an optical illusion effect",
+      "image_url": "/prompts-images/10_2.png",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 174,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "点描技法的艺术作品，细小的点构成复杂的图案",
+      "english": "Pointillism artwork, where small dots form intricate patterns",
+      "image_url": "/prompts-images/10_3.png",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 175,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "融化的色彩，模拟液体在画布上流动的抽象表现",
+      "english": "Melting colors, simulating the flow of liquid on the canvas in an abstract expression",
+      "image_url": "/prompts-images/10_4.png",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 176,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "大胆的色块和自由的笔触，传达出强烈的情感",
+      "english": "Bold color blocks and free brushstrokes, conveying intense emotions",
+      "image_url": "/prompts-images/10_5.png",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 177,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "抽象的光影效果，运用渐变和反射来营造深度",
+      "english": "Abstract light and shadow effects, using gradients and reflections to create depth",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 178,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "复杂的纹理和层次感，运用多种材料构建立体艺术",
+      "english": "Complex textures and layers, using various materials to build three-dimensional art",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 179,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "对比鲜明的黑白抽象画，运用线条和形状构建对称性",
+      "english": "High-contrast black and white abstract art, using lines and shapes to create symmetry",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 180,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "抽象人像画，面部特征被极简化，留下色彩和形状的探索",
+      "english": "Abstract portrait, facial features minimized, leaving color and shape exploration",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 181,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "旋转和扭曲的图案，表现出动态的旋律感",
+      "english": "Spiraling and twisted patterns, expressing a sense of dynamic rhythm",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 182,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "具有金属质感的抽象雕塑，反射环境光线，展现独特的光影",
+      "english": "Abstract sculpture with a metallic finish, reflecting ambient light, showcasing unique shadows",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 183,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "涂鸦风格的抽象艺术，色彩和线条的自由碰撞",
+      "english": "Graffiti-style abstract art, free collision of colors and lines",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 184,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "运用自然元素的抽象作品，混合树叶、砂石等自然材料",
+      "english": "Abstract work using natural elements, blending leaves, sand, and other natural materials",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 185,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "现代主义抽象艺术，极简线条与单色背景的结合",
+      "english": "Modernist abstract art, combining minimalistic lines with a monochrome background",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 186,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "像素化的抽象画，利用数字效果模糊现实与虚拟之间的界限",
+      "english": "Pixelated abstract painting, using digital effects to blur the line between reality and virtual",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 187,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "表现时间和空间交错的抽象作品，带有旋转的螺旋图案",
+      "english": "Abstract piece depicting the intertwining of time and space, featuring rotating spiral patterns",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 188,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "多维度的抽象艺术，使用反射材料和透明层次",
+      "english": "Multi-dimensional abstract art, using reflective materials and transparent layers",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 189,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "情感驱动的抽象表现，色彩和形状展现内心的波动",
+      "english": "Emotion-driven abstract expression, where colors and shapes depict inner turmoil",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 190,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "细腻的线条交织，创造出复杂的抽象网格效果",
+      "english": "Intricate lines interweaving, creating a complex abstract grid effect",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 191,
+      "title": "抽象/艺术类提示词 - 通用",
+      "chinese": "运用冷暖色调对比的抽象作品，强调情感的对立",
+      "english": "Abstract work using cool and warm color contrasts, emphasizing emotional oppositions",
+      "image_url": "",
+      "category": "抽象/艺术类提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 192,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个具有友好表情和蓝色发光眼睛的未来机器人吉祥物",
+      "english": "Create a futuristic robot mascot with a friendly expression and glowing blue eyes",
+      "image_url": "/prompts-images/11_1.png",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 193,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个大眼睛和俏皮姿势的可爱动物角色",
+      "english": "Design a cute animal character with large eyes and a playful pose",
+      "image_url": "/prompts-images/11_2.png",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 194,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个具有独特服装和动态动作姿势的超级英雄角色",
+      "english": "Illustrate a superhero character with a unique costume and dynamic action pose",
+      "image_url": "/prompts-images/11_3.png",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 195,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有龙翼和顽皮笑容的奇幻生物",
+      "english": "Create a fantasy creature with dragon wings and a mischievous smile",
+      "image_url": "/prompts-images/11_4.png",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 196,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个戴太阳镜和皮夹克的时尚拟人化猫咪",
+      "english": "Design a stylish anthropomorphic cat with sunglasses and a leather jacket",
+      "image_url": "/prompts-images/11_5.png",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 197,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个持魔杖并带有闪光效果的魔法少女角色",
+      "english": "Illustrate a magical girl character with a wand and sparkling effects",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 198,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有透明翅膀和花冠的奇幻仙子角色",
+      "english": "Create a whimsical fairy character with translucent wings and a flower crown",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 199,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一只带有金属毛发和LED眼睛的机器人狗",
+      "english": "Design a robotic dog with metallic fur and LED eyes",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 200,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个肩上有鹦鹉和藏宝图的海盗主题角色",
+      "english": "Illustrate a pirate-themed character with a parrot on the shoulder and a treasure map",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 201,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有齿轮、护目镜和机械臂的蒸汽朋克角色",
+      "english": "Create a steampunk character with gears, goggles, and a mechanical arm",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 202,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个穿着流线型宇航服和带有反光面罩头盔的未来宇航员角色",
+      "english": "Design a futuristic astronaut character with a sleek spacesuit and a helmet with a reflective visor",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 203,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个带有天线和发光光环的友好外星人角色",
+      "english": "Illustrate a friendly alien character with antennas and a glowing aura",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 204,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有夸张特征和快乐表情的卡通食品吉祥物",
+      "english": "Create a cartoonish food mascot with exaggerated features and a happy expression",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 205,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个带有剑和覆盖发光符文盔甲的神话战士",
+      "english": "Design a mythical warrior with a sword and armor covered in glowing runes",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 206,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个带有流线型线条和霓虹灯装饰的未来城市吉祥物",
+      "english": "Illustrate a futuristic city mascot with sleek lines and neon accents",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 207,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有多只眼睛和大笑容的俏皮怪物角色",
+      "english": "Create a playful monster character with multiple eyes and a big smile",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 208,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个带有皇冠和威严鬃毛的皇室狮子角色",
+      "english": "Design a regal lion character with a crown and a majestic mane",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 209,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "绘制一个带有面具和手握飞镖的忍者角色",
+      "english": "Illustrate a ninja character with a mask and throwing stars in hand",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 210,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "创建一个带有长胡子和发光法杖的神秘巫师角色",
+      "english": "Create a mystical wizard character with a long beard and a glowing staff",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 211,
+      "title": "IP形象相关提示词 - 通用",
+      "chinese": "设计一个带有霓虹纹身和机械臂的赛博朋克角色",
+      "english": "Design a cyberpunk character with neon tattoos and a robotic arm",
+      "image_url": "",
+      "category": "IP形象相关提示词",
+      "param_type": "通用"
+    },
+    {
+      "id": 212,
+      "title": "珠宝设计 - 提示词示例",
+      "chinese": "经典钻石戒指设计，高清成品效果图，展示戒指的整体外观，戒面镶嵌圆形切割钻石，钻石的切面光芒四射。细节拆分示意图，显示戒指的结构，包括钻石爪镶、戒托设计、戒环内侧的雕刻细节。黄金材质的戒托，表面有细腻的抛光效果，展现出戒指的奢华与精致。",
+      "english": "Classic diamond ring design, high-definition final product rendering showcasing the overall appearance of the ring, with a round-cut diamond set in the center, sparkling facets of the diamond. Detailed breakdown illustration displaying the ring's structure, including prong settings, band design, and inner band engravings. Gold band material with fine polished finish, demonstrating the ring's luxury and delicacy.",
+      "image_url": "/prompts-images/28_1.png",
+      "category": "珠宝设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 213,
+      "title": "珠宝设计 - 提示词示例",
+      "chinese": "现代几何形耳环设计，高清成品效果图，展示耳环的独特几何形状，使用玫瑰金材质，表面光滑且有金属光泽。细节拆分示意图，显示耳环的结构，包括挂钩设计、连接件细节以及几何形状的构造，金属边缘的精细打磨。耳环的反光效果逼真，突显出现代时尚感。",
+      "english": "Modern geometric earrings design, high-definition final product rendering showcasing the unique geometric shape of the earrings, made of rose gold with a smooth metallic sheen. Detailed breakdown illustration displaying the structure of the earrings, including hook design, connector details, and geometric construction, with finely polished metal edges. Realistic reflections on the earrings highlight a modern, stylish appeal.",
+      "image_url": "/prompts-images/28_2.png",
+      "category": "珠宝设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 214,
+      "title": "珠宝设计 - 提示词示例",
+      "chinese": "复古风宝石项链设计，超高清成品效果图，展示项链的整体外观，中央镶嵌一颗大颗祖母绿宝石，周围环绕着精致的镶嵌钻石。细节拆分示意图，显示链条的设计、镶嵌细节、宝石的切割和底座的雕刻。白金材质，展现出复古风格的典雅与华丽，宝石的透明度和反射光线细节丰富。",
+      "english": "Vintage gemstone necklace design, ultra-high-definition final product rendering showcasing the overall appearance of the necklace, with a large central emerald gemstone surrounded by delicately set diamonds. Detailed breakdown illustration showing the chain design, setting details, gemstone cuts, and base engravings. Made of platinum, the design reflects vintage elegance and luxury, with rich details of gemstone transparency and light reflections.",
+      "image_url": "/prompts-images/28_3.png",
+      "category": "珠宝设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 215,
+      "title": "珠宝设计 - 提示词示例",
+      "chinese": "个性化雕刻手镯设计，高清成品效果图，展示手镯的整体造型，采用白金材质，表面雕刻有细腻的花纹和刻字。细节拆分示意图，显示手镯的开口设计、雕刻工艺的细节、金属弯曲的精度。手镯的抛光表面反射光线，细节展示每一个雕刻图案的精美。",
+      "english": "Personalized engraved bracelet design, high-definition final product rendering showcasing the overall shape of the bracelet, made of platinum with intricate floral patterns and inscriptions engraved on the surface. Detailed breakdown illustration showing the bracelet's opening design, engraving craftsmanship details, and precision of metal bending. Polished surface of the bracelet reflects light, with detailed display of each engraving pattern's fineness.",
+      "image_url": "/prompts-images/28_4.png",
+      "category": "珠宝设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 216,
+      "title": "服装设计 - 提示词示例",
+      "chinese": "设计一款现代极简主义风格的女装，采用无袖A字连衣裙，纯白色，剪裁简洁且利落。裙子采用高品质的丝绸材质，表面光滑且带有微光泽。下摆略微扩展，背部配有隐形拉链，无任何多余装饰。整体风格干练且优雅，适合日常通勤和正式场合。",
+      "english": "Design a modern minimalist-style women's outfit featuring a sleeveless A-line dress in pure white, with clean and sharp cuts. The dress is made of high-quality silk, with a smooth surface and a subtle sheen. The hem slightly flares out, and there is a concealed zipper at the back, with no additional embellishments. The overall style is sleek and elegant, suitable for both daily wear and formal occasions.",
+      "image_url": "/prompts-images/29_1.png",
+      "category": "服装设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 217,
+      "title": "服装设计 - 提示词示例",
+      "chinese": "创建一款复古风格的男士西装，三件套，采用深蓝色的羊毛材质。西装剪裁合身，翻领为经典的宽翻领设计，纽扣为复古金属样式。内衬采用暗纹花卉图案，袖口配有精致的纽扣细节。整体氛围复古且高贵，适合正式晚宴和社交活动。",
+      "english": "Create a vintage-style men's suit, a three-piece set made of deep blue wool. The suit features a tailored fit with a classic wide lapel, and the buttons are vintage metal style. The lining is adorned with a subtle floral pattern, and the cuffs feature detailed buttons. The overall atmosphere is vintage and sophisticated, perfect for formal dinners and social events.",
+      "image_url": "/prompts-images/29_2.png",
+      "category": "服装设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 218,
+      "title": "服装设计 - 提示词示例",
+      "chinese": "设计一款街头风格的青年服饰，搭配宽松的连帽卫衣和破洞牛仔裤。卫衣为深灰色，正面印有醒目的涂鸦图案，带有轻微的做旧效果。牛仔裤采用浅蓝色，膝盖部分有明显的破洞和磨边处理。整体风格休闲且富有个性，适合年轻人的日常穿搭。",
+      "english": "Design a streetwear-style youth outfit featuring a loose-fitting hoodie and distressed jeans. The hoodie is dark gray with a bold graffiti print on the front, and has a slightly worn-in look. The jeans are light blue, with prominent rips and frayed edges at the knees. The overall style is casual and edgy, perfect for everyday wear for young people.",
+      "image_url": "/prompts-images/29_3.png",
+      "category": "服装设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 219,
+      "title": "服装设计 - 提示词示例",
+      "chinese": "创建一款奢华风格的晚礼服，采用红色丝绸材质，肩部设计为一字肩。礼服剪裁贴合身形，腰部有精致的刺绣装饰，裙摆为鱼尾设计，拖尾部分延展至地面。礼服上点缀有微小的水晶装饰，在灯光下闪烁光芒。整体氛围华丽且优雅，适合高端晚宴和红毯活动。",
+      "english": "Create a luxurious evening gown made of red silk, with an off-the-shoulder neckline. The gown is form-fitting with delicate embroidery at the waist, and the skirt flows into a mermaid shape with a train that extends to the floor. The gown is adorned with tiny crystal embellishments that sparkle under the lights. The overall atmosphere is opulent and elegant, perfect for high-end dinners and red carpet events.",
+      "image_url": "/prompts-images/29_4.png",
+      "category": "服装设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 220,
+      "title": "服装设计 - 完整提示词示例",
+      "chinese": "当代服装设计草图，极简轮廓与流动的褶皱，技术平面图包含多个角度，包括正视图和背视图，面料纹理和缝纫细节的特写，重点关注领口和下摆的细节，展示在白色背景上。",
+      "english": "fashion design sketch of a contemporary dress, minimalist outline with flowing drapery, technical flat drawing with multiple angles including front and back views, close-up of fabric texture and stitching details, focus on the neckline and hem detailing, displayed on a white background",
+      "image_url": "/prompts-images/29_5.png",
+      "category": "服装设计",
+      "param_type": "完整提示词示例"
+    },
+    {
+      "id": 221,
+      "title": "服装设计 - 完整提示词示例",
+      "chinese": "复古礼服的服装草图，详细绘制带有刺绣花卉图案和分层流苏，特写展示蕾丝图案和珠饰，包括服装结构分解图的多个视图，带阴影的线条图以展示面料流动，标注突出关键设计元素。",
+      "english": "fashion sketch of a vintage gown, detailed drawing with embroidered floral motifs and layered fringe, close-up of lace patterns and beading, multiple views including a breakdown of garment construction, line drawing with shading to show fabric flow, annotations highlighting key design elements",
+      "image_url": "/prompts-images/29_6.png",
+      "category": "服装设计",
+      "param_type": "完整提示词示例"
+    },
+    {
+      "id": 222,
+      "title": "海报设计 - 提示词示例",
+      "chinese": "复古电影海报，带有黑色电影美学，单色调，带有红色点缀，粗体衬线字体，中央的高对比度肖像，对称布局，文本居中，黑暗而神秘的氛围",
+      "english": "vintage movie poster with a noir aesthetic, monochrome with a splash of red, bold serif font, high-contrast portrait in the center, symmetrical layout with centered text, dark and mysterious atmosphere",
+      "image_url": "/prompts-images/30_1.png",
+      "category": "海报设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 223,
+      "title": "海报设计 - 提示词示例",
+      "chinese": "现代极简主义音乐会海报，柔和色调，带有低饱和度色彩，优雅的无衬线字体，抽象几何图案，全版图片，文本极简，明亮而充满活力的氛围",
+      "english": "modern minimalist concert poster, pastel colors with muted tones, elegant sans-serif font, abstract geometric patterns, full-bleed image with minimal text, bright and energetic atmosphere",
+      "image_url": "/prompts-images/30_2.png",
+      "category": "海报设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 224,
+      "title": "海报设计 - 提示词示例",
+      "chinese": "未来科技会议海报，大胆的原色，几何与现代字体设计，手绘科技图标，基于网格的布局，间距均匀，都市感且粗犷的氛围",
+      "english": "futuristic tech conference poster, bold primary colors, geometric and modern typography, illustrated tech icons, grid-based layout with equal spacing, urban and gritty atmosphere",
+      "image_url": "/prompts-images/30_3.png",
+      "category": "海报设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 225,
+      "title": "海报设计 - 提示词示例",
+      "chinese": "复古80年代霓虹风格活动海报，深色调，带有明亮的霓虹点缀，手写字体，复古照片拼贴，不对称设计，带有重叠元素，充满活力且怀旧的氛围",
+      "english": "retro 80s neon-style event poster, dark palette with bright neon accents, handwritten script, collage of vintage photographs, asymmetrical design with overlapping elements, vibrant and nostalgic atmosphere",
+      "image_url": "/prompts-images/30_4.png",
+      "category": "海报设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 226,
+      "title": "摄影设计 - 提示词示例",
+      "chinese": "复古电影海报，带有黑色电影美学，单色调，带有红色点缀，粗体衬线字体，中央的高对比度肖像，对称布局，文本居中，黑暗而神秘的氛围",
+      "english": "vintage movie poster with a noir aesthetic, monochrome with a splash of red, bold serif font, high-contrast portrait in the center, symmetrical layout with centered text, dark and mysterious atmosphere",
+      "image_url": "/prompts-images/31_1.png",
+      "category": "摄影设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 227,
+      "title": "摄影设计 - 提示词示例",
+      "chinese": "现代极简主义音乐会海报，柔和色调，带有低饱和度色彩，优雅的无衬线字体，抽象几何图案，全版图片，文本极简，明亮而充满活力的氛围",
+      "english": "modern minimalist concert poster, pastel colors with muted tones, elegant sans-serif font, abstract geometric patterns, full-bleed image with minimal text, bright and energetic atmosphere",
+      "image_url": "/prompts-images/31_2.png",
+      "category": "摄影设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 228,
+      "title": "摄影设计 - 提示词示例",
+      "chinese": "未来科技会议海报，大胆的原色，几何与现代字体设计，手绘科技图标，基于网格的布局，间距均匀，都市感且粗犷的氛围",
+      "english": "futuristic tech conference poster, bold primary colors, geometric and modern typography, illustrated tech icons, grid-based layout with equal spacing, urban and gritty atmosphere",
+      "image_url": "/prompts-images/31_3.png",
+      "category": "摄影设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 229,
+      "title": "摄影设计 - 提示词示例",
+      "chinese": "复古80年代霓虹风格活动海报，深色调，带有明亮的霓虹点缀，手写字体，复古照片拼贴，不对称设计，带有重叠元素，充满活力且怀旧的氛围",
+      "english": "retro 80s neon-style event poster, dark palette with bright neon accents, handwritten script, collage of vintage photographs, asymmetrical design with overlapping elements, vibrant and nostalgic atmosphere",
+      "image_url": "/prompts-images/31_4.png",
+      "category": "摄影设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 230,
+      "title": "插画设计 - 提示词示例",
+      "chinese": "水彩插画，细腻的花卉，柔和流畅的笔触，柔和的粉彩色调和渐变，对称构图，焦点在中心，笔触中带有微妙的纹理，营造出梦幻般的空灵氛围",
+      "english": "watercolor illustration of delicate flowers with soft, flowing strokes, pastel color palette with soft gradients, symmetrical composition with a central focus, subtle texture in the brushstrokes, creating a dreamy and ethereal atmosphere",
+      "image_url": "/prompts-images/32_1.png",
+      "category": "插画设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 231,
+      "title": "插画设计 - 提示词示例",
+      "chinese": "矢量艺术，现代城市景观，锐利的线条和鲜艳的色彩，高对比度的霓虹色调，夸张角度的动态透视，大胆的平面色彩图形线条，营造出都市和未来感的氛围",
+      "english": "vector art of a modern cityscape with sharp lines and vibrant colors, high-contrast neon color palette, dynamic perspective with exaggerated angles, bold graphic lines with flat colors, urban and futuristic atmosphere",
+      "image_url": "/prompts-images/32_2.png",
+      "category": "插画设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 232,
+      "title": "插画设计 - 提示词示例",
+      "chinese": "复古海报风格插画，航海探险，沉稳的土色调，深蓝色和棕色，圆形构图，元素向外辐射，精细的墨线和详细的阴影，经典怀旧的感觉",
+      "english": "vintage poster style illustration of a nautical adventure, muted earthy tones with deep blues and browns, circular composition with elements radiating outward, fine ink lines with detailed shading, classic and nostalgic feel",
+      "image_url": "/prompts-images/32_3.png",
+      "category": "插画设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 233,
+      "title": "插画设计 - 提示词示例",
+      "chinese": "奇幻艺术，勇士与龙战斗，精细的角色设计，复杂的盔甲和鳞片，丰富的色调和大胆的对比，动态构图，戏剧性的灯光效果，纹理笔触增加深度和强度",
+      "english": "fantasy art of a warrior battling a dragon, detailed character designs with intricate armor and scales, rich color palette with bold contrasts, dynamic composition with dramatic lighting, textured brushstrokes adding depth and intensity",
+      "image_url": "/prompts-images/32_4.png",
+      "category": "插画设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 234,
+      "title": "建筑设计 - 提示词示例",
+      "chinese": "现代办公楼，高层建筑，主要采用玻璃和钢材，玻璃幕墙设计，开放式平面布局，融入绿色屋顶和智能建筑系统，节能环保，强调自然光的使用，融合城市景观",
+      "english": "Modern office building, high-rise structure, primarily glass and steel, featuring glass curtain walls, open floor plan, integrated green roof and smart building systems, energy-efficient, emphasis on natural light, blended with urban landscape",
+      "image_url": "/prompts-images/33_1.png",
+      "category": "建筑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 235,
+      "title": "建筑设计 - 提示词示例",
+      "chinese": "传统博物馆，低层建筑，采用石材和木材，古典风格立面设计，雕刻细节丰富，圆拱形窗户，内部展览空间广阔，光线柔和，突出文化遗产的展示",
+      "english": "Traditional museum, low-rise building, stone and wood construction, classical facade design, rich in carved details, arched windows, expansive interior exhibition spaces, soft lighting, highlighting cultural heritage",
+      "image_url": "/prompts-images/33_2.png",
+      "category": "建筑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 236,
+      "title": "建筑设计 - 提示词示例",
+      "chinese": "未来主义住宅，独特的几何形状，使用混凝土和玻璃材料，悬挑结构，极简风格，智能家居系统，高效能源管理，利用太阳能和风能，融合自然景观",
+      "english": "Futuristic residential home, unique geometric shapes, concrete and glass materials, cantilevered structure, minimalist design, smart home systems, efficient energy management, utilizing solar and wind energy, integrated with natural landscape",
+      "image_url": "/prompts-images/33_3.png",
+      "category": "建筑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 237,
+      "title": "建筑设计 - 提示词示例",
+      "chinese": "生态友好学校，校园建筑，使用可再生材料，采用木材和再生混凝土，绿色屋顶和墙体，开放式学习空间，最大化自然光的利用，雨水收集系统，环境可持续性设计",
+      "english": "Eco-friendly school, campus buildings, utilizing renewable materials, wood and recycled concrete, green roofs and walls, open learning spaces, maximizing natural light, rainwater harvesting system, environmentally sustainable design",
+      "image_url": "/prompts-images/33_4.png",
+      "category": "建筑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 238,
+      "title": "工艺品设计 - 提示词示例",
+      "chinese": "现代金属工艺品，采用不锈钢材料，抛光表面，简洁的几何形状设计，适合作为装饰摆件，极简主义风格，适合现代家居环境",
+      "english": "Modern metal craft, made of stainless steel, polished surface, simple geometric shape design, suitable as decorative ornament, minimalist style, perfect for modern home decor",
+      "image_url": "/prompts-images/34_1.png",
+      "category": "工艺品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 239,
+      "title": "工艺品设计 - 提示词示例",
+      "chinese": "传统木雕摆件，采用实木材质，手工雕刻，雕刻细腻，展现自然景观图案，复古风格，适合作为客厅或书房的装饰品",
+      "english": "Traditional wooden carving ornament, made of solid wood, handcrafted with fine detailing, depicting natural landscape patterns, vintage style, ideal for living room or study decor",
+      "image_url": "/prompts-images/34_2.png",
+      "category": "工艺品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 240,
+      "title": "工艺品设计 - 提示词示例",
+      "chinese": "手工吹制玻璃花瓶，透明玻璃材质，流线型设计，表面带有彩色涂层，适合作为桌面装饰，现代艺术风格",
+      "english": "Hand-blown glass vase, made of transparent glass, streamlined design, with a colored coating on the surface, suitable as a tabletop decoration, modern art style",
+      "image_url": "/prompts-images/34_3.png",
+      "category": "工艺品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 241,
+      "title": "工艺品设计 - 提示词示例",
+      "chinese": "民族风刺绣挂毯，采用传统刺绣技艺，图案为抽象花卉和几何图案，色彩鲜艳，适合挂在墙上，增加室内文化氛围",
+      "english": "Ethnic embroidered tapestry, using traditional embroidery techniques, features abstract floral and geometric patterns, vibrant colors, perfect for wall hanging to enhance cultural ambiance",
+      "image_url": "/prompts-images/34_4.png",
+      "category": "工艺品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 242,
+      "title": "家居设计 - 提示词示例",
+      "chinese": "现代客厅沙发设计，采用高档皮革材质，深灰色调，简洁的直线条，配有不锈钢脚，适合现代简约风格的客厅，强调舒适和时尚感",
+      "english": "Modern living room sofa design, made of premium leather, in deep gray tones, featuring clean lines, with stainless steel legs, suitable for modern minimalist living rooms, emphasizing comfort and style",
+      "image_url": "/prompts-images/35_1.png",
+      "category": "家居设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 243,
+      "title": "家居设计 - 提示词示例",
+      "chinese": "复古餐桌设计，使用实木材质，深棕色调，桌面带有自然纹理和雕刻边缘，四脚为传统雕花设计，适合复古或乡村风格的餐厅",
+      "english": "Vintage dining table design, made of solid wood, in dark brown tones, tabletop with natural grain and carved edges, with traditional carved legs, ideal for vintage or rustic style dining rooms",
+      "image_url": "/prompts-images/35_2.png",
+      "category": "家居设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 244,
+      "title": "家居设计 - 提示词示例",
+      "chinese": "北欧风格卧室灯具，简约设计，使用天然木材和白色织物灯罩，柔和的暖光效果，适合营造温馨和谐的卧室氛围",
+      "english": "Scandinavian style bedroom lighting, minimalist design, using natural wood and white fabric lampshade, providing a soft warm light effect, perfect for creating a cozy and harmonious bedroom ambiance",
+      "image_url": "/prompts-images/35_3.png",
+      "category": "家居设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 245,
+      "title": "家居设计 - 提示词示例",
+      "chinese": "工业风书架设计，采用黑色金属框架和实木层板，表面做旧处理，开放式设计，适合工业风或现代都市风格的书房或客厅",
+      "english": "Industrial style bookshelf design, featuring a black metal frame and solid wood shelves, with a distressed finish, open design, ideal for industrial or modern urban style study or living room",
+      "image_url": "/prompts-images/35_4.png",
+      "category": "家居设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 246,
+      "title": "图标设计 - 提示词示例",
+      "chinese": "扁平化应用图标设计，使用圆角矩形形状，线性图案，明亮的配色方案，无阴影或渐变，简洁的视觉风格，适合现代应用程序界面",
+      "english": "Flat app icon design, using rounded rectangular shape, linear pattern, bright color scheme, no shadows or gradients, clean visual style, suitable for modern app interfaces",
+      "image_url": "/prompts-images/36_1.png",
+      "category": "图标设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 247,
+      "title": "图标设计 - 提示词示例",
+      "chinese": "拟物化社交媒体图标，使用立体效果和细腻的纹理，圆形形状，带有阴影和高光，表现出真实的材质感，适合增强品牌辨识度",
+      "english": "Skeuomorphic social media icon, using 3D effect and detailed texture, circular shape, with shadows and highlights, conveying realistic material feel, ideal for enhancing brand recognition",
+      "image_url": "/prompts-images/36_2.png",
+      "category": "图标设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 248,
+      "title": "图标设计 - 提示词示例",
+      "chinese": "极简主义系统图标设计，方形基础，细线条和简单形状，无多余装饰，单一颜色调色板，强调功能性和清晰度，适合现代操作系统界面",
+      "english": "Minimalist system icon design, square base, thin lines and simple shapes, no excessive decorations, monochromatic color palette, emphasizing functionality and clarity, perfect for modern OS interfaces",
+      "image_url": "/prompts-images/36_3.png",
+      "category": "图标设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 249,
+      "title": "图标设计 - 提示词示例",
+      "chinese": "复古风网页图标设计，使用复古色调和经典形状，搭配装饰性边框和纹理，图标带有轻微的颗粒感，营造出怀旧氛围，适合复古主题网站",
+      "english": "Vintage style web icon design, using retro color tones and classic shapes, with decorative borders and textures, icons have a slight grainy effect, creating a nostalgic atmosphere, ideal for retro-themed websites",
+      "image_url": "/prompts-images/36_4.png",
+      "category": "图标设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 250,
+      "title": "文字效果设计 - 提示词示例",
+      "chinese": "现代无衬线字体标题设计，使用粗体字，线条简洁，黑白配色，带有轻微的阴影效果，适合用于网页和广告设计，强调清晰度和现代感",
+      "english": "Modern sans-serif title design, using bold typeface, clean lines, black and white color scheme, with subtle shadow effects, suitable for web and advertising design, emphasizing clarity and modernity",
+      "image_url": "/prompts-images/37_1.png",
+      "category": "文字效果设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 251,
+      "title": "文字效果设计 - 提示词示例",
+      "chinese": "复古霓虹灯文字效果，采用手写体风格，色彩鲜艳，带有闪烁效果，适用于夜店标识和复古主题设计，营造怀旧氛围",
+      "english": "Vintage neon text effect, in handwritten style, vibrant colors, with flickering effect, ideal for nightclub signage and retro-themed designs, creating a nostalgic atmosphere",
+      "image_url": "/prompts-images/37_2.png",
+      "category": "文字效果设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 252,
+      "title": "文字效果设计 - 提示词示例",
+      "chinese": "3D金属文字设计，使用衬线字体，表面带有金属光泽和反光效果，文字立体感强烈，适合用于品牌标识和高科技产品广告",
+      "english": "3D metallic text design, using serif typeface, with metallic shine and reflective effects, strong three-dimensional appearance, perfect for brand logos and high-tech product advertising",
+      "image_url": "/prompts-images/37_3.png",
+      "category": "文字效果设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 253,
+      "title": "文字效果设计 - 提示词示例",
+      "chinese": "手写体装饰文字，线条细腻流畅，配有花卉和叶子装饰元素，颜色柔和，适合用于婚礼请柬和浪漫主题设计",
+      "english": "Handwritten decorative text, with delicate and smooth lines, featuring floral and leaf decorative elements, soft color palette, suitable for wedding invitations and romantic-themed designs",
+      "image_url": "/prompts-images/37_4.png",
+      "category": "文字效果设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 254,
+      "title": "平面设计 - 提示词示例",
+      "chinese": "现代企业名片设计，使用极简风格，黑白配色，线条简洁，带有企业徽标和联系方式的清晰布局，适合专业商务场合",
+      "english": "Modern corporate business card design, featuring a minimalist style, black and white color scheme, clean lines, clear layout with company logo and contact information, suitable for professional business settings",
+      "image_url": "/prompts-images/38_1.png",
+      "category": "平面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 255,
+      "title": "平面设计 - 提示词示例",
+      "chinese": "复古海报设计，使用怀旧色调和经典字体，带有手绘插图和装饰性边框，营造出怀旧氛围，适合复古品牌宣传",
+      "english": "Vintage poster design, using nostalgic color tones and classic typography, featuring hand-drawn illustrations and decorative borders, creating a retro atmosphere, ideal for vintage brand promotion",
+      "image_url": "/prompts-images/38_2.png",
+      "category": "平面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 256,
+      "title": "平面设计 - 提示词示例",
+      "chinese": "艺术装饰风格的广告设计，采用几何图案和金色调，文字排版富有装饰性，适用于高端奢侈品品牌广告",
+      "english": "Art Deco style advertisement design, featuring geometric patterns and gold tones, decorative typography, suitable for luxury brand advertising",
+      "image_url": "/prompts-images/38_3.png",
+      "category": "平面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 257,
+      "title": "平面设计 - 提示词示例",
+      "chinese": "科技感网页设计，使用深色背景和亮色对比，带有动态效果和渐变色彩，布局简洁，适合高科技产品宣传",
+      "english": "Tech-inspired web design, featuring dark backgrounds with bright contrasting colors, dynamic effects and gradient hues, clean layout, perfect for high-tech product promotion",
+      "image_url": "/prompts-images/38_4.png",
+      "category": "平面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 258,
+      "title": "家具设计 - 提示词示例",
+      "chinese": "现代客厅沙发设计，采用高档皮革材质，深灰色调，简洁的直线条，配有不锈钢脚，适合现代简约风格的客厅，强调舒适和时尚感",
+      "english": "Modern living room sofa design, made of premium leather, in deep gray tones, featuring clean lines, with stainless steel legs, suitable for modern minimalist living rooms, emphasizing comfort and style",
+      "image_url": "/prompts-images/39_1.png",
+      "category": "家具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 259,
+      "title": "家具设计 - 提示词示例",
+      "chinese": "复古木质书桌设计，使用实木材质，深棕色调，桌面带有自然纹理和雕刻边缘，配有复古金属拉手，适合复古或乡村风格的工作空间",
+      "english": "Vintage wooden desk design, made of solid wood, in dark brown tones, tabletop with natural grain and carved edges, featuring vintage metal handles, ideal for vintage or rustic style workspaces",
+      "image_url": "/prompts-images/39_2.png",
+      "category": "家具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 260,
+      "title": "家具设计 - 提示词示例",
+      "chinese": "北欧风格餐椅设计，采用天然木材和白色座垫，简洁的直线条设计，表面哑光处理，适合温馨明亮的餐厅环境",
+      "english": "Scandinavian style dining chair design, made of natural wood with a white cushion, featuring simple straight-line design, matte surface finish, perfect for cozy and bright dining settings",
+      "image_url": "/prompts-images/39_3.png",
+      "category": "家具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 261,
+      "title": "家具设计 - 提示词示例",
+      "chinese": "工业风金属书架设计，采用黑色金属框架和实木层板，表面做旧处理，开放式设计，适合工业风或现代都市风格的书房或客厅",
+      "english": "Industrial style bookshelf design, featuring a black metal frame and solid wood shelves, with a distressed finish, open design, ideal for industrial or modern urban style study or living room",
+      "image_url": "/prompts-images/39_4.png",
+      "category": "家具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 262,
+      "title": "汽车设计 - 提示词示例",
+      "chinese": "未来主义电动车设计，流线型车身，采用铝合金和碳纤维材质，前灯设计极具科技感，低风阻轮廓，配备智能驾驶系统，适合城市通勤和长途旅行",
+      "english": "Futuristic electric vehicle design, streamlined body, using aluminum and carbon fiber materials, high-tech headlight design, low drag profile, equipped with smart driving system, suitable for urban commuting and long-distance travel",
+      "image_url": "/prompts-images/40_1.png",
+      "category": "汽车设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 263,
+      "title": "汽车设计 - 提示词示例",
+      "chinese": "复古跑车设计，经典曲线车身，使用抛光钢材和真皮内饰，圆形前灯和宽大进气格栅，配有高性能发动机，强调速度和驾驶乐趣",
+      "english": "Vintage sports car design, classic curved body, using polished steel and leather interior, round headlights and wide grille, equipped with high-performance engine, emphasizing speed and driving pleasure",
+      "image_url": "/prompts-images/40_2.png",
+      "category": "汽车设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 264,
+      "title": "汽车设计 - 提示词示例",
+      "chinese": "现代SUV设计，坚固的车身结构，采用钢材和玻璃纤维复合材料，大尺寸车轮和高离地间隙，内饰豪华，适合越野和长途旅行",
+      "english": "Modern SUV design, robust body structure, using steel and fiberglass composite materials, large wheels and high ground clearance, luxurious interior, suitable for off-road and long-distance travel",
+      "image_url": "/prompts-images/40_3.png",
+      "category": "汽车设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 265,
+      "title": "汽车设计 - 提示词示例",
+      "chinese": "运动型轿车设计，低矮的车身姿态，流线型设计，采用碳纤维和铝合金材质，前灯设计锐利，车内配备高科技配置，突出速度感和操控性能",
+      "english": "Sport sedan design, low stance, streamlined design, using carbon fiber and aluminum materials, sharp headlight design, equipped with high-tech features, emphasizing speed and handling performance",
+      "image_url": "/prompts-images/40_4.png",
+      "category": "汽车设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 266,
+      "title": "空间设计 - 提示词示例",
+      "chinese": "现代风格的客厅设计，使用灰色调和木质材料，开放式布局，配备极简主义家具，带有落地窗和自然光线，适合营造温馨且时尚的家居环境",
+      "english": "Modern living room design, using gray tones and wooden materials, open layout, equipped with minimalist furniture, featuring floor-to-ceiling windows and natural lighting, perfect for creating a cozy yet stylish home environment",
+      "image_url": "/prompts-images/41_1.png",
+      "category": "空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 267,
+      "title": "空间设计 - 提示词示例",
+      "chinese": "工业风办公空间设计，采用裸露的砖墙和金属元素，配有开放式天花板和大型工业灯具，整体色调为中性色，适合创意工作团队的办公环境",
+      "english": "Industrial office space design, featuring exposed brick walls and metal elements, with open ceilings and large industrial light fixtures, neutral color palette, ideal for creative work teams",
+      "image_url": "/prompts-images/41_2.png",
+      "category": "空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 268,
+      "title": "空间设计 - 提示词示例",
+      "chinese": "北欧风格的卧室设计，采用柔和的色调和天然木材，简洁的线条和温暖的照明，配有简约的床和布艺装饰，营造宁静且舒适的睡眠空间",
+      "english": "Scandinavian bedroom design, using soft tones and natural wood, clean lines and warm lighting, equipped with a simple bed and fabric decor, creating a serene and comfortable sleeping space",
+      "image_url": "/prompts-images/41_3.png",
+      "category": "空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 269,
+      "title": "空间设计 - 提示词示例",
+      "chinese": "艺术展览空间设计，宽敞的白色墙壁和光滑的地板，配有可调节的轨道灯光系统，空间布局灵活，适合各种形式的艺术展示",
+      "english": "Art exhibition space design, featuring spacious white walls and smooth floors, equipped with adjustable track lighting system, flexible layout, ideal for various forms of art display",
+      "image_url": "/prompts-images/41_4.png",
+      "category": "空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 270,
+      "title": "商超设计 - 提示词示例",
+      "chinese": "现代大型超市设计，采用开放式布局，使用金属和玻璃材料，色彩明亮且具有活力，货架排列整齐，配有清晰的导视系统，适合日常购物和家庭需求",
+      "english": "Modern large-scale supermarket design, featuring an open layout, using metal and glass materials, bright and vibrant colors, neatly arranged shelves, with a clear signage system, suitable for daily shopping and family needs",
+      "image_url": "/prompts-images/42_1.png",
+      "category": "商超设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 271,
+      "title": "商超设计 - 提示词示例",
+      "chinese": "精品超市设计，注重高端品质，使用木材和大理石材料，色调优雅，灯光柔和，展示区域设计精致，适合高端食品和生活用品销售",
+      "english": "Boutique supermarket design, focusing on high-end quality, using wood and marble materials, elegant tones, soft lighting, with exquisitely designed display areas, ideal for premium food and lifestyle products",
+      "image_url": "/prompts-images/42_2.png",
+      "category": "商超设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 272,
+      "title": "商超设计 - 提示词示例",
+      "chinese": "生态环保便利店设计，使用可持续材料，如再生木材和天然纤维，内部设计简洁，强调自然光的利用，配有节能照明系统，适合都市环保消费群体",
+      "english": "Eco-friendly convenience store design, using sustainable materials such as reclaimed wood and natural fibers, minimalist interior design, emphasizing the use of natural light, equipped with energy-efficient lighting systems, suitable for urban eco-conscious consumers",
+      "image_url": "/prompts-images/42_3.png",
+      "category": "商超设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 273,
+      "title": "商超设计 - 提示词示例",
+      "chinese": "购物中心的未来主义设计，采用流线型建筑结构，使用高科技材料和互动数字显示屏，内部布局灵活，灯光设计强调科技感，适合年轻时尚的消费群体",
+      "english": "Futuristic shopping mall design, featuring streamlined architectural structures, using high-tech materials and interactive digital displays, flexible interior layout, lighting design emphasizing a tech-savvy atmosphere, perfect for young and trendy shoppers",
+      "image_url": "/prompts-images/42_4.png",
+      "category": "商超设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 274,
+      "title": "展示空间设计 - 提示词示例",
+      "chinese": "现代艺术展览空间设计，使用白色墙壁和光滑的地板，配备可调节的轨道照明系统，开放式布局，适合展示当代艺术作品，突出作品的独特性和创新性",
+      "english": "Modern art exhibition space design, featuring white walls and smooth floors, equipped with adjustable track lighting system, open layout, ideal for displaying contemporary art pieces, highlighting the uniqueness and innovation of the works",
+      "image_url": "/prompts-images/43_1.png",
+      "category": "展示空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 275,
+      "title": "展示空间设计 - 提示词示例",
+      "chinese": "科技感产品展示空间设计，采用金属和玻璃材料，展示柜带有LED灯光，互动式触摸屏墙面，色调以冷色系为主，营造出未来感和高科技氛围",
+      "english": "Tech-inspired product display space design, using metal and glass materials, display cases with LED lighting, interactive touchscreen walls, predominantly cool color tones, creating a futuristic and high-tech atmosphere",
+      "image_url": "/prompts-images/43_2.png",
+      "category": "展示空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 276,
+      "title": "展示空间设计 - 提示词示例",
+      "chinese": "博物馆展厅设计，采用自然木材和石材材料，配备柔和的环境光照明，展柜设计为防尘玻璃，色彩以中性色为主，强调历史感和文化深度",
+      "english": "Museum gallery design, using natural wood and stone materials, equipped with soft ambient lighting, dust-proof glass display cases, neutral color palette, emphasizing historical significance and cultural depth",
+      "image_url": "/prompts-images/43_3.png",
+      "category": "展示空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 277,
+      "title": "展示空间设计 - 提示词示例",
+      "chinese": "商业展台设计，采用模块化设计，使用轻质材料，展示区域具有灵活性，带有品牌标志和互动展示屏，色彩鲜明，吸引客户的注意力，突出产品特性",
+      "english": "Commercial exhibition booth design, featuring modular design, using lightweight materials, flexible display areas, with brand logos and interactive display screens, vibrant colors, designed to attract customers' attention and highlight product features",
+      "image_url": "/prompts-images/43_4.png",
+      "category": "展示空间设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 278,
+      "title": "眼镜设计 - 提示词示例",
+      "chinese": "现代极简主义眼镜设计，采用钛合金材料，超轻量化全框设计，镜片为抗反射涂层，整体黑色调，适合都市时尚人士日常佩戴",
+      "english": "Modern minimalist eyewear design, using titanium material, ultra-lightweight full-frame design, lenses with anti-reflective coating, overall black tone, suitable for urban fashion daily wear",
+      "image_url": "/prompts-images/44_1.png",
+      "category": "眼镜设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 279,
+      "title": "眼镜设计 - 提示词示例",
+      "chinese": "复古风格圆形太阳镜设计，采用金属框架和渐变色镜片，鼻托为可调节设计，镜腿带有细致的雕刻装饰，适合复古潮流的时尚配饰",
+      "english": "Vintage-style round sunglasses design, featuring a metal frame with gradient lenses, adjustable nose pads, and finely engraved temple arms, ideal as a fashion accessory for a retro look",
+      "image_url": "/prompts-images/44_2.png",
+      "category": "眼镜设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 280,
+      "title": "眼镜设计 - 提示词示例",
+      "chinese": "户外运动眼镜设计，采用耐用的塑料框架和防刮涂层镜片，全包围设计，镜片为防紫外线和防眩光涂层，适合户外运动爱好者",
+      "english": "Outdoor sports eyewear design, featuring a durable plastic frame and scratch-resistant lenses, wraparound design, with UV protection and anti-glare coating, perfect for outdoor sports enthusiasts",
+      "image_url": "/prompts-images/44_3.png",
+      "category": "眼镜设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 281,
+      "title": "眼镜设计 - 提示词示例",
+      "chinese": "奢华猫眼太阳镜设计，采用醋酸纤维材质，镜腿镶嵌有宝石装饰，镜片为偏光镜片，整体为金色和黑色配色，适合高端时尚场合",
+      "english": "Luxury cat-eye sunglasses design, made of acetate material, with gemstone-embellished temple arms, polarized lenses, in a gold and black color scheme, suitable for high-end fashion settings",
+      "image_url": "/prompts-images/44_4.png",
+      "category": "眼镜设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 282,
+      "title": "emoji表情包设计 - 提示词示例",
+      "chinese": "简约卡通风格表情包设计，使用简洁的线条和鲜艳的色彩，表达开心、愤怒、惊讶、悲伤等情感，适合日常聊天使用",
+      "english": "Minimalist cartoon-style emoji pack design, featuring simple lines and vibrant colors, expressing emotions like happiness, anger, surprise, and sadness, ideal for daily chat use",
+      "image_url": "/prompts-images/45_1.png",
+      "category": "emoji表情包设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 283,
+      "title": "emoji表情包设计 - 提示词示例",
+      "chinese": "复古手绘风格表情包设计，采用柔和的色调和粗线条，表现出怀旧感的表情，如微笑、哭泣、思考、惊讶等，适合复古风格的社交媒体互动",
+      "english": "Vintage hand-drawn emoji pack design, using soft tones and bold lines, conveying nostalgic expressions like smiling, crying, thinking, and surprise, perfect for retro-style social media interactions",
+      "image_url": "/prompts-images/45_2.png",
+      "category": "emoji表情包设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 284,
+      "title": "emoji表情包设计 - 提示词示例",
+      "chinese": "3D拟物风格表情包设计，采用立体造型和光影效果，表情细腻生动，表现开心、愤怒、害羞、惊恐等多种情感，适合年轻用户的互动",
+      "english": "3D realistic emoji pack design, featuring three-dimensional shapes and lighting effects, with detailed and lively expressions like happiness, anger, shyness, and fear, ideal for interactions among young users",
+      "image_url": "/prompts-images/45_3.png",
+      "category": "emoji表情包设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 285,
+      "title": "emoji表情包设计 - 提示词示例",
+      "chinese": "极简线条风表情包设计，使用极简的黑白线条，表现出幽默感的表情，如微笑、吐舌、眨眼、皱眉等，适合简约风格的沟通表达",
+      "english": "Minimalist line-art emoji pack design, using simple black and white lines, conveying humorous expressions like smiling, tongue out, winking, and frowning, perfect for minimalist-style communication",
+      "image_url": "/prompts-images/45_4.png",
+      "category": "emoji表情包设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 286,
+      "title": "手办设计 - 提示词示例",
+      "chinese": "动漫角色手办设计，采用PVC材质，角色为经典姿势，面部表情生动，服装细节丰富，色彩鲜艳，适合粉丝收藏和展示",
+      "english": "Anime character figure design, made of PVC material, character in a classic pose, vivid facial expression, detailed clothing, bright colors, perfect for fan collection and display",
+      "image_url": "/prompts-images/46_1.png",
+      "category": "手办设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 287,
+      "title": "手办设计 - 提示词示例",
+      "chinese": "科幻风格手办设计，使用树脂材料，角色穿戴未来战甲，配有可动关节和多种武器配件，整体造型充满科技感和未来感",
+      "english": "Sci-fi style figure design, made of resin material, character wearing futuristic armor, featuring movable joints and various weapon accessories, overall design full of technology and futuristic vibe",
+      "image_url": "/prompts-images/46_2.png",
+      "category": "手办设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 288,
+      "title": "手办设计 - 提示词示例",
+      "chinese": "复古风电影角色手办设计，采用金属和树脂结合材质，角色姿势固定，面部表情细腻，服装为经典复古风格，配有电影中的经典配件",
+      "english": "Vintage-style movie character figure design, made of metal and resin combination, character in a fixed pose, detailed facial expression, classic vintage-style clothing, with iconic movie accessories",
+      "image_url": "/prompts-images/46_3.png",
+      "category": "手办设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 289,
+      "title": "手办设计 - 提示词示例",
+      "chinese": "原创魔幻角色手办设计，采用硅胶和树脂材质，角色姿势动态，配有魔法道具和护甲细节，色彩梦幻，适合展示在高端收藏场所",
+      "english": "Original fantasy character figure design, made of silicone and resin materials, character in a dynamic pose, with magical items and armor details, dreamy color scheme, ideal for display in high-end collections",
+      "image_url": "/prompts-images/46_4.png",
+      "category": "手办设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 290,
+      "title": "玩具设计 - 提示词示例",
+      "chinese": "卡通风格益智玩具设计，采用鲜艳的颜色和柔和的塑料材料，拼装设计，部件易于拆装，适合幼儿的动手能力训练",
+      "english": "Cartoon-style educational toy design, featuring bright colors and soft plastic materials, modular design, parts easy to assemble and disassemble, ideal for developing toddlers' motor skills",
+      "image_url": "/prompts-images/47_1.png",
+      "category": "玩具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 291,
+      "title": "玩具设计 - 提示词示例",
+      "chinese": "复古风格毛绒玩具设计，使用柔软的布料和填充物，外观经典，带有刺绣细节和纽扣眼睛，适合作为儿童的玩伴或收藏品",
+      "english": "Vintage-style plush toy design, made with soft fabric and stuffing, classic appearance with embroidered details and button eyes, suitable as a child's companion or collectible",
+      "image_url": "/prompts-images/47_2.png",
+      "category": "玩具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 292,
+      "title": "玩具设计 - 提示词示例",
+      "chinese": "科幻风动作玩具设计，采用坚固的塑料材质，可动关节设计，带有光效和声音功能，适合喜爱科幻角色的儿童和青少年",
+      "english": "Sci-fi action figure design, made with durable plastic, featuring movable joints, with light and sound effects, perfect for children and teenagers who love sci-fi characters",
+      "image_url": "/prompts-images/47_3.png",
+      "category": "玩具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 293,
+      "title": "玩具设计 - 提示词示例",
+      "chinese": "益智拼图玩具设计，使用环保木材，拼图块形状各异，表面有动物图案和文字，适合提高儿童的逻辑思维和认知能力",
+      "english": "Educational puzzle toy design, made with eco-friendly wood, puzzle pieces in various shapes, featuring animal patterns and letters, ideal for enhancing children's logical thinking and cognitive skills",
+      "image_url": "/prompts-images/47_4.png",
+      "category": "玩具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 294,
+      "title": "IP形象设计 - 提示词示例",
+      "chinese": "卡通风格品牌吉祥物设计，使用明亮的色彩和简单的线条，吉祥物形象友好可爱，配有品牌标识和代表性元素，适合在多种媒介上使用",
+      "english": "Cartoon-style brand mascot design, featuring bright colors and simple lines, with a friendly and cute mascot character, incorporating brand logos and representative elements, suitable for use across various media",
+      "image_url": "/prompts-images/48_1.png",
+      "category": "IP形象设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 295,
+      "title": "IP形象设计 - 提示词示例",
+      "chinese": "科幻风虚拟偶像设计，使用未来感的服装和高科技配件，造型独特，面部表情酷炫，适合科幻主题的娱乐内容",
+      "english": "Sci-fi style virtual idol design, featuring futuristic clothing and high-tech accessories, with a unique appearance and cool facial expressions, perfect for sci-fi-themed entertainment content",
+      "image_url": "/prompts-images/48_2.png",
+      "category": "IP形象设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 296,
+      "title": "IP形象设计 - 提示词示例",
+      "chinese": "奇幻风格游戏角色设计，角色造型复杂，配有魔法道具和盔甲细节，颜色丰富，适合奇幻世界设定的游戏场景",
+      "english": "Fantasy-style game character design, with a complex character appearance, featuring magical items and armor details, rich color palette, ideal for fantasy world-themed game settings",
+      "image_url": "/prompts-images/48_3.png",
+      "category": "IP形象设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 297,
+      "title": "IP形象设计 - 提示词示例",
+      "chinese": "复古风动画角色设计，采用柔和的色调和经典服饰，角色形象有着怀旧感和独特的魅力，适合复古风格的动画作品",
+      "english": "Vintage-style animation character design, featuring soft tones and classic attire, with a nostalgic and unique charm, suitable for vintage-themed animation projects",
+      "image_url": "/prompts-images/48_4.png",
+      "category": "IP形象设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 298,
+      "title": "人物写真设计 - 提示词示例",
+      "chinese": "时尚都市写真，采用高对比度色彩，背景为城市天际线，模特穿着现代风格服饰，光线使用自然光，突出都市活力与个人风采",
+      "english": "Fashion urban portrait, featuring high-contrast colors, city skyline background, model dressed in modern fashion, natural lighting, emphasizing urban vitality and personal style",
+      "image_url": "/prompts-images/49_1.png",
+      "category": "人物写真设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 299,
+      "title": "人物写真设计 - 提示词示例",
+      "chinese": "黑白艺术写真，使用柔和的阴影和细腻的光线，背景简约，模特姿势优雅，突出情感表达和线条美感，适合艺术展览",
+      "english": "Black and white art portrait, using soft shadows and delicate lighting, minimalist background, model in elegant poses, highlighting emotional expression and line aesthetics, ideal for art exhibitions",
+      "image_url": "/prompts-images/49_2.png",
+      "category": "人物写真设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 300,
+      "title": "人物写真设计 - 提示词示例",
+      "chinese": "梦幻风自然写真，色调柔和，背景为森林或花园，模特穿着轻盈飘逸的服装，光线使用逆光或散射光，营造出梦幻般的氛围",
+      "english": "Dreamy nature portrait, featuring soft tones, forest or garden background, model dressed in light and flowing clothes, backlighting or diffused light, creating a dreamy atmosphere",
+      "image_url": "/prompts-images/49_3.png",
+      "category": "人物写真设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 301,
+      "title": "人物写真设计 - 提示词示例",
+      "chinese": "复古风格写真，采用复古色调和经典服饰，背景为老建筑或经典家具，模特姿势端庄，光线使用温暖的室内光源，突出复古气息",
+      "english": "Vintage-style portrait, featuring retro tones and classic attire, background with old buildings or classic furniture, model in poised poses, warm indoor lighting, emphasizing a vintage vibe",
+      "image_url": "/prompts-images/49_4.png",
+      "category": "人物写真设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 302,
+      "title": "书籍设计 - 提示词示例",
+      "chinese": "现代简约小说封面设计，使用纯色背景和简洁的排版，标题使用无衬线字体，封面采用硬纸板材质，色彩方案为黑白对比",
+      "english": "Modern minimalist novel cover design, featuring a solid color background and clean typography, title in sans-serif font, cover made of hardboard material, color scheme in black and white contrast",
+      "image_url": "/prompts-images/50_1.png",
+      "category": "书籍设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 303,
+      "title": "书籍设计 - 提示词示例",
+      "chinese": "复古风格艺术书籍设计，封面采用皮革材质，带有浮雕图案和烫金字体，内页使用粗糙的纸张，适合收藏",
+      "english": "Vintage-style art book design, featuring a leather cover with embossed patterns and gold foil typography, interior pages on rough paper, ideal for collectors",
+      "image_url": "/prompts-images/50_2.png",
+      "category": "书籍设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 304,
+      "title": "书籍设计 - 提示词示例",
+      "chinese": "儿童绘本设计，封面和内页采用柔软的布料材质，色彩鲜艳，插图风格卡通，适合低龄儿童阅读",
+      "english": "Children's picture book design, featuring soft fabric cover and pages, vibrant colors, cartoon-style illustrations, suitable for young children",
+      "image_url": "/prompts-images/50_3.png",
+      "category": "书籍设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 305,
+      "title": "书籍设计 - 提示词示例",
+      "chinese": "科幻小说封面设计，使用渐变色背景和未来感插图，封面材质为光面纸，标题字体具有科技感",
+      "english": "Science fiction novel cover design, featuring a gradient background and futuristic illustrations, glossy paper cover material, title in tech-inspired font",
+      "image_url": "/prompts-images/50_4.png",
+      "category": "书籍设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 306,
+      "title": "电商产品设计 - 提示词示例",
+      "chinese": "现代简约家居用品设计，使用天然木材和白色塑料材质，简洁的线条和光滑的表面处理，色彩方案为中性色调，适合都市家庭使用",
+      "english": "Modern minimalist home goods design, using natural wood and white plastic materials, clean lines and smooth surface finish, neutral color palette, ideal for urban households",
+      "image_url": "/prompts-images/51_1.png",
+      "category": "电商产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 307,
+      "title": "电商产品设计 - 提示词示例",
+      "chinese": "复古风格电子产品设计，采用金属和皮革材质，复古色调，带有经典的旋钮和开关设计，适合高端市场",
+      "english": "Vintage-style electronic product design, featuring metal and leather materials, retro color scheme, with classic knobs and switches, suitable for high-end market",
+      "image_url": "/prompts-images/51_2.png",
+      "category": "电商产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 308,
+      "title": "电商产品设计 - 提示词示例",
+      "chinese": "环保美妆产品包装设计，使用可降解纸材和再生塑料，包装设计简约，色彩柔和，突出环保理念，适合注重环保的消费者",
+      "english": "Eco-friendly beauty product packaging design, using biodegradable paper and recycled plastic, minimalist packaging design, soft color tones, emphasizing eco-consciousness, ideal for environmentally aware consumers",
+      "image_url": "/prompts-images/51_3.png",
+      "category": "电商产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 309,
+      "title": "电商产品设计 - 提示词示例",
+      "chinese": "科技感时尚配饰设计，采用金属和硅胶材质，光滑的镜面处理和LED灯光效果，色彩以黑色和银色为主，适合年轻潮流市场",
+      "english": "Tech-inspired fashion accessory design, featuring metal and silicone materials, smooth mirror finish and LED lighting effects, primarily black and silver color scheme, ideal for the young trendy market",
+      "image_url": "/prompts-images/51_4.png",
+      "category": "电商产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 310,
+      "title": "APP产品设计 - 提示词示例",
+      "chinese": "现代社交APP界面设计，采用扁平化设计风格，色彩以清新明亮为主，导航栏简洁直观，图标使用圆角矩形，整体界面布局友好，适合年轻用户",
+      "english": "Modern social app interface design, featuring a flat design style, with a fresh and bright color scheme, intuitive and simple navigation bar, icons using rounded rectangles, overall layout user-friendly, ideal for young users",
+      "image_url": "/prompts-images/52_1.png",
+      "category": "APP产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 311,
+      "title": "APP产品设计 - 提示词示例",
+      "chinese": "极简主义健康APP设计，使用单色调和简单线条，界面布局清晰，强调数据的可视化展示，按钮和图标设计简洁，适合注重健康管理的用户",
+      "english": "Minimalist health app design, using monochrome tones and simple lines, clear interface layout, emphasizing data visualization, simple button and icon design, suitable for users focused on health management",
+      "image_url": "/prompts-images/52_2.png",
+      "category": "APP产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 312,
+      "title": "APP产品设计 - 提示词示例",
+      "chinese": "复古风格电商APP设计，采用复古色调和纹理背景，界面布局采用卡片式设计，图标设计带有复古装饰元素，整体氛围温馨且具有怀旧感，适合小众市场",
+      "english": "Vintage-style e-commerce app design, featuring retro tones and textured backgrounds, card-based interface layout, icons with vintage decorative elements, overall atmosphere warm and nostalgic, ideal for niche markets",
+      "image_url": "/prompts-images/52_3.png",
+      "category": "APP产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 313,
+      "title": "APP产品设计 - 提示词示例",
+      "chinese": "科技感教育APP设计，使用渐变色背景和现代字体，界面布局层次分明，配有互动式学习模块和动画效果，整体风格充满未来感，适合儿童教育",
+      "english": "Tech-inspired educational app design, with gradient background and modern typography, clear hierarchical layout, featuring interactive learning modules and animation effects, overall futuristic style, ideal for children's education",
+      "image_url": "/prompts-images/52_4.png",
+      "category": "APP产品设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 314,
+      "title": "游戏角色设计 - 示例",
+      "chinese": "魔幻风格的英雄角色设计，角色穿戴华丽的魔法盔甲，使用古老的符文剑，服装以金属和皮革为主，整体色调为深红和金色，角色姿势充满力量感",
+      "english": "Magical style hero character design, the character wears magnificent magical armor, uses an ancient rune sword, the clothing is mainly made of metal and leather, the overall color tone is deep red and gold, the character's posture is full of power",
+      "image_url": "/prompts-images/53_1.png",
+      "category": "游戏角色设计",
+      "param_type": "示例"
+    },
+    {
+      "id": 315,
+      "title": "游戏角色设计 - 示例",
+      "chinese": "科幻风格的反派角色设计，角色穿着高科技战甲，面部有冷酷的机械装置，服装以银色和黑色为主，角色表情冷漠，整体风格充满未来感",
+      "english": "Sci-fi style villain character design, the character wears high-tech battle armor, has cold mechanical devices on his face, the clothing is mainly silver and black, the character's expression is cold, the overall style is full of futuristic feeling",
+      "image_url": "/prompts-images/53_2.png",
+      "category": "游戏角色设计",
+      "param_type": "示例"
+    },
+    {
+      "id": 316,
+      "title": "游戏角色设计 - 示例",
+      "chinese": "二次元风格的支持角色设计，角色穿着可爱的服装，手持魔法杖，整体造型充满活力和欢乐，色彩鲜艳，适合在团队中提供支持和治疗",
+      "english": "Anime-style support character design, featuring a cute outfit and holding a magic staff, overall appearance is lively and cheerful, with vibrant colors, ideal for providing support and healing in a team",
+      "image_url": "/prompts-images/53_3.png",
+      "category": "游戏角色设计",
+      "param_type": "示例"
+    },
+    {
+      "id": 317,
+      "title": "游戏角色设计 - 示例",
+      "chinese": "黑暗风格的NPC角色设计，角色穿着破旧的斗篷，面容阴森，手持一盏古老的灯笼，整体色调为灰暗色系，适合作为游戏中的神秘引导者",
+      "english": "Dark-themed NPC character design, featuring a tattered cloak and a sinister expression, holding an ancient lantern, with an overall muted color scheme, ideal as a mysterious guide in the game",
+      "image_url": "/prompts-images/53_4.png",
+      "category": "游戏角色设计",
+      "param_type": "示例"
+    },
+    {
+      "id": 318,
+      "title": "游戏角色设计 - 角色设计三视图等特殊需求示例说明",
+      "chinese": "角色概念设计表，女药师，日漫风格，多动作，多表情，幻想题材，穿着华丽的裙子，绿色系色调，该表格包括角色正面图、角色背面图、角色侧面视图，饰品和武器的特写细节图示，漫画风格，--niji 5",
+      "english": "Character concept design table, female pharmacist, Japanese comics style, multi-action, multi-expression, fantasy theme, wearing gorgeous skirts, green tones, this table includes character front view, character back view, character side view, close-up details of jewelry and weapons Illustration, comic style,-- niji 5",
+      "image_url": "/prompts-images/53_5.png",
+      "category": "游戏角色设计",
+      "param_type": "角色设计三视图等特殊需求示例说明"
+    },
+    {
+      "id": 319,
+      "title": "游戏角色设计 - 角色设计三视图等特殊需求示例说明",
+      "chinese": "游戏角色概念设计表，拟人化小蜜蜂，女战士，日漫风格，幻想题材，橙色系色调，该表格包括角色正面视图、角色背面视图、角色侧面视图，武器特写细节图示。",
+      "english": "Game character concept design table, anthropomorphic bee, female warrior, Japanese comics style, fantasy theme, orange color tones, this table includes character front view, character back view, character side view, close-up of face with a focused expression, Close-up of glowing blue energy sword",
+      "image_url": "/prompts-images/53_6.png",
+      "category": "游戏角色设计",
+      "param_type": "角色设计三视图等特殊需求示例说明"
+    },
+    {
+      "id": 320,
+      "title": "游戏场景设计 - 提示词示例",
+      "chinese": "未来科幻城市场景设计，使用大量金属和玻璃材质，高耸的摩天大楼和霓虹灯光，色彩方案以蓝色和银色为主，整体风格充满科技感和未来感",
+      "english": "Futuristic sci-fi cityscape design, featuring extensive use of metal and glass materials, towering skyscrapers with neon lights, color scheme dominated by blue and silver, overall style exudes a high-tech and futuristic vibe",
+      "image_url": "/prompts-images/54_1.png",
+      "category": "游戏场景设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 321,
+      "title": "游戏场景设计 - 提示词示例",
+      "chinese": "魔法森林探索场景设计，使用丰富的植被和神秘的光源，树木高大，叶片发光，场景充满魔幻氛围，色彩以绿色和紫色为主",
+      "english": "Magical forest exploration scene design, featuring lush vegetation and mystical light sources, towering trees with glowing leaves, the scene is infused with a magical atmosphere, with a color scheme dominated by green and purple",
+      "image_url": "/prompts-images/54_2.png",
+      "category": "游戏场景设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 322,
+      "title": "游戏场景设计 - 提示词示例",
+      "chinese": "废墟风格战斗场景设计，使用破旧的石材和残缺的建筑物，地面满是裂缝和杂草，整体色调为灰暗色系，场景充满紧张感和压迫感",
+      "english": "Ruins-themed battle scene design, featuring dilapidated stone structures and crumbling buildings, ground covered in cracks and weeds, overall color palette in dark tones, the scene exudes tension and oppression",
+      "image_url": "/prompts-images/54_3.png",
+      "category": "游戏场景设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 323,
+      "title": "游戏场景设计 - 提示词示例",
+      "chinese": "奇幻宫殿场景设计，使用金属和宝石材质，宫殿华丽且结构复杂，场景充满奢华和梦幻色彩，色彩方案以金色和深蓝色为主",
+      "english": "Fantasy palace scene design, featuring metal and gemstone materials, with a lavish and intricate palace structure, the scene is filled with luxury and dreamlike colors, with a color scheme dominated by gold and deep blue",
+      "image_url": "/prompts-images/54_4.png",
+      "category": "游戏场景设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 324,
+      "title": "游戏道具设计 - 提示词示例",
+      "chinese": "魔幻风格的远古神器设计，采用金属和晶石材质，表面刻有古老的符文，整体呈现出神秘的蓝色光芒，适合作为强力武器或神秘道具",
+      "english": "Fantasy-style ancient artifact design, featuring metal and crystal materials, with ancient runes engraved on the surface, emitting a mystical blue glow, ideal as a powerful weapon or mysterious item",
+      "image_url": "/prompts-images/55_1.png",
+      "category": "游戏道具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 325,
+      "title": "游戏道具设计 - 提示词示例",
+      "chinese": "科幻风格的未来工具设计，使用高科技合金和光滑的塑料材质，整体造型流线型，带有LED灯光和触控操作界面，适合高科技任务使用",
+      "english": "Sci-fi style futuristic tool design, featuring high-tech alloy and smooth plastic materials, with a streamlined shape, equipped with LED lights and a touch control interface, perfect for high-tech missions",
+      "image_url": "/prompts-images/55_2.png",
+      "category": "游戏道具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 326,
+      "title": "游戏道具设计 - 提示词示例",
+      "chinese": "写实风格的冒险者背包设计，采用耐用的帆布和皮革材质，背包配有多个口袋和坚固的扣带，颜色为经典的棕色和绿色，适合冒险场景",
+      "english": "Realistic-style adventurer's backpack design, featuring durable canvas and leather materials, with multiple pockets and sturdy straps, in classic brown and green colors, ideal for adventure settings",
+      "image_url": "/prompts-images/55_3.png",
+      "category": "游戏道具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 327,
+      "title": "游戏道具设计 - 提示词示例",
+      "chinese": "卡通风格的治愈药水设计，瓶身小巧可爱，采用透明的玻璃材质，内部液体呈现出闪亮的粉红色，带有浮动的星星效果，适合卡通风格的游戏",
+      "english": "Cartoon-style healing potion design, with a small and cute bottle, made of transparent glass, containing a shiny pink liquid with floating star effects, ideal for cartoon-style games",
+      "image_url": "/prompts-images/55_4.png",
+      "category": "游戏道具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 328,
+      "title": "游戏icon设计 - 提示词示例",
+      "chinese": "魔幻风格技能图标设计，采用金属与晶石材质，图标中心为发光的魔法符文，色彩以深蓝和紫色为主，边缘带有微光效果",
+      "english": "Fantasy-style skill icon design, featuring metal and crystal materials, with a glowing magical rune at the center, color scheme dominated by deep blue and purple, with a faint glow around the edges",
+      "image_url": "/prompts-images/56_1.png",
+      "category": "游戏icon设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 329,
+      "title": "游戏icon设计 - 提示词示例",
+      "chinese": "科幻风格物品图标设计，使用高科技合金材质，图标呈现立体感，色彩以银色和霓虹蓝为主，带有光泽和反射效果",
+      "english": "Sci-fi style item icon design, featuring high-tech alloy materials, with a three-dimensional appearance, color scheme dominated by silver and neon blue, with gloss and reflection effects",
+      "image_url": "/prompts-images/56_2.png",
+      "category": "游戏icon设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 330,
+      "title": "游戏icon设计 - 提示词示例",
+      "chinese": "卡通风格状态图标设计，采用鲜艳的色彩和简洁的线条，图标形状圆润，带有可爱的表情和动画效果，适合轻松愉快的游戏氛围",
+      "english": "Cartoon-style status icon design, featuring bright colors and simple lines, with rounded shapes, cute expressions, and animated effects, ideal for a lighthearted game atmosphere",
+      "image_url": "/prompts-images/56_3.png",
+      "category": "游戏icon设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 331,
+      "title": "游戏icon设计 - 提示词示例",
+      "chinese": "复古风格菜单图标设计，使用木材和皮革材质，图标边框带有雕刻细节，色彩方案为棕色和金色，整体风格古朴且精致",
+      "english": "Vintage-style menu icon design, featuring wood and leather materials, with engraved details on the icon borders, color scheme dominated by brown and gold, overall style is rustic and refined",
+      "image_url": "/prompts-images/56_4.png",
+      "category": "游戏icon设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 332,
+      "title": "游戏UI设计 - 提示词示例",
+      "chinese": "科幻风格的主菜单界面设计，采用高科技感的布局，使用流线型按钮和霓虹色调，背景为动态的星际图像，整体界面充满未来感和沉浸感",
+      "english": "Sci-fi style main menu interface design, featuring a high-tech layout, with streamlined buttons and neon tones, dynamic interstellar background, the overall interface exudes a futuristic and immersive vibe",
+      "image_url": "/prompts-images/57_1.png",
+      "category": "游戏UI设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 333,
+      "title": "游戏UI设计 - 提示词示例",
+      "chinese": "魔幻风格的游戏内HUD设计，使用古代符文和发光边框，生命值和法力条以卷轴形式呈现，色彩以深蓝和金色为主，营造出神秘的游戏氛围",
+      "english": "Fantasy-style in-game HUD design, featuring ancient runes and glowing borders, health and mana bars displayed in scroll form, color scheme dominated by deep blue and gold, creating a mystical game atmosphere",
+      "image_url": "/prompts-images/57_2.png",
+      "category": "游戏UI设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 334,
+      "title": "游戏UI设计 - 提示词示例",
+      "chinese": "极简主义的物品栏界面设计，采用单色调和简洁的图标布局，物品按类型分类，界面清晰易懂，适合高效的游戏操作",
+      "english": "Minimalist inventory interface design, featuring monochrome tones and a clean icon layout, items categorized by type, clear and easy-to-understand interface, ideal for efficient game operation",
+      "image_url": "/prompts-images/57_3.png",
+      "category": "游戏UI设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 335,
+      "title": "游戏UI设计 - 提示词示例",
+      "chinese": "复古风格的技能树界面设计，使用木纹背景和手绘图标，技能连接线模仿藤蔓形态，色彩温暖且怀旧，适合经典风格的游戏",
+      "english": "Vintage-style skill tree interface design, featuring a wood-textured background and hand-drawn icons, skill connections mimicking vine shapes, warm and nostalgic color scheme, ideal for classic-style games",
+      "image_url": "/prompts-images/57_4.png",
+      "category": "游戏UI设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 336,
+      "title": "游戏装备设计 - 提示词示例",
+      "chinese": "魔幻风格的神圣盔甲设计，采用金属和晶石材质，盔甲表面雕刻有古代符文，散发金色光芒，整体设计华丽且威严，适合游戏中的圣骑士角色",
+      "english": "Fantasy-style holy armor design, featuring metal and crystal materials, with ancient runes engraved on the armor's surface, emitting a golden glow, the overall design is luxurious and imposing, ideal for a paladin character in the game",
+      "image_url": "/prompts-images/58_1.png",
+      "category": "游戏装备设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 337,
+      "title": "游戏装备设计 - 提示词示例",
+      "chinese": "科幻风格的未来武器设计，使用高科技合金和能量晶石材质，武器造型流线型，带有LED灯光效果，色彩以银色和蓝色为主，充满未来科技感",
+      "english": "Sci-fi style futuristic weapon design, featuring high-tech alloy and energy crystal materials, with a streamlined shape and LED lighting effects, color scheme dominated by silver and blue, exuding a high-tech futuristic vibe",
+      "image_url": "/prompts-images/58_2.png",
+      "category": "游戏装备设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 338,
+      "title": "游戏装备设计 - 提示词示例",
+      "chinese": "复古风格的战士头盔设计，采用钢铁和皮革材质，头盔表面带有战斗磨损的痕迹，颜色为暗铜色和深棕色，设计简约却充满力量感",
+      "english": "Vintage-style warrior helmet design, featuring steel and leather materials, with battle-worn marks on the helmet's surface, color scheme in dark bronze and deep brown, the design is simple yet powerful",
+      "image_url": "/prompts-images/58_3.png",
+      "category": "游戏装备设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 339,
+      "title": "游戏装备设计 - 提示词示例",
+      "chinese": "自然元素的魔法饰品设计，使用木材和翠绿色晶石材质，饰品表面刻有叶脉纹理，整体色调为绿色和棕色，散发自然的魔法能量",
+      "english": "Nature-themed magical accessory design, featuring wood and emerald crystal materials, with leaf vein patterns engraved on the surface, color scheme in green and brown, emitting a natural magical energy",
+      "image_url": "/prompts-images/58_4.png",
+      "category": "游戏装备设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 340,
+      "title": "插图设计 - 提示词示例",
+      "chinese": "卡通风格儿童插图设计，使用鲜艳的色彩和简洁的线条，人物形象可爱，背景充满童趣，整体风格明亮且欢乐，适合幼儿绘本",
+      "english": "Cartoon-style children's illustration design, featuring bright colors and simple lines, with cute character designs and playful backgrounds, the overall style is bright and joyful, ideal for children's picture books",
+      "image_url": "/prompts-images/59_1.png",
+      "category": "插图设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 341,
+      "title": "插图设计 - 提示词示例",
+      "chinese": "写实风格杂志插图设计，采用精细的线条和真实的色彩，人物刻画细腻，背景与主体和谐搭配，整体风格成熟且有深度，适合成人读物",
+      "english": "Realistic-style magazine illustration design, featuring detailed lines and realistic colors, with finely drawn characters and a harmonious background, the overall style is mature and deep, ideal for adult publications",
+      "image_url": "/prompts-images/59_2.png",
+      "category": "插图设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 342,
+      "title": "插图设计 - 提示词示例",
+      "chinese": "复古风格广告插图设计，使用柔和的色调和经典的构图，插图中融入了老式广告元素，整体风格怀旧且有趣，适合品牌推广",
+      "english": "Vintage-style advertisement illustration design, featuring soft tones and classic composition, incorporating retro advertising elements, the overall style is nostalgic and fun, ideal for brand promotion",
+      "image_url": "/prompts-images/59_3.png",
+      "category": "插图设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 343,
+      "title": "插图设计 - 提示词示例",
+      "chinese": "极简主义书籍插图设计，采用单色调和简约的构图，线条简洁且富有艺术感，背景留白，突出主体形象，适合现代艺术类书籍",
+      "english": "Minimalist book illustration design, featuring a monochrome palette and simple composition, with clean lines and artistic expression, background left blank to highlight the main subject, ideal for modern art books",
+      "image_url": "/prompts-images/59_4.png",
+      "category": "插图设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 344,
+      "title": "美食设计 - 提示词示例",
+      "chinese": "现代风格的精致甜点设计，采用明亮的色彩和流畅的线条，甜点层次分明，顶部装饰有新鲜水果和可食用花卉，呈现在白色大理石盘中",
+      "english": "Modern-style gourmet dessert design, featuring bright colors and smooth lines, with distinct layers and topped with fresh fruits and edible flowers, presented on a white marble plate",
+      "image_url": "/prompts-images/60_1.png",
+      "category": "美食设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 345,
+      "title": "美食设计 - 提示词示例",
+      "chinese": "传统风格的日式寿司设计，采用新鲜的鱼肉和光滑的米饭，寿司呈现出精致的手工艺，色彩以红、白、绿为主，配有酱油和姜片",
+      "english": "Traditional-style Japanese sushi design, featuring fresh fish and smooth rice, showcasing exquisite craftsmanship, with a color palette of red, white, and green, accompanied by soy sauce and ginger slices",
+      "image_url": "/prompts-images/60_2.png",
+      "category": "美食设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 346,
+      "title": "美食设计 - 提示词示例",
+      "chinese": "极简主义的健康沙拉设计，采用新鲜的有机蔬菜和简单的调味料，色彩清新且自然，沙拉摆盘简约，适合健康饮食场景",
+      "english": "Minimalist healthy salad design, featuring fresh organic vegetables and simple dressings, with a fresh and natural color palette, minimalist presentation, ideal for healthy dining settings",
+      "image_url": "/prompts-images/60_3.png",
+      "category": "美食设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 347,
+      "title": "美食设计 - 提示词示例",
+      "chinese": "节庆主题的创意蛋糕设计，使用多层蛋糕和丰富的色彩，顶部装饰有节日符号和金色糖霜，整体设计充满欢乐和节日氛围",
+      "english": "Festive-themed creative cake design, featuring multi-layered cake with vibrant colors, topped with holiday symbols and gold icing, the overall design exudes joy and festive spirit",
+      "image_url": "/prompts-images/60_4.png",
+      "category": "美食设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 348,
+      "title": "餐具设计 - 提示词示例",
+      "chinese": "现代极简主义餐盘设计，采用白色陶瓷材质，边缘细腻且无装饰，整体设计简约大方，适合高档餐厅的优雅用餐体验",
+      "english": "Modern minimalist dinner plate design, featuring white ceramic material, with smooth and undecorated edges, overall design is simple and elegant, ideal for a sophisticated dining experience in upscale restaurants",
+      "image_url": "/prompts-images/61_1.png",
+      "category": "餐具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 349,
+      "title": "餐具设计 - 提示词示例",
+      "chinese": "传统中式青花瓷餐具设计，使用精美的蓝白色调，瓷器表面带有手绘花卉图案，器形优雅，适合中式宴席和文化主题餐饮场所",
+      "english": "Traditional Chinese blue and white porcelain dinnerware design, featuring exquisite blue and white tones, with hand-painted floral patterns on the surface, elegant shapes, ideal for Chinese banquets and culturally themed dining venues",
+      "image_url": "/prompts-images/61_2.png",
+      "category": "餐具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 350,
+      "title": "餐具设计 - 提示词示例",
+      "chinese": "奢华水晶酒杯设计，使用透明的水晶材质，杯身带有精致的切割纹理，光线下呈现出绚丽的色彩反射，适合高端聚会和正式晚宴",
+      "english": "Luxurious crystal wine glass design, featuring clear crystal material, with intricate cut patterns on the glass body, displaying vibrant light reflections, ideal for upscale gatherings and formal dinners",
+      "image_url": "/prompts-images/61_3.png",
+      "category": "餐具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 351,
+      "title": "餐具设计 - 提示词示例",
+      "chinese": "户外野餐用木质餐具设计，采用天然木材制作，表面光滑并带有自然纹理，餐具设计轻便易携，适合环保主题的户外活动",
+      "english": "Outdoor picnic wooden cutlery design, made of natural wood, with a smooth surface and natural grain patterns, lightweight and portable, ideal for eco-friendly outdoor activities",
+      "image_url": "/prompts-images/61_4.png",
+      "category": "餐具设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 352,
+      "title": "花纹样式设计 - 提示词示例",
+      "chinese": "现代几何花纹设计，使用对比鲜明的黑白色调，图案由简单的线条和圆形组成，采用对称布局，整体风格简洁且具有视觉冲击力，适用于现代家居装饰",
+      "english": "Modern geometric pattern design, featuring a bold black and white color scheme, with patterns composed of simple lines and circles, symmetrical layout, overall style is clean and visually striking, suitable for modern home decor",
+      "image_url": "/prompts-images/62_1.png",
+      "category": "花纹样式设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 353,
+      "title": "花纹样式设计 - 提示词示例",
+      "chinese": "复古植物花纹设计，采用柔和的棕色和绿色调，花纹由精致的藤蔓和花朵组成，整体布局为连续的重复图案，适合传统壁纸和纺织品设计",
+      "english": "Vintage botanical pattern design, featuring soft brown and green tones, with patterns composed of intricate vines and flowers, overall layout is a continuous repeating pattern, ideal for traditional wallpaper and textile design",
+      "image_url": "/prompts-images/62_2.png",
+      "category": "花纹样式设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 354,
+      "title": "花纹样式设计 - 提示词示例",
+      "chinese": "抽象艺术花纹设计，使用大胆的色彩和不规则的形状，图案具有高度的创造性和个性化，布局无固定形式，适合艺术包装或现代装饰",
+      "english": "Abstract art pattern design, featuring bold colors and irregular shapes, the pattern is highly creative and personalized, with a freeform layout, suitable for artistic packaging or modern decor",
+      "image_url": "/prompts-images/62_3.png",
+      "category": "花纹样式设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 355,
+      "title": "花纹样式设计 - 提示词示例",
+      "chinese": "奢华金属花纹设计，采用金色和深蓝色调，花纹设计复杂且精美，带有金属质感，整体布局对称且充满华丽感，适合高档家居装饰和奢侈品包装",
+      "english": "Luxurious metallic pattern design, featuring gold and deep blue tones, with intricate and elegant patterns, metallic texture, overall layout is symmetrical and exudes opulence, ideal for luxury home decor and premium packaging",
+      "image_url": "/prompts-images/62_4.png",
+      "category": "花纹样式设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 356,
+      "title": "壁纸设计 - 提示词示例",
+      "chinese": "现代几何图案壁纸设计，使用对比鲜明的黑白色调，图案由简洁的线条和几何形状组成，材质为哑光纸质，适用于现代家居装饰",
+      "english": "Modern geometric pattern wallpaper design, featuring a bold black and white color scheme, with patterns composed of simple lines and geometric shapes, made of matte paper, ideal for modern home decor",
+      "image_url": "/prompts-images/63_1.png",
+      "category": "壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 357,
+      "title": "壁纸设计 - 提示词示例",
+      "chinese": "自然风格的花卉壁纸设计，采用柔和的绿色和米色调，图案由手绘的花朵和叶子组成，材质为环保织物，适用于卧室和客厅",
+      "english": "Nature-inspired floral wallpaper design, featuring soft green and beige tones, with patterns composed of hand-drawn flowers and leaves, made of eco-friendly fabric, ideal for bedrooms and living rooms",
+      "image_url": "/prompts-images/63_2.png",
+      "category": "壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 358,
+      "title": "壁纸设计 - 提示词示例",
+      "chinese": "复古奢华的金箔壁纸设计，使用深蓝色和金色搭配，图案由复杂的巴洛克花纹组成，材质为金属质感的金箔，适合高端酒店和餐厅",
+      "english": "Vintage luxurious gold foil wallpaper design, featuring deep blue and gold tones, with patterns composed of intricate Baroque motifs, made of metallic gold foil, ideal for upscale hotels and restaurants",
+      "image_url": "/prompts-images/63_3.png",
+      "category": "壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 359,
+      "title": "壁纸设计 - 提示词示例",
+      "chinese": "极简主义的抽象壁纸设计，采用单色调的灰色和白色，图案由不规则的线条和形状组成，材质为光滑的丝绸，适合现代办公室和展览空间",
+      "english": "Minimalist abstract wallpaper design, featuring a monochrome palette of gray and white, with patterns composed of irregular lines and shapes, made of smooth silk, ideal for modern offices and exhibition spaces",
+      "image_url": "/prompts-images/63_4.png",
+      "category": "壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 360,
+      "title": "徽章设计 - 提示词示例",
+      "chinese": "现代风格的团队徽章设计，采用不锈钢材质，徽章形状为圆形，中央印有简约的团队标志，色彩为银色和深蓝色的对比，整体设计简洁且有力量感",
+      "english": "Modern-style team badge design, featuring stainless steel material, with a circular shape, a minimalist team logo at the center, color scheme in contrasting silver and deep blue, overall design is clean and powerful",
+      "image_url": "/prompts-images/64_1.png",
+      "category": "徽章设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 361,
+      "title": "徽章设计 - 提示词示例",
+      "chinese": "复古风格的俱乐部徽章设计，使用古铜色金属材质，徽章形状为盾牌形状，中央刻有经典的俱乐部图案，边缘带有雕刻细节，适合老牌俱乐部",
+      "english": "Vintage-style club badge design, featuring bronze metal material, shield-shaped, with a classic club emblem engraved at the center, edges adorned with intricate carvings, ideal for an established club",
+      "image_url": "/prompts-images/64_2.png",
+      "category": "徽章设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 362,
+      "title": "徽章设计 - 提示词示例",
+      "chinese": "奢华风格的荣誉徽章设计，使用金色镀层和红色珐琅材质，徽章形状为星形，中央镶嵌宝石，边缘设计精致，适用于高级颁奖典礼",
+      "english": "Luxurious-style honor badge design, featuring gold plating and red enamel, star-shaped, with a gemstone embedded at the center, finely detailed edges, suitable for high-profile award ceremonies",
+      "image_url": "/prompts-images/64_3.png",
+      "category": "徽章设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 363,
+      "title": "徽章设计 - 提示词示例",
+      "chinese": "军事风格的奖章设计，采用耐用的黑色钢材，徽章形状为五角星，中央刻有军事象征，色彩为黑色和绿色，整体设计坚固且威严",
+      "english": "Military-style medal design, featuring durable black steel, star-shaped, with a military symbol engraved at the center, color scheme in black and green, overall design is robust and authoritative",
+      "image_url": "/prompts-images/64_4.png",
+      "category": "徽章设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 364,
+      "title": "logo设计 - 提示词示例",
+      "chinese": "现代简约的企业Logo设计，采用黑白色调，Logo形状为圆形，线条简洁且流畅，搭配极简的无衬线字体，整体风格简洁且专业，适合科技公司",
+      "english": "Modern minimalist corporate Logo design, featuring a black and white color scheme, with a circular shape, clean and smooth lines, paired with a simple sans-serif font, overall style is sleek and professional, ideal for a tech company",
+      "image_url": "/prompts-images/65_1.png",
+      "category": "logo设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 365,
+      "title": "logo设计 - 提示词示例",
+      "chinese": "复古风格的品牌Logo设计，使用深棕色和金色的配色方案，Logo形状为盾牌，中央刻有复古字体，周围装饰有花纹和细致的边框，适合经典品牌",
+      "english": "Vintage-style brand Logo design, featuring a deep brown and gold color scheme, shield-shaped, with vintage typography at the center, surrounded by ornate patterns and detailed borders, ideal for a classic brand",
+      "image_url": "/prompts-images/65_2.png",
+      "category": "logo设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 366,
+      "title": "logo设计 - 提示词示例",
+      "chinese": "自然主题的环保Logo设计，采用绿色和白色的渐变色，Logo形状为叶子图案，线条柔和且自然，搭配手写字体，整体风格清新且环保，适合绿色企业",
+      "english": "Nature-themed eco-friendly Logo design, featuring a green and white gradient color scheme, leaf-shaped, with soft and natural lines, paired with handwritten typography, overall style is fresh and environmentally friendly, ideal for a green business",
+      "image_url": "/prompts-images/65_3.png",
+      "category": "logo设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 367,
+      "title": "logo设计 - 提示词示例",
+      "chinese": "奢华风格的高端Logo设计，使用金属质感的金色和黑色配色，Logo形状为矩形，中央为优雅的衬线字体，边缘带有光泽效果，适合奢侈品牌",
+      "english": "Luxurious high-end Logo design, featuring a metallic gold and black color scheme, rectangular shape, with elegant serif typography at the center, edges with a glossy finish, ideal for a luxury brand",
+      "image_url": "/prompts-images/65_4.png",
+      "category": "logo设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 368,
+      "title": "3D模型设计 - 提示词示例",
+      "chinese": "未来科技风格的机器人模型设计，采用金属和合成材料，模型结构复杂，带有发光部件，色彩以银色和蓝色为主，整体设计充满未来感和科技感",
+      "english": "Futuristic sci-fi robot model design, featuring metal and synthetic materials, with a complex structure and glowing parts, color scheme dominated by silver and blue, overall design exudes a futuristic and technological vibe",
+      "image_url": "/prompts-images/66_1.png",
+      "category": "3D模型设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 369,
+      "title": "3D模型设计 - 提示词示例",
+      "chinese": "写实风格的建筑模型设计，使用石材和玻璃材质，模型细节丰富，结构对称，色彩以自然色调为主，适用于高端房地产展示",
+      "english": "Realistic architectural model design, featuring stone and glass materials, with rich details and symmetrical structure, color scheme in natural tones, ideal for high-end real estate showcases",
+      "image_url": "/prompts-images/66_2.png",
+      "category": "3D模型设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 370,
+      "title": "3D模型设计 - 提示词示例",
+      "chinese": "卡通风格的角色模型设计，采用明亮的色彩和夸张的造型，模型线条流畅，材质为塑料和橡胶，适用于儿童动画或游戏设计",
+      "english": "Cartoon-style character model design, featuring bright colors and exaggerated shapes, with smooth lines and materials like plastic and rubber, ideal for children's animation or game design",
+      "image_url": "/prompts-images/66_3.png",
+      "category": "3D模型设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 371,
+      "title": "3D模型设计 - 提示词示例",
+      "chinese": "工业风格的机械模型设计，使用钢铁和铝材质，模型结构复杂，带有可动关节和齿轮，色彩以暗色调为主，整体设计粗犷且充满力量感",
+      "english": "Industrial-style mechanical model design, featuring steel and aluminum materials, with a complex structure, movable joints, and gears, color scheme in dark tones, overall design is rugged and powerful",
+      "image_url": "/prompts-images/66_4.png",
+      "category": "3D模型设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 372,
+      "title": "雕塑设计 - 提示词示例",
+      "chinese": "现代抽象雕塑设计，使用不锈钢材质，雕塑线条流畅且曲折，表面为抛光处理，整体造型简约而充满动感，适合城市广场的公共艺术",
+      "english": "Modern abstract sculpture design, featuring stainless steel material, with smooth and curved lines, polished surface, overall design is minimalistic yet dynamic, ideal for public art in urban squares",
+      "image_url": "/prompts-images/67_1.png",
+      "category": "雕塑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 373,
+      "title": "雕塑设计 - 提示词示例",
+      "chinese": "古典风格的大理石人物雕塑，雕刻细节精细，人物姿态优雅，材质为白色大理石，表面光滑，适用于博物馆或历史纪念馆的展示",
+      "english": "Classical-style marble statue of a person, with finely detailed carving, elegant posture, made of white marble, smooth surface, suitable for display in museums or historical monuments",
+      "image_url": "/prompts-images/67_2.png",
+      "category": "雕塑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 374,
+      "title": "雕塑设计 - 提示词示例",
+      "chinese": "超现实主义的金属雕塑设计，使用青铜材质，雕塑造型复杂且富有想象力，色彩以深色金属色调为主，适合现代艺术展览",
+      "english": "Surrealistic metal sculpture design, featuring bronze material, with complex and imaginative shapes, dark metallic tones, ideal for modern art exhibitions",
+      "image_url": "/prompts-images/67_3.png",
+      "category": "雕塑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 375,
+      "title": "雕塑设计 - 提示词示例",
+      "chinese": "极简主义的木质雕塑设计，采用天然木材，雕塑造型简洁，线条直率，表面保留木材的天然纹理，适合自然主题的户外装饰",
+      "english": "Minimalist wooden sculpture design, featuring natural wood, with simple shapes and straightforward lines, surface retains the natural wood grain, ideal for nature-themed outdoor decor",
+      "image_url": "/prompts-images/67_4.png",
+      "category": "雕塑设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 376,
+      "title": "宠物设计 - 提示词示例",
+      "chinese": "写实风格的猫咪设计，采用短毛细腻的质感，耳朵小而圆，眼睛大而明亮，颜色为橙白相间，整体形态优雅且灵活，适合家庭宠物的形象设计",
+      "english": "Realistic-style cat design, featuring a smooth short fur texture, with small round ears and large bright eyes, color scheme in orange and white, overall shape is elegant and agile, ideal for a family pet character design",
+      "image_url": "/prompts-images/68_1.png",
+      "category": "宠物设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 377,
+      "title": "宠物设计 - 提示词示例",
+      "chinese": "未来科技风的机器人狗设计，采用金属和合成材料，表面光滑，带有发光的LED眼睛和机械化的四肢，颜色为银色和蓝色的对比，适合未来主题的宠物设计",
+      "english": "Futuristic robotic dog design, featuring metal and synthetic materials, with a smooth surface, glowing LED eyes, and mechanized limbs, color scheme in silver and blue contrast, ideal for a futuristic pet design",
+      "image_url": "/prompts-images/68_2.png",
+      "category": "宠物设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 378,
+      "title": "宠物设计 - 提示词示例",
+      "chinese": "卡通风格的鸟类设计，采用夸张的羽毛设计和明亮的色彩，翅膀大且柔软，眼睛圆大，颜色为红、黄、蓝三色渐变，整体风格可爱且充满活力，适合儿童动画",
+      "english": "Cartoon-style bird design, featuring exaggerated feather design and bright colors, with large and soft wings, round eyes, color scheme in a red, yellow, and blue gradient, overall style is cute and energetic, ideal for children's animation",
+      "image_url": "/prompts-images/68_3.png",
+      "category": "宠物设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 379,
+      "title": "宠物设计 - 提示词示例",
+      "chinese": "奇幻风格的龙形宠物设计，使用鳞片质感和闪亮的眼睛，尾巴长且带有尖刺，颜色为深紫色和金色的组合，整体造型神秘且威严，适合奇幻故事中的宠物设计",
+      "english": "Fantasy-style dragon pet design, featuring a scaly texture and glowing eyes, with a long spiked tail, color scheme in deep purple and gold combination, overall shape is mysterious and majestic, ideal for a pet in fantasy stories",
+      "image_url": "/prompts-images/68_4.png",
+      "category": "宠物设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 380,
+      "title": "手机壁纸设计 - 提示词示例",
+      "chinese": "梦幻星云和银河手机壁纸，采用深紫色和蓝色渐变色调，星云和银河交织在一起，散发出柔和的光芒，材质为丝绸质感，整体设计神秘而宁静，适合作为主屏幕背景",
+      "english": "Dreamy nebula and galaxy mobile wallpaper, featuring a gradient of deep purple and blue tones, with nebulae and galaxies intertwined, emitting a soft glow, silk texture, overall design is mysterious and serene, ideal for a home screen background",
+      "image_url": "/prompts-images/69_1.png",
+      "category": "手机壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 381,
+      "title": "手机壁纸设计 - 提示词示例",
+      "chinese": "浪漫的樱花飘落手机壁纸，使用粉色和白色的柔和色调，背景为蓝天和微风中飘落的樱花，材质为柔和光泽感，整体设计优雅且充满浪漫气息，适合锁屏壁纸",
+      "english": "Romantic falling cherry blossoms mobile wallpaper, featuring soft pink and white tones, with a background of blue sky and cherry blossoms gently falling in the breeze, soft gloss texture, overall design is elegant and full of romance, ideal for a lock screen wallpaper",
+      "image_url": "/prompts-images/69_2.png",
+      "category": "手机壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 382,
+      "title": "手机壁纸设计 - 提示词示例",
+      "chinese": "幻想天空之城手机壁纸，采用明亮的蓝色和白色为主色调，天空之城漂浮在云层之上，四周环绕着彩虹和闪烁的星星，材质为光滑的金属质感，适合充满想象力的手机背景",
+      "english": "Fantasy sky city mobile wallpaper, featuring bright blue and white as the main colors, with a floating sky city above the clouds, surrounded by rainbows and twinkling stars, smooth metallic texture, ideal for an imaginative mobile background",
+      "image_url": "/prompts-images/69_3.png",
+      "category": "手机壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 383,
+      "title": "手机壁纸设计 - 提示词示例",
+      "chinese": "梦幻森林和萤火虫手机壁纸，采用深绿色和金色的对比色调，森林中萤火虫飞舞，发出微弱的光芒，材质为柔和织物纹理，整体设计神秘且浪漫，适合作为主屏幕背景",
+      "english": "Dreamy forest and fireflies mobile wallpaper, featuring deep green and gold contrasting tones, with fireflies dancing in the forest, emitting a faint glow, soft fabric texture, overall design is mysterious and romantic, ideal for a home screen background",
+      "image_url": "/prompts-images/69_4.png",
+      "category": "手机壁纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 384,
+      "title": "贴纸设计 - 提示词示例",
+      "chinese": "可爱卡通动物贴纸设计，采用柔和的粉色和蓝色调，动物造型简单而有趣，材质为亚光质感，整体设计充满童趣，适合儿童笔记本或手账本装饰",
+      "english": "Cute cartoon animal sticker design, featuring soft pink and blue tones, with simple and playful animal shapes, matte texture, overall design is fun and childlike, ideal for decorating children's notebooks or planners",
+      "image_url": "/prompts-images/70_1.png",
+      "category": "贴纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 385,
+      "title": "贴纸设计 - 提示词示例",
+      "chinese": "复古风格的文字贴纸设计，使用深棕色和金色的配色方案，文字采用手写字体，搭配复古图案，材质为纸质感，适合复古主题的手账本装饰",
+      "english": "Vintage-style text sticker design, featuring a deep brown and gold color scheme, with handwritten fonts and vintage patterns, paper-like texture, ideal for decorating vintage-themed planners",
+      "image_url": "/prompts-images/70_2.png",
+      "category": "贴纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 386,
+      "title": "贴纸设计 - 提示词示例",
+      "chinese": "未来科技风的发光贴纸设计，使用银色和蓝色调，图案为几何形状和科技符号，材质为光滑金属质感，带有发光效果，适合科技主题的手机壳装饰",
+      "english": "Futuristic glowing sticker design, featuring silver and blue tones, with geometric shapes and tech symbols, smooth metallic texture, with glowing effects, ideal for decorating tech-themed phone cases",
+      "image_url": "/prompts-images/70_3.png",
+      "category": "贴纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 387,
+      "title": "贴纸设计 - 提示词示例",
+      "chinese": "自然主题的植物贴纸设计，采用绿色和棕色的自然色调，图案为各种叶子和花朵，材质为透明质感，整体设计清新且自然，适合手账本或日记本装饰",
+      "english": "Nature-themed plant sticker design, featuring green and brown natural tones, with patterns of various leaves and flowers, transparent texture, overall design is fresh and natural, ideal for decorating planners or journals",
+      "image_url": "/prompts-images/70_4.png",
+      "category": "贴纸设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 388,
+      "title": "蛇年微信红包封面设计 - 提示词示例",
+      "chinese": "红金色的蛇，樱花旋涡，动漫风格，明亮的红色，金色，节日氛围，温暖梦幻，传统云纹，粉色泼墨，丰富细节，奇幻效果",
+      "english": "Red and gold snake, cherry blossom vortex, anime style, bright red, gold, festive atmosphere, warm and dreamy, traditional cloud patterns, pink splashes, rich details, fantasy effects",
+      "image_url": "/prompts-images/71_1.png",
+      "category": "蛇年微信红包封面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 389,
+      "title": "蛇年微信红包封面设计 - 提示词示例",
+      "chinese": "可爱拜年小蛇，头戴年兽帽子，红色，大眼睛看着镜头，身子盘旋，萌萌的，与小孩子玩耍状态，祝贺新春，背景是中国街道，家家户户挂起灯笼，天上放着烟花，街上有小朋友在放烟花，歌舞升平，万家灯火",
+      "english": "Cute New Year snake, wearing a Nian beast hat, red, big eyes looking at the camera, coiled body, cute, playing with children, celebrating the New Spring, background is a Chinese street, every household hanging lanterns, fireworks in the sky, children playing with fireworks on the street, a scene of festivity and prosperity",
+      "image_url": "/prompts-images/71_2.png",
+      "category": "蛇年微信红包封面设计",
+      "param_type": "提示词示例"
+    },
+    {
+      "id": 390,
+      "title": "蛇年微信红包封面设计 - 提示词示例",
+      "chinese": "红金蛇、樱花漩涡、动漫风格、鲜红、金色、喜庆气氛、温馨梦幻、传统云纹、粉色泼墨、丰富细节、奇幻效果",
+      "english": "Red and gold snake, cherry blossom vortex, anime style, bright red, gold, festive atmosphere, warm and dreamy, traditional cloud patterns, pink splashes, rich details, fantasy effects",
+      "image_url": "/prompts-images/71_3.png",
+      "category": "蛇年微信红包封面设计",
+      "param_type": "提示词示例"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ class ProjectCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="项目名称")
     fabric_json: str | None = Field(None, description="Fabric.js 画布数据", max_length=5_000_000)
     thumbnail: str | None = Field(None, description="缩略图 URL")
+    status: str | None = Field(None, description="状态: draft/published")
 
 
 class ProjectUpdateRequest(BaseModel):
@@ -67,6 +68,8 @@ async def save_project(
         current_user.id,
         req.name,
         fabric_json=req.fabric_json,
+        thumbnail=req.thumbnail,
+        status=req.status,
     )
     return ApiResponse(data={
         "id": project.id,

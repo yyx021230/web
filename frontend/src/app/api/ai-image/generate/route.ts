@@ -1,0 +1,27 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Proxy AI image generation requests to backend.
+ * This API route is needed because Next.js rewrites have a 1MB body size limit,
+ * and base64 image payloads can exceed that.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const res = await fetch(`${baseUrl}/ai-image/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json(
+      { code: 500, message: '代理请求失败', data: null },
+      { status: 500 }
+    );
+  }
+}

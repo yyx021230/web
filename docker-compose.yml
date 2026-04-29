@@ -48,28 +48,35 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ai_creative
       REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-secret-key-not-for-production-a1b2c3d4e5f6
       CORS_ORIGINS: '["http://localhost:3000"]'
+      STORAGE_TYPE: local
+      STORAGE_PATH: ./uploads
+      SEEDREAM_API_KEY: 13463e13-d95f-4f65-ba9c-d3ddde270274
+      SEEDREAM_API_URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
+      GPT_IMAGE2_API_KEY: sk-tSBuo4K8OkcD8c11ntNfW7m9tvlNYN9JHYytMMAOrGjbV6yH
+      GPT_IMAGE2_API_URL: https://chunfeng.mentalout.top/v1/images/generations
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./backend:/app
       - upload_data:/app/uploads
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        BACKEND_ORIGIN: http://backend:8000
+        NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      BACKEND_ORIGIN: http://backend:8000
+      NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
 volumes:
   pgdata:

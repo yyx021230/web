@@ -17,6 +17,8 @@ class DifyWorkflowUpdate(BaseModel):
     app_type: Optional[str] = None
     description: Optional[str] = None
     inputs_schema: Optional[dict] = None
+    base_url: Optional[str] = None
+    is_enabled: Optional[bool] = None
 
 
 class WorkflowRunRequest(BaseModel):
