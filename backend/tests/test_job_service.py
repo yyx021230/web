@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, func, select, text
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import async_session
@@ -278,6 +279,278 @@ async def test_job_items_are_idempotent_per_job(client):
 
         item_count = (await db.execute(select(func.count(JobItem.id)))).scalar_one()
         assert item_count == 2
+
+
+@pytest.mark.asyncio
+async def test_claim_next_job_records_lease_attempt_and_event(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="homepage_sync", priority=20)
+        claimed = await service.claim_next_job(
+            worker_id="worker-1",
+            worker_type="server",
+            lease_seconds=90,
+            now=claim_time,
+        )
+        assert claimed is not None
+        claimed_job, attempt = claimed
+        await db.commit()
+
+        assert claimed_job.id == job.id
+        assert claimed_job.status == JobStatus.LEASED.value
+        assert claimed_job.lease_owner == "worker-1"
+        assert claimed_job.heartbeat_at == claim_time
+        assert claimed_job.lease_expires_at == claim_time + timedelta(seconds=90)
+        assert attempt.attempt_number == 1
+        assert attempt.worker_id == "worker-1"
+        assert attempt.status == JobStatus.LEASED.value
+        assert attempt.heartbeat_at == claim_time
+        assert attempt.lease_expires_at == claim_time + timedelta(seconds=90)
+
+        lease_event = (
+            await db.execute(
+                select(JobEvent).where(
+                    JobEvent.job_id == job.id,
+                    JobEvent.event_type == "status_changed",
+                    JobEvent.to_status == JobStatus.LEASED.value,
+                )
+            )
+        ).scalar_one()
+        assert lease_event.actor_type == "worker"
+        assert lease_event.actor_id == "worker-1"
+        assert lease_event.details["attempt_id"] == attempt.id
+        assert lease_event.details["attempt_number"] == 1
+
+
+@pytest.mark.asyncio
+async def test_claim_next_job_respects_priority_due_time_filters_and_worker_type(
+    client,
+):
+    now = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        cancelled, _ = await service.create_job(job_type="sync", priority=0)
+        cancelled.cancel_requested = True
+        future, _ = await service.create_job(job_type="sync", priority=1)
+        future.run_after = now + timedelta(minutes=5)
+        browser_job, _ = await service.create_job(
+            job_type="browser_sync", worker_type="browser", priority=2
+        )
+        filtered_out, _ = await service.create_job(job_type="report", priority=3)
+        first, _ = await service.create_job(job_type="sync", priority=10)
+        second, _ = await service.create_job(job_type="sync", priority=20)
+        await db.commit()
+
+    async with async_session() as db:
+        service = JobService(db)
+        first_claim = await service.claim_next_job(
+            worker_id="server-1", job_types=["sync"], now=now
+        )
+        assert first_claim is not None
+        assert first_claim[0].id == first.id
+        await db.commit()
+
+    async with async_session() as db:
+        service = JobService(db)
+        second_claim = await service.claim_next_job(
+            worker_id="server-2", job_types="sync", now=now
+        )
+        assert second_claim is not None
+        assert second_claim[0].id == second.id
+        assert (
+            await service.claim_next_job(
+                worker_id="server-2", job_types=["sync"], now=now
+            )
+            is None
+        )
+        await db.commit()
+
+    async with async_session() as db:
+        browser_claim = await JobService(db).claim_next_job(
+            worker_id="browser-1", worker_type="browser", now=now
+        )
+        assert browser_claim is not None
+        assert browser_claim[0].id == browser_job.id
+        await db.commit()
+
+        untouched_ids = {
+            row.id
+            for row in (
+                (
+                    await db.execute(
+                        select(Job).where(Job.status == JobStatus.QUEUED.value)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        }
+        assert untouched_ids == {cancelled.id, future.id, filtered_out.id}
+
+
+@pytest.mark.asyncio
+async def test_claim_next_job_is_atomic_across_concurrent_workers(client):
+    async with async_session() as db:
+        job, _ = await JobService(db).create_job(job_type="single_claim")
+        await db.commit()
+        job_id = job.id
+
+    async def claim(worker_id: str):
+        async with async_session() as db:
+            claimed = await JobService(db).claim_next_job(
+                worker_id=worker_id,
+                job_types=["single_claim"],
+            )
+            await db.commit()
+            return None if claimed is None else (claimed[0].id, worker_id)
+
+    results = await asyncio.gather(claim("worker-a"), claim("worker-b"))
+    winners = [result for result in results if result is not None]
+    assert len(winners) == 1
+    assert winners[0][0] == job_id
+
+    async with async_session() as db:
+        stored_job = (
+            await db.execute(select(Job).where(Job.id == job_id))
+        ).scalar_one()
+        attempts = (
+            (await db.execute(select(JobAttempt).where(JobAttempt.job_id == job_id)))
+            .scalars()
+            .all()
+        )
+        lease_events = (
+            (
+                await db.execute(
+                    select(JobEvent).where(
+                        JobEvent.job_id == job_id,
+                        JobEvent.to_status == JobStatus.LEASED.value,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert stored_job.lease_owner == winners[0][1]
+        assert len(attempts) == 1
+        assert len(lease_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_claim_pool_never_duplicates_jobs_across_many_workers(client):
+    job_count = 6
+    async with async_session() as db:
+        for index in range(job_count):
+            await JobService(db).create_job(
+                job_type="concurrent_pool",
+                idempotency_key=f"pool-{index}",
+            )
+        await db.commit()
+
+    async def claim(worker_number: int):
+        async with async_session() as db:
+            claimed = await JobService(db).claim_next_job(
+                worker_id=f"pool-worker-{worker_number}",
+                job_types=["concurrent_pool"],
+            )
+            await db.commit()
+            return None if claimed is None else claimed[0].id
+
+    results = await asyncio.gather(*(claim(index) for index in range(job_count * 2)))
+    claimed_ids = [job_id for job_id in results if job_id is not None]
+    assert len(claimed_ids) == job_count
+    assert len(set(claimed_ids)) == job_count
+
+    async with async_session() as db:
+        attempt_count = (
+            await db.execute(
+                select(func.count(JobAttempt.id))
+                .join(Job)
+                .where(Job.job_type == "concurrent_pool")
+            )
+        ).scalar_one()
+        lease_event_count = (
+            await db.execute(
+                select(func.count(JobEvent.id))
+                .join(Job)
+                .where(
+                    Job.job_type == "concurrent_pool",
+                    JobEvent.to_status == JobStatus.LEASED.value,
+                )
+            )
+        ).scalar_one()
+        assert attempt_count == job_count
+        assert lease_event_count == job_count
+
+
+@pytest.mark.asyncio
+async def test_claim_next_job_rollback_releases_the_job(client):
+    async with async_session() as db:
+        job, _ = await JobService(db).create_job(job_type="rollback_claim")
+        await db.commit()
+        job_id = job.id
+
+    async with async_session() as db:
+        claimed = await JobService(db).claim_next_job(worker_id="worker-rollback")
+        assert claimed is not None
+        await db.rollback()
+
+    async with async_session() as db:
+        stored_job = (
+            await db.execute(select(Job).where(Job.id == job_id))
+        ).scalar_one()
+        attempt_count = (
+            await db.execute(
+                select(func.count(JobAttempt.id)).where(JobAttempt.job_id == job_id)
+            )
+        ).scalar_one()
+        assert stored_job.status == JobStatus.QUEUED.value
+        assert stored_job.lease_owner is None
+        assert attempt_count == 0
+
+        reclaimed = await JobService(db).claim_next_job(worker_id="worker-retry")
+        assert reclaimed is not None
+        assert reclaimed[0].id == job_id
+
+
+@pytest.mark.asyncio
+async def test_claim_next_job_validates_worker_and_lease_inputs(client):
+    async with async_session() as db:
+        service = JobService(db)
+        with pytest.raises(ValueError, match="worker_id"):
+            await service.claim_next_job(worker_id=" ")
+        with pytest.raises(ValueError, match="worker_type"):
+            await service.claim_next_job(worker_id="worker", worker_type=" ")
+        with pytest.raises(ValueError, match="lease_seconds"):
+            await service.claim_next_job(worker_id="worker", lease_seconds=0)
+        with pytest.raises(ValueError, match="job_types"):
+            await service.claim_next_job(worker_id="worker", job_types=[" "])
+
+
+def test_claim_statement_uses_postgresql_skip_locked_and_sqlite_atomic_update():
+    now = utc_now_naive()
+    kwargs = {
+        "worker_type": "server",
+        "job_types": ("homepage_sync",),
+        "claim_time": now,
+        "lease_owner": "worker-1",
+        "lease_expires_at": now + timedelta(seconds=60),
+    }
+    postgresql_sql = str(
+        JobService._build_claim_statement(**kwargs, dialect_name="postgresql").compile(
+            dialect=postgresql.dialect()
+        )
+    )
+    sqlite_sql = str(
+        JobService._build_claim_statement(**kwargs, dialect_name="sqlite").compile(
+            dialect=sqlite.dialect()
+        )
+    )
+
+    assert "FOR UPDATE SKIP LOCKED" in postgresql_sql
+    assert "RETURNING jobs.id" in postgresql_sql
+    assert "FOR UPDATE" not in sqlite_sql
+    assert "RETURNING id" in sqlite_sql
 
 
 @pytest.mark.asyncio

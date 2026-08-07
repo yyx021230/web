@@ -2,15 +2,24 @@ from __future__ import annotations
 
 import copy
 import uuid
-from datetime import datetime
+from collections.abc import Collection
+from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.dml import Update
 
-from app.models.job import Job, JobEvent, JobItem, JobStatus, TERMINAL_JOB_STATUSES
+from app.models.job import (
+    Job,
+    JobAttempt,
+    JobEvent,
+    JobItem,
+    JobStatus,
+    TERMINAL_JOB_STATUSES,
+)
 from app.utils.timezone import utc_now_naive
 
 
@@ -235,6 +244,148 @@ class JobService:
         if item is None:
             raise RuntimeError("created job item could not be loaded")
         return item, True
+
+    async def claim_next_job(
+        self,
+        *,
+        worker_id: str,
+        worker_type: str = "server",
+        lease_seconds: int = 60,
+        job_types: Collection[str] | None = None,
+        now: datetime | None = None,
+    ) -> tuple[Job, JobAttempt] | None:
+        """Atomically lease the next eligible job for a worker.
+
+        Lower priority numbers run first. The caller owns the transaction and
+        must commit the returned lease before executing external side effects.
+        """
+
+        normalized_worker_id = worker_id.strip()
+        normalized_worker_type = worker_type.strip()
+        if not normalized_worker_id:
+            raise ValueError("worker_id must not be empty")
+        if not normalized_worker_type:
+            raise ValueError("worker_type must not be empty")
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive")
+
+        normalized_job_types: tuple[str, ...] | None = None
+        if job_types is not None:
+            raw_job_types = (job_types,) if isinstance(job_types, str) else job_types
+            normalized_job_types = tuple(
+                sorted({value.strip() for value in raw_job_types if value.strip()})
+            )
+            if not normalized_job_types:
+                raise ValueError("job_types must contain at least one non-empty value")
+
+        claim_time = now or utc_now_naive()
+        lease_expires_at = claim_time + timedelta(seconds=lease_seconds)
+        bind = self.db.get_bind()
+        dialect_name = bind.dialect.name if bind is not None else ""
+        claim_statement = self._build_claim_statement(
+            worker_type=normalized_worker_type,
+            job_types=normalized_job_types,
+            claim_time=claim_time,
+            lease_owner=normalized_worker_id,
+            lease_expires_at=lease_expires_at,
+            dialect_name=dialect_name,
+        )
+        claimed_id = (await self.db.execute(claim_statement)).scalar_one_or_none()
+        if claimed_id is None:
+            return None
+
+        job = await self.db.get(Job, claimed_id)
+        if job is None:
+            raise RuntimeError("claimed job could not be loaded")
+        await self.db.refresh(job)
+
+        attempt_number = int(
+            (
+                await self.db.execute(
+                    select(
+                        func.coalesce(func.max(JobAttempt.attempt_number), 0) + 1
+                    ).where(JobAttempt.job_id == job.id)
+                )
+            ).scalar_one()
+        )
+        attempt = JobAttempt(
+            job_id=job.id,
+            attempt_number=attempt_number,
+            worker_id=normalized_worker_id,
+            status=JobStatus.LEASED.value,
+            lease_expires_at=lease_expires_at,
+            heartbeat_at=claim_time,
+            metrics={},
+            started_at=claim_time,
+        )
+        self.db.add(attempt)
+        await self.db.flush()
+        await self._append_event(
+            job=job,
+            event_type="status_changed",
+            from_status=JobStatus.QUEUED.value,
+            to_status=JobStatus.LEASED.value,
+            message="Job leased",
+            details={
+                "attempt_id": attempt.id,
+                "attempt_number": attempt.attempt_number,
+                "lease_expires_at": lease_expires_at.isoformat(),
+            },
+            actor_type="worker",
+            actor_id=normalized_worker_id,
+            created_at=claim_time,
+        )
+        await self.db.flush()
+        return job, attempt
+
+    @staticmethod
+    def _build_claim_statement(
+        *,
+        worker_type: str,
+        job_types: tuple[str, ...] | None,
+        claim_time: datetime,
+        lease_owner: str,
+        lease_expires_at: datetime,
+        dialect_name: str,
+    ) -> Update:
+        eligible_conditions = [
+            Job.status == JobStatus.QUEUED.value,
+            Job.cancel_requested.is_(False),
+            Job.worker_type == worker_type,
+            or_(Job.run_after.is_(None), Job.run_after <= claim_time),
+        ]
+        if job_types is not None:
+            eligible_conditions.append(Job.job_type.in_(job_types))
+
+        candidate = (
+            select(Job.id)
+            .where(and_(*eligible_conditions))
+            .order_by(Job.priority.asc(), Job.created_at.asc(), Job.id.asc())
+            .limit(1)
+        )
+        if dialect_name == "postgresql":
+            candidate = candidate.with_for_update(skip_locked=True)
+        elif dialect_name != "sqlite":
+            raise RuntimeError(
+                f"durable jobs do not support database dialect: {dialect_name or 'unknown'}"
+            )
+
+        return (
+            update(Job)
+            .where(
+                Job.id == candidate.scalar_subquery(),
+                and_(*eligible_conditions),
+            )
+            .values(
+                status=JobStatus.LEASED.value,
+                lease_owner=lease_owner,
+                lease_expires_at=lease_expires_at,
+                heartbeat_at=claim_time,
+                run_after=None,
+            )
+            .returning(Job.id)
+            .execution_options(synchronize_session=False)
+        )
 
     async def transition(
         self,
