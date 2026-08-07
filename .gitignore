@@ -1,40 +1,86 @@
-# Dependencies
+# Dependency directories. Lock files must remain versioned.
 node_modules/
-package-lock.json
 
-# Database files
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.pycache_tmp/
+
+# Local databases, journals and backups
 *.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.bak-*
+*.dump
+backend/db_backups/
 
-# Environment
+# Environment files, credentials and local browser sessions
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!*.env.example
+cookies.json
+cookies.*.json
+*.pem
+*.p12
+*.pfx
+*.key
 
-# Build output
+# Build output and compiled binaries
 .next/
+out/
 dist/
 build/
+coverage/
+*.tsbuildinfo
+backend/bin/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Uploads
+# Runtime data and generated assets
 uploads/
 test_uploads/
+frontend/public/car-models/
+monthly_outputs/
+outputs/
+reference-captures/
+.spreadsheet-work/
+tmp/
+.tmp/
+temp/
+tmp_*
+123123
+xhs_weekly_report_preview*
+backend/content_tag_*.csv
+backend/app/data/*.bak-*
+backend/app/data/*.bak-local-*
 
-# Egg info
-*.egg-info/
-
-# TypeScript buildinfo
-*.tsbuildinfo
+# Local design experiments kept outside the production source tree
+automation_tts_ppt/
+frontend-meigen-refactor/
+meigen-site-clone/
+pureimage-watermark-ui/
 
 # Logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
