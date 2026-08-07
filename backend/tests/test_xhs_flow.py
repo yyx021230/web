@@ -21,7 +21,7 @@ from app.services.request_queue import RateLimitedQueue, xhs_publish_queue
 import app.services.xhs_service as xhs_service_module
 from app.services.xhs_service import XHSService, SyncJobCancelled
 from tests.conftest import make_auth_headers
-from app.utils.timezone import utc_naive_to_aware_iso, utc_now_naive
+from app.utils.timezone import utc_now_naive
 
 
 async def _async_true() -> bool:
@@ -43,6 +43,7 @@ async def _seed_users_and_envs() -> None:
             XHSEnvironment(id=101, shop_id="shop_101", account_name="账号A", status="active"),
             XHSEnvironment(id=102, shop_id="shop_102", account_name="测试2", status="active", is_sync_runner=True),
         ])
+        await db.flush()
         db.add(UserXHSEnvironment(user_id=2, environment_id=101))
         await db.commit()
 
@@ -97,9 +98,6 @@ def _patch_publish_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
 
     async def fake_start_mcp(self: XHSService, ws_url: str, port: int):
         return 12345
-
-    async def fake_allocate_free_port(self: XHSService) -> int:
-        return 18061
 
     async def fake_wait_mcp_ready(self: XHSService, api_base=None, timeout: int = 15):
         return None

@@ -183,6 +183,7 @@ async def test_xhs_publish_series_and_list_include_manual_synced_posts(client):
 
     async with async_session() as db:
         db.add(XHSEnvironment(id=101, shop_id="shop_101", account_name="账号A", status="active"))
+        await db.flush()
         db.add(UserXHSEnvironment(user_id=2, environment_id=101))
         db.add_all([
             XHSPost(

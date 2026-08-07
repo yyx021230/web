@@ -334,7 +334,10 @@ class JobService:
             user_message=user_message,
             internal_error=internal_error,
             run_after=retry_at,
-            details={"retry_count": next_retry_count, "max_retries": int(job.max_retries or 0)},
+            details={
+                "retry_count": next_retry_count,
+                "max_retries": int(job.max_retries or 0),
+            },
             actor_type=actor_type,
             actor_id=actor_id,
             now=now,
@@ -415,7 +418,9 @@ class JobService:
             return postgresql_insert(model)
         if dialect_name == "sqlite":
             return sqlite_insert(model)
-        raise RuntimeError(f"durable jobs do not support database dialect: {dialect_name or 'unknown'}")
+        raise RuntimeError(
+            f"durable jobs do not support database dialect: {dialect_name or 'unknown'}"
+        )
 
     async def _insert_job_idempotently(self, values: dict[str, Any]) -> int | None:
         statement = self._dialect_insert(Job).values(**values)

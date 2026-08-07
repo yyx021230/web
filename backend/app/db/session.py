@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.config import settings
@@ -16,6 +18,7 @@ def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
         return
     cursor = dbapi_connection.cursor()
     try:
+        cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA temp_store=MEMORY")
@@ -28,6 +31,6 @@ def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncIterator[AsyncSession]:
     async with async_session() as session:
         yield session
