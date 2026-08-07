@@ -7423,6 +7423,7 @@ class XHSService:
         content: str,
         image_paths: list[str],
         tags: list[str],
+        ai_origin_type: str,
         is_original: bool,
         visibility: str,
     ) -> None:
@@ -7648,7 +7649,9 @@ class XHSService:
         instead of blocking on a separate online-status probe.
         """
         self._require_local_browser_ops("启动云登浏览器并获取连接")
+        await self._apply_sync_cloud_fingerprint_update(env)
         body = {"account_id": env.shop_id, "headless": "0"}
+        body.update(self._parse_sync_browser_start_config(env))
         last_error = ""
         for attempt in range(1, XHS_BROWSER_START_RETRY_ATTEMPTS + 1):
             try:

@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import os
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from pathlib import Path
 
 from app.api.v1.router import router as v1_router
+from app.build_info import get_build_info
 from app.config import settings, validate_settings
 from app.core.exceptions import (
     validation_exception_handler,
@@ -33,9 +35,12 @@ def _cst_log_converter(timestamp: float):
 
 logging.Formatter.converter = staticmethod(_cst_log_converter)
 
+from app.core.middleware import install_request_id_log_factory
+
+install_request_id_log_factory()
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    format="%(asctime)s | %(levelname)-8s | %(name)s | request_id=%(request_id)s | %(message)s",
 )
 logger = logging.getLogger("app")
 if missing_optional_settings and settings.debug:
@@ -124,7 +129,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Creative Studio API",
     description="Backend API for AI Creative Studio - Design editor with AI and Dify integration",
-    version="0.1.0",
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
@@ -158,7 +163,7 @@ app.include_router(v1_router, prefix="/api/v1")
 
 
 def _health_payload() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", **get_build_info()}
 
 @app.api_route("/", methods=["GET", "HEAD"])
 async def root_health():
@@ -170,6 +175,12 @@ async def root_health():
 async def health_check():
     """健康检查（轻量）"""
     return _health_payload()
+
+
+@app.api_route("/version", methods=["GET", "HEAD"])
+async def version_info():
+    """Public build metadata used to identify the running release."""
+    return get_build_info()
 
 
 async def _build_readiness_payload() -> tuple[dict[str, object], int]:
@@ -188,16 +199,39 @@ async def _build_readiness_payload() -> tuple[dict[str, object], int]:
         checks["database"] = f"error: {str(e)}"
         all_ok = False
 
+    # Redis 检查
+    try:
+        from redis.asyncio import Redis
+
+        redis_client = Redis.from_url(settings.redis_url, socket_connect_timeout=2, socket_timeout=2)
+        try:
+            await redis_client.ping()
+        finally:
+            await redis_client.aclose()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {type(e).__name__}"
+        all_ok = False
+
     # 存储检查
     try:
-        from app.adapters.storage import storage
+        if settings.storage_type == "local":
+            uploads_path.mkdir(parents=True, exist_ok=True)
+            if not os.access(uploads_path, os.R_OK | os.W_OK):
+                raise PermissionError("storage path is not readable and writable")
+        else:
+            from app.adapters.storage import storage  # noqa: F401
         checks["storage"] = f"ok ({settings.storage_type})"
     except Exception as e:
-        checks["storage"] = f"error: {str(e)}"
+        checks["storage"] = f"error: {type(e).__name__}"
         all_ok = False
 
     status_code = 200 if all_ok else 503
-    return {"status": "ready" if all_ok else "degraded", "checks": checks}, status_code
+    return {
+        "status": "ready" if all_ok else "degraded",
+        **get_build_info(),
+        "checks": checks,
+    }, status_code
 
 
 @app.api_route("/health/ready", methods=["GET", "HEAD"])

@@ -2,45 +2,19 @@
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
+from sqlalchemy import select
+
 from app.core.security import create_access_token
+from app.core.security import hash_password
+from app.db.session import async_session
+from app.models.user import User
 
 
 @pytest_asyncio.fixture
-async def auth_client():
-    """已认证客户端"""
-    from app.db.base import Base
-    from app.db.session import get_db
-    from app.main import app
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-    import os
-    os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_validation.db"
-    os.environ["STORAGE_TYPE"] = "local"
-    os.environ["STORAGE_PATH"] = "./test_uploads"
-    os.environ["JWT_SECRET_KEY"] = "test"
-
-    from app.config import get_settings
-    get_settings.cache_clear()
-
-    engine = create_async_engine("sqlite+aiosqlite:///./test_validation.db")
-    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-    async def override_get_db():
-        async with factory() as s:
-            yield s
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+async def auth_client(client: AsyncClient):
+    """Reuse the isolated application client without replacing global dependencies."""
+    yield client
 
 
 def make_headers(user_id: int = 1):
@@ -65,6 +39,50 @@ def test_config_validate_optional():
     optional = s.validate_optional()
     assert "DIFY_DEFAULT_BASE_URL" in optional
     assert "SEEDREAM_API_KEY" in optional
+
+
+def test_production_requires_explicit_confirmation():
+    from app.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        app_env="production",
+        deployment_environment="production",
+        production_confirmation="",
+        jwt_secret_key="production-test-secret",
+        database_url="postgresql+asyncpg://ai_user:strong-password@postgres/app",
+        xhs_worker_internal_token="worker-secret",
+        storage_type="local",
+    )
+
+    assert "PRODUCTION_CONFIRMATION" in settings.validate_critical()
+
+
+def test_test_environment_rejects_postgres():
+    from app.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        app_env="test",
+        deployment_environment="test",
+        jwt_secret_key="test-secret",
+        database_url="postgresql+asyncpg://test:test@postgres/test",
+    )
+
+    assert "TEST_DATABASE_MUST_BE_SQLITE" in settings.validate_critical()
+
+
+def test_environment_names_must_match():
+    from app.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        app_env="development",
+        deployment_environment="production",
+        jwt_secret_key="test-secret",
+    )
+
+    assert "APP_ENV_MATCHES_DEPLOYMENT_ENVIRONMENT" in settings.validate_critical()
 
 
 # --- 分页校验 ---
@@ -98,10 +116,15 @@ async def test_pagination_limit_zero(auth_client):
 @pytest.mark.asyncio
 async def test_validation_error_format(auth_client):
     """测试验证错误返回统一格式"""
-    # 先注册用户
-    await auth_client.post("/api/v1/auth/register", json={
-        "username": "val_user", "email": "val@test.com", "password": "password123",
-    })
+    async with async_session() as db:
+        existing = await db.execute(select(User).where(User.username == "val_user"))
+        if existing.scalar_one_or_none() is None:
+            db.add(User(
+                username="val_user",
+                email="val@test.com",
+                hashed_password=hash_password("password123"),
+            ))
+            await db.commit()
     login_resp = await auth_client.post("/api/v1/auth/login", json={
         "username": "val_user", "password": "password123",
     })

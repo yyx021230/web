@@ -1,7 +1,25 @@
+name: ${COMPOSE_PROJECT_NAME:-ztqc-web-prod}
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-20m}"
+    max-file: "${LOG_MAX_FILES:-5}"
+
 services:
   postgres:
-    image: postgres:15-alpine
+    image: ${POSTGRES_IMAGE:-postgres:15.13-alpine}
     restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - log_min_duration_statement=${POSTGRES_LOG_MIN_DURATION_MS:-1000}
+      - -c
+      - log_lock_waits=on
+      - -c
+      - deadlock_timeout=1s
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-150}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ai_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -9,13 +27,17 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_creative}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    shm_size: ${POSTGRES_SHM_SIZE:-512m}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-4g}
+    cpus: ${POSTGRES_CPU_LIMIT:-2.0}
+    logging: *default-logging
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-redis:7.4.5-alpine}
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -25,9 +47,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    mem_limit: ${REDIS_MEMORY_LIMIT:-2g}
+    cpus: ${REDIS_CPU_LIMIT:-1.0}
+    logging: *default-logging
 
   minio:
-    image: minio/minio:latest
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
@@ -35,9 +60,19 @@ services:
     volumes:
       - miniodata:/data
     command: server /data --console-address ":9001"
+    mem_limit: ${MINIO_MEMORY_LIMIT:-2g}
+    cpus: ${MINIO_CPU_LIMIT:-1.0}
+    logging: *default-logging
 
   backend:
-    build: ./backend
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.2.0}
+    build:
+      context: ./backend
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11.13-slim-bookworm}
+        APP_VERSION: ${APP_VERSION:-0.2.0}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -45,6 +80,11 @@ services:
       - ./backend/.env
     environment:
       APP_ENV: ${APP_ENV:-production}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
+      PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
+      APP_VERSION: ${APP_VERSION:-0.2.0}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      BUILD_TIME: ${BUILD_TIME:-unknown}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
       REDIS_URL: redis://redis:6379/0
       TZ: Asia/Shanghai
@@ -60,10 +100,19 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads
+      - ${UPLOADS_HOST_PATH:-./uploads}:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=4).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-6g}
+    cpus: ${BACKEND_CPU_LIMIT:-3.0}
+    logging: *default-logging
 
   ai-worker:
-    build: ./backend
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.2.0}
     command: ["python", "-m", "app.scripts.ai_worker"]
     restart: unless-stopped
     stop_grace_period: 45m
@@ -71,6 +120,11 @@ services:
       - ./backend/.env
     environment:
       APP_ENV: ${APP_ENV:-production}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
+      PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
+      APP_VERSION: ${APP_VERSION:-0.2.0}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      BUILD_TIME: ${BUILD_TIME:-unknown}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
       REDIS_URL: redis://redis:6379/0
       TZ: Asia/Shanghai
@@ -86,24 +140,43 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./uploads:/app/uploads
+      - ${UPLOADS_HOST_PATH:-./uploads}:/app/uploads
+    mem_limit: ${AI_WORKER_MEMORY_LIMIT:-12g}
+    cpus: ${AI_WORKER_CPU_LIMIT:-4.0}
+    logging: *default-logging
 
   frontend:
+    image: ${APP_IMAGE_PREFIX:-ztqc}/frontend:${APP_VERSION:-0.2.0}
     build:
       context: ./frontend
       args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20.19.4-alpine3.22}
         BACKEND_ORIGIN: http://backend:8000
-        NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
         NEXT_PUBLIC_API_BASE: /api/backend
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.2.0}
+        NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       BACKEND_ORIGIN: http://backend:8000
-      NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
       NEXT_PUBLIC_API_BASE: /api/backend
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.2.0}
+      NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-2g}
+    cpus: ${FRONTEND_CPU_LIMIT:-2.0}
+    logging: *default-logging
 
 volumes:
   pgdata:

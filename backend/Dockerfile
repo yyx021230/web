@@ -1,7 +1,15 @@
-FROM python:3.11-slim
+ARG PYTHON_IMAGE=python:3.11.13-slim-bookworm
+FROM ${PYTHON_IMAGE}
+
+ARG APP_VERSION=0.2.0
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    APP_VERSION=${APP_VERSION} \
+    GIT_COMMIT=${GIT_COMMIT} \
+    BUILD_TIME=${BUILD_TIME}
 
 WORKDIR /app
 
@@ -17,9 +25,9 @@ RUN pip install --no-cache-dir \
 
 COPY app /app/app
 COPY alembic.ini /app/alembic.ini
-COPY bin/xiaohongshu-mcp /app/bin/xiaohongshu-mcp
+COPY bin /app/bin
 
-RUN chmod +x /app/bin/xiaohongshu-mcp
+RUN if [ -f /app/bin/xiaohongshu-mcp ]; then chmod +x /app/bin/xiaohongshu-mcp; fi
 
 EXPOSE 8000
 

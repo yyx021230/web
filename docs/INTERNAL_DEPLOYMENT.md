@@ -6,11 +6,13 @@
 - 开放端口：`3000`（前端）、`8000`（后端，可选仅内网）
 
 ## 2. 配置文件准备
-1. 复制后端环境模板：
+1. 准备根目录生产变量和后端业务变量：
 ```bash
+cp .env.production.example .env
 cp backend/.env.internal.example backend/.env.internal
 ```
-2. 编辑 `backend/.env.internal`：
+2. 编辑 `.env` 与 `backend/.env.internal`：
+- `.env`：数据库、MinIO、版本、资源限制和生产确认
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`（必须替换）
 - `CORS_ORIGINS`（改为你的内网 IP，例如 `http://10.0.0.12:3000`）
@@ -18,7 +20,8 @@ cp backend/.env.internal.example backend/.env.internal
 
 ## 3. 启动服务
 ```bash
-docker compose -f docker-compose.internal.yml up -d --build
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.internal.yml up -d --build
 ```
 
 ## 4. 执行数据库迁移
@@ -40,9 +43,9 @@ bash scripts/migrate_internal.sh
 
 ## 7. 持久化与备份
 - 数据目录：
-  - PostgreSQL: `./data/postgres`
-  - Redis: `./data/redis`
-  - 上传文件: `./data/uploads`
+- PostgreSQL: Docker volume `pgdata`
+- Redis: Docker volume `redisdata`
+- 上传文件: `.env` 的 `UPLOADS_HOST_PATH`
 - 执行备份：
 ```bash
 bash scripts/backup_internal.sh
@@ -52,11 +55,10 @@ bash scripts/backup_internal.sh
 ### 升级
 ```bash
 git pull
-docker compose -f docker-compose.internal.yml up -d --build
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.internal.yml up -d --build
 bash scripts/migrate_internal.sh
 ```
 
 ### 回滚（代码版本）
-1. 回退到旧版本代码（或旧镜像 tag）
-2. 重新 `up -d --build`
-3. 若涉及不可逆迁移，先恢复数据库备份再启动
+正式环境不要直接 `git pull` 回滚，按 [v0.2.0 发布手册](./V0.2_RELEASE_RUNBOOK.md) 使用版本包和对应备份恢复。

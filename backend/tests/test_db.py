@@ -1,6 +1,6 @@
 """测试数据库连接和模型"""
 
-import asyncio
+import os
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -9,7 +9,7 @@ from app.models import User, Template, Material, Project, AITask, DifyWorkflowCo
 
 
 # 使用 SQLite 异步引擎进行测试
-SQLITE_URL = "sqlite+aiosqlite:///./test_ai_creative.db"
+SQLITE_URL = os.environ["DATABASE_URL"]
 
 
 @pytest_asyncio.fixture

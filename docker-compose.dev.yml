@@ -1,0 +1,26 @@
+services:
+  postgres:
+    ports:
+      - "${DEV_POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${DEV_REDIS_PORT:-6379}:6379"
+
+  minio:
+    ports:
+      - "${DEV_MINIO_PORT:-9000}:9000"
+      - "${DEV_MINIO_CONSOLE_PORT:-9001}:9001"
+
+  backend:
+    environment:
+      APP_ENV: development
+      DEPLOYMENT_ENVIRONMENT: development
+      PRODUCTION_CONFIRMATION: ""
+      DEBUG: "true"
+
+  ai-worker:
+    environment:
+      APP_ENV: development
+      DEPLOYMENT_ENVIRONMENT: development
+      PRODUCTION_CONFIRMATION: ""

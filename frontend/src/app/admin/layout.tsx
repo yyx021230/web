@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
+const GIT_COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT || 'unknown';
+
 const navItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: '运营总览', href: '/admin' },
   { id: 'users', icon: Users, label: '用户管理', href: '/admin/users' },
@@ -150,6 +153,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t">
+          <div
+            className="mb-2 flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-[11px] text-gray-500"
+            title={`Commit ${GIT_COMMIT}`}
+          >
+            <span>当前版本</span>
+            <span className="font-medium text-gray-700">v{APP_VERSION.replace(/^v/, '')}</span>
+          </div>
           <a href="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors">
             <Palette className="h-4 w-4" />
             返回前台

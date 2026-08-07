@@ -3,23 +3,44 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from app.core.security import hash_password
+from app.models.user import User
+from tests.conftest import make_auth_headers, session_factory
+
+
+async def create_test_user(
+    username: str,
+    email: str,
+    password: str = "password123",
+    role: str = "viewer",
+) -> User:
+    async with session_factory() as db:
+        existing = await db.execute(select(User).where(User.username == username))
+        user = existing.scalar_one_or_none()
+        if user is not None:
+            return user
+        user = User(
+            username=username,
+            email=email,
+            hashed_password=hash_password(password),
+            role=role,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
 
 
 async def register_and_login(client, username="testuser", email="test@example.com", password="password123"):
-    """注册并返回 auth headers"""
-    resp = await client.post("/api/v1/auth/register", json={
+    """Create a test user directly and return API auth headers."""
+    await create_test_user(username, email, password)
+    login_resp = await client.post("/api/v1/auth/login", json={
         "username": username,
-        "email": email,
         "password": password,
     })
-    if resp.status_code == 200:
-        token = resp.json()["access_token"]
-    else:
-        login_resp = await client.post("/api/v1/auth/login", json={
-            "username": username,
-            "password": password,
-        })
-        token = login_resp.json()["access_token"]
+    token = login_resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -31,31 +52,43 @@ async def test_health_check(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
+    assert data["version"] == "0.2.0"
+    assert data["environment"] == "test"
+
+
+@pytest.mark.asyncio
+async def test_version_and_request_trace_headers(client):
+    resp = await client.get("/version", headers={"X-Request-ID": "release-smoke-001"})
+    assert resp.status_code == 200
+    assert resp.headers["X-Request-ID"] == "release-smoke-001"
+    assert float(resp.headers["X-Process-Time"]) >= 0
+    assert resp.json() == {
+        "version": "0.2.0",
+        "commit": "unknown",
+        "buildTime": "unknown",
+        "environment": "test",
+    }
 
 
 # --- 认证 ---
 
 @pytest.mark.asyncio
 async def test_register(client):
+    admin = await create_test_user("register_admin", "register-admin@example.com", role="admin")
     resp = await client.post("/api/v1/auth/register", json={
         "username": "testuser_api",
         "email": "test@example.com",
         "password": "password123",
-    })
-    assert resp.status_code in (200, 400)
-    if resp.status_code == 200:
-        data = resp.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
+    }, headers=make_auth_headers(admin.id))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
 
 
 @pytest.mark.asyncio
 async def test_login_success(client):
-    await client.post("/api/v1/auth/register", json={
-        "username": "login_test_user",
-        "email": "login@example.com",
-        "password": "password123",
-    })
+    await create_test_user("login_test_user", "login@example.com")
     resp = await client.post("/api/v1/auth/login", json={
         "username": "login_test_user",
         "password": "password123",
@@ -67,11 +100,7 @@ async def test_login_success(client):
 
 @pytest.mark.asyncio
 async def test_login_wrong_password(client):
-    await client.post("/api/v1/auth/register", json={
-        "username": "wrong_pw_user",
-        "email": "wrongpw@example.com",
-        "password": "password123",
-    })
+    await create_test_user("wrong_pw_user", "wrongpw@example.com")
     resp = await client.post("/api/v1/auth/login", json={
         "username": "wrong_pw_user",
         "password": "wrongpassword",
@@ -247,7 +276,8 @@ async def test_get_material_is_user_scoped(client):
 
 @pytest.mark.asyncio
 async def test_list_workflows(client):
-    resp = await client.get("/api/v1/workflows")
+    headers = await register_and_login(client, "workflow_user", "workflow@example.com")
+    resp = await client.get("/api/v1/workflows", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["code"] == 0
@@ -383,16 +413,19 @@ async def test_material_delete_requires_auth(client):
 @pytest.mark.asyncio
 async def test_duplicate_user_returns_400(client):
     """重复注册返回 400 而非 500"""
-    await client.post("/api/v1/auth/register", json={
+    admin = await create_test_user("duplicate_admin", "duplicate-admin@example.com", role="admin")
+    headers = make_auth_headers(admin.id)
+    first = await client.post("/api/v1/auth/register", json={
         "username": "dup_user",
         "email": "dup@example.com",
         "password": "password123",
-    })
+    }, headers=headers)
+    assert first.status_code == 200
     resp = await client.post("/api/v1/auth/register", json={
         "username": "dup_user",
         "email": "dup2@example.com",
         "password": "password123",
-    })
+    }, headers=headers)
     # 重复用户名返回 400（通过预检查或 IntegrityError handler）
     assert resp.status_code == 400
     data = resp.json()
@@ -498,24 +531,14 @@ async def test_template_response_includes_fabric_json(client):
 
 @pytest.mark.asyncio
 async def test_dify_management_requires_auth(client):
-    """Dify 实例/工作流的创建和删除需要登录"""
-    # 创建实例
-    resp = await client.post("/api/v1/workflows/instances", json={
-        "name": "test",
+    """Dify 工作流的创建和删除需要管理员登录。"""
+    resp = await client.post("/api/v1/workflows", json={
+        "app_name": "test",
+        "app_type": "workflow",
         "base_url": "http://test.com",
         "api_key": "key-1234567890",
     })
     assert resp.status_code in (401, 403)
 
-    # 删除实例
-    resp = await client.delete("/api/v1/workflows/instances/1")
-    assert resp.status_code in (401, 403)
-
-    # 创建工作流
-    resp = await client.post("/api/v1/workflows", json={
-        "instance_id": 1,
-        "app_id": "app1",
-        "app_name": "test",
-        "app_type": "workflow",
-    })
+    resp = await client.delete("/api/v1/workflows/1")
     assert resp.status_code in (401, 403)

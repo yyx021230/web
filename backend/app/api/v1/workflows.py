@@ -108,7 +108,7 @@ async def list_workflows(
     from sqlalchemy import true
     from sqlalchemy.orm import selectinload
     
-    if current_user.role == "admin":
+    if has_role(current_user, "admin"):
         # 管理员看到所有已启用的
         result = await db.execute(
             select(DifyWorkflowConfig).where(DifyWorkflowConfig.is_enabled == true())

@@ -30,6 +30,8 @@ backend/db_backups/
 .env.*
 !.env.example
 !*.env.example
+!.env.*.example
+!**/.env.*.example
 cookies.json
 cookies.*.json
 *.pem
@@ -44,7 +46,8 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
-backend/bin/
+backend/bin/*
+!backend/bin/.gitkeep
 
 # Runtime data and generated assets
 uploads/

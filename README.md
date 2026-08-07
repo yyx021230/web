@@ -1,4 +1,4 @@
-# AI Creative Studio
+# AI Creative Studio v0.2.0
 
 AI 创意工作台 — 基于 Fabric.js 的在线设计编辑器，集成 AI 生图和 Dify 工作流。
 
@@ -14,7 +14,7 @@ AI 创意工作台 — 基于 Fabric.js 的在线设计编辑器，集成 AI 生
 
 | 层 | 技术 |
 |---|---|
-| 前端 | Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui + Zustand + Fabric.js |
+| 前端 | Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui + Zustand + Fabric.js |
 | 后端 | FastAPI + Python 3.11+ + SQLAlchemy 2.0 + Pydantic v2 |
 | 数据库 | PostgreSQL + Redis |
 | 存储 | MinIO / S3 / 本地存储 |
@@ -22,17 +22,20 @@ AI 创意工作台 — 基于 Fabric.js 的在线设计编辑器，集成 AI 生
 ## 快速开始
 
 ### 环境要求
-- Node.js 18+
+- Node.js 20.19+
 - Python 3.11+
 - Docker & Docker Compose (可选)
 
 ### 使用 Docker Compose
 ```bash
-# 启动所有服务
-docker-compose up -d
+# 本地开发容器使用独立项目名、端口和数据卷
+cp .env.development.example .env.development
+docker compose --env-file .env.development \
+  -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 # 查看日志
-docker-compose logs -f
+docker compose --env-file .env.development \
+  -f docker-compose.yml -f docker-compose.dev.yml logs -f
 ```
 
 ### 手动启动
@@ -94,20 +97,28 @@ web/
 
 启动后端后访问: http://localhost:8000/docs
 
+版本与健康检查：
+
+- `GET /version`：版本号、Git commit、构建时间和运行环境。
+- `GET /health`：进程存活检查。
+- `GET /health/ready`：数据库、Redis 和存储就绪检查。
+
 ## Windows 部署
 
-项目根目录自带 [deploy-to-windows.sh](/Users/yyx/ztqc/web/deploy-to-windows.sh:1)，会完成这些步骤：
+项目根目录自带 `deploy-to-windows.sh`，正式发布会完成：
 - 编译 Linux 版 `backend/bin/xiaohongshu-mcp`
-- 打包 `backend/`、`frontend/`、`docker-compose.yml`
-- 自动屏蔽 macOS `._*` 和 `.DS_Store` 脏文件
-- 上传到 Windows 服务器并执行 `docker compose up -d --build`
-- 自动执行 `python -m alembic upgrade head`
+- 检查干净工作区和语义化版本标签
+- 生成可追溯发布包和版本镜像
+- 发布前备份数据库与上传文件
+- 执行数据库迁移、健康验证和失败自动回滚
 
 执行：
 ```bash
 cd /Users/yyx/ztqc/web
 ./deploy-to-windows.sh
 ```
+
+完整准备、备份、恢复和回滚流程见 [v0.2.0 发布手册](docs/V0.2_RELEASE_RUNBOOK.md)。生产密钥只能放在 Windows 的 `.env` 文件或 CI Secret 中。
 
 ## Dify 集成
 

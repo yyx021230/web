@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     # App
     app_name: str = "AI Creative Studio"
     app_env: str = "development"
+    deployment_environment: str = "development"
+    production_confirmation: str = ""
+    app_version: str = "0.2.0"
+    git_commit: str = "unknown"
+    build_time: str = "unknown"
     debug: bool = False
 
     # Database
@@ -142,9 +147,22 @@ class Settings(BaseSettings):
     def validate_critical(self) -> list[str]:
         """检查关键配置项，返回缺失项列表"""
         missing = []
+        app_env = self.app_env.strip().lower()
+        deployment_environment = self.deployment_environment.strip().lower()
+        supported_environments = {"development", "test", "staging", "production"}
+        if app_env not in supported_environments:
+            missing.append("APP_ENV_VALID")
+        if deployment_environment not in supported_environments:
+            missing.append("DEPLOYMENT_ENVIRONMENT_VALID")
+        if app_env != deployment_environment:
+            missing.append("APP_ENV_MATCHES_DEPLOYMENT_ENVIRONMENT")
         if not self.jwt_secret_key or self.jwt_secret_key == "change-me-in-production":
             missing.append("JWT_SECRET_KEY")
-        if self.app_env.lower() in {"prod", "production"}:
+        if app_env == "test" and not self.database_url.startswith("sqlite"):
+            missing.append("TEST_DATABASE_MUST_BE_SQLITE")
+        if app_env == "production":
+            if self.production_confirmation != "ALLOW_PRODUCTION_DEPLOYMENT":
+                missing.append("PRODUCTION_CONFIRMATION")
             if not self.database_url or self.database_url.startswith("sqlite"):
                 missing.append("DATABASE_URL")
             if not self.allow_default_database_password and self._uses_default_database_password(self.database_url):

@@ -24,6 +24,14 @@ from tests.conftest import make_auth_headers
 from app.utils.timezone import utc_naive_to_aware_iso, utc_now_naive
 
 
+async def _async_true() -> bool:
+    return True
+
+
+async def _async_ws() -> str:
+    return "ws://fake-browser"
+
+
 async def _seed_users_and_envs() -> None:
     async with async_session() as db:
         db.add_all([
@@ -257,6 +265,7 @@ async def test_publish_success_returns_post_payload(client, monkeypatch):
         content,
         image_paths,
         tags=None,
+        ai_origin_type="manual",
         is_original=False,
         visibility="公开可见",
         scheduled_at=None,
@@ -315,6 +324,7 @@ async def test_publish_immediate_returns_publishing_and_schedules_background_job
         content: str,
         image_paths: list[str],
         tags: list[str],
+        ai_origin_type: str,
         is_original: bool,
         visibility: str,
     ) -> None:
@@ -325,6 +335,7 @@ async def test_publish_immediate_returns_publishing_and_schedules_background_job
             "content": content,
             "image_paths": image_paths,
             "tags": tags,
+            "ai_origin_type": ai_origin_type,
             "is_original": is_original,
             "visibility": visibility,
         })
@@ -390,6 +401,7 @@ async def test_publish_without_feed_id_returns_failed_status(client, monkeypatch
         content,
         image_paths,
         tags=None,
+        ai_origin_type="manual",
         is_original=False,
         visibility="公开可见",
         scheduled_at=None,
@@ -444,6 +456,7 @@ async def test_publish_future_time_returns_scheduled(client, monkeypatch):
         content,
         image_paths,
         tags=None,
+        ai_origin_type="manual",
         is_original=False,
         visibility="公开可见",
         scheduled_at=None,
@@ -784,6 +797,11 @@ async def test_admin_sync_all_requires_admin_role(client):
 @pytest.mark.asyncio
 async def test_admin_assign_and_unassign_flow(client):
     await _seed_users_and_envs()
+    async with async_session() as db:
+        target_user = await db.get(User, 3)
+        assert target_user is not None
+        target_user.role = "xhs_ops"
+        await db.commit()
 
     assign_resp = await client.post(
         "/api/v1/admin/xhs/assign",
@@ -954,7 +972,11 @@ async def test_sync_account_note_engagement_stats_updates_metrics_from_creator_c
         ])
         await db.commit()
 
-    async def fake_acquire_ready_sync_browser_ws_with_fallback(self: XHSService, env_id: int):
+    async def fake_acquire_ready_sync_browser_ws_with_fallback(
+        self: XHSService,
+        env_id: int,
+        allow_fallback: bool = True,
+    ):
         assert env_id == 801
         return None, "ws://publish-browser"
 
@@ -977,7 +999,12 @@ async def test_sync_account_note_engagement_stats_updates_metrics_from_creator_c
         assert shop_id == "shop_publish_801"
         return None
 
-    async def fake_fetch_creator_note_stats(self: XHSService, *, api_base: str | None = None):
+    async def fake_fetch_creator_note_stats(
+        self: XHSService,
+        *,
+        api_base: str | None = None,
+        env: XHSEnvironment | None = None,
+    ):
         assert api_base == "http://localhost:18123"
         return [
             {
@@ -1054,7 +1081,11 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     started_env_ids: list[int] = []
     stopped_shop_ids: list[str] = []
 
-    async def fake_acquire_ready_sync_browser_ws_with_fallback(self: XHSService, env_id: int):
+    async def fake_acquire_ready_sync_browser_ws_with_fallback(
+        self: XHSService,
+        env_id: int,
+        allow_fallback: bool = True,
+    ):
         started_env_ids.append(env_id)
         return None, f"ws://publish-browser-{env_id}"
 
@@ -1074,7 +1105,12 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
         stopped_shop_ids.append(shop_id)
         return None
 
-    async def fake_fetch_creator_note_stats(self: XHSService, *, api_base: str | None = None):
+    async def fake_fetch_creator_note_stats(
+        self: XHSService,
+        *,
+        api_base: str | None = None,
+        env: XHSEnvironment | None = None,
+    ):
         if api_base == "http://localhost:19123":
             return [{
                 "note_id": "feed_813",
@@ -1118,7 +1154,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     assert result["metric_synced_notes"] == 2
     assert result["total_notes"] == 2
     assert started_env_ids == [811, 812]
-    assert stopped_shop_ids == ["shop_publish_811", "shop_publish_812"]
+    assert stopped_shop_ids == []
 
     async with async_session() as db:
         note_813 = await db.get(XHSAccountNote, 813)
@@ -1549,6 +1585,9 @@ async def test_get_sync_browser_ws_merges_admin_start_config(monkeypatch):
         captured: dict[str, object] = {}
 
         class _FakeResponse:
+            status_code = 200
+            content = b"1"
+
             def json(self):
                 return {"code": 0, "data": {"ws": {"puppeteer": "ws://127.0.0.1:9222/devtools/browser/abc"}}}
 
@@ -1568,8 +1607,9 @@ async def test_get_sync_browser_ws_merges_admin_start_config(monkeypatch):
                 return _FakeResponse()
 
         monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+        monkeypatch.setattr(XHSService, "_probe_browser_ws", lambda self, ws_url: _async_true())
 
-        ws_url = await service._get_sync_browser_ws(env)
+        ws_url = await service._request_browser_ws_for_online_environment(env)
 
     assert ws_url == "ws://127.0.0.1:9222/devtools/browser/abc"
     assert captured["url"] == f"{xhs_service_module.YUNDENG_API}/api/v2/browser/start"
@@ -1631,8 +1671,9 @@ async def test_get_sync_browser_ws_applies_cloud_update_before_local_start(monke
 
         monkeypatch.setattr(xhs_service_module, "YUNDENG_CLOUD_OPEN_TOKEN", "cloud-open-token")
         monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+        monkeypatch.setattr(XHSService, "_probe_browser_ws", lambda self, ws_url: _async_true())
 
-        ws_url = await service._get_sync_browser_ws(env)
+        ws_url = await service._request_browser_ws_for_online_environment(env)
 
     assert ws_url == "ws://127.0.0.1:9333/devtools/browser/xyz"
     assert [item[1] for item in calls] == [
@@ -1704,8 +1745,9 @@ async def test_get_sync_browser_ws_falls_back_when_cloud_update_fails(monkeypatc
 
         monkeypatch.setattr(xhs_service_module, "YUNDENG_CLOUD_OPEN_TOKEN", "cloud-open-token")
         monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+        monkeypatch.setattr(XHSService, "_probe_browser_ws", lambda self, ws_url: _async_true())
 
-        ws_url = await service._get_sync_browser_ws(env)
+        ws_url = await service._request_browser_ws_for_online_environment(env)
 
     assert ws_url == "ws://127.0.0.1:9444/devtools/browser/fallback"
     assert calls == [
@@ -1973,7 +2015,7 @@ async def test_fetch_profile_account_notes_preserves_missing_interact_fields_as_
 
 
 @pytest.mark.asyncio
-async def test_sync_account_notes_skips_older_unknown_posts_after_first_known(client, monkeypatch):
+async def test_sync_account_notes_keeps_unknown_posts_between_known_posts(client, monkeypatch):
     async with async_session() as db:
         db.add_all([
             XHSEnvironment(id=610, shop_id="shop_publish_610", account_name="发布账号B", status="active", profile_url="https://example.com/profile"),
@@ -2087,9 +2129,9 @@ async def test_sync_account_notes_skips_older_unknown_posts_after_first_known(cl
             assigned_runner_env=runner_env,
         )
 
-    assert result["created_notes"] == 1
+    assert result["created_notes"] == 2
     assert result["updated_notes"] == 2
-    assert result["total_notes"] == 3
+    assert result["total_notes"] == 4
     assert fetch_calls and fetch_calls[0]["scroll_mode"] == "input"
     assert fetch_calls[0]["stop_feed_id"] == "feed_known_oldest"
 
@@ -2103,6 +2145,7 @@ async def test_sync_account_notes_skips_older_unknown_posts_after_first_known(cl
     assert [note.feed_id for note in notes] == [
         "feed_new_top",
         "feed_known_latest",
+        "feed_older_unknown",
         "feed_known_oldest",
     ]
 
@@ -2521,15 +2564,24 @@ async def test_sync_marks_deleted_when_feed_detail_500_but_post_url_indicates_mi
     await _seed_users_and_envs()
     await _seed_posts()
 
-    async def fake_fetch_and_update_stats(self: XHSService, post: XHSPost):
+    async def fake_fetch_and_update_stats(
+        self: XHSService,
+        post: XHSPost,
+        api_base: str | None = None,
+    ):
         post.status = "deleted"
         await self.db.commit()
         return type("R", (), {"success": False, "reason": "post_deleted", "message": "帖子已删除或不可见，无法同步"})()
 
     monkeypatch.setattr(XHSService, "_fetch_and_update_stats", fake_fetch_and_update_stats)
+    async def fake_acquire_ready_browser_ws(self: XHSService, shop_id: str):
+        return "ws://fake-browser"
+
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_acquire_ready_browser_ws)
     async def fake_check_mcp_running(self: XHSService, api_base=None) -> bool:
         return True
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
+    _patch_publish_runtime(monkeypatch)
 
     resp = await client.get("/api/v1/xhs/posts/201/stats", headers=make_auth_headers(2))
     assert resp.status_code == 200
@@ -2558,9 +2610,13 @@ async def test_publish_now_marks_success_when_api_success_but_missing_identifier
         async def fake_call_publish_api(self: XHSService, *args, **kwargs):
             return None, None, True
 
-        monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+        async def fake_recover(self: XHSService, *args, **kwargs):
+            return None, None
+
+        monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
         monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
         monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
+        monkeypatch.setattr(XHSService, "_recover_published_identifiers", fake_recover)
         _patch_publish_runtime(monkeypatch)
 
         post = await service.publish_now(
@@ -2626,7 +2682,7 @@ async def test_publish_now_recovers_identifiers_and_avoids_duplicate_tags(client
         ):
             return "feed_recovered_1", "xsec_recovered_1"
 
-        monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+        monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
         monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
         monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
         monkeypatch.setattr(XHSService, "_recover_published_identifiers", fake_recover)
@@ -2672,13 +2728,24 @@ async def test_sync_stats_recovers_identifiers_when_missing(client, monkeypatch)
         )
         await db.commit()
 
-    async def fake_recover(self: XHSService, expected_title, expected_content, current_feed_id, current_xsec_token):
+    async def fake_recover(
+        self: XHSService,
+        expected_title,
+        expected_content,
+        current_feed_id,
+        current_xsec_token,
+        **kwargs,
+    ):
         return "feed_sync_1", "xsec_sync_1"
 
     async def fake_check_mcp_running(self: XHSService, api_base=None) -> bool:
         return True
 
-    async def fake_fetch_and_update_stats(self: XHSService, post: XHSPost):
+    async def fake_fetch_and_update_stats(
+        self: XHSService,
+        post: XHSPost,
+        api_base: str | None = None,
+    ):
         assert post.feed_id == "feed_sync_1"
         assert post.xsec_token == "xsec_sync_1"
         post.like_count = 99
@@ -2688,6 +2755,8 @@ async def test_sync_stats_recovers_identifiers_when_missing(client, monkeypatch)
     monkeypatch.setattr(XHSService, "_recover_published_identifiers", fake_recover)
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
     monkeypatch.setattr(XHSService, "_fetch_and_update_stats", fake_fetch_and_update_stats)
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", lambda self, shop_id: _async_ws())
+    _patch_publish_runtime(monkeypatch)
 
     resp = await client.get("/api/v1/xhs/posts/210/stats", headers=make_auth_headers(2))
     assert resp.status_code == 200
@@ -2717,7 +2786,7 @@ async def test_publish_now_keeps_failed_when_api_response_not_success(client, mo
         async def fake_call_publish_api(self: XHSService, *args, **kwargs):
             return None, None, False
 
-        monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+        monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
         monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
         monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
         _patch_publish_runtime(monkeypatch)
@@ -2776,7 +2845,7 @@ async def test_publish_now_uses_global_queue(client, monkeypatch):
             return "feed_queue_1", "token_queue_1", True
 
         monkeypatch.setattr(type(xhs_publish_queue), "enqueue", fake_enqueue)
-        monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+        monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
         monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
         monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
         _patch_publish_runtime(monkeypatch)
@@ -2824,7 +2893,7 @@ async def test_publish_now_serializes_same_environment(client, monkeypatch):
         return await coro
 
     monkeypatch.setattr(xhs_publish_queue, "enqueue", fake_enqueue)
-    monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
     monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
     _patch_publish_runtime(monkeypatch)
@@ -2882,7 +2951,7 @@ async def test_publish_now_does_not_start_two_yundeng_in_parallel_across_envs(cl
     async def fake_call_publish_api(self: XHSService, *args, **kwargs):
         return "feed_parallel", "token_parallel", True
 
-    monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
     monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
     _patch_publish_runtime(monkeypatch)
@@ -2945,7 +3014,7 @@ async def test_publish_queue_can_run_multiple_workers_across_different_envs(clie
     async def fake_call_publish_api(self: XHSService, *args, **kwargs):
         return "feed_multi", "token_multi", True
 
-    monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
     monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
     _patch_publish_runtime(monkeypatch)
@@ -3012,7 +3081,7 @@ async def test_two_publish_jobs_can_enter_browser_start_concurrently_when_queue_
     async def fake_recover(self: XHSService, *args, **kwargs):
         return None, None
 
-    monkeypatch.setattr(XHSService, "_get_browser_ws", fake_get_browser_ws)
+    monkeypatch.setattr(XHSService, "_acquire_ready_browser_ws", fake_get_browser_ws)
     monkeypatch.setattr(XHSService, "_check_mcp_running", fake_check_mcp_running)
     monkeypatch.setattr(XHSService, "_call_publish_api", fake_call_publish_api)
     monkeypatch.setattr(XHSService, "_recover_published_identifiers", fake_recover)

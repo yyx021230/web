@@ -14,6 +14,9 @@ import {
 import { authApi } from '@/services/authApi';
 import { EditorProvider, useEditorContext } from '@/contexts/EditorContext';
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
+const GIT_COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT || 'unknown';
+
 const navItems = [
   { id: 'editor', icon: Palette, label: '编辑器', href: '/editor' },
   { id: 'library', icon: LayoutGrid, label: '模板库', href: '/library' },
@@ -191,6 +194,12 @@ function MainLayoutInner({ children }: { children: React.ReactNode }) {
               <Palette className="h-4 w-4 text-white" />
             </div>
             <span className="text-sm font-semibold tracking-tight">AI Creative Studio</span>
+            <span
+              className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              title={`Commit ${GIT_COMMIT}`}
+            >
+              v{APP_VERSION.replace(/^v/, '')}
+            </span>
           </div>
           {pathname === '/editor' && <EditorToolbar />}
         </div>

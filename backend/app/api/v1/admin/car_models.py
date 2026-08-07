@@ -9,7 +9,6 @@ import logging
 import mimetypes
 import os
 import re
-import site
 import time
 from collections.abc import Iterable
 from datetime import datetime
@@ -23,18 +22,6 @@ from fastapi.responses import Response
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
-
-candidate_site_paths = []
-try:
-    user_site = site.getusersitepackages()
-    if user_site:
-        candidate_site_paths.append(user_site)
-except Exception:
-    pass
-candidate_site_paths.append(str(Path.home() / "Library" / "Python" / f"{os.sys.version_info.major}.{os.sys.version_info.minor}" / "lib" / "python" / "site-packages"))
-for candidate in candidate_site_paths:
-    if candidate and candidate not in os.sys.path and Path(candidate).exists():
-        os.sys.path.append(candidate)
 
 import oss2
 

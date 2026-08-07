@@ -2,11 +2,11 @@ import pytest
 from app.core.security import create_access_token, hash_password
 from app.models.material import Material
 from app.models.user import User
-from tests.conftest import test_session_factory
+from tests.conftest import session_factory
 
 
 async def create_user(username: str, email: str) -> User:
-    async with test_session_factory() as session:
+    async with session_factory() as session:
         user = User(
             username=username,
             email=email,
@@ -20,7 +20,7 @@ async def create_user(username: str, email: str) -> User:
 
 
 async def create_material(user_id: int, name: str) -> Material:
-    async with test_session_factory() as session:
+    async with session_factory() as session:
         material = Material(
             name=name,
             type="design",
@@ -71,4 +71,3 @@ async def test_material_detail_is_scoped_to_current_user(client):
 
     other_resp = await client.get(f"/api/v1/materials/{material.id}", headers=auth_headers(user_b.id))
     assert other_resp.status_code == 404
-
