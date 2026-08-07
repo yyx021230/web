@@ -2,6 +2,23 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.0] - Unreleased
+
+### Added
+
+- Additive durable job tables for jobs, batch items, worker attempts, and audit events.
+- A validated job state machine with idempotent creation, monotonic progress, cancellation requests, retry scheduling, and dead-letter handling.
+- PostgreSQL/SQLite atomic idempotency through native conflict handling without committing the caller transaction.
+
+### Not Yet Connected
+
+- Existing AI, Dify, Xiaohongshu sync, publishing, and report jobs still use their current execution paths.
+- Worker leasing, heartbeats, expired-lease recovery, and the unified task-center API will be added in subsequent v0.3 steps.
+
+### Known Migration Risk
+
+- The new `4d5e6f7a8b9c -> 5e6f7a8b9c0d` migration is upgrade/downgrade verified. A pre-existing empty-SQLite migration-chain failure remains at revision `6ac6769ce0b2` and must be fixed before treating empty-database recovery as validated.
+
 ## [0.2.0] - Unreleased
 
 ### Added
