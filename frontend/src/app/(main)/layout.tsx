@@ -8,7 +8,8 @@ import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize, User,
   Sparkles, GalleryHorizontalEnd, Workflow, LogIn, Save, LogOut,
   LayoutGrid, FileText, BookOpen, Shield,
-  Loader2,
+  Loader2, Send, BarChart3,
+  Target,
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
 import { EditorProvider, useEditorContext } from '@/contexts/EditorContext';
@@ -21,6 +22,9 @@ const navItems = [
   { id: 'prompts', icon: BookOpen, label: '提示词宝库', href: '/prompts' },
   { id: 'copywriting', icon: FileText, label: '文案库', href: '/copywriting' },
   { id: 'workflows', icon: Workflow, label: '工作流', href: '/workflows' },
+  { id: 'publish', icon: Send, label: '发布管理', href: '/publish' },
+  { id: 'insights', icon: BarChart3, label: '数据看板', href: '/insights' },
+  { id: 'ad-insights', icon: Target, label: '投流看板', href: '/ad-insights' },
 ];
 
 function EditorToolbar() {
@@ -66,7 +70,7 @@ function EditorToolbar() {
 function HeaderActions() {
   const ctx = useEditorContext();
   const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<{ username: string; role?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ username: string; display_name?: string | null; role?: string; roles?: string[] } | null>(null);
 
   useEffect(() => {
     try {
@@ -81,7 +85,7 @@ function HeaderActions() {
     window.location.href = '/';
   };
 
-  const canAccessAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username === 'dev');
+  const canAccessAdmin = currentUser && (currentUser.role === 'admin' || currentUser.roles?.includes('admin') || currentUser.username === 'dev');
 
   return (
     <div className="flex items-center gap-1.5">
@@ -124,7 +128,7 @@ function HeaderActions() {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
               <User className="h-3.5 w-3.5" />
             </div>
-            <span className="text-xs font-medium">{currentUser.username}</span>
+            <span className="text-xs font-medium">{currentUser.display_name || currentUser.username}</span>
           </div>
           <button onClick={handleLogout} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-red-500" title="退出登录">
             <LogOut className="h-4 w-4" />
@@ -168,6 +172,10 @@ function MainLayoutInner({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith('/prompts')) return 'prompts';
     if (pathname.startsWith('/copywriting')) return 'copywriting';
     if (pathname.startsWith('/workflows')) return 'workflows';
+    if (pathname.startsWith('/insights')) return 'insights';
+    if (pathname.startsWith('/ad-insights')) return 'ad-insights';
+    if (pathname.startsWith('/publish')) return 'publish';
+    if (pathname.startsWith('/posts')) return 'publish';
     return 'editor';
   };
 
@@ -232,15 +240,19 @@ function MainLayoutInner({ children }: { children: React.ReactNode }) {
 /* Dev mode auto-login: ensures API requests have a valid token */
 function DevAutoLogin() {
   useEffect(() => {
+    const username = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_USERNAME;
+    const password = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD;
     if (
       process.env.NODE_ENV === 'development'
       && process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === 'true'
+      && username
+      && password
       && !localStorage.getItem('token')
     ) {
       fetch('/api/backend/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'yuxuan', password: 'dev123' }),
+        body: JSON.stringify({ username, password }),
       })
         .then(r => r.json())
         .then(data => {

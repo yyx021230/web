@@ -2,31 +2,35 @@
 
 from __future__ import annotations
 
-from pydantic_settings import BaseSettings
-from pydantic import field_validator
 from functools import lru_cache
-import warnings
+from urllib.parse import unquote, urlparse
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # App
     app_name: str = "AI Creative Studio"
+    app_env: str = "development"
     debug: bool = False
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_creative"
+    database_url: str = "sqlite+aiosqlite:///./dev.db"
+    allow_default_database_password: bool = False
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
     # JWT
-    jwt_secret_key: str = "change-me-in-production"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
 
     # File Storage
     storage_type: str = "local"  # local | s3 | minio
     storage_path: str = "./uploads"
+    uploads_public_base_url: str = ""
     s3_endpoint: str = ""
     s3_access_key: str = ""
     s3_secret_key: str = ""
@@ -42,19 +46,116 @@ class Settings(BaseSettings):
 
     gpt_image2_api_key: str = ""
     gpt_image2_api_url: str = "https://api.openai.com/v1/images/generations"
+    duckcoding_gpt_image2_api_key: str = ""
+    duckcoding_gpt_image2_api_url: str = "https://api.duckcoding.ai/v1"
+    xhs_content_tagging_api_base_url: str = ""
+    xhs_content_tagging_api_key: str = ""
+    xhs_content_tagging_model: str = "gpt-5.4-mini"
+    car_model_ocr_baidu_api_key: str = ""
+    car_model_ocr_baidu_secret_key: str = ""
+    car_model_oss_access_key_id: str = ""
+    car_model_oss_access_key_secret: str = ""
+    car_model_oss_endpoint: str = "https://oss-cn-hangzhou.aliyuncs.com"
+    car_model_oss_bucket: str = "test260415"
+    car_model_oss_prefix: str = "car_exterior"
+    ai_task_timeout_seconds: int = 1800
+    ai_task_stale_after_minutes: int = 30
+    ai_task_cleanup_interval_seconds: int = 60
+    ai_task_queue_key: str = "ai:image:tasks:pending"
+    ai_task_processing_key: str = "ai:image:tasks:processing"
+    ai_task_membership_key: str = "ai:image:tasks:membership"
+    ai_task_worker_concurrency: int = 15
+    ai_task_worker_poll_timeout_seconds: int = 5
+    ai_task_worker_min_interval_seconds: float = 10.0
+
+    # AI Watermark Removal (HTTP API)
+    remove_ai_watermarks_enabled: bool = True
+    remove_ai_watermarks_api_url: str = "http://192.168.20.202:8899"
+    remove_ai_watermarks_timeout: int = 120
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origin_regex: str = (
+        r"^https?://("
+        r"localhost|127\.0\.0\.1|"
+        r"10\.\d+\.\d+\.\d+|"
+        r"172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|"
+        r"192\.168\.\d+\.\d+"
+        r")(:\d+)?$"
+    )
+
+    # YunDeng Browser API
+    yundeng_api_base_url: str = "http://localhost:50213"
+    yundeng_cloud_api_base_url: str = "https://cloud.yunlogin.com"
+    yundeng_cloud_open_token: str = ""
+    xhs_mcp_port: int = 18061
+    xhs_mcp_bin_path: str = ""
+    xhs_mcp_api_base_url: str = ""
+    xhs_host_upload_root: str = ""
+    xhs_container_upload_root: str = ""
+    xhs_mcp_browser_download_dir: str = ""
+    xhs_mcp_container_download_dir: str = ""
+    xhs_publish_queue_workers: int = 2
+    xhs_browser_stop_cooldown_seconds: float = 2.0
+    xhs_browser_ws_probe_timeout_seconds: float = 3.0
+    xhs_browser_start_retry_attempts: int = 3
+    xhs_browser_start_retry_delay_seconds: float = 2.0
+    xhs_enable_local_browser_ops: bool = True
+    xhs_worker_api_base_url: str = ""
+    xhs_worker_internal_token: str = ""
+    xhs_enable_sync_task_loop: bool = False
+    xhs_enable_account_notes_sync_loop: bool = False
+    xhs_enable_scheduled_publish_loop: bool = True
+    xhs_enable_profile_stat_sync_loop: bool = False
+    xhs_account_scrape_environment_id: int = 0
+    xhs_report_token_api: str = "https://v2-api.ztvcar.com/ztcar-api/carshow/market/xhs/token"
+    xhs_report_worker_api_base_url: str = ""
+    xhs_report_worker_internal_token: str = ""
+    xhs_report_adapi_base_url: str = "https://adapi.xiaohongshu.com"
+    xhs_profile_stat_api_base_url: str = "https://ai.youju360.com"
+    xhs_profile_stat_app_id: str = ""
+    xhs_profile_stat_secret: str = ""
+    xhs_profile_stat_config_id: int = 157
+    xhs_profile_stat_module: str = "custom_tag"
+    xhs_profile_stat_script: str = "youju"
+    xhs_profile_stat_daily_update_hour: int = 6
+    xhs_scrape_lab_base_url: str = "http://127.0.0.1:8787"
+    xhs_scrape_lab_python_path: str = "python3"
+    xhs_scrape_lab_server_path: str = ""
+    xhs_scrape_lab_log_dir: str = ""
+    sms_code_center_base_url: str = "http://47.98.127.132"
+    sms_code_center_business_api_token: str = ""
+    sms_code_center_wait_timeout_seconds: int = 60
+    sms_code_center_activation_ttl_seconds: int = 300
+    remote_image_allowed_hosts: list[str] = []
 
     model_config = {"env_file": ".env"}
+
+    @staticmethod
+    def _uses_default_database_password(database_url: str) -> bool:
+        try:
+            parsed = urlparse(database_url)
+            return unquote(parsed.username or "") == "postgres" and unquote(parsed.password or "") == "postgres"
+        except ValueError:
+            return False
 
     def validate_critical(self) -> list[str]:
         """检查关键配置项，返回缺失项列表"""
         missing = []
-        if self.database_url == "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_creative":
-            missing.append("DATABASE_URL")
         if not self.jwt_secret_key or self.jwt_secret_key == "change-me-in-production":
             missing.append("JWT_SECRET_KEY")
+        if self.app_env.lower() in {"prod", "production"}:
+            if not self.database_url or self.database_url.startswith("sqlite"):
+                missing.append("DATABASE_URL")
+            if not self.allow_default_database_password and self._uses_default_database_password(self.database_url):
+                missing.append("DATABASE_URL_NON_DEFAULT_PASSWORD")
+            if not self.xhs_worker_internal_token:
+                missing.append("XHS_WORKER_INTERNAL_TOKEN")
+            if self.storage_type in {"s3", "minio"}:
+                if not self.s3_access_key:
+                    missing.append("S3_ACCESS_KEY")
+                if not self.s3_secret_key:
+                    missing.append("S3_SECRET_KEY")
         return missing
 
     def validate_optional(self) -> list[str]:
@@ -75,18 +176,11 @@ def get_settings() -> Settings:
 settings = get_settings()
 
 
-def validate_settings() -> None:
+def validate_settings() -> list[str]:
     """启动时配置校验"""
     missing_critical = settings.validate_critical()
     if missing_critical:
         raise RuntimeError(
             f"Missing critical configuration: {', '.join(missing_critical)}"
         )
-
-    missing_optional = settings.validate_optional()
-    if missing_optional:
-        warnings.warn(
-            f"Optional configuration not set: {', '.join(missing_optional)}. "
-            "Related features will not work.",
-            stacklevel=2,
-        )
+    return settings.validate_optional()

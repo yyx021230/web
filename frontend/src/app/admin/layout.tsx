@@ -6,14 +6,19 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import {
   Palette, LayoutDashboard, Users, Workflow, ImagePlus, BarChart3, LogOut, Menu, X, BookOpen,
-  FolderKanban, Activity, MessageSquare, Loader2,
+  FolderKanban, Activity, MessageSquare, Loader2, Send,
+  Bot, Target, Clock3,
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
 
 const navItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: '运营总览', href: '/admin' },
   { id: 'users', icon: Users, label: '用户管理', href: '/admin/users' },
+  { id: 'xhs', icon: Send, label: '小红书管理', href: '/admin/xhs' },
+  { id: 'xhs-schedules', icon: Clock3, label: '定时任务', href: '/admin/xhs-schedules' },
+  { id: 'xhs-buyers', icon: Target, label: '投手分配', href: '/admin/xhs-buyers' },
   { id: 'workflows', icon: Workflow, label: '工作流与日志', href: '/admin/workflows' },
+  { id: 'ai-image', icon: Bot, label: '生图入口', href: '/admin/ai-image' },
   { id: 'tasks', icon: Activity, label: '任务中心', href: '/admin/tasks' },
   { id: 'projects', icon: FolderKanban, label: '项目管理', href: '/admin/projects' },
   { id: 'gallery', icon: ImagePlus, label: '资产中心', href: '/admin/gallery' },
@@ -39,7 +44,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     try {
       const user = JSON.parse(raw || '{}');
       const isDev = process.env.NODE_ENV === 'development';
-      if (isDev || user.role === 'admin' || user.username === 'dev') {
+      if (isDev || user.role === 'admin' || user.roles?.includes('admin') || user.username === 'dev') {
         setChecking(false);
         return;
       }
@@ -50,7 +55,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
       .then(res => {
         const user = res.data;
         localStorage.setItem('app_current_user', JSON.stringify(user));
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.roles?.includes('admin')) {
           setChecking(false);
         } else {
           toast.error('无权访问管理后台');
@@ -80,7 +85,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const activeNav = (() => {
     if (pathname.startsWith('/admin/users')) return 'users';
+    if (pathname.startsWith('/admin/xhs-schedules')) return 'xhs-schedules';
+    if (pathname.startsWith('/admin/xhs-buyers')) return 'xhs-buyers';
+    if (pathname.startsWith('/admin/xhs')) return 'xhs';
     if (pathname.startsWith('/admin/workflows')) return 'workflows';
+    if (pathname.startsWith('/admin/ai-image')) return 'ai-image';
     if (pathname.startsWith('/admin/tasks')) return 'tasks';
     if (pathname.startsWith('/admin/projects')) return 'projects';
     if (pathname.startsWith('/admin/gallery')) return 'gallery';

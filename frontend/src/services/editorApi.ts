@@ -155,6 +155,16 @@ export const editorApi = {
   }) =>
     api.post('/materials/template', data),
 
+  /** 保存 AI 生图结果到草稿箱（保留 ai_meta） */
+  saveAIDraft: (data: {
+    name: string;
+    url: string;
+    ai_meta?: AIMeta;
+    width?: number;
+    height?: number;
+  }) =>
+    api.post('/materials/draft-ai', data),
+
   /** 下载远程图片到本地（用于过期链接重下载） */
   downloadRemoteImage: (id: number, url?: string) =>
     api.post(`/materials/${id}/download`, { url }),

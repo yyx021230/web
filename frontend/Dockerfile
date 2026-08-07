@@ -5,7 +5,9 @@ RUN npm ci
 
 FROM node:20-alpine AS builder
 ARG BACKEND_ORIGIN=http://backend:8000
+ARG NEXT_PUBLIC_API_BASE=/api/backend
 ENV BACKEND_ORIGIN=${BACKEND_ORIGIN}
+ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
 WORKDIR /app
 COPY --from=deps /app/node_modules /app/node_modules
 COPY . .
@@ -13,7 +15,9 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 ARG BACKEND_ORIGIN=http://backend:8000
+ARG NEXT_PUBLIC_API_BASE=/api/backend
 ENV BACKEND_ORIGIN=${BACKEND_ORIGIN}
+ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/.next /app/.next

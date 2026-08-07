@@ -142,3 +142,367 @@
     linear-gradient(90deg, hsl(var(--canvas-grid)) 1px, transparent 1px);
   background-size: 20px 20px;
 }
+
+/* Cloud Studio shared surfaces */
+.cloud-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0%, rgba(174, 198, 255, 0.46), transparent 30%),
+    radial-gradient(circle at 10% 100%, rgba(255, 255, 255, 0.96), transparent 30%),
+    linear-gradient(120deg, #f8fbff 0%, #edf4ff 48%, #fbfdff 100%);
+}
+
+.cloud-page::before,
+.cloud-page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(48px);
+}
+
+.cloud-page::before {
+  width: 22rem;
+  height: 22rem;
+  left: 18%;
+  top: -7rem;
+  background: rgba(199, 214, 255, 0.45);
+}
+
+.cloud-page::after {
+  width: 18rem;
+  height: 18rem;
+  right: -5rem;
+  bottom: -5rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.cloud-panel {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 24px 70px rgba(81, 112, 160, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.cloud-card {
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 38px rgba(79, 103, 146, 0.09);
+}
+
+.cloud-card-hover {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.cloud-card-hover:hover {
+  border-color: rgba(129, 140, 248, 0.42);
+  box-shadow: 0 20px 52px rgba(79, 103, 146, 0.16);
+  transform: translateY(-1px);
+}
+
+.cloud-toolbar {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.72);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.cloud-pill {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 18px rgba(79, 103, 146, 0.06);
+}
+
+/* Login: Cloud Liquid Studio */
+.login-liquid-page {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.92), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(183, 205, 255, 0.42), transparent 28%),
+    linear-gradient(132deg, #fbfdff 0%, #eef5ff 48%, #ffffff 100%);
+}
+
+.login-scene {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(115deg, rgba(248, 251, 255, 0.24), rgba(255, 255, 255, 0.18)),
+    url('/assets/login-cloud-liquid-bg.png') center center / cover no-repeat;
+}
+
+.login-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 30%, rgba(255, 255, 255, 0.3), transparent 26%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 42%, rgba(255, 255, 255, 0.18) 100%);
+  pointer-events: none;
+}
+
+.login-brand-copy {
+  position: absolute;
+  left: 3.5rem;
+  top: 30%;
+  max-width: 34rem;
+  animation: login-card-rise 800ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.login-brand-panel {
+  max-width: 35rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 2rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.16));
+  padding: 2rem 2.1rem;
+  box-shadow: 0 22px 60px rgba(84, 109, 153, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.login-card-overlay {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.68));
+  box-shadow: 0 30px 90px rgba(81, 112, 160, 0.2);
+  backdrop-filter: blur(24px);
+  animation: login-card-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.login-card-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0) 24%);
+}
+
+.login-liquid-page::before,
+.login-liquid-page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(56px);
+  animation: login-breathe 10s ease-in-out infinite alternate;
+}
+
+.login-liquid-page::before {
+  width: 34rem;
+  height: 34rem;
+  left: -12rem;
+  bottom: -10rem;
+  background: rgba(210, 224, 255, 0.64);
+}
+
+.login-liquid-page::after {
+  width: 28rem;
+  height: 28rem;
+  right: -9rem;
+  top: 18%;
+  background: rgba(255, 255, 255, 0.88);
+  animation-delay: -3s;
+}
+
+.login-card {
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 32px 90px rgba(81, 112, 160, 0.2);
+  backdrop-filter: blur(22px);
+  animation: login-card-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (max-width: 1023px) {
+  .login-scene {
+    background-position: 28% center;
+  }
+
+  .login-brand-copy {
+    display: none;
+  }
+}
+
+.login-liquid-ribbon {
+  position: absolute;
+  left: -8%;
+  width: 68%;
+  height: 18rem;
+  border-radius: 999px;
+  filter: blur(0.2px);
+  transform-origin: center;
+  opacity: 0.92;
+  mix-blend-mode: multiply;
+}
+
+.login-liquid-ribbon-a {
+  top: 49%;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,0.34), rgba(120, 153, 244, 0.38), rgba(207, 233, 248, 0.56), rgba(255,255,255,0.48)),
+    radial-gradient(circle at 33% 42%, rgba(255,255,255,0.86), transparent 28%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    inset 0 -28px 60px rgba(98, 125, 202, 0.16),
+    0 34px 100px rgba(96, 129, 207, 0.24);
+  animation: login-ribbon-drift 15s ease-in-out infinite alternate;
+  transform: rotate(-17deg);
+}
+
+.login-liquid-ribbon-b {
+  top: 55%;
+  left: -10%;
+  height: 12rem;
+  background: linear-gradient(95deg, rgba(255,255,255,0.36), rgba(190, 207, 255, 0.3), rgba(255,255,255,0.5));
+  opacity: 0.55;
+  animation: login-ribbon-drift 18s ease-in-out infinite alternate-reverse;
+  transform: rotate(-12deg);
+}
+
+.login-floating-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 12rem;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 18px 54px rgba(81, 112, 160, 0.14);
+  backdrop-filter: blur(18px);
+  animation: login-float 6s ease-in-out infinite;
+}
+
+.login-showcase::before,
+.login-showcase::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  filter: blur(8px);
+}
+
+.login-showcase::before {
+  left: 2%;
+  top: 45%;
+  width: 19rem;
+  height: 7rem;
+}
+
+.login-showcase::after {
+  left: 0;
+  bottom: 1rem;
+  width: 22rem;
+  height: 8rem;
+}
+
+.login-orbit {
+  position: absolute;
+  border: 1px dashed rgba(99, 102, 241, 0.16);
+  border-radius: 999px;
+  animation: login-orbit 20s linear infinite;
+}
+
+.login-orbit::after {
+  content: "";
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #6366f1;
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.7);
+}
+
+.login-orbit-a {
+  left: 16%;
+  top: 24%;
+  width: 30rem;
+  height: 30rem;
+}
+
+.login-orbit-a::after {
+  left: 8%;
+  top: 18%;
+}
+
+.login-orbit-b {
+  right: 13%;
+  bottom: 12%;
+  width: 18rem;
+  height: 18rem;
+  animation-direction: reverse;
+  animation-duration: 26s;
+}
+
+.login-orbit-b::after {
+  right: 14%;
+  bottom: 12%;
+  background: #22d3ee;
+}
+
+.login-float-slow {
+  animation: login-float 8s ease-in-out infinite;
+}
+
+.login-float-medium {
+  animation: login-float 6.5s ease-in-out infinite reverse;
+}
+
+.animation-delay-700 {
+  animation-delay: -0.7s;
+}
+
+.animation-delay-1200 {
+  animation-delay: -1.2s;
+}
+
+@keyframes login-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-ribbon-drift {
+  from {
+    translate: -1rem 0.2rem;
+    scale: 0.98 1;
+  }
+  to {
+    translate: 2rem -0.7rem;
+    scale: 1.025 1.045;
+  }
+}
+
+@keyframes login-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0);
+  }
+}
+
+@keyframes login-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-breathe {
+  from {
+    transform: scale(0.96);
+    opacity: 0.72;
+  }
+  to {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}

@@ -1,14 +1,11 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ai_creative
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_creative}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,8 +16,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
     healthcheck:
@@ -31,38 +28,65 @@ services:
 
   minio:
     image: minio/minio:latest
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
     volumes:
       - miniodata:/data
     command: server /data --console-address ":9001"
 
   backend:
     build: ./backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ai_creative
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: dev-secret-key-not-for-production-a1b2c3d4e5f6
-      CORS_ORIGINS: '["http://localhost:3000"]'
-      STORAGE_TYPE: local
-      STORAGE_PATH: ./uploads
-      SEEDREAM_API_KEY: 13463e13-d95f-4f65-ba9c-d3ddde270274
-      SEEDREAM_API_URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
-      GPT_IMAGE2_API_KEY: sk-tSBuo4K8OkcD8c11ntNfW7m9tvlNYN9JHYytMMAOrGjbV6yH
-      GPT_IMAGE2_API_URL: https://chunfeng.mentalout.top/v1/images/generations
+      TZ: Asia/Shanghai
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000"]}'
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_PATH: /app/uploads
+      XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?set XHS_WORKER_INTERNAL_TOKEN in .env}
+      XHS_MCP_BIN_PATH: ${XHS_MCP_BIN_PATH:-/app/bin/xiaohongshu-mcp}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - upload_data:/app/uploads
+      - ./uploads:/app/uploads
+
+  ai-worker:
+    build: ./backend
+    command: ["python", "-m", "app.scripts.ai_worker"]
+    restart: unless-stopped
+    stop_grace_period: 45m
+    env_file:
+      - ./backend/.env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
+      REDIS_URL: redis://redis:6379/0
+      TZ: Asia/Shanghai
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_PATH: /app/uploads
+      XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?set XHS_WORKER_INTERNAL_TOKEN in .env}
+      AI_TASK_WORKER_CONCURRENCY: ${AI_TASK_WORKER_CONCURRENCY:-15}
+      AI_TASK_WORKER_MIN_INTERVAL_SECONDS: ${AI_TASK_WORKER_MIN_INTERVAL_SECONDS:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
 
   frontend:
     build:
@@ -70,11 +94,14 @@ services:
       args:
         BACKEND_ORIGIN: http://backend:8000
         NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
+        NEXT_PUBLIC_API_BASE: /api/backend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       BACKEND_ORIGIN: http://backend:8000
       NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
+      NEXT_PUBLIC_API_BASE: /api/backend
     depends_on:
       - backend
 
@@ -82,4 +109,3 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
-  upload_data:

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/services/adminApi';
 import { Activity, Bot, HardDrive, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatLocalDateTime } from '@/lib/dateTime';
 
 type Granularity = 'hour' | 'day' | 'week';
 
@@ -11,7 +12,8 @@ type UsageData = {
   granularity: Granularity;
   buckets: Array<{ key: string; label: string; start: string; end: string }>;
   ai: {
-    series: { image2: number[]; seedream: number[] };
+    names?: string[];
+    series: Record<string, number[]>;
     total_records: number;
     matched_records: number;
     raw_model_counts: Record<string, number>;
@@ -24,6 +26,30 @@ type UsageData = {
 };
 
 type SeriesMap = Record<string, number[]>;
+
+type XHSPublishData = {
+  granularity: Granularity;
+  buckets: Array<{ key: string; label: string; start: string; end: string }>;
+  series: Record<string, number[]>;
+  total_records: number;
+};
+
+type PublishedPostItem = {
+  id: number;
+  source_type: string;
+  source_label: string;
+  title: string;
+  username: string;
+  environment_name: string;
+  post_url: string | null;
+  feed_id: string | null;
+  published_at: string | null;
+  like_count: number;
+  comment_count: number;
+  collect_count: number;
+  share_count: number;
+  created_at: string | null;
+};
 
 const CHART_W = 900;
 const CHART_H = 240;
@@ -112,36 +138,55 @@ export default function DashboardPage() {
   const [activeTasks, setActiveTasks] = useState<any[]>([]);
   const [rankings, setRankings] = useState<any>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  const [xhsPublish, setXhsPublish] = useState<XHSPublishData | null>(null);
+  const [publishedPosts, setPublishedPosts] = useState<{ items: PublishedPostItem[]; total: number; page: number; limit: number } | null>(null);
   const [users, setUsers] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [granularity, setGranularity] = useState<Granularity>('hour');
+  const [xhsPage, setXhsPage] = useState<number>(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setXhsPage(1);
+  }, [selectedUser]);
+
+  useEffect(() => {
     setLoading(true);
+    const username = selectedUser || undefined;
     Promise.all([
-      adminApi.getOverview(),
-      adminApi.getActiveTasks(),
-      adminApi.getRankings(),
-      adminApi.getUsageSeries(granularity, selectedUser || undefined),
+      adminApi.getOverview(username),
+      adminApi.getActiveTasks(username),
+      adminApi.getRankings(username),
+      adminApi.getUsageSeries(granularity, username),
+      adminApi.getXhsPublishSeries(granularity, username),
+      adminApi.getXhsPublishedPosts({ page: xhsPage, limit: 20, username }),
       adminApi.getUsers(1, 100).catch(() => ({ data: { items: [] } } as any)),
-    ]).then(([ov, ac, rk, us, userRes]) => {
+    ]).then(([ov, ac, rk, us, xhsSeriesRes, xhsPostsRes, userRes]) => {
       setOverview(ov.data);
       setActiveTasks(ac.data || []);
       setRankings(rk.data || {});
       setUsage(us.data);
+      setXhsPublish(xhsSeriesRes.data || null);
+      setPublishedPosts(xhsPostsRes.data || null);
       setUsers((userRes.data.items || []).map((u: any) => u.username).filter(Boolean));
     }).catch(console.error).finally(() => setLoading(false));
-  }, [granularity, selectedUser]);
+  }, [granularity, selectedUser, xhsPage]);
 
-  const aiSeriesNames = ['image2', 'seedream'];
-  const aiSeries = usage?.ai?.series || { image2: [], seedream: [] };
+  const aiSeriesNames = (usage?.ai?.names && usage.ai.names.length > 0)
+    ? usage.ai.names
+    : Object.keys(usage?.ai?.series || {});
+  const aiSeries = usage?.ai?.series || {};
   const wfSeriesNames = usage?.workflow?.names || [];
   const wfSeries = usage?.workflow?.series || {};
+  const xhsSeriesNames = xhsPublish ? Object.keys(xhsPublish.series || {}) : [];
+  const xhsSeries = xhsPublish?.series || {};
+  const scopeLabel = selectedUser ? `用户 ${selectedUser}` : '全用户';
+  const aiTodayCount = overview?.ai_tasks_today ?? overview?.ai_tasks_24h ?? 0;
+  const xhsTotal = xhsPublish?.total_records || 0;
 
   const aiBucketedTotal = useMemo(
-    () => (aiSeries.image2 || []).reduce((a: number, b: number) => a + b, 0) + (aiSeries.seedream || []).reduce((a: number, b: number) => a + b, 0),
-    [aiSeries],
+    () => aiSeriesNames.reduce((sum, name) => sum + (aiSeries[name] || []).reduce((a: number, b: number) => a + b, 0), 0),
+    [aiSeries, aiSeriesNames],
   );
 
   if (loading) return <div className="py-20 text-center text-sm text-gray-500">加载中...</div>;
@@ -152,7 +197,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">运营总览</h1>
-          <p className="mt-1 text-xs text-gray-500">全用户聚合统计（直接基于任务表，不依赖分页列表）</p>
+          <p className="mt-1 text-xs text-gray-500">{scopeLabel} 聚合统计（直接基于任务表，不依赖分页列表）</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -172,14 +217,19 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border bg-white p-4 shadow-sm"><Bot className="mb-2 h-4 w-4 text-indigo-600" /><div className="text-xl font-bold">{overview?.ai_tasks_24h || 0}</div><div className="text-xs text-gray-500">AI任务(24h)</div></div>
+        <div className="rounded-xl border bg-white p-4 shadow-sm"><Bot className="mb-2 h-4 w-4 text-indigo-600" /><div className="text-xl font-bold">{aiTodayCount}</div><div className="text-xs text-gray-500">AI任务(今日)</div></div>
         <div className="rounded-xl border bg-white p-4 shadow-sm"><Activity className="mb-2 h-4 w-4 text-cyan-600" /><div className="text-xl font-bold">{activeTasks.length}</div><div className="text-xs text-gray-500">当前活跃任务</div></div>
         <div className="rounded-xl border bg-white p-4 shadow-sm"><HardDrive className="mb-2 h-4 w-4 text-purple-600" /><div className="text-xl font-bold">{overview?.storage_mb || 0} MB</div><div className="text-xs text-gray-500">存储使用</div></div>
         <div className="rounded-xl border bg-white p-4 shadow-sm"><Workflow className="mb-2 h-4 w-4 text-emerald-600" /><div className="text-xl font-bold">{usage?.workflow?.total_records || 0}</div><div className="text-xs text-gray-500">工作流任务总数(窗口内)</div></div>
       </div>
 
-      <MultiBarChart title="工作流调用趋势（全用户）" buckets={usage?.buckets || []} series={wfSeries} names={wfSeriesNames} />
-      <MultiBarChart title="生图调用趋势（image2 / seedream，全用户）" buckets={usage?.buckets || []} series={aiSeries} names={aiSeriesNames} />
+      <MultiBarChart title={`小红书发帖趋势（自动工具 + 自主发布，${scopeLabel}）`} buckets={xhsPublish?.buckets || []} series={xhsSeries} names={xhsSeriesNames} />
+      <div className="rounded-lg border bg-gray-50 px-3 py-2 text-xs text-gray-700">
+        小红书发帖总数（当前窗口）: {xhsTotal}
+      </div>
+
+      <MultiBarChart title={`工作流调用趋势（${scopeLabel}）`} buckets={usage?.buckets || []} series={wfSeries} names={wfSeriesNames} />
+      <MultiBarChart title={`生图调用趋势（全模型，${scopeLabel}）`} buckets={usage?.buckets || []} series={aiSeries} names={aiSeriesNames} />
 
       <div className="rounded-lg border bg-gray-50 px-3 py-2 text-xs text-gray-700">
         <div className="font-medium mb-1">生图统计校验</div>
@@ -193,6 +243,88 @@ export default function DashboardPage() {
           {(rankings?.storage_ranking || []).slice(0, 5).map((item: any, i: number) => (
             <div key={item.username} className="flex items-center justify-between"><span className="text-gray-600">TOP{i + 1} {item.username}</span><span className="font-semibold">{item.total_mb} MB</span></div>
           ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">小红书发帖总览（自动工具 + 自主发布，只读）</h3>
+          <div className="text-xs text-gray-500">来源字段区分自动工具发布和自主发布，仅展示已发布数据</div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-gray-500">
+                <th className="px-2 py-2">发布时间</th>
+                <th className="px-2 py-2">来源</th>
+                <th className="px-2 py-2">用户</th>
+                <th className="px-2 py-2">环境</th>
+                <th className="px-2 py-2">标题</th>
+                <th className="px-2 py-2 text-right">点赞</th>
+                <th className="px-2 py-2 text-right">评论</th>
+                <th className="px-2 py-2 text-right">收藏</th>
+                <th className="px-2 py-2 text-right">转发</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(publishedPosts?.items || []).map((item) => (
+                <tr key={`${item.source_type}-${item.id}`} className="border-b last:border-b-0">
+                  <td className="px-2 py-2 text-xs text-gray-600">{formatLocalDateTime(item.published_at)}</td>
+                  <td className="px-2 py-2">
+                    <span className={cn(
+                      'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
+                      item.source_type === 'auto_tool'
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'bg-emerald-50 text-emerald-700',
+                    )}
+                    >
+                      {item.source_label}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2">{item.username}</td>
+                  <td className="px-2 py-2 text-gray-600">{item.environment_name || '-'}</td>
+                  <td className="px-2 py-2">
+                    {item.post_url ? (
+                      <a href={item.post_url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{item.title}</a>
+                    ) : (
+                      <span>{item.title}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right">{item.like_count}</td>
+                  <td className="px-2 py-2 text-right">{item.comment_count}</td>
+                  <td className="px-2 py-2 text-right">{item.collect_count}</td>
+                  <td className="px-2 py-2 text-right">{item.share_count}</td>
+                </tr>
+              ))}
+              {(!publishedPosts || publishedPosts.items.length === 0) && (
+                <tr>
+                  <td colSpan={9} className="px-2 py-6 text-center text-xs text-gray-500">暂无已发布帖子数据</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
+          <div>共 {publishedPosts?.total || 0} 条</div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setXhsPage((p) => Math.max(1, p - 1))}
+              disabled={(publishedPosts?.page || 1) <= 1}
+              className="rounded border px-2 py-1 disabled:opacity-50"
+            >
+              上一页
+            </button>
+            <span>第 {publishedPosts?.page || 1} 页</span>
+            <button
+              type="button"
+              onClick={() => setXhsPage((p) => p + 1)}
+              disabled={Boolean(publishedPosts && publishedPosts.page * publishedPosts.limit >= publishedPosts.total)}
+              className="rounded border px-2 py-1 disabled:opacity-50"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>

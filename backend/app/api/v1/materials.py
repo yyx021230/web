@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from io import BytesIO
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +14,7 @@ from app.services.material_service import MaterialService
 from app.adapters.storage import storage
 from app.models.user import User
 from app.core.deps import get_current_user
+from app.core.remote_download import download_allowed_remote_image
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 
 # 允许的 MIME 类型
 ALLOWED_CONTENT_TYPES = {
-    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+    "image/jpeg", "image/png", "image/gif", "image/webp",
     "video/mp4", "video/webm",
 }
 
@@ -34,27 +34,7 @@ async def _download_remote_image(url: str) -> tuple[bytes, str, str]:
     Returns:
         (file_content, filename, content_type)
     """
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"下载图片失败: HTTP {resp.status_code}")
-
-        content = resp.content
-        content_type = resp.headers.get("content-type", "image/jpeg")
-
-        # 从 URL 提取文件名
-        filename = url.split("/")[-1].split("?")[0] or "downloaded.jpg"
-        if not filename.endswith((".jpg", ".png", ".gif", ".webp", ".svg")):
-            ext = ".jpg"
-            if "png" in content_type:
-                ext = ".png"
-            elif "gif" in content_type:
-                ext = ".gif"
-            elif "webp" in content_type:
-                ext = ".webp"
-            filename = filename + ext
-
-        return content, filename, content_type
+    return await download_allowed_remote_image(url)
 
 
 @router.get("")
@@ -63,14 +43,13 @@ async def get_materials(
     limit: int = 20,
     category: str | None = None,
     exclude_category: str | None = Query(default=None, description="排除指定 category"),
-    owner: bool = Query(False, description="只返回当前用户的素材"),
+    owner: bool = Query(True, description="默认只返回当前用户的素材"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """获取素材列表
 
-    owner: 只返回当前用户的素材（草稿箱/模版库使用）
-    不传 owner 时返回所有素材（车型库共享）
+    owner: 默认只返回当前用户的素材；仅显式传 false 时返回所有素材
     """
     service = MaterialService(db)
     user_id = current_user.id if owner else None
@@ -123,10 +102,11 @@ async def get_storage_usage(
 async def get_material(
     material_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """获取单个素材详情（用于编辑器加载设计稿）"""
     service = MaterialService(db)
-    material = await service.get_by_id(material_id)
+    material = await service.get_by_id(material_id, user_id=current_user.id)
     if not material:
         raise HTTPException(status_code=404, detail="素材不存在")
     return ApiResponse(data={
@@ -161,6 +141,8 @@ async def upload_material(
 
     # 文件类型校验
     content_type = file.content_type or ""
+    if content_type == "image/svg+xml":
+        raise HTTPException(status_code=400, detail="当前不支持 SVG 上传")
     if content_type and content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=400,
@@ -349,6 +331,46 @@ async def save_template(
     })
 
 
+@router.post("/draft-ai")
+async def save_ai_draft(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """保存 AI 生图结果到草稿箱（保留 ai_meta）"""
+    service = MaterialService(db)
+
+    image_url = data.get("url")
+    if image_url and image_url.startswith(("http://", "https://")):
+        try:
+            content, filename, content_type = await _download_remote_image(image_url)
+            local_url = await storage.save(content, filename, content_type, subdir="drafts")
+            image_url = local_url
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"下载图片失败: {e}")
+
+    material = await service.create_ai_draft(
+        name=data.get("name", "AI 草稿"),
+        url=image_url,
+        ai_meta=data.get("ai_meta"),
+        width=data.get("width"),
+        height=data.get("height"),
+        user_id=current_user.id,
+    )
+    return ApiResponse(data={
+        "id": material.id,
+        "name": material.name,
+        "type": material.type,
+        "url": material.url,
+        "width": material.width,
+        "height": material.height,
+        "ai_meta": material.ai_meta,
+        "created_at": str(material.created_at),
+    })
+
+
 @router.post("/{material_id}/download")
 async def download_remote_image(
     material_id: int,
@@ -362,13 +384,9 @@ async def download_remote_image(
     - url: 远程图片 URL
     """
     service = MaterialService(db)
-    material = await service.get_by_id(material_id)
-    if not material or material.deleted_at is not None:
+    material = await service.get_by_id(material_id, user_id=current_user.id)
+    if not material:
         raise HTTPException(status_code=404, detail="素材不存在")
-
-    # 所有权校验
-    if material.created_by is not None and material.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="无权操作")
 
     remote_url = data.get("url") or material.url
     if not remote_url or not remote_url.startswith(("http://", "https://")):

@@ -6,10 +6,24 @@ import { adminApi } from '@/services/adminApi';
 import { UserIcon, ArrowLeft } from 'lucide-react';
 
 interface UserDetail {
-  user: { id: number; username: string; email: string; avatar: string | null; role: string; is_active: boolean; created_at: string };
+  user: { id: number; username: string; display_name?: string | null; email: string; avatar: string | null; role: string; roles?: string[]; is_active: boolean; created_at: string };
   stats: { project_count: number; material_count: number; ai_task_count: number; ai_task_24h: number; workflow_count: number; dify_task_count: number; dify_run_log_count: number; copywriting_count: number };
   recent_ai_tasks: Array<{ id: number; model_name: string; prompt: string; status: string; created_at: string }>;
   recent_dify_tasks: Array<{ id: number; workflow_id: number; status: string; created_at: string }>;
+}
+
+const USER_ROLES = [
+  { value: 'admin', label: '管理员', badgeClass: 'bg-slate-950 text-white' },
+  { value: 'xhs_lead', label: '小红书部门负责人', badgeClass: 'bg-indigo-100 text-indigo-700' },
+  { value: 'xhs_ops', label: '小红书运营', badgeClass: 'bg-rose-100 text-rose-700' },
+  { value: 'buyer', label: '投手', badgeClass: 'bg-amber-100 text-amber-700' },
+  { value: 'brand_lead', label: '品牌责任人', badgeClass: 'bg-sky-100 text-sky-700' },
+  { value: 'brand_ops', label: '品牌运营', badgeClass: 'bg-emerald-100 text-emerald-700' },
+  { value: 'viewer', label: '普通用户', badgeClass: 'bg-gray-100 text-gray-600' },
+];
+
+function getRoleMeta(role: string) {
+  return USER_ROLES.find(item => item.value === role) || USER_ROLES[USER_ROLES.length - 1];
 }
 
 export default function UserDetailPage() {
@@ -52,6 +66,7 @@ export default function UserDetailPage() {
     { label: '运行日志', value: detail.stats.dify_run_log_count },
     { label: '文案', value: detail.stats.copywriting_count, href: `/admin/copywritings?user_id=${userId}` },
   ];
+  const roles = detail.user.roles?.length ? detail.user.roles : [detail.user.role || 'viewer'];
 
   return (
     <div className="space-y-6">
@@ -66,13 +81,18 @@ export default function UserDetailPage() {
           <UserIcon className="h-6 w-6 text-gray-500" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">{detail.user.username}</h2>
-          <p className="text-sm text-gray-500">{detail.user.email}</p>
+          <h2 className="text-lg font-semibold">{detail.user.display_name || detail.user.username}</h2>
+          <p className="text-sm text-gray-500">{detail.user.username} · {detail.user.email}</p>
         </div>
         <div className="ml-auto flex gap-2">
-          <span className={`px-2 py-1 rounded-md text-xs font-medium ${detail.user.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
-            {detail.user.role === 'admin' ? '管理员' : '普通用户'}
-          </span>
+          {roles.map((role) => {
+            const roleMeta = getRoleMeta(role);
+            return (
+              <span key={role} className={`px-2 py-1 rounded-md text-xs font-medium ${roleMeta.badgeClass}`}>
+                {roleMeta.label}
+              </span>
+            );
+          })}
           <span className={`px-2 py-1 rounded-md text-xs font-medium ${detail.user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
             {detail.user.is_active ? '启用中' : '已禁用'}
           </span>

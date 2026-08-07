@@ -1,0 +1,855 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from datetime import date, datetime, timedelta
+from typing import Any
+
+import httpx
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.config import settings
+from app.db.session import async_session
+from app.models.xhs_report import XHSReportDaily
+from app.models.xhs_schedule_run_log import XHSScheduleRunLog
+from app.models.user import User
+from app.models.user_xhs_env import UserXHSEnvironment
+from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_environment import XHSEnvironment
+from app.models.xhs_schedule_setting import XHSScheduleSetting
+from app.services.xhs_service import XHSService
+from app.utils.timezone import cst_now_naive, utc_now_naive, utc_naive_to_aware_iso, utc_naive_to_cst_naive
+
+logger = logging.getLogger(__name__)
+
+ACCOUNT_DATA_SYNC_TASK = "account_data_sync"
+AD_DATA_REFRESH_TASK = "ad_data_refresh"
+AD_REPORT_PUBLISH_TASK = "ad_report_publish"
+ALL_SCHEDULE_TASK_KEYS = (ACCOUNT_DATA_SYNC_TASK, AD_DATA_REFRESH_TASK, AD_REPORT_PUBLISH_TASK)
+AD_REPORT_TYPES = ("simple", "standard", "creative", "simple_note", "standard_note")
+AD_SUMMARY_REPORT_TYPES = ("simple", "standard")
+_RUNNING_TASK_KEYS: set[str] = set()
+
+
+def _normalize_run_time(value: object) -> str:
+    text = str(value or "").strip()
+    try:
+        parsed = datetime.strptime(text, "%H:%M")
+    except ValueError as exc:
+        raise ValueError("执行时间格式必须是 HH:MM") from exc
+    return parsed.strftime("%H:%M")
+
+
+def _scheduled_time_today(run_time: str, now: datetime | None = None) -> datetime:
+    current = now or cst_now_naive()
+    hour, minute = [int(part) for part in run_time.split(":", 1)]
+    return current.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+def _default_task_definition(task_key: str) -> dict[str, Any]:
+    if task_key == ACCOUNT_DATA_SYNC_TASK:
+        return {
+            "task_key": task_key,
+            "label": "账户数据同步",
+            "description": "支持主页帖子、创作者中心互动、未同步详情补齐和内容打标的组合定时任务。",
+            "enabled": bool(settings.xhs_enable_account_notes_sync_loop),
+            "run_time": "19:00",
+            "config": {
+                "target_scope": "all",
+                "target_user_ids": [],
+                "target_environment_ids": [],
+                "post_sync_enabled": True,
+                "post_sync_runner_ids": [],
+                "post_sync_limit_per_env": 60,
+                "engagement_sync_enabled": False,
+                "detail_sync_enabled": False,
+                "detail_sync_mode": "unpublished_only",
+                "detail_runner_ids": [],
+                "detail_total_limit": 20,
+                "detail_limit_per_runner": 10,
+                "detail_pause_min_seconds": 45,
+                "detail_pause_max_seconds": 90,
+                "detail_max_post_age_days": 30,
+                "content_tag_enabled": False,
+                "content_tag_ai_origin_type": "all",
+                "content_tag_status": "all",
+                "content_tag_concurrency": 20,
+            },
+        }
+    if task_key == AD_DATA_REFRESH_TASK:
+        return {
+            "task_key": task_key,
+            "label": "投流数据刷新",
+            "description": "每天自动回刷投流报表缓存，供投流数据看板使用。",
+            "enabled": False,
+            "run_time": "06:30",
+            "config": {
+                "date_range_mode": "relative",
+                "days": 30,
+                "start_date": "",
+                "end_date": "",
+                "report_types": list(AD_REPORT_TYPES),
+            },
+        }
+    if task_key == AD_REPORT_PUBLISH_TASK:
+        return {
+            "task_key": task_key,
+            "label": "汇报发布",
+            "description": "每天先刷新当天简单投/标准投数据，再汇总指定广告账户并推送到飞书群。",
+            "enabled": False,
+            "run_time": "18:30",
+            "config": {
+                "message_title": "今日小红书零跑汇总数据",
+                "webhook_url": "",
+                "account_ids": [],
+                "report_types": list(AD_SUMMARY_REPORT_TYPES),
+                "refresh_before_send": True,
+                "require_all_accounts_ready": True,
+            },
+        }
+    raise ValueError(f"未知任务类型: {task_key}")
+
+
+def _normalize_task_config(task_key: str, config: dict[str, Any] | None) -> dict[str, Any]:
+    config = dict(config or {})
+    defaults = _default_task_definition(task_key)["config"]
+    merged = {**defaults, **config}
+    if task_key == ACCOUNT_DATA_SYNC_TASK:
+        target_scope = str(merged.get("target_scope") or "all").strip()
+        if target_scope not in {"all", "owner_users", "environment_ids"}:
+            target_scope = "all"
+        detail_sync_mode = str(merged.get("detail_sync_mode") or "unpublished_only").strip()
+        ai_origin_type = str(merged.get("content_tag_ai_origin_type") or "all").strip()
+        status = str(merged.get("content_tag_status") or "all").strip()
+        return {
+            "target_scope": target_scope,
+            "target_user_ids": sorted({int(item) for item in (merged.get("target_user_ids") or []) if int(item) > 0}),
+            "target_environment_ids": sorted({int(item) for item in (merged.get("target_environment_ids") or []) if int(item) > 0}),
+            "post_sync_enabled": bool(merged.get("post_sync_enabled")),
+            "post_sync_runner_ids": sorted({int(item) for item in (merged.get("post_sync_runner_ids") or []) if int(item) > 0}),
+            "post_sync_limit_per_env": max(1, min(int(merged.get("post_sync_limit_per_env") or 60), 60)),
+            "engagement_sync_enabled": bool(merged.get("engagement_sync_enabled")),
+            "detail_sync_enabled": bool(merged.get("detail_sync_enabled")),
+            "detail_sync_mode": detail_sync_mode if detail_sync_mode in {"all", "unpublished_only"} else "unpublished_only",
+            "detail_runner_ids": sorted({int(item) for item in (merged.get("detail_runner_ids") or []) if int(item) > 0}),
+            "detail_total_limit": max(1, min(int(merged.get("detail_total_limit") or 20), 1000)),
+            "detail_limit_per_runner": max(1, min(int(merged.get("detail_limit_per_runner") or 10), 60)),
+            "detail_pause_min_seconds": max(0.0, min(float(merged.get("detail_pause_min_seconds") or 45), 900.0)),
+            "detail_pause_max_seconds": max(
+                max(0.0, min(float(merged.get("detail_pause_min_seconds") or 45), 900.0)),
+                min(float(merged.get("detail_pause_max_seconds") or 90), 900.0),
+            ),
+            "detail_max_post_age_days": max(0, min(int(merged.get("detail_max_post_age_days") or 30), 3650)),
+            "content_tag_enabled": bool(merged.get("content_tag_enabled")),
+            "content_tag_ai_origin_type": ai_origin_type if ai_origin_type in {"all", "__unset__", "manual", "text_ai", "image_ai", "all_ai"} else "all",
+            "content_tag_status": status or "all",
+            "content_tag_concurrency": max(1, min(int(merged.get("content_tag_concurrency") or 20), 50)),
+        }
+    if task_key == AD_DATA_REFRESH_TASK:
+        date_range_mode = str(merged.get("date_range_mode") or "relative").strip()
+        if date_range_mode not in {"relative", "fixed"}:
+            date_range_mode = "relative"
+        days = max(1, min(int(merged.get("days") or 30), 365))
+        start_date = str(merged.get("start_date") or "").strip()
+        end_date = str(merged.get("end_date") or "").strip()
+        if date_range_mode == "fixed":
+            try:
+                start_d = date.fromisoformat(start_date)
+                end_d = date.fromisoformat(end_date)
+            except ValueError as exc:
+                raise ValueError("固定日期范围必须填写合法的开始日期和结束日期") from exc
+            if start_d > end_d:
+                raise ValueError("开始日期不能晚于结束日期")
+            if (end_d - start_d).days > 365:
+                raise ValueError("投流数据刷新范围不能超过 366 天")
+        merged["date_range_mode"] = date_range_mode
+        merged["days"] = days
+        merged["start_date"] = start_date if date_range_mode == "fixed" else ""
+        merged["end_date"] = end_date if date_range_mode == "fixed" else ""
+        raw_report_types = merged.get("report_types") or list(AD_REPORT_TYPES)
+        normalized_report_types = [str(item).strip() for item in raw_report_types if str(item).strip() in AD_REPORT_TYPES]
+        merged["report_types"] = normalized_report_types or list(AD_REPORT_TYPES)
+        return merged
+    if task_key == AD_REPORT_PUBLISH_TASK:
+        raw_account_ids = merged.get("account_ids") or []
+        if isinstance(raw_account_ids, str):
+            separators = [",", "\n", "\r", "\t", " "]
+            parsed_account_ids = [str(raw_account_ids)]
+            for separator in separators:
+                next_items: list[str] = []
+                for item in parsed_account_ids:
+                    next_items.extend(item.split(separator))
+                parsed_account_ids = next_items
+            raw_account_ids = parsed_account_ids
+        raw_report_types = merged.get("report_types") or list(AD_SUMMARY_REPORT_TYPES)
+        normalized_report_types = [str(item).strip() for item in raw_report_types if str(item).strip() in AD_SUMMARY_REPORT_TYPES]
+        return {
+            "message_title": str(merged.get("message_title") or "今日小红书零跑汇总数据").strip() or "今日小红书零跑汇总数据",
+            "webhook_url": str(merged.get("webhook_url") or "").strip(),
+            "account_ids": sorted({str(item).strip() for item in raw_account_ids if str(item).strip()}),
+            "report_types": normalized_report_types or list(AD_SUMMARY_REPORT_TYPES),
+            "refresh_before_send": bool(merged.get("refresh_before_send", True)),
+            "require_all_accounts_ready": bool(merged.get("require_all_accounts_ready", True)),
+        }
+    raise ValueError(f"未知任务类型: {task_key}")
+
+
+def _resolve_ad_refresh_date_range(config: dict[str, Any]) -> tuple[date, date, int]:
+    normalized = _normalize_task_config(AD_DATA_REFRESH_TASK, config)
+    if normalized.get("date_range_mode") == "fixed":
+        start_d = date.fromisoformat(str(normalized.get("start_date") or ""))
+        end_d = date.fromisoformat(str(normalized.get("end_date") or ""))
+    else:
+        days = max(1, min(int(normalized.get("days") or 30), 365))
+        # 巨量/小红书投流日报当天数据不稳定且常被接口拒绝，最近 N 天固定截至昨天。
+        end_d = cst_now_naive().date() - timedelta(days=1)
+        start_d = end_d - timedelta(days=days - 1)
+    days = (end_d - start_d).days + 1
+    return start_d, end_d, days
+
+
+def _next_run_cst(run_time: str, last_run_at: datetime | None) -> datetime:
+    now = cst_now_naive()
+    scheduled_today = _scheduled_time_today(run_time, now)
+    if now < scheduled_today:
+        return scheduled_today
+    if last_run_at is not None:
+        last_run_cst = utc_naive_to_cst_naive(last_run_at)
+        if last_run_cst >= scheduled_today:
+            return scheduled_today + timedelta(days=1)
+    return scheduled_today
+
+
+def _is_due(enabled: bool, run_time: str, last_run_at: datetime | None) -> bool:
+    if not enabled:
+        return False
+    now = cst_now_naive()
+    scheduled_today = _scheduled_time_today(run_time, now)
+    if now < scheduled_today:
+        return False
+    if last_run_at is None:
+        return True
+    return utc_naive_to_cst_naive(last_run_at) < scheduled_today
+
+
+def _scope_label(scope: str, target_env_ids: list[int], config: dict[str, Any]) -> str:
+    if scope == "owner_users":
+        return f"指定负责人({len(config.get('target_user_ids') or [])}人)"
+    if scope == "environment_ids":
+        return f"指定账号({len(target_env_ids)}个)"
+    return "全量"
+
+
+def _build_even_runner_assignments(runner_ids: list[int], target_env_ids: list[int]) -> dict[int, list[int]]:
+    assignments = {runner_id: [] for runner_id in runner_ids}
+    if not runner_ids:
+        return assignments
+    for index, env_id in enumerate(target_env_ids):
+        runner_id = runner_ids[index % len(runner_ids)]
+        assignments[runner_id].append(env_id)
+    return {runner_id: env_ids for runner_id, env_ids in assignments.items() if env_ids}
+
+
+def _distribute_limit(total_limit: int, env_ids: list[int]) -> list[tuple[int, int]]:
+    if not env_ids:
+        return []
+    base = total_limit // len(env_ids)
+    remainder = total_limit % len(env_ids)
+    result: list[tuple[int, int]] = []
+    for index, env_id in enumerate(env_ids):
+        result.append((env_id, base + (1 if index < remainder else 0)))
+    return result
+
+
+def _report_metric_value(row: dict[str, Any], *keys: str) -> float:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            raw = str(value).strip().replace(",", "")
+            if raw.endswith("%"):
+                raw = raw[:-1]
+            try:
+                parsed = float(raw)
+                if parsed == parsed:
+                    return parsed
+            except Exception:
+                continue
+    return 0.0
+
+
+def _report_conversion_value(row: dict[str, Any]) -> float:
+    return _report_metric_value(row, "msg_leads_num", "valid_leads", "leads", "conversion", "conversions")
+
+
+def _format_publish_message(title: str, summary: dict[str, Any]) -> str:
+    return "\n".join([
+        title,
+        f"● 展示数：{int(summary['impression'])}",
+        f"● 点击数：{int(summary['click'])}",
+        f"● 总投流线索：{int(summary['conversion'])}",
+        f"● 总投流：{float(summary['fee']):.2f}",
+        f"● 单个线索成本：{float(summary['conversion_cost']):.2f}",
+    ])
+
+
+async def _send_feishu_robot_message(webhook_url: str, text: str) -> None:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0), trust_env=False) as client:
+        response = await client.post(
+            webhook_url,
+            json={
+                "msg_type": "text",
+                "content": {
+                    "text": text,
+                },
+            },
+        )
+        response.raise_for_status()
+        try:
+            payload = response.json()
+        except Exception:
+            payload = {}
+        status_code = payload.get("StatusCode")
+        if status_code not in (None, 0):
+            raise ValueError(payload.get("StatusMessage") or payload.get("msg") or "飞书机器人返回失败")
+
+
+async def _load_system_admin_user(db: AsyncSession) -> User:
+    user = (await db.execute(select(User).where(User.role == "admin").order_by(User.id.asc()))).scalars().first()
+    if not user:
+        raise ValueError("系统中还没有管理员账号，暂时无法执行创作者中心互动同步")
+    return user
+
+
+async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, Any]) -> list[int]:
+    stmt = (
+        select(XHSEnvironment.id)
+        .where(
+            and_(
+                XHSEnvironment.status == "active",
+                or_(XHSEnvironment.is_sync_runner.is_(False), XHSEnvironment.is_sync_runner.is_(None)),
+            )
+        )
+        .order_by(XHSEnvironment.account_name.asc())
+    )
+    all_env_ids = [int(item) for item in (await db.execute(stmt)).scalars().all()]
+    scope = str(config.get("target_scope") or "all")
+    if scope == "environment_ids":
+        selected = {int(item) for item in (config.get("target_environment_ids") or []) if int(item) > 0}
+        return [env_id for env_id in all_env_ids if env_id in selected]
+    if scope == "owner_users":
+        selected_users = {int(item) for item in (config.get("target_user_ids") or []) if int(item) > 0}
+        if not selected_users:
+            return []
+        assigned_env_ids = [
+            int(item)
+            for item in (
+                await db.execute(
+                    select(UserXHSEnvironment.environment_id)
+                    .where(UserXHSEnvironment.user_id.in_(list(selected_users)))
+                )
+            ).scalars().all()
+        ]
+        allowed = set(assigned_env_ids)
+        return [env_id for env_id in all_env_ids if env_id in allowed]
+    return all_env_ids
+
+
+async def _run_content_tag_batch(
+    db: AsyncSession,
+    *,
+    target_env_ids: list[int],
+    ai_origin_type: str,
+    status: str,
+    concurrency: int,
+) -> dict[str, Any]:
+    from app.api.v1.xhs import _tag_xhs_account_note_with_model
+
+    conditions = [
+        XHSAccountNote.title != "",
+        XHSAccountNote.detail_synced_at.is_not(None),
+        XHSAccountNote.content_status == "from_detail",
+        XHSAccountNote.content.is_not(None),
+        XHSAccountNote.content != "",
+        or_(
+            XHSAccountNote.primary_content_tag.is_(None),
+            XHSAccountNote.primary_content_tag == "",
+            XHSAccountNote.secondary_content_tag.is_(None),
+            XHSAccountNote.secondary_content_tag == "",
+        ),
+    ]
+    if target_env_ids:
+        conditions.append(XHSAccountNote.environment_id.in_(target_env_ids))
+    ai_origin_value = (ai_origin_type or "").strip()
+    if ai_origin_value and ai_origin_value != "all":
+        if ai_origin_value == "__unset__":
+            conditions.append(or_(XHSAccountNote.ai_origin_type == "", XHSAccountNote.ai_origin_type.is_(None)))
+        else:
+            conditions.append(XHSAccountNote.ai_origin_type == ai_origin_value)
+    status_value = (status or "").strip()
+    if status_value and status_value != "all":
+        conditions.append(XHSAccountNote.status == status_value)
+
+    stmt = (
+        select(XHSAccountNote)
+        .where(and_(*conditions))
+        .order_by(XHSAccountNote.environment_id.asc(), XHSAccountNote.sort_index.asc(), XHSAccountNote.id.desc())
+    )
+    notes = list((await db.execute(stmt)).scalars().all())
+    if not notes:
+        return {
+            "matched_count": 0,
+            "tagged_count": 0,
+            "failed_count": 0,
+            "concurrency": concurrency,
+        }
+
+    semaphore = asyncio.Semaphore(concurrency)
+    failed_items: list[dict[str, Any]] = []
+    tagged_results: list[tuple[XHSAccountNote, str, str]] = []
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=15.0), trust_env=False) as client:
+        async def run_one(note: XHSAccountNote) -> None:
+            async with semaphore:
+                try:
+                    primary, secondary = await _tag_xhs_account_note_with_model(client, note)
+                    tagged_results.append((note, primary, secondary))
+                except Exception as exc:
+                    failed_items.append({
+                        "id": int(note.id),
+                        "title": note.title or note.feed_id,
+                        "error": str(exc)[:240],
+                    })
+
+        await asyncio.gather(*(run_one(note) for note in notes))
+
+    for note, primary, secondary in tagged_results:
+        note.primary_content_tag = primary
+        note.secondary_content_tag = secondary
+    if tagged_results:
+        await db.commit()
+
+    return {
+        "matched_count": len(notes),
+        "tagged_count": len(tagged_results),
+        "failed_count": len(failed_items),
+        "concurrency": concurrency,
+        "failed_items": failed_items[:20],
+    }
+
+
+class XHSScheduleService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def _ensure_rows(self) -> dict[str, XHSScheduleSetting]:
+        result = await self.db.execute(
+            select(XHSScheduleSetting).where(XHSScheduleSetting.task_key.in_(ALL_SCHEDULE_TASK_KEYS))
+        )
+        rows = {row.task_key: row for row in result.scalars().all()}
+        changed = False
+        for task_key in ALL_SCHEDULE_TASK_KEYS:
+            if task_key in rows:
+                continue
+            definition = _default_task_definition(task_key)
+            row = XHSScheduleSetting(
+                task_key=task_key,
+                enabled=bool(definition["enabled"]),
+                run_time=str(definition["run_time"]),
+                config=_normalize_task_config(task_key, definition.get("config")),
+            )
+            self.db.add(row)
+            rows[task_key] = row
+            changed = True
+        if changed:
+            await self.db.commit()
+            for row in rows.values():
+                await self.db.refresh(row)
+        return rows
+
+    def serialize_row(self, row: XHSScheduleSetting) -> dict[str, Any]:
+        definition = _default_task_definition(row.task_key)
+        config = _normalize_task_config(row.task_key, row.config if isinstance(row.config, dict) else {})
+        return {
+            "task_key": row.task_key,
+            "label": definition["label"],
+            "description": definition["description"],
+            "enabled": bool(row.enabled),
+            "run_time": _normalize_run_time(row.run_time),
+            "config": config,
+            "is_running": row.task_key in _RUNNING_TASK_KEYS,
+            "next_run_at": _next_run_cst(_normalize_run_time(row.run_time), row.last_run_at).isoformat(),
+            "last_run_at": utc_naive_to_aware_iso(row.last_run_at),
+            "last_status": row.last_status,
+            "last_message": row.last_message,
+            "updated_at": utc_naive_to_aware_iso(row.updated_at),
+        }
+
+    @staticmethod
+    def serialize_run_log(row: XHSScheduleRunLog) -> dict[str, Any]:
+        return {
+            "id": int(row.id),
+            "task_key": row.task_key,
+            "source": row.source,
+            "status": row.status,
+            "message": row.message,
+            "started_at": utc_naive_to_aware_iso(row.started_at),
+            "finished_at": utc_naive_to_aware_iso(row.finished_at),
+            "updated_at": utc_naive_to_aware_iso(row.updated_at),
+        }
+
+    async def list_settings(self) -> list[dict[str, Any]]:
+        rows = await self._ensure_rows()
+        return [self.serialize_row(rows[task_key]) for task_key in ALL_SCHEDULE_TASK_KEYS]
+
+    async def list_run_logs(self, *, task_key: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        stmt = select(XHSScheduleRunLog)
+        if task_key:
+            stmt = stmt.where(XHSScheduleRunLog.task_key == task_key)
+        stmt = stmt.order_by(XHSScheduleRunLog.started_at.desc(), XHSScheduleRunLog.id.desc()).limit(
+            max(1, min(int(limit), 200))
+        )
+        rows = (await self.db.execute(stmt)).scalars().all()
+        return [self.serialize_run_log(row) for row in rows]
+
+    async def get_row(self, task_key: str) -> XHSScheduleSetting:
+        if task_key not in ALL_SCHEDULE_TASK_KEYS:
+            raise ValueError("不支持的定时任务")
+        rows = await self._ensure_rows()
+        return rows[task_key]
+
+    async def update_setting(
+        self,
+        task_key: str,
+        *,
+        enabled: bool,
+        run_time: str,
+        config: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        row = await self.get_row(task_key)
+        row.enabled = bool(enabled)
+        row.run_time = _normalize_run_time(run_time)
+        row.config = _normalize_task_config(task_key, config)
+        await self.db.commit()
+        await self.db.refresh(row)
+        return self.serialize_row(row)
+
+
+async def _execute_account_data_sync(session: AsyncSession, config: dict[str, Any]) -> str:
+    service = XHSService(session)
+    normalized = _normalize_task_config(ACCOUNT_DATA_SYNC_TASK, config)
+    target_env_ids = await _resolve_target_environment_ids(session, normalized)
+    scoped_selection = str(normalized["target_scope"]) != "all"
+    scope_label = _scope_label(normalized["target_scope"], target_env_ids, normalized)
+
+    summary_parts: list[str] = []
+    if normalized["post_sync_enabled"]:
+        if not normalized["post_sync_runner_ids"]:
+            raise ValueError("主页帖子同步已启用，但还没有选择同步环境")
+        if not target_env_ids:
+            summary_parts.append("主页帖子同步 0 个账号")
+        else:
+            runner_assignments = _build_even_runner_assignments(normalized["post_sync_runner_ids"], target_env_ids)
+            result = await service.sync_account_notes(
+                user=None,
+                scrape_environment_id=normalized["post_sync_runner_ids"][0] if len(normalized["post_sync_runner_ids"]) == 1 else None,
+                scrape_environment_ids=normalized["post_sync_runner_ids"],
+                sync_account_limit=len(target_env_ids),
+                runner_account_assignments=runner_assignments,
+                limit_per_env=int(normalized["post_sync_limit_per_env"]),
+            )
+            summary_parts.append(
+                f"主页帖子 {scope_label} {result.get('synced_accounts', 0)} 个账号，新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
+            )
+
+    if normalized["engagement_sync_enabled"]:
+        if target_env_ids:
+            admin_user = await _load_system_admin_user(session)
+            result = await service.sync_account_note_engagements(
+                user=admin_user,
+                environment_id=None,
+                target_environment_ids=target_env_ids,
+                sync_account_limit=len(target_env_ids),
+            )
+            summary_parts.append(f"创作中心互动 {result.get('synced_accounts', 0)} 个账号，成功 {result.get('metric_synced_notes', 0)} 条")
+        else:
+            summary_parts.append("创作中心互动 0 个账号")
+
+    if normalized["detail_sync_enabled"]:
+        if not normalized["detail_runner_ids"]:
+            raise ValueError("未同步策略已启用，但还没有选择同步环境")
+        detail_runner_ids = normalized["detail_runner_ids"]
+        detail_mode = str(normalized["detail_sync_mode"])
+        detail_limit = int(normalized["detail_total_limit"])
+        detail_results = []
+        detail_env_groups = target_env_ids if scoped_selection else (target_env_ids or [])
+        if scoped_selection and not detail_env_groups:
+            summary_parts.append(f"未同步策略 {detail_mode} 0 条")
+            detail_env_groups = None
+        if detail_env_groups is None:
+            pass
+        elif not detail_env_groups:
+            detail_results.append(
+                await service.sync_existing_account_note_stats(
+                    environment_id=None,
+                    scrape_environment_id=detail_runner_ids[0] if len(detail_runner_ids) == 1 else None,
+                    scrape_environment_ids=detail_runner_ids,
+                    sync_mode=detail_mode,
+                    sync_limit=detail_limit,
+                    sync_limit_per_runner=int(normalized["detail_limit_per_runner"]),
+                    pause_seconds_min=float(normalized["detail_pause_min_seconds"]),
+                    pause_seconds_max=float(normalized["detail_pause_max_seconds"]),
+                    max_post_age_days=int(normalized["detail_max_post_age_days"]),
+                )
+            )
+        else:
+            env_limits = _distribute_limit(detail_limit, detail_env_groups)
+            for env_id, env_limit in env_limits:
+                if env_limit <= 0:
+                    continue
+                detail_results.append(
+                    await service.sync_existing_account_note_stats(
+                        environment_id=env_id,
+                        scrape_environment_id=detail_runner_ids[0] if len(detail_runner_ids) == 1 else None,
+                        scrape_environment_ids=detail_runner_ids,
+                        sync_mode=detail_mode,
+                        sync_limit=env_limit,
+                        sync_limit_per_runner=int(normalized["detail_limit_per_runner"]),
+                        pause_seconds_min=float(normalized["detail_pause_min_seconds"]),
+                        pause_seconds_max=float(normalized["detail_pause_max_seconds"]),
+                        max_post_age_days=int(normalized["detail_max_post_age_days"]),
+                    )
+                )
+        if detail_results:
+            detail_synced = sum(int(item.get("synced_notes") or 0) for item in detail_results)
+            detail_failed = sum(int(item.get("failed_notes") or 0) for item in detail_results)
+            summary_parts.append(f"未同步策略 {detail_mode} 成功 {detail_synced} 条，失败 {detail_failed} 条")
+
+    if normalized["content_tag_enabled"]:
+        if scoped_selection and not target_env_ids:
+            summary_parts.append("内容打标 0/0 条")
+        else:
+            tag_result = await _run_content_tag_batch(
+                session,
+                target_env_ids=target_env_ids,
+                ai_origin_type=str(normalized["content_tag_ai_origin_type"]),
+                status=str(normalized["content_tag_status"]),
+                concurrency=int(normalized["content_tag_concurrency"]),
+            )
+            summary_parts.append(f"内容打标 {tag_result.get('tagged_count', 0)}/{tag_result.get('matched_count', 0)} 条")
+
+    if not summary_parts:
+        return "未启用任何账户同步步骤"
+    return "；".join(summary_parts)
+
+
+async def _execute_ad_data_refresh(session: AsyncSession, config: dict[str, Any]) -> str:
+    service = XHSService(session)
+    start_d, end_d, days = _resolve_ad_refresh_date_range(config)
+    report_types = [str(item).strip() for item in (config.get("report_types") or AD_REPORT_TYPES) if str(item).strip() in AD_REPORT_TYPES]
+    report_types = report_types or list(AD_REPORT_TYPES)
+
+    total_accounts = 0
+    total_rows = 0
+    errors: list[str] = []
+    for report_type in report_types:
+        result = await service.refresh_jg_report_cache(
+            report_type=report_type,
+            start_date=start_d.isoformat(),
+            end_date=end_d.isoformat(),
+            days=days,
+        )
+        total_accounts += int(result.get("updated_accounts") or 0)
+        total_rows += int(result.get("updated_rows") or 0)
+        errors.extend(str(item) for item in (result.get("errors") or []))
+    if errors:
+        return f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行，异常 {len(errors)} 条"
+    return f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行"
+
+
+async def _execute_ad_report_publish(session: AsyncSession, config: dict[str, Any]) -> str:
+    normalized = _normalize_task_config(AD_REPORT_PUBLISH_TASK, config)
+    webhook_url = str(normalized.get("webhook_url") or "").strip()
+    account_ids = [str(item).strip() for item in (normalized.get("account_ids") or []) if str(item).strip()]
+    report_types = [str(item).strip() for item in (normalized.get("report_types") or []) if str(item).strip() in AD_SUMMARY_REPORT_TYPES]
+    report_types = report_types or list(AD_SUMMARY_REPORT_TYPES)
+    if not webhook_url:
+        raise ValueError("请先配置飞书 webhook")
+    if not account_ids:
+        raise ValueError("请先选择要汇报的广告账户")
+
+    refresh_message = ""
+    if normalized.get("refresh_before_send", True):
+        refresh_message = await _execute_ad_data_refresh(
+            session,
+            {
+                "days": 1,
+                "report_types": report_types,
+            },
+        )
+
+    today = cst_now_naive().date()
+    async def fetch_today_rows() -> list[tuple[str, Any]]:
+        return list(
+            (
+                await session.execute(
+                    select(
+                        XHSReportDaily.account_id,
+                        XHSReportDaily.payload,
+                    ).where(
+                        and_(
+                            XHSReportDaily.report_date == today,
+                            XHSReportDaily.report_type.in_(report_types),
+                            XHSReportDaily.account_id.in_(account_ids),
+                        )
+                    )
+                )
+            )
+            .all()
+        )
+
+    rows = await fetch_today_rows()
+
+    if not rows and not normalized.get("refresh_before_send", True):
+        fallback_refresh_message = await _execute_ad_data_refresh(
+            session,
+            {
+                "days": 1,
+                "report_types": report_types,
+            },
+        )
+        refresh_message = f"当天无匹配数据，已自动补刷；{fallback_refresh_message}"
+        rows = await fetch_today_rows()
+
+    present_account_ids = sorted({str(account_id).strip() for account_id, _payload in rows if str(account_id).strip()})
+    missing_account_ids = [account_id for account_id in account_ids if account_id not in present_account_ids]
+
+    summary = {
+        "fee": 0.0,
+        "impression": 0,
+        "click": 0,
+        "conversion": 0,
+        "conversion_cost": 0.0,
+    }
+    for _account_id, payload in rows:
+        row_payload = payload if isinstance(payload, dict) else {}
+        if isinstance(payload, str):
+            try:
+                row_payload = json.loads(payload)
+            except Exception:
+                row_payload = {}
+        fee = _report_metric_value(row_payload, "fee", "cost", "spend")
+        impression = _report_metric_value(row_payload, "impression", "show", "exposure")
+        click = _report_metric_value(row_payload, "click")
+        conversion = _report_conversion_value(row_payload)
+        summary["fee"] += fee
+        summary["impression"] += int(round(impression))
+        summary["click"] += int(round(click))
+        summary["conversion"] += int(round(conversion))
+
+    summary["fee"] = round(float(summary["fee"]), 2)
+    summary["conversion_cost"] = round(
+        float(summary["fee"]) / float(summary["conversion"]) if summary["conversion"] else 0.0,
+        2,
+    )
+
+    text = _format_publish_message(str(normalized.get("message_title") or "今日小红书零跑汇总数据"), summary)
+    await _send_feishu_robot_message(webhook_url, text)
+
+    parts = [f"飞书推送成功，日期 {today.isoformat()}，账户 {len(present_account_ids)}/{len(account_ids)} 个"]
+    if missing_account_ids:
+        parts.append(f"{len(missing_account_ids)} 个账户当天无日报数据，已按 0 计入汇总")
+    if refresh_message:
+        parts.append(refresh_message)
+    return "；".join(parts)
+
+
+async def _run_task(task_key: str, source: str, session_factory: async_sessionmaker) -> None:
+    _RUNNING_TASK_KEYS.add(task_key)
+    run_log_id: int | None = None
+    try:
+        async with session_factory() as session:
+            schedule_service = XHSScheduleService(session)
+            row = await schedule_service.get_row(task_key)
+            run_log = XHSScheduleRunLog(
+                task_key=task_key,
+                source=source,
+                status="running",
+                message="任务执行中",
+                started_at=utc_now_naive(),
+            )
+            session.add(run_log)
+            row.last_status = "running"
+            row.last_message = "任务执行中"
+            await session.commit()
+            await session.refresh(run_log)
+            run_log_id = int(run_log.id)
+
+        async with session_factory() as session:
+            schedule_service = XHSScheduleService(session)
+            row = await schedule_service.get_row(task_key)
+            config = _normalize_task_config(task_key, row.config if isinstance(row.config, dict) else {})
+            if task_key == ACCOUNT_DATA_SYNC_TASK:
+                message = await _execute_account_data_sync(session, config)
+            elif task_key == AD_DATA_REFRESH_TASK:
+                message = await _execute_ad_data_refresh(session, config)
+            elif task_key == AD_REPORT_PUBLISH_TASK:
+                message = await _execute_ad_report_publish(session, config)
+            else:
+                raise ValueError(f"未知任务类型: {task_key}")
+            finished_at = utc_now_naive()
+            row.last_run_at = finished_at
+            row.last_status = "succeeded"
+            row.last_message = f"{source}执行成功：{message}"
+            if run_log_id:
+                run_log = await session.get(XHSScheduleRunLog, run_log_id)
+                if run_log:
+                    run_log.status = "succeeded"
+                    run_log.message = row.last_message
+                    run_log.finished_at = finished_at
+            await session.commit()
+            logger.info("XHS scheduled task finished: task_key=%s source=%s message=%s", task_key, source, message)
+    except Exception as exc:
+        logger.exception("XHS scheduled task failed: task_key=%s source=%s", task_key, source)
+        async with session_factory() as session:
+            schedule_service = XHSScheduleService(session)
+            row = await schedule_service.get_row(task_key)
+            finished_at = utc_now_naive()
+            row.last_run_at = finished_at
+            row.last_status = "failed"
+            row.last_message = f"{source}执行失败：{str(exc)[:1000]}"
+            if run_log_id:
+                run_log = await session.get(XHSScheduleRunLog, run_log_id)
+                if run_log:
+                    run_log.status = "failed"
+                    run_log.message = row.last_message
+                    run_log.finished_at = finished_at
+            await session.commit()
+    finally:
+        _RUNNING_TASK_KEYS.discard(task_key)
+
+
+async def trigger_xhs_scheduled_task(
+    task_key: str,
+    *,
+    source: str = "manual",
+    session_factory: async_sessionmaker | None = None,
+) -> bool:
+    if task_key not in ALL_SCHEDULE_TASK_KEYS:
+        raise ValueError("不支持的定时任务")
+    if task_key in _RUNNING_TASK_KEYS:
+        return False
+    factory = session_factory or async_session
+    asyncio.create_task(_run_task(task_key, source, factory))
+    return True
+
+
+async def due_xhs_schedule_task_keys(db: AsyncSession) -> list[str]:
+    service = XHSScheduleService(db)
+    rows = await service._ensure_rows()
+    return [
+        task_key
+        for task_key, row in rows.items()
+        if _is_due(bool(row.enabled), _normalize_run_time(row.run_time), row.last_run_at)
+    ]

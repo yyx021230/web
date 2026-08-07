@@ -94,6 +94,21 @@ web/
 
 启动后端后访问: http://localhost:8000/docs
 
+## Windows 部署
+
+项目根目录自带 [deploy-to-windows.sh](/Users/yyx/ztqc/web/deploy-to-windows.sh:1)，会完成这些步骤：
+- 编译 Linux 版 `backend/bin/xiaohongshu-mcp`
+- 打包 `backend/`、`frontend/`、`docker-compose.yml`
+- 自动屏蔽 macOS `._*` 和 `.DS_Store` 脏文件
+- 上传到 Windows 服务器并执行 `docker compose up -d --build`
+- 自动执行 `python -m alembic upgrade head`
+
+执行：
+```bash
+cd /Users/yyx/ztqc/web
+./deploy-to-windows.sh
+```
+
 ## Dify 集成
 
 支持对接 Dify 的以下接口:

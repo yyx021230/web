@@ -115,6 +115,10 @@ export const useAIStore = create<AIState>((set, get) => ({
   },
 
   cancelGeneration: (id: string) => {
+    const generation = get().generations.find(g => g.id === id);
+    void aiApi.cancelTask(id, generation?.model || get().currentModel).catch((error) => {
+      console.error('[AI Store] Cancel failed:', error);
+    });
     set((state) => ({
       generations: state.generations.map((g) =>
         g.id === id ? { ...g, status: 'failed' as const, error: '已取消' } : g
@@ -127,7 +131,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     // Add generated image to canvas
   },
 
-  fetchHistory: async (page = 1, limit = 20) => {
+  fetchHistory: async (page = 1, limit = 60) => {
     try {
       const res = await aiApi.getHistory(page, limit);
       const items = res.data.items ?? [];

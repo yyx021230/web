@@ -1,64 +1,51 @@
 """AI 生图 API"""
 
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.ai_image import GenerateImageRequest, ImageTaskResponse, ModelInfo
+from app.schemas.ai_image import (
+    AIImageRuntimeConfig,
+    ActiveImageTasksResponse,
+    GenerateImageRequest,
+    ImageTaskResponse,
+    ModelInfo,
+)
 from app.services.ai_image_service import AIImageService
 from app.services.request_queue import image_generation_queue
+from app.services.ai_task_queue import ai_image_task_queue
 from app.models.user import User
-from app.core.deps import get_current_user
-from app.core.security import decode_access_token
+from app.core.deps import get_current_user, require_admin
+from app.core.roles import has_role
 
 router = APIRouter()
-
-
-async def get_current_user_optional(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-) -> Optional[User]:
-    """尝试获取当前用户，无 token 时返回 None（不报错）"""
-    auth_header = request.headers.get("authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return None
-    try:
-        token = auth_header.split(" ", 1)[1]
-        payload = decode_access_token(token)
-        user_id = payload.get("sub")
-        if not user_id:
-            return None
-        result = await db.execute(select(User).where(User.id == int(user_id)))
-        return result.scalar_one_or_none()
-    except Exception:
-        return None
 
 
 @router.post("/generate", response_model=ApiResponse[ImageTaskResponse])
 async def generate_image(
     req: GenerateImageRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
-    """提交生图任务（登录用户自动关联，匿名用户也可使用）"""
+    """提交生图任务（需登录）"""
     try:
         service = AIImageService(model_name=req.model, db=db)
         result = await service.submit(
             prompt=req.prompt,
+            client_request_id=req.client_request_id,
             params={
                 "negative_prompt": req.negative_prompt,
                 "width": req.width,
                 "height": req.height,
                 "style": req.style,
                 "quality": req.quality,
+                "count": req.count,
                 "image_data": req.image_data,
                 "image_url": req.image_url,
                 "images_data": req.images_data,
             },
-            user_id=current_user.id if current_user else 0,
+            user_id=current_user.id,
         )
         return ApiResponse(data=ImageTaskResponse(**result))
     except ValueError as e:
@@ -67,31 +54,80 @@ async def generate_image(
         raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
 
 
-@router.get("/tasks/{task_id}", response_model=ApiResponse[ImageTaskResponse])
-async def get_task_status(task_id: str, model: str = "seedream", db: AsyncSession = Depends(get_db)):
-    """查询任务状态"""
-    if task_id.isdigit():
-        service = AIImageService(model_name=model, db=db)
-        local = await service.get_local_task_status(int(task_id))
-        if local is not None:
-            return ApiResponse(data=ImageTaskResponse(**local))
-    service = AIImageService(model_name=model)
-    result = await service.get_status(task_id)
+@router.get("/active", response_model=ApiResponse[ActiveImageTasksResponse])
+async def get_active_tasks(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取当前用户正在排队/处理中的生图任务"""
+    service = AIImageService(db=db)
+    result = await service.get_active_tasks(current_user.id)
+    return ApiResponse(data=ActiveImageTasksResponse(**result))
+
+
+@router.get("/runtime-config", response_model=ApiResponse[AIImageRuntimeConfig])
+async def get_runtime_config():
+    """获取前端轮询和后端任务超时配置。"""
+    return ApiResponse(data=AIImageRuntimeConfig(
+        task_timeout_seconds=AIImageService._task_timeout_seconds(),
+        poll_interval_seconds=2,
+    ))
+
+
+@router.get("/requests/{client_request_id}", response_model=ApiResponse[ImageTaskResponse])
+async def get_task_by_client_request_id(
+    client_request_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """通过前端请求幂等 ID 找回本用户的生图任务。"""
+    service = AIImageService(db=db)
+    result = await service.get_task_by_client_request_id(current_user.id, client_request_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
     return ApiResponse(data=ImageTaskResponse(**result))
 
 
+@router.get("/tasks/{task_id}", response_model=ApiResponse[ImageTaskResponse])
+async def get_task_status(
+    task_id: str,
+    model: str = "seedream",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """查询当前用户任务状态"""
+    if task_id.isdigit():
+        service = AIImageService(model_name=model, db=db)
+        local = await service.get_local_task_status(
+            int(task_id),
+            user_id=current_user.id,
+            allow_any_user=has_role(current_user, "admin"),
+        )
+        if local is not None:
+            return ApiResponse(data=ImageTaskResponse(**local))
+    raise HTTPException(status_code=404, detail="任务不存在")
+
+
 @router.post("/tasks/{task_id}/cancel")
-async def cancel_task(task_id: str, model: str = "seedream"):
+async def cancel_task(
+    task_id: str,
+    model: str = "seedream",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """取消任务"""
-    service = AIImageService(model_name=model)
-    await service.cancel(task_id)
+    service = AIImageService(model_name=model, db=db)
+    try:
+        await service.cancel(task_id, user_id=current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return ApiResponse(message="已取消")
 
 
 @router.get("/history")
 async def get_history(
     page: int = Query(default=1, ge=1, description="页码"),
-    limit: int = Query(default=20, ge=1, le=100, description="每页数量"),
+    limit: int = Query(default=60, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -136,6 +172,13 @@ async def list_models():
 
 
 @router.get("/queue/status")
-async def get_queue_status_endpoint():
-    """获取生图队列状态（用于监控排队情况）"""
-    return ApiResponse(data=image_generation_queue.get_status())
+async def get_queue_status_endpoint(current_user: User = Depends(require_admin)):
+    """获取生图队列状态（管理员监控）"""
+    _ = current_user
+    queue_status = await ai_image_task_queue.get_status()
+    return ApiResponse(
+        data={
+            **queue_status,
+            "local_fallback": image_generation_queue.get_status(),
+        }
+    )

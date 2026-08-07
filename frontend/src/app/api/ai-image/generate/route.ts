@@ -8,11 +8,21 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const auth = req.headers.get('authorization');
+    if (!auth) {
+      return NextResponse.json(
+        { code: 401, message: '请先登录后再生成图片', data: null },
+        { status: 401 }
+      );
+    }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
     const res = await fetch(`${baseUrl}/ai-image/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(auth ? { Authorization: auth } : {}),
+      },
       body: JSON.stringify(body),
     });
 

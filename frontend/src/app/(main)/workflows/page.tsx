@@ -198,24 +198,24 @@ export default function WorkflowsPage() {
   });
 
   return (
-    <div className="flex h-full bg-[#fafafa]">
+    <div className="cloud-page flex h-full p-4">
       {/* ---- Main Area ---- */}
-      <div className={cn('flex-1 flex flex-col min-w-0 transition-all', showTaskPanel && 'mr-96')}>
+      <div className={cn('cloud-panel flex-1 flex flex-col min-w-0 overflow-hidden rounded-[28px] transition-all', showTaskPanel && 'mr-96')}>
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b bg-white shrink-0">
+        <div className="cloud-toolbar flex items-center justify-between px-8 py-5 shrink-0">
           <div className="flex items-center gap-6">
             <button onClick={() => setActiveTab('workflows')}
               className={cn('text-sm font-medium transition-colors relative pb-1',
                 activeTab === 'workflows'
-                  ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-foreground'
-                  : 'text-muted-foreground hover:text-foreground')}>
+                  ? 'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-indigo-500'
+                  : 'text-slate-500 hover:text-slate-900')}>
               工作流
             </button>
             <button onClick={() => setActiveTab('logs')}
               className={cn('text-sm font-medium transition-colors relative pb-1',
                 activeTab === 'logs'
-                  ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-foreground'
-                  : 'text-muted-foreground hover:text-foreground')}>
+                  ? 'text-indigo-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-indigo-500'
+                  : 'text-slate-500 hover:text-slate-900')}>
               运行日志
             </button>
           </div>
@@ -233,8 +233,8 @@ export default function WorkflowsPage() {
                   className={cn(
                     'relative flex items-center gap-2 text-xs px-3 py-1.5 rounded-full transition-colors',
                     showTaskPanel
-                      ? 'bg-neutral-100 text-foreground hover:bg-neutral-200'
-                      : 'bg-white border text-muted-foreground hover:text-foreground hover:border-neutral-300',
+                      ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                      : 'cloud-pill text-slate-500 hover:text-slate-900 hover:border-indigo-200',
                   )}>
                   <ListTodo className="h-3.5 w-3.5" />
                   任务历史
@@ -279,9 +279,9 @@ export default function WorkflowsPage() {
                     return (
                       <div key={wf.id}
                         className={cn(
-                          'group relative rounded-2xl bg-white border border-neutral-200/60 p-4',
+                          'cloud-card cloud-card-hover group relative rounded-3xl p-4',
                           'flex flex-col items-center text-center',
-                          'hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-200/50',
+                          'hover:border-indigo-200',
                           'transition-all duration-200 cursor-default',
                           hasRunning && 'border-blue-300 shadow-md shadow-blue-100/50',
                         )}>
@@ -318,7 +318,7 @@ export default function WorkflowsPage() {
                           hasRunning ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                         )}>
                           <button onClick={() => setRunningWorkflow(wf)}
-                            className="w-full flex items-center justify-center gap-1 rounded-md bg-green-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-green-700 transition-colors">
+                            className="w-full flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white px-3 py-1.5 text-xs font-medium shadow-lg shadow-indigo-200 transition-colors">
                             <Play className="h-3 w-3" /> {hasRunning ? '继续运行' : '运行'}
                           </button>
                         </div>
@@ -335,10 +335,10 @@ export default function WorkflowsPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input type="text" value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
                     placeholder="搜索工作流名称..."
-                    className="w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
+                    className="cloud-pill w-full rounded-2xl py-2.5 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100" />
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-neutral-200/60 overflow-hidden">
+              <div className="cloud-card overflow-hidden rounded-3xl">
                 <table className="w-full text-sm">
                   <thead className="border-b border-neutral-100">
                     <tr>

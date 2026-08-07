@@ -33,7 +33,7 @@ class DifyClient:
         }
 
     async def _post(self, url: str, payload: dict) -> dict:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=900.0) as client:
             response = await client.post(url, headers=self.headers, json=payload)
             if not response.is_success:
                 # 保留 Dify 返回的错误信息
@@ -46,7 +46,7 @@ class DifyClient:
             return response.json()
 
     async def _post_stream(self, url: str, payload: dict) -> AsyncGenerator[str, None]:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=900.0) as client:
             async with client.stream("POST", url, headers=self.headers, json=payload) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():

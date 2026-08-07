@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>设备管理 · 验证码中台</title>
+    <link rel="stylesheet" href="./styles.css?v=20260616-activation-result-poll" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero cockpit-hero">
+        <div class="hero-copy">
+          <div class="brand-mark">✓</div>
+          <div>
+            <strong>Private Device Cloud</strong>
+            <span>SMS Relay Console</span>
+          </div>
+        </div>
+        <nav class="side-nav" aria-label="主导航">
+          <a class="is-active" href="#workspace" data-nav-item="devices"><span>▣</span><b>设备库存</b><small>Devices</small></a>
+          <a href="#workspace" data-nav-item="windows"><span>▥</span><b>Windows 管理器</b><small>ADB Agents</small></a>
+          <a href="#workspace" data-nav-item="queue"><span>▤</span><b>执行队列</b><small>Global Tasks</small></a>
+          <a href="#workspace" data-nav-item="accounts"><span>⌗</span><b>号码与账号</b><small>Accounts</small></a>
+          <a href="#workspace" data-nav-item="scripts"><span>□</span><b>脚本模板库</b><small>Templates</small></a>
+          <a href="#workspace" data-nav-item="audit"><span>☰</span><b>短信与审计</b><small>Audit Logs</small></a>
+          <a href="#workspace" data-nav-item="alerts"><span>⬡</span><b>App 版本维护</b><small>Releases</small></a>
+          <a href="#workspace" data-nav-item="settings"><span>⚙</span><b>系统设置</b><small>Settings</small></a>
+        </nav>
+        <section class="status-rack" aria-label="系统状态">
+          <div class="status-tile is-wide">
+            <span>连接状态</span>
+            <strong id="streamStatus">等待登录</strong>
+          </div>
+          <div class="status-tile">
+            <span>可达手机</span>
+            <strong id="onlineCount">0</strong>
+          </div>
+          <div class="status-tile">
+            <span>离线手机</span>
+            <strong id="offlineCount">0</strong>
+          </div>
+        </section>
+        <section class="admin-card">
+          <span>A</span>
+          <div>
+            <strong>Admin</strong>
+            <small><i class="dot online"></i>可达</small>
+          </div>
+        </section>
+      </header>
+
+      <section id="authPanel" class="auth-panel">
+        <div>
+          <span class="eyebrow">Access Key</span>
+          <h2>输入管理 API Key</h2>
+          <p>填入服务器 `.env` 里的 `ADMIN_API_TOKEN`，保存后这个浏览器会记住它。</p>
+        </div>
+        <div class="auth-form">
+          <input id="tokenInput" type="password" placeholder="粘贴 ADMIN_API_TOKEN" />
+          <button id="saveTokenButton" type="button">进入设备管理</button>
+        </div>
+      </section>
+
+      <section id="workspace" class="workspace is-hidden">
+        <section class="module-page full-page devices-page" data-page="devices">
+        <section class="device-column module-panel">
+          <div class="toolbar">
+            <div>
+              <h2 id="moduleTitle">设备库存</h2>
+              <p id="inventorySummary">正在加载设备池</p>
+            </div>
+            <div class="toolbar-actions">
+              <button id="refreshButton" class="ghost" type="button">刷新</button>
+              <button class="add-device-button" type="button">添加设备</button>
+            </div>
+          </div>
+          <div class="inventory-filters">
+            <input id="searchInput" class="search" placeholder="搜索设备名 / 设备ID / 手机号 / 小红书账号" />
+            <select id="statusSelect" aria-label="状态筛选">
+              <option value="all">状态：全部</option>
+              <option value="online">在线</option>
+              <option value="idle">省电延迟</option>
+              <option value="offline">离线</option>
+              <option value="running">执行中</option>
+              <option value="attention">异常</option>
+            </select>
+            <select id="brandSelect" aria-label="品牌筛选">
+              <option value="">品牌：全部</option>
+              <option value="vivo">vivo</option>
+              <option value="oppo">OPPO</option>
+              <option value="xiaomi">小米</option>
+              <option value="samsung">三星</option>
+            </select>
+            <select id="androidSelect" aria-label="系统筛选">
+              <option value="">Android：全部</option>
+              <option value="14">Android 14</option>
+              <option value="13">Android 13</option>
+              <option value="12">Android 12</option>
+              <option value="10">Android 10</option>
+            </select>
+            <button id="clearFiltersButton" class="ghost" type="button">重置筛选</button>
+          </div>
+          <div class="filter-strip status-tabs" aria-label="设备筛选">
+            <button class="filter-chip is-active" data-status-filter="all" type="button">全部</button>
+            <button class="filter-chip" data-status-filter="online" type="button">在线</button>
+            <button class="filter-chip" data-status-filter="idle" type="button">省电延迟</button>
+            <button class="filter-chip" data-status-filter="offline" type="button">离线</button>
+            <button class="filter-chip" data-status-filter="running" type="button"><i class="dot running"></i>执行中</button>
+            <button class="filter-chip" data-status-filter="attention" type="button">异常</button>
+          </div>
+          <div id="devicesList" class="device-grid"></div>
+        </section>
+        </section>
+
+        <section class="module-page full-page device-workbench-page is-hidden" data-page="deviceWorkbench">
+          <div id="detailEmpty" class="empty-detail">
+            <span class="eyebrow">Device Workbench</span>
+            <h2>请选择设备</h2>
+            <p>从设备库存点击一台手机后，这里会打开该设备的任务派发、SIM/账号、脚本和记录。</p>
+            <button class="ghost" data-action="back-to-inventory" type="button">返回设备库存</button>
+          </div>
+
+          <article id="detailPanel" class="detail-panel device-workbench is-hidden">
+            <header class="detail-head">
+              <button id="backToInventoryButton" class="ghost" type="button">返回库存</button>
+              <div class="selected-thumb" id="selectedDeviceThumb">D</div>
+              <div>
+                <span id="selectedStatus" class="status-pill">未知</span>
+                <h2 id="selectedDeviceName">设备</h2>
+                <p id="selectedDeviceMeta"></p>
+              </div>
+              <button id="logoutButton" class="ghost" type="button">切换 API Key</button>
+            </header>
+
+            <section class="cards-row" aria-label="设备概览">
+              <div class="metric-card">
+                <span>电量</span>
+                <strong id="selectedBattery">-</strong>
+              </div>
+              <div class="metric-card">
+                <span>SIM 数</span>
+                <strong id="selectedSimCount">0</strong>
+              </div>
+              <div class="metric-card">
+                <span>最近在线</span>
+                <strong id="selectedLastSeen">-</strong>
+              </div>
+              <div class="metric-card">
+                <span>最近任务</span>
+                <strong id="selectedLatestTask">-</strong>
+              </div>
+            </section>
+
+            <nav class="workbench-tabs" aria-label="设备工作台">
+              <button class="is-active" data-workbench-tab="tasks" type="button">本机操作</button>
+              <button data-workbench-tab="sims" type="button">SIM / 账号</button>
+              <button data-workbench-tab="script" type="button">本机脚本</button>
+              <button data-workbench-tab="records" type="button">本机记录</button>
+            </nav>
+
+            <section class="workbench-section" data-workbench-section="sims">
+              <div class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">SIM Mapping</span>
+                    <h3>手机号绑定</h3>
+                  </div>
+                  <small>短信会按 `subscriptionId` 精确路由</small>
+                </div>
+                <div id="simList" class="sim-list"></div>
+              </div>
+
+              <div class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">XHS Accounts</span>
+                    <h3>本机小红书账号</h3>
+                  </div>
+                  <small>和 SIM 手机号独立；扫码任务按这里选择 app1/app2</small>
+                </div>
+                <div id="xhsAccountList" class="xhs-account-list"></div>
+              </div>
+            </section>
+
+            <section class="workbench-section" data-workbench-section="tasks">
+              <div class="panel-card command-card command-primary-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Remote Scan</span>
+                    <h3>二维码扫码验证</h3>
+                  </div>
+                  <small>上传二维码后，手机会保存到相册并自动完成扫码确认</small>
+                </div>
+                <div class="qr-dropzone">
+                  <input id="qrImageInput" type="file" accept="image/png,image/jpeg,image/webp" />
+                  <div>
+                    <strong>拖入或选择二维码图片</strong>
+                    <span>支持 JPG / PNG / WEBP，前端会自动压缩后下发</span>
+                  </div>
+                  <div id="qrFilePreview" class="qr-file-preview" aria-live="polite"></div>
+                </div>
+                <div class="scan-plan">
+                  <label class="scan-select">
+                    <span>小红书账号 / App 槽位</span>
+                    <select id="xhsAccountSelect"></select>
+                  </label>
+                  <div id="selectedXhsSummary" class="selected-xhs-summary"></div>
+                  <div id="scanReadinessList" class="scan-readiness"></div>
+                </div>
+                <div class="command-form">
+                  <button id="sendQrCommandButton" type="button">上传二维码并扫码</button>
+                  <button id="openScanButton" class="ghost" type="button">唤醒设备测试</button>
+                  <button id="manageXhsAccountsButton" class="ghost" type="button">维护账号</button>
+                </div>
+                <p id="commandHint" class="hint">手机需要先开启“ZTC 云控”的无障碍服务。失败时可在右侧执行轨迹查看截图和 UI 摘要。</p>
+              </div>
+
+              <div class="panel-card command-timeline-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Command Trace</span>
+                    <h3>执行轨迹</h3>
+                  </div>
+                  <small>最近任务与排障入口</small>
+                </div>
+                <div id="commandsList" class="commands-list timeline-commands-list"></div>
+              </div>
+
+              <div class="panel-card request-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Activation</span>
+                    <h3>开始接码</h3>
+                  </div>
+                  <small>先创建订单，再去平台发送验证码</small>
+                </div>
+                <div class="request-form">
+                  <select id="requestPhoneInput"></select>
+                  <select id="requestPlatformInput">
+                    <option value="小红书">小红书</option>
+                    <option value="抖音">抖音</option>
+                    <option value="微信">微信</option>
+                    <option value="支付宝">支付宝</option>
+                  </select>
+                  <button id="createRequestButton" type="button">开始等待验证码</button>
+                </div>
+                <p id="requestHint" class="hint">选择这台手机上的一个手机号，然后点击开始等待。</p>
+                <div id="requestInlineList" class="requests-list request-inline-list"></div>
+              </div>
+            </section>
+
+            <section class="workbench-section" data-workbench-section="script">
+              <div class="panel-card workflow-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Workflow Script</span>
+                    <h3>扫码脚本适配</h3>
+                  </div>
+                  <small>保存草稿不影响线上，发布后新任务生效</small>
+                </div>
+                <div class="workflow-toolbar">
+                  <select id="workflowScriptSelect"></select>
+                  <span id="workflowScriptMeta" class="workflow-meta">未加载脚本</span>
+                </div>
+                <textarea id="workflowScriptEditor" class="workflow-editor" spellcheck="false"></textarea>
+                <div class="workflow-actions">
+                  <button id="validateWorkflowButton" class="ghost" type="button">校验</button>
+                  <button id="saveWorkflowDraftButton" class="ghost" type="button">保存草稿</button>
+                  <button id="publishWorkflowButton" type="button">发布</button>
+                  <button id="testWorkflowButton" class="ghost" type="button">下发测试</button>
+                  <button id="rollbackWorkflowButton" class="ghost danger" type="button">回滚上一版</button>
+                </div>
+                <p id="workflowHint" class="hint">选择 app1/app2 后编辑 JSON。只有发布后的脚本会被正式扫码任务使用。</p>
+              </div>
+            </section>
+
+            <section class="workbench-section" data-workbench-section="records">
+              <div class="detail-grid">
+                <div class="panel-card">
+                  <div class="section-head">
+                    <div>
+                      <span class="eyebrow">Orders</span>
+                      <h3>接码订单</h3>
+                    </div>
+                    <strong id="requestCount">0</strong>
+                  </div>
+                  <div id="requestsList" class="requests-list"></div>
+                </div>
+
+                <div class="panel-card">
+                  <div class="section-head">
+                    <div>
+                      <span class="eyebrow">Messages</span>
+                      <h3>短信记录</h3>
+                    </div>
+                    <strong id="eventCount">0</strong>
+                  </div>
+                  <div id="eventsList" class="events-list"></div>
+                </div>
+
+                <div class="panel-card records-command-card">
+                  <div class="section-head">
+                    <div>
+                      <span class="eyebrow">Tasks</span>
+                      <h3>设备任务记录</h3>
+                    </div>
+                    <strong id="recordCommandCount">0</strong>
+                  </div>
+                  <div id="recordsCommandsList" class="commands-list"></div>
+                </div>
+              </div>
+            </section>
+          </article>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="windows">
+          <section class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>Windows 管理器</h2>
+                <p id="windowsSummary">正在加载 Windows 管理器</p>
+              </div>
+              <div class="toolbar-actions">
+                <button id="windowsRefreshButton" class="ghost" type="button">刷新</button>
+              </div>
+            </div>
+            <div id="windowsAgentList" class="windows-agent-list"></div>
+          </section>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="queue">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>执行队列</h2>
+                <p id="queueSummary">正在加载全局任务</p>
+              </div>
+              <button id="queueRefreshButton" class="ghost" type="button">刷新</button>
+            </div>
+            <div class="inventory-filters">
+              <input id="queueSearchInput" class="search" placeholder="搜索设备名 / 设备ID / 任务结果" />
+              <select id="queueStatusSelect" aria-label="任务状态筛选">
+                <option value="">状态：全部</option>
+                <option value="queued">等待手机领取</option>
+                <option value="running">执行中</option>
+                <option value="succeeded">已完成</option>
+                <option value="failed">失败</option>
+                <option value="cancelled">已取消</option>
+              </select>
+              <select id="queueTypeSelect" aria-label="任务类型筛选">
+                <option value="">类型：全部</option>
+                <option value="open_xhs_scan">唤醒设备</option>
+                <option value="xhs_qr_from_gallery">二维码扫码</option>
+              </select>
+            </div>
+            <div id="queueList" class="data-list"></div>
+          </div>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="accounts">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>号码与账号</h2>
+                <p id="accountsSummary">汇总所有手机的 SIM 手机号和小红书账号槽位</p>
+              </div>
+              <button id="accountsRefreshButton" class="ghost" type="button">刷新</button>
+            </div>
+            <div class="inventory-filters">
+              <input id="accountSearchInput" class="search" placeholder="搜索手机号 / 小红书账号 / 设备名" />
+            </div>
+            <div class="split-grid">
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">SIM Mapping</span>
+                    <h3>手机号绑定</h3>
+                  </div>
+                  <strong id="globalSimCount">0</strong>
+                </div>
+                <div id="globalSimList" class="global-editor-list"></div>
+              </section>
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">XHS Accounts</span>
+                    <h3>小红书账号绑定</h3>
+                  </div>
+                  <strong id="globalXhsCount">0</strong>
+                </div>
+                <div id="globalXhsList" class="global-editor-list"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="scripts">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>脚本模板库</h2>
+                <p id="globalWorkflowSummary">按设备维护 app1/app2 的扫码脚本</p>
+              </div>
+              <button id="globalWorkflowRefreshButton" class="ghost" type="button">刷新脚本</button>
+            </div>
+            <div class="script-lab">
+              <aside class="script-sidebar">
+                <label>
+                  <span>设备</span>
+                  <select id="globalWorkflowDeviceSelect"></select>
+                </label>
+                <label>
+                  <span>脚本</span>
+                  <select id="globalWorkflowScriptSelect"></select>
+                </label>
+                <div id="globalWorkflowScriptList" class="script-list"></div>
+              </aside>
+              <section class="panel-card workflow-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Workflow Script</span>
+                    <h3 id="globalWorkflowTitle">扫码脚本</h3>
+                  </div>
+                  <small id="globalWorkflowMeta">未加载脚本</small>
+                </div>
+                <textarea id="globalWorkflowEditor" class="workflow-editor" spellcheck="false"></textarea>
+                <div class="workflow-actions">
+                  <input id="globalWorkflowQrInput" type="file" accept="image/png,image/jpeg,image/webp" />
+                  <button id="globalValidateWorkflowButton" class="ghost" type="button">校验</button>
+                  <button id="globalSaveWorkflowDraftButton" class="ghost" type="button">保存草稿</button>
+                  <button id="globalPublishWorkflowButton" type="button">发布</button>
+                  <button id="globalTestWorkflowButton" class="ghost" type="button">下发测试</button>
+                  <button id="globalRollbackWorkflowButton" class="ghost danger" type="button">回滚上一版</button>
+                </div>
+                <p id="globalWorkflowHint" class="hint">选择设备和 app 槽位后编辑脚本。</p>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="audit">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>短信与审计</h2>
+                <p id="auditSummary">全局接码订单和短信记录</p>
+              </div>
+              <button id="auditRefreshButton" class="ghost" type="button">刷新</button>
+            </div>
+            <div class="inventory-filters">
+              <input id="auditSearchInput" class="search" placeholder="搜索手机号 / 平台 / 设备 / 短信正文" />
+              <select id="auditStatusSelect" aria-label="订单状态筛选">
+                <option value="">状态：全部</option>
+                <option value="arming">准备中</option>
+                <option value="waiting">等待中</option>
+                <option value="received">已收到</option>
+                <option value="expired">已过期</option>
+                <option value="ambiguous">需人工确认</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </div>
+            <div class="split-grid">
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Orders</span>
+                    <h3>接码订单</h3>
+                  </div>
+                  <strong id="globalRequestCount">0</strong>
+                </div>
+                <div id="globalRequestsList" class="requests-list"></div>
+              </section>
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Messages</span>
+                    <h3>短信记录</h3>
+                  </div>
+                  <strong id="globalEventCount">0</strong>
+                </div>
+                <div id="globalEventsList" class="events-list"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="alerts">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>App 版本维护</h2>
+                <p id="releaseSummary">管理手机端 APK 最新版本、更新内容和安装覆盖情况</p>
+              </div>
+              <div class="toolbar-actions">
+                <button id="releaseDownloadButton" class="ghost" type="button">下载最新 APK</button>
+                <button id="releaseRefreshButton" class="ghost" type="button">刷新</button>
+              </div>
+            </div>
+            <div id="releaseDashboard" class="release-dashboard"></div>
+          </div>
+        </section>
+
+        <section class="module-page full-page is-hidden" data-page="settings">
+          <div class="module-panel">
+            <div class="toolbar">
+              <div>
+                <h2>系统设置</h2>
+                <p>管理本浏览器的 API Key、刷新策略和设备上线说明</p>
+              </div>
+              <button id="settingsRefreshButton" class="ghost" type="button">刷新数据</button>
+            </div>
+            <div class="settings-grid">
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Access Key</span>
+                    <h3>当前浏览器 API Key</h3>
+                  </div>
+                  <strong id="settingsTokenStatus">未保存</strong>
+                </div>
+                <div class="settings-form">
+                  <input id="settingsTokenInput" type="password" placeholder="粘贴 ADMIN_API_TOKEN" />
+                  <button id="settingsSaveTokenButton" type="button">保存 API Key</button>
+                  <button id="settingsLogoutButton" class="ghost danger" type="button">清除 API Key</button>
+                </div>
+              </section>
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Device Onboarding</span>
+                    <h3>添加设备</h3>
+                  </div>
+                </div>
+                <div class="settings-note">
+                  <p>手机安装“验证码中控”APK，授予短信、电话状态、通知和无障碍权限后，会通过心跳自动出现在设备库存。</p>
+                  <p>如果手机熄屏后进入省电延迟，任务仍会排队，下一次轮询会继续领取。</p>
+                </div>
+              </section>
+              <section class="panel-card">
+                <div class="section-head">
+                  <div>
+                    <span class="eyebrow">Runtime</span>
+                    <h3>当前数据</h3>
+                  </div>
+                </div>
+                <div id="settingsRuntimeList" class="settings-runtime"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <section id="traceOverlay" class="trace-overlay" aria-label="任务执行轨迹">
+      <article class="trace-panel">
+        <header>
+          <div>
+            <span class="eyebrow">Command Trace</span>
+            <h2 id="traceTitle">任务执行轨迹</h2>
+            <p id="traceMeta"></p>
+          </div>
+          <div class="trace-actions">
+            <button id="traceRefreshButton" class="ghost" type="button">刷新</button>
+            <button id="traceCloseButton" class="ghost" type="button">关闭</button>
+          </div>
+        </header>
+        <div id="traceList" class="trace-list"></div>
+      </article>
+    </section>
+    <script src="./app.js?v=20260616-activation-result-poll"></script>
+  </body>
+</html>

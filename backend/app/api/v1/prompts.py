@@ -19,7 +19,7 @@ from app.schemas.common import ApiResponse
 router = APIRouter()
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 REPORT_REASONS = {
     "违规内容",
     "侵权内容",
@@ -499,6 +499,8 @@ async def upload_prompt_image(
         raise HTTPException(status_code=400, detail="图片大小超过 10MB 限制")
 
     content_type = (file.content_type or "").lower()
+    if content_type == "image/svg+xml":
+        raise HTTPException(status_code=400, detail="当前不支持 SVG 上传")
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail=f"不支持的图片类型: {content_type or 'unknown'}")
 

@@ -11,10 +11,9 @@ import {
 } from '@/utils/gaodingToFabric';
 
 /**
- * Recursively process SVG elements: fetch SVG content, replace {{colors[N]}}
- * template variables with actual color values, and convert to data URL.
- * CRITICAL: Multiple SVG elements can share the same URL — we fetch once
- * but apply the data URL to ALL of them.
+ * Recursively process trusted template SVG elements.
+ * P0 security: keep SVGs as local/template URLs and never convert user-controlled
+ * SVG text into data:image/svg+xml payloads.
  */
 async function preprocessSvgElements(el: Record<string, unknown>, folder: string, svgCache?: Record<string, string>): Promise<void> {
   if (!svgCache) svgCache = {};
@@ -31,15 +30,8 @@ async function preprocessSvgElements(el: Record<string, unknown>, folder: string
           const localUrl = rewriteGaodingAssetUrl(originalUrl, folder);
           const res = await fetch(localUrl, { cache: 'no-store' });
           if (res.ok) {
-            let svgText = await res.text();
-            for (let i = 0; i < colors.length; i++) {
-              const placeholder = `{{colors[${i}]}}`;
-              const regex = new RegExp(placeholder.replace('[', '\\[').replace(']', '\\]'), 'g');
-              svgText = svgText.replace(regex, colors[i]);
-            }
-            const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-            el.url = dataUrl;
-            svgCache[originalUrl] = dataUrl;
+            el.url = localUrl;
+            svgCache[originalUrl] = localUrl;
           }
         } catch { /* ignore */ }
       }
@@ -50,19 +42,12 @@ async function preprocessSvgElements(el: Record<string, unknown>, folder: string
   if (bg && bg.enable === true) {
     const svg = bg.svg as Record<string, unknown> | undefined;
     if (svg && typeof svg.url === 'string') {
-      const colors = (svg.colors as string[]) || [];
       try {
         const localUrl = rewriteGaodingAssetUrl(svg.url, folder);
         const res = await fetch(localUrl, { cache: 'no-store' });
         if (res.ok) {
-          let svgText = await res.text();
-          for (let i = 0; i < colors.length; i++) {
-            const placeholder = `{{colors[${i}]}}`;
-            const regex = new RegExp(placeholder.replace('[', '\\[').replace(']', '\\]'), 'g');
-            svgText = svgText.replace(regex, colors[i]);
-          }
-          // Store processed SVG as data URL for converter to use
-          svg._processedDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+          // P0 security: do not convert SVG text to data URLs. Keep trusted local assets only.
+          svg._processedDataUrl = localUrl;
         }
       } catch { /* ignore */ }
     }

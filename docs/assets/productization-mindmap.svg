@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f9fc"/>
+      <stop offset="1" stop-color="#eef3f8"/>
+    </linearGradient>
+    <linearGradient id="root" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172033"/>
+      <stop offset="1" stop-color="#293a59"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 42px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #111827; }
+      .subtitle { font: 400 20px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #667085; }
+      .rootTitle { font: 700 30px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #fff; }
+      .rootSub { font: 400 17px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #cbd5e1; }
+      .branchTitle { font: 700 25px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #111827; }
+      .branchSub { font: 500 17px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #344054; }
+      .tag { font: 600 15px 'PingFang SC','Microsoft YaHei',sans-serif; }
+      .phase { font: 700 18px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #172033; }
+      .phaseSub { font: 400 14px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #667085; }
+      .taskId { font: 700 16px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #5271ff; }
+      .taskTitle { font: 700 20px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #172033; }
+      .taskSub { font: 400 14px 'PingFang SC','Microsoft YaHei',sans-serif; fill: #667085; }
+      .line { fill: none; stroke-width: 4; stroke-linecap: round; opacity: 0.72; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1120" fill="url(#bg)"/>
+  <circle cx="900" cy="500" r="410" fill="#fff" opacity="0.42"/>
+
+  <text x="90" y="78" class="title">AI 汽车内容与小红书运营平台</text>
+  <text x="90" y="113" class="subtitle">系统思维导图 · 从内部工具到可商业化企业产品</text>
+
+  <!-- connectors -->
+  <path d="M720 460 C610 410 575 310 520 260" class="line" stroke="#5271ff"/>
+  <path d="M1080 460 C1190 410 1225 310 1280 260" class="line" stroke="#13a875"/>
+  <path d="M700 520 C560 540 520 610 465 650" class="line" stroke="#e07a2d"/>
+  <path d="M1100 520 C1240 540 1280 610 1335 650" class="line" stroke="#d94f70"/>
+  <path d="M765 590 C690 675 680 760 650 810" class="line" stroke="#8c64d8"/>
+  <path d="M1035 590 C1110 675 1120 760 1150 810" class="line" stroke="#2b8aa6"/>
+
+  <!-- root -->
+  <rect x="700" y="410" width="400" height="190" rx="34" fill="url(#root)" filter="url(#shadow)"/>
+  <rect x="735" y="446" width="88" height="30" rx="15" fill="#ffcc66"/>
+  <text x="779" y="467" text-anchor="middle" class="tag" fill="#172033">PRODUCT</text>
+  <text x="900" y="520" text-anchor="middle" class="rootTitle">一体化运营平台</text>
+  <text x="900" y="554" text-anchor="middle" class="rootSub">内容生产 · 数据洞察 · 自动化执行 · 企业管理</text>
+
+  <!-- AI content -->
+  <rect x="105" y="160" width="470" height="230" rx="28" fill="#ffffff" stroke="#b8c6ff" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="105" y="160" width="12" height="230" rx="6" fill="#5271ff"/>
+  <text x="145" y="208" class="branchTitle">AI 内容工作台</text>
+  <text x="145" y="242" class="branchSub">独立 AI 生图 · 提示词 · 文案 · 素材 · 车型图库</text>
+  <text x="145" y="275" class="branchSub">模板与编辑器 · Dify 工作流 · 内容版本</text>
+  <rect x="145" y="305" width="120" height="34" rx="17" fill="#edf1ff"/><text x="205" y="328" text-anchor="middle" class="tag" fill="#405bd0">独立生图保留</text>
+  <rect x="278" y="305" width="120" height="34" rx="17" fill="#edf1ff"/><text x="338" y="328" text-anchor="middle" class="tag" fill="#405bd0">稳定出口</text>
+  <rect x="411" y="305" width="124" height="34" rx="17" fill="#edf1ff"/><text x="473" y="328" text-anchor="middle" class="tag" fill="#405bd0">成本可追踪</text>
+
+  <!-- data -->
+  <rect x="1225" y="160" width="470" height="230" rx="28" fill="#ffffff" stroke="#9adbc4" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="1683" y="160" width="12" height="230" rx="6" fill="#13a875"/>
+  <text x="1265" y="208" class="branchTitle">小红书数据洞察</text>
+  <text x="1265" y="242" class="branchSub">投流看板（当前准确） · 运营看板（待验收）</text>
+  <text x="1265" y="275" class="branchSub">账号映射 · 主页/帖子/互动采集 · 客资 · 对账</text>
+  <rect x="1265" y="305" width="110" height="34" rx="17" fill="#e9f9f3"/><text x="1320" y="328" text-anchor="middle" class="tag" fill="#087b55">账号水位</text>
+  <rect x="1388" y="305" width="110" height="34" rx="17" fill="#e9f9f3"/><text x="1443" y="328" text-anchor="middle" class="tag" fill="#087b55">失败补采</text>
+  <rect x="1511" y="305" width="144" height="34" rx="17" fill="#e9f9f3"/><text x="1583" y="328" text-anchor="middle" class="tag" fill="#087b55">原始快照重放</text>
+
+  <!-- workflow/review -->
+  <rect x="70" y="555" width="500" height="230" rx="28" fill="#ffffff" stroke="#f0bd91" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="70" y="555" width="12" height="230" rx="6" fill="#e07a2d"/>
+  <text x="110" y="603" class="branchTitle">内容审核与云手机发布</text>
+  <text x="110" y="637" class="branchSub">工作流批量生产 → 机器预审 → 人工审核</text>
+  <text x="110" y="670" class="branchSub">版本锁定 → 排期 → 云手机发布 → 回查复盘</text>
+  <rect x="110" y="700" width="110" height="34" rx="17" fill="#fff2e8"/><text x="165" y="723" text-anchor="middle" class="tag" fill="#aa5113">审核门禁</text>
+  <rect x="233" y="700" width="110" height="34" rx="17" fill="#fff2e8"/><text x="288" y="723" text-anchor="middle" class="tag" fill="#aa5113">执行证据</text>
+  <rect x="356" y="700" width="174" height="34" rx="17" fill="#fff2e8"/><text x="443" y="723" text-anchor="middle" class="tag" fill="#aa5113">不确定状态先核验</text>
+
+  <!-- edge -->
+  <rect x="1230" y="555" width="500" height="230" rx="28" fill="#ffffff" stroke="#efb1bf" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="1718" y="555" width="12" height="230" rx="6" fill="#d94f70"/>
+  <text x="1270" y="603" class="branchTitle">Edge、登录与设备中心</text>
+  <text x="1270" y="637" class="branchSub">Windows Agent · 云登环境 · 云手机 · 手机设备池</text>
+  <text x="1270" y="670" class="branchSub">验证码 · 二维码 · 登录状态 · 账号设备绑定</text>
+  <rect x="1270" y="700" width="118" height="34" rx="17" fill="#fff0f4"/><text x="1329" y="723" text-anchor="middle" class="tag" fill="#a02f4a">客户自有资产</text>
+  <rect x="1401" y="700" width="118" height="34" rx="17" fill="#fff0f4"/><text x="1460" y="723" text-anchor="middle" class="tag" fill="#a02f4a">健康与告警</text>
+  <rect x="1532" y="700" width="158" height="34" rx="17" fill="#fff0f4"/><text x="1611" y="723" text-anchor="middle" class="tag" fill="#a02f4a">命令与数据隔离</text>
+
+  <!-- enterprise -->
+  <rect x="315" y="800" width="520" height="190" rx="28" fill="#ffffff" stroke="#cbb7ec" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="315" y="800" width="12" height="190" rx="6" fill="#8c64d8"/>
+  <text x="355" y="848" class="branchTitle">企业产品底座</text>
+  <text x="355" y="882" class="branchSub">多租户 · RBAC / Data Scope · 统一任务中心</text>
+  <text x="355" y="915" class="branchSub">审计 · 对象存储 · 备份 · 用量 · 套餐 · 账单</text>
+  <rect x="355" y="942" width="202" height="32" rx="16" fill="#f4effc"/><text x="456" y="964" text-anchor="middle" class="tag" fill="#6c45b6">客户全生命周期</text>
+  <rect x="570" y="942" width="225" height="32" rx="16" fill="#f4effc"/><text x="682" y="964" text-anchor="middle" class="tag" fill="#6c45b6">企业级数据与权限隔离</text>
+
+  <!-- stability -->
+  <rect x="965" y="800" width="520" height="190" rx="28" fill="#ffffff" stroke="#9fcbd7" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="1473" y="800" width="12" height="190" rx="6" fill="#2b8aa6"/>
+  <text x="1005" y="848" class="branchTitle">稳定性与商业化</text>
+  <text x="1005" y="882" class="branchSub">网络/Provider 熔断 · 数据库与 IO · 队列与 Worker</text>
+  <text x="1005" y="915" class="branchSub">监控告警 · 压测 · SLA · 客服 · API · 灰度上线</text>
+  <rect x="1005" y="942" width="185" height="32" rx="16" fill="#eaf5f8"/><text x="1097" y="964" text-anchor="middle" class="tag" fill="#246d81">错误必须可解释</text>
+  <rect x="1203" y="942" width="242" height="32" rx="16" fill="#eaf5f8"/><text x="1324" y="964" text-anchor="middle" class="tag" fill="#246d81">任务不丢 · 数据不漏</text>
+
+  <!-- phases -->
+  <text x="90" y="1042" class="subtitle">推进顺序</text>
+  <g transform="translate(215,1010)">
+    <rect x="0" y="0" width="270" height="64" rx="18" fill="#fff" stroke="#d6dde8"/><text x="135" y="27" text-anchor="middle" class="phase">01 稳定内部底座</text><text x="135" y="49" text-anchor="middle" class="phaseSub">任务、采集、生图、存储、监控</text>
+    <path d="M280 32 H315" stroke="#9aa6b2" stroke-width="3"/><path d="M306 24 L315 32 L306 40" fill="none" stroke="#9aa6b2" stroke-width="3"/>
+    <rect x="325" y="0" width="250" height="64" rx="18" fill="#fff" stroke="#d6dde8"/><text x="450" y="27" text-anchor="middle" class="phase">02 支持多企业</text><text x="450" y="49" text-anchor="middle" class="phaseSub">租户、权限、审计、配额</text>
+    <path d="M585 32 H620" stroke="#9aa6b2" stroke-width="3"/><path d="M611 24 L620 32 L611 40" fill="none" stroke="#9aa6b2" stroke-width="3"/>
+    <rect x="630" y="0" width="250" height="64" rx="18" fill="#fff" stroke="#d6dde8"/><text x="755" y="27" text-anchor="middle" class="phase">03 业务闭环</text><text x="755" y="49" text-anchor="middle" class="phaseSub">工作流、审核、发布、复盘</text>
+    <path d="M890 32 H925" stroke="#9aa6b2" stroke-width="3"/><path d="M916 24 L925 32 L916 40" fill="none" stroke="#9aa6b2" stroke-width="3"/>
+    <rect x="935" y="0" width="230" height="64" rx="18" fill="#fff" stroke="#d6dde8"/><text x="1050" y="27" text-anchor="middle" class="phase">04 客户自带 Edge</text><text x="1050" y="49" text-anchor="middle" class="phaseSub">资产接入与标准交付</text>
+    <path d="M1175 32 H1210" stroke="#9aa6b2" stroke-width="3"/><path d="M1201 24 L1210 32 L1201 40" fill="none" stroke="#9aa6b2" stroke-width="3"/>
+    <rect x="1220" y="0" width="245" height="64" rx="18" fill="#172033"/><text x="1342" y="27" text-anchor="middle" class="phase" style="fill:#ffffff">05 商业化灰度</text><text x="1342" y="49" text-anchor="middle" class="phaseSub" style="fill:#cbd5e1">套餐、SLA、HTTPS、客户试点</text>
+  </g>
+
+  <!-- G0-G11 task map -->
+  <rect x="70" y="1135" width="1660" height="610" rx="32" fill="#ffffff" stroke="#d9e1ec" stroke-width="2" filter="url(#shadow)"/>
+  <text x="110" y="1190" class="branchTitle">大目标拆解 · G0-G11</text>
+  <text x="390" y="1190" class="subtitle">每组都有独立交付物和验收门槛，避免只做页面不做底座</text>
+
+  <g>
+    <rect x="110" y="1220" width="500" height="105" rx="20" fill="#f7f9ff" stroke="#d9e1ff"/>
+    <text x="135" y="1252" class="taskId">G0</text><text x="180" y="1252" class="taskTitle">产品边界</text>
+    <text x="135" y="1282" class="taskSub">模块、交付模式、包含/排除项、自动化开放边界</text>
+    <text x="135" y="1307" class="taskSub">验收：销售与研发使用同一产品范围</text>
+
+    <rect x="650" y="1220" width="500" height="105" rx="20" fill="#f7f9ff" stroke="#d9e1ff"/>
+    <text x="675" y="1252" class="taskId">G1</text><text x="720" y="1252" class="taskTitle">工程与发布基线</text>
+    <text x="675" y="1282" class="taskSub">环境隔离、版本化镜像、迁移、回滚、Secret</text>
+    <text x="675" y="1307" class="taskSub">验收：每次上线可追溯、测试、部署和回退</text>
+
+    <rect x="1190" y="1220" width="500" height="105" rx="20" fill="#f7f9ff" stroke="#d9e1ff"/>
+    <text x="1215" y="1252" class="taskId">G2</text><text x="1260" y="1252" class="taskTitle">多租户、权限与审计</text>
+    <text x="1215" y="1282" class="taskSub">企业、工作区、RBAC、Data Scope、全局审计</text>
+    <text x="1215" y="1307" class="taskSub">验收：第二家企业绝对无法越权访问</text>
+
+    <rect x="110" y="1350" width="500" height="105" rx="20" fill="#f7fbff" stroke="#cfe6f0"/>
+    <text x="135" y="1382" class="taskId">G3</text><text x="180" y="1382" class="taskTitle">统一任务中心</text>
+    <text x="135" y="1412" class="taskSub">任务、执行尝试、事件、租约、心跳、重试、死信</text>
+    <text x="135" y="1437" class="taskSub">验收：重启、断网后任务不丢且不重复执行</text>
+
+    <rect x="650" y="1350" width="500" height="105" rx="20" fill="#f7fbff" stroke="#cfe6f0"/>
+    <text x="675" y="1382" class="taskId">G4</text><text x="720" y="1382" class="taskTitle">AI 内容产品</text>
+    <text x="675" y="1412" class="taskSub">独立生图、工作流、稳定出口、熔断、血缘和成本</text>
+    <text x="675" y="1437" class="taskSub">验收：故障可定位，未知状态不重复计费</text>
+
+    <rect x="1190" y="1350" width="500" height="105" rx="20" fill="#f7fbff" stroke="#cfe6f0"/>
+    <text x="1215" y="1382" class="taskId">G5</text><text x="1260" y="1382" class="taskTitle">内容审核与发布</text>
+    <text x="1215" y="1412" class="taskSub">工作流生产、机器预审、人工审核、云手机发布</text>
+    <text x="1215" y="1437" class="taskSub">验收：未审核或已修改版本绝对不能发布</text>
+
+    <rect x="110" y="1480" width="500" height="105" rx="20" fill="#f8fcfa" stroke="#cce9dd"/>
+    <text x="135" y="1512" class="taskId">G6</text><text x="180" y="1512" class="taskTitle">小红书数据产品</text>
+    <text x="135" y="1542" class="taskSub">采集水位、增量补采、聚合、快照、指标和对账</text>
+    <text x="135" y="1567" class="taskSub">验收：投流准确；运营经连续周期验收后上线</text>
+
+    <rect x="650" y="1480" width="500" height="105" rx="20" fill="#f8fcfa" stroke="#cce9dd"/>
+    <text x="675" y="1512" class="taskId">G7</text><text x="720" y="1512" class="taskTitle">Edge、登录与设备</text>
+    <text x="675" y="1542" class="taskSub">Agent、云登、云手机、验证码、扫码、健康告警</text>
+    <text x="675" y="1567" class="taskSub">验收：客户自有资产只执行本企业任务</text>
+
+    <rect x="1190" y="1480" width="500" height="105" rx="20" fill="#f8fcfa" stroke="#cce9dd"/>
+    <text x="1215" y="1512" class="taskId">G8</text><text x="1260" y="1512" class="taskTitle">存储、备份与导出</text>
+    <text x="1215" y="1542" class="taskSub">对象存储、签名访问、生命周期、备份和恢复演练</text>
+    <text x="1215" y="1567" class="taskSub">验收：Windows 故障不影响历史资产与恢复</text>
+
+    <rect x="110" y="1610" width="500" height="105" rx="20" fill="#fff9f6" stroke="#f0d8ca"/>
+    <text x="135" y="1642" class="taskId">G9</text><text x="180" y="1642" class="taskTitle">性能、监控与容量</text>
+    <text x="135" y="1672" class="taskSub">API、数据库 IO、队列、Worker、Agent、磁盘和压测</text>
+    <text x="135" y="1697" class="taskSub">验收：故障前告警，明确可支持用户和并发</text>
+
+    <rect x="650" y="1610" width="500" height="105" rx="20" fill="#fff9f6" stroke="#f0d8ca"/>
+    <text x="675" y="1642" class="taskId">G10</text><text x="735" y="1642" class="taskTitle">计量与客户生命周期</text>
+    <text x="675" y="1672" class="taskSub">用量、成本、套餐、开通、变更、冻结、退出和删除</text>
+    <text x="675" y="1697" class="taskSub">验收：客户可标准开通、核验导出并安全退出</text>
+
+    <rect x="1190" y="1610" width="500" height="105" rx="20" fill="#fff9f6" stroke="#f0d8ca"/>
+    <text x="1215" y="1642" class="taskId">G11</text><text x="1275" y="1642" class="taskTitle">外部灰度与正式上线</text>
+    <text x="1215" y="1672" class="taskSub">试点、功能开关、SLA、文档、客服、HTTPS 和限流</text>
+    <text x="1215" y="1697" class="taskSub">验收：1-3 家客户连续运行 30 天并达标</text>
+  </g>
+</svg>

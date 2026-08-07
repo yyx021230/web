@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sms_code_center
+      POSTGRES_USER: sms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sms -d sms_code_center"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sms-api:
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8787
+      HOST: 0.0.0.0
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://47.98.127.132}
+      DATABASE_URL: postgres://sms:${POSTGRES_PASSWORD}@postgres:5432/sms_code_center
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:?set ADMIN_API_TOKEN in .env}
+      BUSINESS_API_TOKEN: ${BUSINESS_API_TOKEN:?set BUSINESS_API_TOKEN in .env}
+      DEVICE_API_TOKEN: ${DEVICE_API_TOKEN:?set DEVICE_API_TOKEN in .env}
+      SMS_RETENTION_MINUTES: ${SMS_RETENTION_MINUTES:-30}
+      DEFAULT_ACTIVATION_TTL_SECONDS: ${DEFAULT_ACTIVATION_TTL_SECONDS:-300}
+      MAX_WAIT_SECONDS: ${MAX_WAIT_SECONDS:-60}
+    ports:
+      - "127.0.0.1:8787:8787"
+
+volumes:
+  postgres_data:

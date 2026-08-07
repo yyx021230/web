@@ -4,11 +4,19 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
+from sqlalchemy.orm import selectinload
 from datetime import timedelta, datetime
 
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.core.deps import require_admin
+from app.core.roles import (
+    VALID_USER_ROLES,
+    get_user_roles,
+    normalize_roles,
+    set_user_roles,
+    validate_roles,
+)
 from app.core.security import hash_password
 from app.models.user import User
 from app.models.project import Project
@@ -20,6 +28,21 @@ from app.models.dify_run_log import DifyRunLog
 from app.models.copywriting import Copywriting
 
 router = APIRouter()
+
+
+def _user_payload(user: User) -> dict:
+    roles = get_user_roles(user)
+    return {
+        "id": user.id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "email": user.email,
+        "avatar": user.avatar,
+        "is_active": user.is_active,
+        "role": user.role,
+        "roles": roles,
+        "created_at": str(user.created_at),
+    }
 
 
 @router.get("")
@@ -36,6 +59,7 @@ async def list_users(
 
     stmt = (
         select(User)
+        .options(selectinload(User.role_assignments))
         .order_by(desc(User.created_at))
         .offset((page - 1) * limit)
         .limit(limit)
@@ -44,18 +68,7 @@ async def list_users(
     users = list(result.scalars().all())
 
     return ApiResponse(data={
-        "items": [
-            {
-                "id": u.id,
-                "username": u.username,
-                "email": u.email,
-                "avatar": u.avatar,
-                "is_active": u.is_active,
-                "role": u.role,
-                "created_at": str(u.created_at),
-            }
-            for u in users
-        ],
+        "items": [_user_payload(u) for u in users],
         "total": total,
         "page": page,
         "limit": limit,
@@ -76,12 +89,62 @@ async def update_user_role(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     role = data.get("role")
-    if role not in ("admin", "viewer"):
+    if role not in VALID_USER_ROLES:
         raise HTTPException(status_code=400, detail="无效的角色")
 
-    user.role = role
+    await set_user_roles(db, user, [role])
     await db.commit()
-    return ApiResponse(data={"id": user.id, "role": user.role})
+    return ApiResponse(data={"id": user.id, "role": user.role, "roles": [role]})
+
+
+@router.patch("/{user_id}/profile")
+async def update_user_profile(
+    user_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """修改用户基础资料。目前只允许维护展示名，不影响登录用户名。"""
+    result = await db.execute(
+        select(User).options(selectinload(User.role_assignments)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if "display_name" in data:
+        display_name = str(data.get("display_name") or "").strip()
+        if len(display_name) > 80:
+            raise HTTPException(status_code=400, detail="展示名最多 80 个字符")
+        user.display_name = display_name or None
+
+    await db.commit()
+    await db.refresh(user)
+    return ApiResponse(data=_user_payload(user), message="用户资料已更新")
+
+
+@router.patch("/{user_id}/roles")
+async def update_user_roles(
+    user_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """修改用户多角色"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    roles = normalize_roles(data.get("roles"), fallback="viewer")
+    try:
+        validate_roles(roles)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    normalized = await set_user_roles(db, user, roles)
+    await db.commit()
+    return ApiResponse(data={"id": user.id, "role": user.role, "roles": normalized})
 
 
 @router.get("/{user_id}/workflows")
@@ -240,12 +303,14 @@ async def create_user(
     username = req.get("username", "").strip()
     email = req.get("email", "").strip().lower()
     password = req.get("password", "")
-    role = req.get("role", "viewer")
+    roles = normalize_roles(req.get("roles") or req.get("role"), fallback="viewer")
 
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="用户名、邮箱和密码为必填项")
-    if role not in ("admin", "viewer"):
-        raise HTTPException(status_code=400, detail="无效的角色")
+    try:
+        validate_roles(roles)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # 检查用户名是否已存在
     result = await db.execute(select(User).where(User.username == username))
@@ -259,18 +324,23 @@ async def create_user(
 
     user = User(
         username=username,
+        display_name=str(req.get("display_name") or "").strip() or None,
         email=email,
         hashed_password=hash_password(password),
-        role=role,
+        role=roles[0],
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    normalized = await set_user_roles(db, user, roles)
+    await db.commit()
     return ApiResponse(data={
         "id": user.id,
         "username": user.username,
+        "display_name": user.display_name,
         "email": user.email,
         "role": user.role,
+        "roles": normalized,
     })
 
 
@@ -302,7 +372,9 @@ async def get_user_detail(
     current_user: User = Depends(require_admin),
 ):
     """获取用户详细统计"""
-    user_result = await db.execute(select(User).where(User.id == user_id))
+    user_result = await db.execute(
+        select(User).options(selectinload(User.role_assignments)).where(User.id == user_id)
+    )
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -344,9 +416,11 @@ async def get_user_detail(
         "user": {
             "id": user.id,
             "username": user.username,
+            "display_name": user.display_name,
             "email": user.email,
             "avatar": user.avatar,
             "role": user.role,
+            "roles": get_user_roles(user),
             "is_active": user.is_active,
             "created_at": str(user.created_at),
         },
@@ -380,4 +454,3 @@ async def get_user_detail(
             for t in recent_dify_tasks.scalars().all()
         ],
     })
-

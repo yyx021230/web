@@ -1,0 +1,10 @@
+{
+  "versionCode": 33,
+  "versionName": "0.3.15",
+  "apkFile": "sms-relay-latest.apk",
+  "sha256": "1d5abbb4d038188339ad0af11901d1725ff9c22d94c0b1e1730872daa67cfc27",
+  "size": 1480462,
+  "mandatory": false,
+  "publishedAt": "2026-06-16T11:33:00+08:00",
+  "releaseNotes": "桌面启动稳定性与手机号自动补空白：从桌面打开 ZTC 云控时等待滑动停止后再点击，断言阶段若仍停留桌面会继续重试点击；SIM 信息增加系统手机号尽力读取，服务端仅在后台手机号为空时自动补充，不覆盖人工维护。"
+}

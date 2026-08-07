@@ -213,10 +213,34 @@ async def test_delete_project(client):
 
 @pytest.mark.asyncio
 async def test_get_materials(client):
-    resp = await client.get("/api/v1/materials")
+    headers = await register_and_login(client, "materials_user", "materials_user@example.com")
+    resp = await client.get("/api/v1/materials", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "items" in data["data"]
+
+
+@pytest.mark.asyncio
+async def test_get_material_is_user_scoped(client):
+    headers_a = await register_and_login(client, "material_owner", "material_owner@example.com")
+    headers_b = await register_and_login(client, "material_other", "material_other@example.com")
+
+    create_resp = await client.post("/api/v1/materials/design", json={
+        "name": "用户私有草稿",
+        "design_json": {"objects": []},
+        "thumbnail": "data:image/png;base64,test",
+        "width": 100,
+        "height": 100,
+    }, headers=headers_a)
+    assert create_resp.status_code == 200
+    material_id = create_resp.json()["data"]["id"]
+
+    own_resp = await client.get(f"/api/v1/materials/{material_id}", headers=headers_a)
+    assert own_resp.status_code == 200
+    assert own_resp.json()["data"]["name"] == "用户私有草稿"
+
+    other_resp = await client.get(f"/api/v1/materials/{material_id}", headers=headers_b)
+    assert other_resp.status_code == 404
 
 
 # --- Dify 工作流 ---
@@ -239,6 +263,55 @@ async def test_list_ai_models(client):
     assert isinstance(data["data"], list)
     assert len(data["data"]) > 0
     assert data["data"][0]["id"] == "seedream"
+
+
+@pytest.mark.asyncio
+async def test_generate_ai_image_with_invalid_token_returns_401(client):
+    resp = await client.post(
+        "/api/v1/ai-image/generate",
+        json={"prompt": "test", "model": "seedream"},
+        headers={"Authorization": "Bearer invalid.token.value"},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_generate_ai_image_without_token_returns_401(client):
+    resp = await client.post(
+        "/api/v1/ai-image/generate",
+        json={"prompt": "test", "model": "seedream"},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_cancel_local_ai_image_task_marks_cancelled(client):
+    from sqlalchemy import select
+
+    from app.db.session import async_session
+    from app.models.ai_task import AITask
+    from app.models.user import User
+    from tests.conftest import make_auth_headers
+
+    async with async_session() as db:
+        db.add(User(id=1, username="cancel_user", email="cancel@example.com", hashed_password="x"))
+        db.add(AITask(id=10, user_id=1, model_name="gptimage2", prompt="test", status="processing"))
+        await db.commit()
+
+    resp = await client.post(
+        "/api/v1/ai-image/tasks/10/cancel?model=gptimage2",
+        headers=make_auth_headers(1),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "已取消"
+
+    async with async_session() as db:
+        result = await db.execute(select(AITask).where(AITask.id == 10))
+        task = result.scalar_one_or_none()
+        assert task is not None
+        assert task.status == "cancelled"
+        assert task.error == "已取消"
+        assert task.finished_at is not None
 
 
 # --- 未授权访问 ---
@@ -348,6 +421,38 @@ async def test_material_upload_requires_auth(client):
         files={"file": ("test.jpg", io.BytesIO(b"fake image data"), "image/jpeg")},
     )
     assert resp.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_save_ai_draft_persists_ai_meta(client):
+    """保存 AI 草稿时应持久化 ai_meta（提示词/参考图/参数）"""
+    headers = await register_and_login(client, "ai_draft_user", "ai_draft_user@example.com")
+    resp = await client.post("/api/v1/materials/draft-ai", json={
+        "name": "AI 草稿测试",
+        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAoMBgQf3J7kAAAAASUVORK5CYII=",
+        "width": 1536,
+        "height": 2048,
+        "ai_meta": {
+            "prompt": "测试提示词",
+            "ref_images": ["https://example.com/ref1.jpg"],
+            "model": "GPT Image 2",
+            "size": "1536×2048",
+            "style": "写实",
+            "quality": "high",
+        },
+    }, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["name"] == "AI 草稿测试"
+    assert data["ai_meta"]["prompt"] == "测试提示词"
+    assert data["ai_meta"]["model"] == "GPT Image 2"
+
+    list_resp = await client.get("/api/v1/materials?owner=true", headers=headers)
+    assert list_resp.status_code == 200
+    items = list_resp.json()["data"]["items"]
+    saved = next((m for m in items if m["id"] == data["id"]), None)
+    assert saved is not None
+    assert saved["ai_meta"]["prompt"] == "测试提示词"
 
 
 @pytest.mark.asyncio

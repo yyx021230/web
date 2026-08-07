@@ -3,10 +3,12 @@ import api from './api';
 export interface User {
   id: number;
   username: string;
+  display_name?: string | null;
   email: string;
   avatar: string | null;
   is_active: boolean;
   role: string;
+  roles?: string[];
   created_at: string | null;
 }
 
@@ -17,6 +19,7 @@ export interface LoginPayload {
 
 export interface RegisterPayload {
   username: string;
+  display_name?: string;
   email: string;
   password: string;
 }

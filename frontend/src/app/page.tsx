@@ -4,10 +4,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Palette, Eye, EyeOff, Mail, Lock,
-  Github, Loader2,
+  Eye, EyeOff, Mail, Lock,
+  Github, Loader2, Sparkles,
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
+
+function OpenAIIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3.8c2.1-1.2 4.8.2 5.1 2.6 2.3.4 3.7 2.9 2.6 5 .9 2.2-.7 4.6-3 4.8-1.2 2.1-4 2.5-5.8.9-2.3.4-4.4-1.5-4.2-3.9-1.8-1.5-1.7-4.4.2-5.8.1-2.4 2.5-4.1 4.8-3.3" />
+        <path d="M8.1 7.3l3.9-2.2 3.9 2.2v4.5L12 14 8.1 11.8z" />
+        <path d="M12 14v4.1M15.9 7.3l3.2 1.8M8.1 11.8l-3.2 1.8M12 5.1v4.2" />
+      </g>
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,87 +64,74 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left: Branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-12 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        </div>
-        <div className="relative z-10 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-xl mx-auto mb-8">
-            <Palette className="h-8 w-8 text-white" />
+    <div className="login-scene min-h-screen overflow-hidden text-slate-950">
+      <header className="relative z-10 flex items-center justify-between px-6 py-5 md:px-10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-300/40">
+            <OpenAIIcon className="h-5 w-5" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">AI Creative Studio</h1>
-          <p className="text-lg text-white/70 mb-12 max-w-md mx-auto">
-            一站式 AI 创意设计平台，集编辑、AI 生图、图库管理、工作流于一体
-          </p>
-          <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-            {[
-              { label: '专业编辑器', desc: '拖拽式可视化设计' },
-              { label: 'AI 智能生图', desc: '多模型一键生成' },
-              { label: '工作流集成', desc: 'Dify 无缝对接' },
-              { label: '图库管理', desc: '智能分类搜索' },
-            ].map((f, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/10">
-                <span className="text-sm font-medium text-white">{f.label}</span>
-                <span className="text-xs text-white/50">{f.desc}</span>
-              </div>
-            ))}
+          <div>
+            <div className="text-sm font-semibold tracking-tight">AI Creative Studio</div>
+            <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Cloud Liquid Studio</div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Right: Auth form */}
-      <div className="flex-1 flex flex-col">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 shadow-sm">
-              <Palette className="h-4 w-4 text-white" />
+      <main className="relative z-10 flex min-h-[calc(100vh-84px)] items-center justify-end px-5 pb-8 md:px-10">
+        <section className="hidden flex-1 self-stretch lg:block">
+          <div className="login-brand-copy">
+            <div className="login-brand-panel">
+              <Sparkles className="mb-5 h-7 w-7 text-indigo-500" />
+              <h1 className="text-5xl font-semibold leading-tight tracking-[-0.05em] text-slate-950">
+                AI Creative Studio
+              </h1>
+              <p className="mt-5 max-w-md text-base leading-8 text-slate-500">
+                一站式 AI 创意设计平台，集编辑、AI 生图、图库管理、工作流于一体。
+              </p>
             </div>
-            <span className="text-sm font-semibold">AI Creative Studio</span>
           </div>
-        </div>
+        </section>
 
-        {/* Form area */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-sm">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold">欢迎回来</h2>
-              <p className="text-muted-foreground mt-1">登录以继续你的创作之旅</p>
+        <section className="mx-auto flex w-full max-w-[500px] items-center justify-center lg:mx-0 lg:justify-end">
+          <div className="login-card-overlay w-full rounded-[34px] p-6 md:p-8">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/80 bg-white/70 text-indigo-600 shadow-[0_18px_48px_rgba(79,103,146,0.16)] backdrop-blur-xl">
+                <OpenAIIcon className="h-8 w-8" />
+              </div>
+              <h2 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">欢迎回来</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">登录以继续你的创作之旅</p>
             </div>
 
             {error && (
-              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">{error}</div>
+              <div className="mb-4 rounded-2xl border border-red-100 bg-red-50/90 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium block mb-1.5">用户名 / 邮箱</label>
+                <label className="text-sm font-semibold block mb-2 text-slate-800">用户名 / 邮箱</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text" value={username} onChange={e => setUsername(e.target.value)}
                     placeholder="请输入用户名或邮箱"
-                    className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-2xl border border-slate-200 bg-white/76 py-3.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium block mb-1.5">密码</label>
+                <label className="text-sm font-semibold block mb-2 text-slate-800">密码</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="请输入密码"
                     onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
-                    className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-2xl border border-slate-200 bg-white/76 py-3.5 pl-11 pr-11 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                   />
                   <button
                     type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -141,43 +140,43 @@ export default function LoginPage() {
 
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span className="text-muted-foreground">记住我</span>
+                  <input type="checkbox" className="rounded border-slate-300" />
+                  <span className="text-slate-500">记住我</span>
                 </label>
-                <button type="button" disabled className="text-muted-foreground cursor-not-allowed" title="即将上线">忘记密码？</button>
+                <button type="button" disabled className="text-slate-400 cursor-not-allowed" title="即将上线">忘记密码？</button>
               </div>
 
               <button
                 onClick={handleLogin}
                 disabled={loading}
                 className={cn(
-                  'w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium text-white shadow-sm transition-all',
-                  loading ? 'bg-primary/70 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'
+                  'w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold text-white shadow-lg transition-all',
+                  loading ? 'bg-indigo-300 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-indigo-300/40 hover:-translate-y-0.5 hover:shadow-indigo-300/60'
                 )}
               >
                 {loading ? (<><Loader2 className="h-4 w-4 animate-spin" />登录中...</>) : ('登录')}
               </button>
 
               <div className="flex items-center gap-3 my-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">或</span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs text-slate-400">或</span>
+                <div className="flex-1 h-px bg-slate-200" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <button disabled className="flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-50" title="即将上线">
+                <button disabled className="flex cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/62 py-3 text-sm font-semibold text-slate-400 opacity-70" title="即将上线">
                   <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                   Google
                 </button>
-                <button disabled className="flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium text-muted-foreground cursor-not-allowed opacity-50" title="即将上线">
+                <button disabled className="flex cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/62 py-3 text-sm font-semibold text-slate-400 opacity-70" title="即将上线">
                   <Github className="h-4 w-4" />
                   GitHub
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

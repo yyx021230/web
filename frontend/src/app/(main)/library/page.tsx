@@ -92,23 +92,24 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7]">
+    <div className="cloud-page min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-30">
+      <div className="cloud-toolbar sticky top-0 z-30">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">模板库</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{templates.length} 个模板</p>
+              <div className="mb-1 inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600">Cloud Studio</div>
+              <h1 className="text-xl font-bold text-slate-950">模板库</h1>
+              <p className="text-sm text-slate-500 mt-0.5">{templates.length} 个模板</p>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="搜索模板..."
-                className="pl-10 pr-4 py-2 bg-gray-100 border-0 rounded-xl text-sm w-72 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-white transition-all"
+                className="cloud-pill w-72 rounded-2xl py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100"
               />
             </div>
           </div>
@@ -116,7 +117,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Category tabs */}
-      <div className="bg-white border-b">
+      <div className="cloud-toolbar">
         <div className="max-w-[1600px] mx-auto px-6">
           <div className="flex gap-2 py-3 overflow-x-auto">
             {categories.map(cat => {
@@ -128,10 +129,10 @@ export default function LibraryPage() {
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
                   className={cn(
-                    'flex-shrink-0 px-4 py-1.5 text-sm rounded-full transition-all',
+                    'cloud-pill flex-shrink-0 px-4 py-1.5 text-sm rounded-full transition-all',
                     activeCategory === cat
-                      ? 'bg-gray-900 text-white font-medium'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'border-indigo-400 bg-indigo-50 text-indigo-600 font-medium'
+                      : 'text-slate-600 hover:border-indigo-200 hover:bg-indigo-50'
                   )}
                 >
                   {cat}
@@ -164,7 +165,7 @@ export default function LibraryPage() {
               return (
                 <div
                   key={t.id}
-                  className="break-inside-avoid group cursor-pointer rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition-all duration-300"
+                  className="cloud-card cloud-card-hover break-inside-avoid group cursor-pointer overflow-hidden rounded-3xl"
                 >
                   <div className="relative overflow-hidden" style={{ height: cardHeight }}>
                     <img
@@ -199,10 +200,10 @@ export default function LibraryPage() {
                     </div>
                   </div>
                   <div className="p-3">
-                    <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
+                    <p className="text-sm font-medium text-slate-900 truncate">{t.title}</p>
                     <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-xs text-gray-400">{getCategory(t)}</span>
-                      <span className="text-[10px] text-gray-400">{t.width}×{t.height}</span>
+                      <span className="text-xs text-slate-400">{getCategory(t)}</span>
+                      <span className="text-[10px] text-slate-400">{t.width}×{t.height}</span>
                     </div>
                   </div>
                 </div>

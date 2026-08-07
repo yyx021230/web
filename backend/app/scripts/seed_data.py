@@ -4,7 +4,7 @@
     python -m app.scripts.seed_data
 
 填充内容:
-    1. 默认管理员用户 (admin/admin123)
+    1. 初始管理员用户（需通过 SEED_ADMIN_* 环境变量显式提供）
     2. 模板素材 (5 个预设设计模板)
     3. 元素素材 (16 个 SVG 图标/装饰)
     4. 文字素材 (8 个预设文字样式)
@@ -408,16 +408,24 @@ async def seed():
         print("开始填充种子数据...")
         print("=" * 50)
 
-        # 1. 创建默认管理员
+        # 1. 创建初始管理员（必须显式配置，避免默认弱口令进入环境）
+        admin_username = os.getenv("SEED_ADMIN_USERNAME", "").strip()
+        admin_email = os.getenv("SEED_ADMIN_EMAIL", "").strip()
+        admin_password = os.getenv("SEED_ADMIN_PASSWORD", "")
+        if not admin_username or not admin_email or not admin_password:
+            raise RuntimeError(
+                "缺少 SEED_ADMIN_USERNAME / SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD，"
+                "拒绝创建默认管理员"
+            )
         admin = User(
-            username="admin",
-            email="admin@example.com",
-            hashed_password=hash_password("admin123"),
+            username=admin_username,
+            email=admin_email,
+            hashed_password=hash_password(admin_password),
             is_active=True,
         )
         db.add(admin)
         await db.flush()
-        print(f"[1/4] 创建默认管理员: admin / admin123")
+        print(f"[1/4] 创建初始管理员: {admin_username}")
 
         # 2. 模板素材
         for t in TEMPLATES:
@@ -469,7 +477,7 @@ async def seed():
         print(f"填充完成!")
         print(f"  模板: {final_tpl} 条")
         print(f"  素材: {final_mat} 条")
-        print(f"  默认账号: admin / admin123")
+        print(f"  管理员账号: {admin_username} / <来自 SEED_ADMIN_PASSWORD>")
         print("=" * 50)
 
 

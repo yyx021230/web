@@ -8,11 +8,27 @@ import { Shield, User as UserIcon, Eye, Plus, Trash2, X, Workflow } from 'lucide
 interface AppUser {
   id: number;
   username: string;
+  display_name?: string | null;
   email: string;
   avatar: string | null;
   is_active: boolean;
   role: string;
+  roles?: string[];
   created_at: string;
+}
+
+const USER_ROLES = [
+  { value: 'admin', label: '管理员', badgeClass: 'bg-slate-950 text-white border-slate-950' },
+  { value: 'xhs_lead', label: '小红书部门负责人', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+  { value: 'xhs_ops', label: '小红书运营', badgeClass: 'bg-rose-50 text-rose-700 border-rose-100' },
+  { value: 'buyer', label: '投手', badgeClass: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { value: 'brand_lead', label: '品牌责任人', badgeClass: 'bg-sky-50 text-sky-700 border-sky-100' },
+  { value: 'brand_ops', label: '品牌运营', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { value: 'viewer', label: '普通用户', badgeClass: 'bg-gray-50 text-gray-600 border-gray-100' },
+];
+
+function getUserRoles(user: Pick<AppUser, 'role' | 'roles'>): string[] {
+  return user.roles?.length ? user.roles : [user.role || 'viewer'];
 }
 
 export default function UsersPage() {
@@ -21,6 +37,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState<Record<number, string>>({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
@@ -36,12 +53,10 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [page]);
 
-  const updateRole = async (userId: number, role: string) => {
-    const newRole = role === 'admin' ? 'viewer' : 'admin';
-    if (!confirm(`确定要将该用户角色改为${newRole === 'admin' ? '管理员' : '普通用户'}吗？`)) return;
+  const updateRoles = async (userId: number, roles: string[]) => {
     setUpdating(userId);
     try {
-      await adminApi.updateUserRole(userId, newRole);
+      await adminApi.updateUserRoles(userId, roles.length ? roles : ['viewer']);
       toast.success('角色已更新');
       fetchUsers();
     } catch (e: unknown) {
@@ -59,6 +74,25 @@ export default function UsersPage() {
       fetchUsers();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '操作失败');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const updateDisplayName = async (userId: number) => {
+    const displayName = (editingName[userId] ?? '').trim();
+    setUpdating(userId);
+    try {
+      await adminApi.updateUserProfile(userId, { display_name: displayName || null });
+      toast.success('展示名已更新');
+      setEditingName((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+      fetchUsers();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '更新失败');
     } finally {
       setUpdating(null);
     }
@@ -141,21 +175,32 @@ export default function UsersPage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
                       <UserIcon className="h-4 w-4 text-gray-500" />
                     </div>
-                    <span className="font-medium">{u.username}</span>
+                    <div className="min-w-[160px]">
+                      <input
+                        value={editingName[u.id] ?? u.display_name ?? ''}
+                        onChange={(event) => setEditingName((prev) => ({ ...prev, [u.id]: event.target.value }))}
+                        onBlur={() => {
+                          const nextName = (editingName[u.id] ?? u.display_name ?? '').trim();
+                          if (nextName !== (u.display_name ?? '')) updateDisplayName(u.id);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') event.currentTarget.blur();
+                        }}
+                        disabled={updating === u.id}
+                        placeholder="填写展示名"
+                        className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-medium text-slate-950 outline-none transition hover:border-slate-200 hover:bg-white focus:border-slate-300 focus:bg-white"
+                      />
+                      <div className="px-2 text-xs text-gray-400">登录账号：{u.username}</div>
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{u.email}</td>
                 <td className="px-4 py-3">
-                  <button
+                  <RoleMultiSelect
+                    roles={getUserRoles(u)}
                     disabled={updating === u.id}
-                    onClick={() => updateRole(u.id, u.role === 'admin' ? 'viewer' : 'admin')}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer"
-                  >
-                    <Shield className="h-3 w-3" />
-                    <span className={u.role === 'admin' ? 'text-indigo-600' : 'text-gray-500'}>
-                      {u.role === 'admin' ? '管理员' : '普通用户'}
-                    </span>
-                  </button>
+                    onChange={(roles) => updateRoles(u.id, roles)}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -446,11 +491,45 @@ function WorkflowAccessModal({ userId, onClose }: { userId: number; onClose: () 
    CREATE USER MODAL
    ============================================================ */
 
+function RoleMultiSelect({ roles, disabled, onChange }: { roles: string[]; disabled?: boolean; onChange: (roles: string[]) => void }) {
+  const selected = roles.length ? roles : ['viewer'];
+  const toggle = (role: string) => {
+    const exists = selected.includes(role);
+    let next = exists ? selected.filter(item => item !== role) : [...selected.filter(item => item !== 'viewer'), role];
+    if (role === 'viewer' && !exists) next = ['viewer'];
+    if (!next.length) next = ['viewer'];
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {USER_ROLES.map((role) => {
+        const active = selected.includes(role.value);
+        return (
+          <button
+            key={role.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => toggle(role.value)}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
+              active ? role.badgeClass : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'
+            }`}
+          >
+            <Shield className="h-3 w-3" />
+            {role.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('viewer');
+  const [roles, setRoles] = useState<string[]>(['viewer']);
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -462,9 +541,10 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     try {
       await adminApi.createUser({
         username: username.trim(),
+        display_name: displayName.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role,
+        roles,
       });
       toast.success('用户创建成功');
       onCreated();
@@ -488,7 +568,13 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">用户名</label>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-              placeholder="请输入用户名"
+              placeholder="用于登录，例如 zt123"
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">展示名</label>
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+              placeholder="看板显示，例如 张婷"
               className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all" />
           </div>
           <div>
@@ -505,11 +591,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">角色</label>
-            <select value={role} onChange={e => setRole(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-foreground/20 transition-all">
-              <option value="viewer">普通用户</option>
-              <option value="admin">管理员</option>
-            </select>
+            <RoleMultiSelect roles={roles} onChange={setRoles} />
           </div>
         </div>
         <div className="flex gap-2 p-5 border-t">

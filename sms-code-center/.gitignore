@@ -1,0 +1,5 @@
+data/*.jsonl
+android/SmsRelay/.gradle/
+android/SmsRelay/build/
+android/SmsRelay/app/build/
+android/SmsRelay/local.properties

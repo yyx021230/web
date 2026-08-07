@@ -1,7 +1,6 @@
 """Admin workflow management API"""
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,12 +18,10 @@ from app.models.dify_run_log import DifyRunLog
 from app.services.dify.workflow_service import DifyWorkflowService
 from app.services.dify.dify_client import DifyClient
 from app.schemas.workflow import WorkflowRunRequest
-
-# CST = UTC+8
-CST = timezone(timedelta(hours=8))
+from app.utils.timezone import cst_now_naive
 
 def now_cst():
-    return datetime.now(CST).replace(tzinfo=None)
+    return cst_now_naive()
 
 
 async def _usernames(db: AsyncSession, ids: list[int]) -> dict[int, str]:
@@ -32,6 +29,16 @@ async def _usernames(db: AsyncSession, ids: list[int]) -> dict[int, str]:
     unique = set(ids)
     result = await db.execute(select(User.id, User.username).where(User.id.in_(unique)))
     return {r.id: r.username for r in result}
+
+
+async def _resolve_user_id(db: AsyncSession, username: str | None) -> int | None:
+    if not username:
+        return None
+    normalized = username.strip()
+    if not normalized:
+        return None
+    result = await db.execute(select(User.id).where(User.username == normalized))
+    return result.scalar_one_or_none()
 
 
 router = APIRouter()
@@ -303,10 +310,19 @@ async def admin_create_task(
 ):
     """创建后台任务（异步执行）"""
     import asyncio
+    requested_user_id = req.get("user_id")
+    task_user_id = current_user.id
+    if requested_user_id is not None:
+        if not isinstance(requested_user_id, int):
+            raise HTTPException(status_code=400, detail="user_id 必须为整数")
+        user_exists = await db.execute(select(User.id).where(User.id == requested_user_id))
+        if user_exists.scalar_one_or_none() is None:
+            raise HTTPException(status_code=400, detail="user_id 不存在")
+        task_user_id = requested_user_id
 
     task = DifyTask(
         workflow_id=workflow_id,
-        user_id=req.get("user_id", current_user.id),
+        user_id=task_user_id,
         status="pending",
         inputs=req.get("inputs", {}),
         created_at=now_cst(),
@@ -426,12 +442,13 @@ async def admin_list_tasks(
     current_user: User = Depends(require_admin),
 ):
     """查看所有用户任务（管理员）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = []
-    if username:
-        user_result = await db.execute(select(User).where(User.username == username))
-        u = user_result.scalar_one_or_none()
-        if u:
-            conditions.append(DifyTask.user_id == u.id)
+    if filter_user_id is not None:
+        conditions.append(DifyTask.user_id == filter_user_id)
     if workflow_id:
         conditions.append(DifyTask.workflow_id == workflow_id)
     if status:
@@ -442,14 +459,16 @@ async def admin_list_tasks(
     total = count_result.scalar() or 0
 
     stmt = (
-        select(DifyTask)
-        .where(*conditions) if conditions else select(DifyTask)
-        .order_by(desc(DifyTask.created_at))
-        .offset((page - 1) * limit)
-        .limit(limit)
+        select(DifyTask, DifyWorkflowConfig.app_name)
+        .outerjoin(DifyWorkflowConfig, DifyTask.workflow_id == DifyWorkflowConfig.id)
     )
+    if conditions:
+        stmt = stmt.where(*conditions)
+    stmt = stmt.order_by(desc(DifyTask.created_at)).offset((page - 1) * limit).limit(limit)
     result = await db.execute(stmt)
-    items = list(result.scalars().all())
+    rows = result.all()
+    items = [row[0] for row in rows]
+    workflow_names = {task.id: app_name for task, app_name in rows}
 
     user_ids = [t.user_id for t in items if t.user_id]
     names = await _usernames(db, user_ids) if user_ids else {}
@@ -459,6 +478,7 @@ async def admin_list_tasks(
             {
                 "id": t.id,
                 "workflow_id": t.workflow_id,
+                "workflow_name": workflow_names.get(t.id) or f"#{t.workflow_id}",
                 "user_id": t.user_id,
                 "user_name": names.get(t.user_id),
                 "status": t.status,
@@ -498,6 +518,57 @@ async def admin_delete_task(
     return ApiResponse(message="已删除")
 
 
+@router.post("/tasks/{task_id}/fail")
+async def admin_fail_task(
+    task_id: int,
+    req: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """管理员手动终止工作流任务并标记失败"""
+    result = await db.execute(select(DifyTask).where(DifyTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status in ("succeeded", "failed", "cancelled"):
+        raise HTTPException(status_code=400, detail=f"任务已{task.status}，无需重复终止")
+
+    reason = ((req or {}).get("reason") or "").strip() or "管理员手动终止任务"
+    finished_at = now_cst()
+
+    task.status = "failed"
+    task.error = reason
+    task.progress = "管理员已手动终止"
+    task.finished_at = finished_at
+
+    run_log_conditions = [
+        DifyRunLog.workflow_id == task.workflow_id,
+        DifyRunLog.user_id == task.user_id,
+    ]
+    if task.task_id:
+        run_log_conditions.append(DifyRunLog.task_id == task.task_id)
+    else:
+        run_log_conditions.append(DifyRunLog.started_at >= task.created_at)
+
+    logs_result = await db.execute(
+        select(DifyRunLog)
+        .where(*run_log_conditions)
+        .order_by(desc(DifyRunLog.started_at))
+        .limit(20)
+    )
+    logs = list(logs_result.scalars().all())
+    for log in logs:
+        if log.status in ("succeeded", "failed", "stopped"):
+            continue
+        log.status = "failed"
+        log.error = reason
+        log.finished_at = finished_at
+
+    await db.commit()
+    await db.refresh(task)
+    return ApiResponse(data={"id": task.id, "status": task.status}, message="任务已终止并标记失败")
+
+
 @router.patch("/tasks/{task_id}/view")
 async def admin_mark_task_viewed(
     task_id: int,
@@ -527,12 +598,13 @@ async def admin_get_all_logs(
     current_user: User = Depends(require_admin),
 ):
     """获取所有运行日志（管理员，可按用户/工作流筛选）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = []
-    if username:
-        user_result = await db.execute(select(User).where(User.username == username))
-        u = user_result.scalar_one_or_none()
-        if u:
-            conditions.append(DifyRunLog.user_id == u.id)
+    if filter_user_id is not None:
+        conditions.append(DifyRunLog.user_id == filter_user_id)
     if workflow_id:
         conditions.append(DifyRunLog.workflow_id == workflow_id)
     if status:

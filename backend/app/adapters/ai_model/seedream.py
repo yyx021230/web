@@ -18,7 +18,11 @@ API 文档: https://www.volcengine.com/docs/82379/1399008
 """
 
 import httpx
+import base64
+import json
+from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 from app.adapters.ai_model.base import AIModelAdapter
 from app.config import settings
 
@@ -38,6 +42,57 @@ _SUPPORTED_SIZES: dict[tuple[int, int], str] = {
 
 # 候选列表（用于按比例匹配）
 _CANDIDATES = list(_SUPPORTED_SIZES.keys())
+
+
+def _format_api_error(status: int, body: str) -> str:
+    """Expose upstream API error details without leaking an oversized response body."""
+    body = (body or "").strip()
+    if body:
+        try:
+            parsed = json.loads(body)
+            error = parsed.get("error") if isinstance(parsed, dict) else None
+            if isinstance(error, dict):
+                code = str(error.get("code") or "").strip()
+                message = str(error.get("message") or "").strip()
+                detail = "：".join(part for part in (code, message) if part)
+                if detail:
+                    return f"API 错误 ({status})，{detail}"
+        except json.JSONDecodeError:
+            pass
+        return f"API 错误 ({status})，{body[:500]}"
+    return f"API 错误 ({status})，请稍后重试"
+
+
+def _infer_mime(image_bytes: bytes) -> str:
+    if image_bytes[:8].startswith(b"\x89PNG"):
+        return "image/png"
+    if image_bytes[:2] == b"\xff\xd8":
+        return "image/jpeg"
+    if image_bytes[:4] in (b"RIFF", b"Riff"):
+        return "image/webp"
+    if image_bytes[:4] == b"GIF8":
+        return "image/gif"
+    return "image/png"
+
+
+def _uploads_url_to_data_uri(src: str) -> str:
+    rel = src[len("/uploads/"):] if src.startswith("/uploads/") else src.lstrip("/")
+    rel = unquote(rel.split("?", 1)[0].split("#", 1)[0])
+    storage_root = Path(settings.storage_path).resolve()
+    local_path = (storage_root / rel).resolve()
+    root_text = str(storage_root)
+    local_text = str(local_path)
+    if local_text != root_text and not local_text.startswith(root_text + "/"):
+        raise ValueError("非法参考图路径")
+    image_bytes = local_path.read_bytes()
+    mime = _infer_mime(image_bytes)
+    return f"data:{mime};base64,{base64.b64encode(image_bytes).decode('ascii')}"
+
+
+def _normalize_reference_source(src: str) -> str:
+    if src.startswith("/uploads/"):
+        return _uploads_url_to_data_uri(src)
+    return src
 
 
 def _resolve_size(width: int, height: int) -> str:
@@ -104,11 +159,11 @@ class SeedreamAdapter(AIModelAdapter):
 
         # 多图优先，其次单图 base64，最后单图 URL
         if images_data and len(images_data) > 0:
-            payload["image"] = images_data[:10]  # Seedream 最多支持 10 张参考图
+            payload["image"] = [_normalize_reference_source(src) for src in images_data[:10]]
         elif image_data:
-            payload["image"] = image_data
+            payload["image"] = _normalize_reference_source(image_data)
         elif image_url:
-            payload["image"] = image_url
+            payload["image"] = _normalize_reference_source(image_url)
 
         headers = {
             "Authorization": f"Bearer {settings.seedream_api_key}",
@@ -126,7 +181,7 @@ class SeedreamAdapter(AIModelAdapter):
             except httpx.HTTPStatusError as e:
                 # Handle HTTP errors (403, 429, etc.) with friendly messages
                 status = e.response.status_code
-                body = e.response.text[:200]
+                body = e.response.text
                 if status == 403:
                     return {
                         "task_id": "",
@@ -152,7 +207,7 @@ class SeedreamAdapter(AIModelAdapter):
                     "task_id": "",
                     "status": "failed",
                     "image_urls": [],
-                    "error": f"API 错误 ({status})，请稍后重试",
+                    "error": _format_api_error(status, body),
                 }
             result = response.json()
 

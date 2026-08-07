@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from app.models.material import Material
 from app.adapters.storage import storage
 
@@ -27,7 +27,12 @@ class MaterialService:
         if category:
             conditions.append(Material.category == category)
         if exclude_category:
-            conditions.append(Material.category != exclude_category)
+            conditions.append(
+                or_(
+                    Material.category != exclude_category,
+                    Material.category.is_(None),
+                )
+            )
         if user_id is not None:
             conditions.append(Material.created_by == user_id)
 
@@ -46,14 +51,19 @@ class MaterialService:
         items = list(items_result.scalars().all())
         return items, total
 
-    async def get_by_id(self, material_id: int) -> Material | None:
-        """根据 ID 获取素材"""
-        result = await self.db.execute(
-            select(Material).where(
-                Material.id == material_id,
-                Material.deleted_at.is_(None),
-            )
-        )
+    async def get_by_id(self, material_id: int, user_id: int | None = None) -> Material | None:
+        """根据 ID 获取素材
+
+        user_id: 传入后仅返回当前用户自己的素材
+        """
+        conditions = [
+            Material.id == material_id,
+            Material.deleted_at.is_(None),
+        ]
+        if user_id is not None:
+            conditions.append(Material.created_by == user_id)
+
+        result = await self.db.execute(select(Material).where(*conditions))
         return result.scalar_one_or_none()
 
     async def create(
@@ -234,6 +244,32 @@ class MaterialService:
             height=height,
             category="ai-template",
             tags=tags or [],
+            ai_meta=ai_meta,
+            created_by=user_id,
+        )
+        self.db.add(material)
+        await self.db.commit()
+        await self.db.refresh(material)
+        return material
+
+    async def create_ai_draft(
+        self,
+        name: str,
+        url: str,
+        ai_meta: dict | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        user_id: int | None = None,
+    ) -> Material:
+        """创建 AI 生图草稿（保存到草稿箱）"""
+        material = Material(
+            name=name,
+            type="image",
+            url=url,
+            width=width,
+            height=height,
+            category=None,
+            tags=[],
             ai_meta=ai_meta,
             created_by=user_id,
         )

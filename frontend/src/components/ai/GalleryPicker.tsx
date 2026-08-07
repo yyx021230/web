@@ -29,7 +29,7 @@ interface GalleryPickerProps {
   multiSelect?: boolean;
   /** 多选确认回调 */
   onMultiSelect?: (images: GalleryPickerImage[]) => void;
-  /** 已选中的图片 ID 列表（用于多图场景，标记已添加的图片） */
+  /** 已选中的图片标识列表（可传图片 ID 或 URL，用于标记已添加） */
   existingIds?: string[];
 }
 
@@ -65,10 +65,10 @@ function SearchableSelect({
   }, []);
 
   const filtered = query ? options.filter(o => o.toLowerCase().includes(query.toLowerCase())) : options;
-  const displayItems = filtered.slice(0, 20);
+  const displayItems = filtered;
 
   return (
-    <div ref={wrapperRef} className={cn('relative', className)}>
+    <div ref={wrapperRef} className={cn('relative', open && 'z-[90]', className)}>
       <div
         onClick={() => { setOpen(!open); setQuery(''); }}
         className={cn(
@@ -82,7 +82,7 @@ function SearchableSelect({
         <ChevronDown className={cn('h-4 w-4 ml-2 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </div>
       {open && (
-        <div className="absolute top-full mt-1 z-50 w-52 rounded-lg border bg-card shadow-lg overflow-hidden">
+        <div className="absolute top-full mt-1 z-[100] w-52 rounded-lg border bg-card shadow-lg overflow-hidden">
           <div className="p-2 border-b">
             <input autoFocus type="text" placeholder="搜索..." value={query}
               onChange={(e) => setQuery(e.target.value)} onClick={(e) => e.stopPropagation()}
@@ -132,13 +132,13 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       let page = 1;
       let hasMore = true;
       while (hasMore) {
-        const res = await editorApi.getMaterials(undefined, page, 50, false, 'ai-template');
+        const res = await editorApi.getMaterials(undefined, page, 50, true, 'ai-template');
         all.push(...res.data.items);
         hasMore = res.data.items.length === 50;
         page++;
       }
       setDraftImages(all.map(m => ({
-        id: String(m.id),
+        id: `drafts:${m.id}`,
         name: m.name,
         url: m.url || '',
         width: m.width,
@@ -166,7 +166,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
         page++;
       }
       setTemplateImages(all.map(m => ({
-        id: String(m.id),
+        id: `templates:${m.id}`,
         name: m.name,
         url: m.url || '',
         width: m.width || 2048,
@@ -186,7 +186,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       const data = res.data;
       // model check
       setCarImages((data.images || []).map((img: any, idx: number) => ({
-        id: `${data.brand}-${img.model || data.model}-${idx}`,
+        id: `car-models:${data.brand}-${img.model || data.model}-${idx}`,
         name: `${data.brand} ${img.model || data.model} - ${img.label}`,
         url: img.url,
         width: 1920,
@@ -222,7 +222,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
         carModelsApi.getBrands(),
         carModelsApi.getModels(),
       ]).then(([brandsRes, modelsRes]) => {
-        const brands = brandsRes.data.sort();
+        const brands = [...brandsRes.data].sort((a, b) => a.localeCompare(b, 'zh-CN'));
         setCarBrands(brands);
         setCarModels(modelsRes.data);
         // 默认选中第一个品牌，加载全部车型
@@ -279,14 +279,13 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
   const handleConfirm = () => {
     if (multiSelect && onMultiSelect) {
       if (multiSelected.size === 0) return;
-      const allImages = [...draftImages, ...templateImages, ...carImages];
-      const selectedImages = allImages.filter(img => multiSelected.has(img.id));
+      const selectedImages = currentImages.filter(img => multiSelected.has(img.id));
       if (selectedImages.length > 0) {
         onMultiSelect(selectedImages);
       }
     } else {
       if (!selected) return;
-      const img = [...draftImages, ...templateImages, ...carImages].find(i => i.id === selected);
+      const img = currentImages.find(i => i.id === selected);
       if (img) onSelect(img);
     }
   };
@@ -305,7 +304,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
   };
 
   // Check if image is already added to the main UI
-  const isAlreadyAdded = (id: string) => existingIds.includes(id);
+  const isAlreadyAdded = (img: GalleryPickerImage) => existingIds.includes(img.id) || existingIds.includes(img.url);
 
   // Close on Escape
   useEffect(() => {
@@ -393,7 +392,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
               {currentImages.map(img => {
                 const isSelected = multiSelect ? multiSelected.has(img.id) : selected === img.id;
-                const alreadyAdded = isAlreadyAdded(img.id);
+                const alreadyAdded = isAlreadyAdded(img);
                 return (
                   <div key={img.id}
                     onClick={() => {

@@ -14,6 +14,16 @@ from app.models.material import Material
 router = APIRouter()
 
 
+async def _resolve_user_id(db: AsyncSession, username: str | None) -> int | None:
+    if not username:
+        return None
+    normalized = username.strip()
+    if not normalized:
+        return None
+    result = await db.execute(select(User.id).where(User.username == normalized))
+    return result.scalar_one_or_none()
+
+
 @router.get("")
 async def list_materials(
     page: int = Query(default=1, ge=1),
@@ -25,13 +35,17 @@ async def list_materials(
     current_user: User = Depends(require_admin),
 ):
     """素材列表（管理员，可看所有用户）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = [Material.deleted_at.is_(None)]
     if category:
         conditions.append(Material.category == category)
     if type:
         conditions.append(Material.type == type)
-    if username:
-        conditions.append(User.username.ilike(f"%{username.strip()}%"))
+    if filter_user_id is not None:
+        conditions.append(Material.created_by == filter_user_id)
 
     count_stmt = (
         select(func.count())

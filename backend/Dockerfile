@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir \
 
 COPY app /app/app
 COPY alembic.ini /app/alembic.ini
+COPY bin/xiaohongshu-mcp /app/bin/xiaohongshu-mcp
+
+RUN chmod +x /app/bin/xiaohongshu-mcp
 
 EXPOSE 8000
 

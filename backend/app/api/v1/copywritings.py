@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.services.copywriting_service import CopywritingService
+from app.services.scrape_review_service import ScrapeReviewService
 from app.models.user import User
+from app.models.scrape_review import ScrapeCandidate, ScrapeTask, ScrapeTaskReviewer
 from app.core.deps import get_current_user
 
 router = APIRouter()
@@ -54,6 +57,127 @@ async def get_categories(
     service = CopywritingService(db)
     categories = await service.get_categories()
     return ApiResponse(data={"categories": categories})
+
+
+@router.get("/review/tasks")
+async def get_review_tasks(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = (
+        await db.execute(
+            select(ScrapeTask)
+            .join(ScrapeTaskReviewer, ScrapeTaskReviewer.task_id == ScrapeTask.id)
+            .where(ScrapeTaskReviewer.user_id == current_user.id)
+            .order_by(desc(ScrapeTask.created_at))
+        )
+    ).scalars().all()
+    return ApiResponse(data={
+        "items": [
+            {
+                "id": task.id,
+                "name": task.name,
+                "source": task.source,
+                "status": task.status,
+                "candidate_count": task.candidate_count,
+                "pending_count": task.pending_count,
+                "approved_count": task.approved_count,
+                "rejected_count": task.rejected_count,
+                "needs_second_review_count": task.needs_second_review_count,
+                "created_at": str(task.created_at),
+                "finished_at": str(task.finished_at) if task.finished_at else None,
+            }
+            for task in rows
+        ]
+    })
+
+
+@router.get("/review/candidates")
+async def get_review_candidates(
+    task_id: int | None = None,
+    status: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = (
+        select(ScrapeCandidate)
+        .join(ScrapeTaskReviewer, ScrapeTaskReviewer.task_id == ScrapeCandidate.task_id)
+        .where(ScrapeTaskReviewer.user_id == current_user.id)
+    )
+    if task_id is not None:
+        stmt = stmt.where(ScrapeCandidate.task_id == task_id)
+    if status:
+        stmt = stmt.where(ScrapeCandidate.review_status == status)
+    else:
+        stmt = stmt.where(ScrapeCandidate.review_status.in_(["pending", "needs_second_review"]))
+
+    rows = (
+        await db.execute(
+            stmt.order_by(
+                ScrapeCandidate.review_status.asc(),
+                ScrapeCandidate.likes.desc(),
+                ScrapeCandidate.collects.desc(),
+                ScrapeCandidate.created_at.desc(),
+            )
+        )
+    ).scalars().all()
+    return ApiResponse(data={
+        "items": [
+            {
+                "id": item.id,
+                "task_id": item.task_id,
+                "title": item.title,
+                "content": item.content,
+                "author": item.author,
+                "source": item.source,
+                "source_keyword": item.source_keyword,
+                "post_url": item.post_url,
+                "publish_date": item.publish_date.isoformat() if item.publish_date else None,
+                "copy_type": item.copy_type,
+                "brand": item.brand,
+                "likes": item.likes,
+                "comments": item.comments,
+                "collects": item.collects,
+                "shares": item.shares,
+                "views": item.views,
+                "review_status": item.review_status,
+                "review_note": item.review_note,
+                "reviewed_at": str(item.reviewed_at) if item.reviewed_at else None,
+                "copywriting_id": item.copywriting_id,
+            }
+            for item in rows
+        ]
+    })
+
+
+@router.post("/review/candidates/{candidate_id}/action")
+async def review_candidate(
+    candidate_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    candidate = await db.get(ScrapeCandidate, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="候选内容不存在")
+    service = ScrapeReviewService(db)
+    action = str(data.get("action") or "").strip()
+    try:
+        item = await service.review_candidate(
+            candidate=candidate,
+            reviewer=current_user,
+            action=action,
+            note=str(data.get("note") or ""),
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return ApiResponse(data={
+        "id": item.id,
+        "review_status": item.review_status,
+        "copywriting_id": item.copywriting_id,
+    })
 
 
 @router.get("/{item_id}")

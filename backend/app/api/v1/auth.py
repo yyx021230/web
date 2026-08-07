@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.deps import get_current_user, require_admin
+from app.core.roles import get_user_roles, set_user_roles
 
 router = APIRouter()
 
@@ -59,12 +60,15 @@ async def register(
 
     user = User(
         username=req.username,
+        display_name=(req.display_name or "").strip() or None,
         email=normalized_email,
         hashed_password=hash_password(req.password),
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    await set_user_roles(db, user, [user.role])
+    await db.commit()
 
     token = create_access_token(subject=str(user.id))
     return TokenResponse(access_token=token)
@@ -76,4 +80,15 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_user),
 ):
     """获取当前用户信息"""
-    return UserResponse.model_validate(current_user)
+    roles = get_user_roles(current_user)
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        display_name=current_user.display_name,
+        email=current_user.email,
+        avatar=current_user.avatar,
+        is_active=current_user.is_active,
+        role=current_user.role,
+        roles=roles,
+        created_at=current_user.created_at,
+    )

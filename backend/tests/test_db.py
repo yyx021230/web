@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.db.base import Base
-from app.models import User, Template, Material, Project, AITask, DifyInstance, DifyWorkflowConfig, DifyRunLog
+from app.models import User, Template, Material, Project, AITask, DifyWorkflowConfig, DifyRunLog
 
 
 # 使用 SQLite 异步引擎进行测试
@@ -110,17 +110,18 @@ async def test_create_ai_task(test_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_create_dify_instance(test_db: AsyncSession):
-    instance = DifyInstance(
-        name="测试 Dify",
+async def test_create_dify_workflow_config(test_db: AsyncSession):
+    workflow = DifyWorkflowConfig(
+        app_name="测试 Dify",
+        app_type="workflow",
         base_url="http://localhost:8080",
         api_key="test-key",
     )
-    test_db.add(instance)
+    test_db.add(workflow)
     await test_db.commit()
-    await test_db.refresh(instance)
-    assert instance.id is not None
-    assert instance.is_default is False
+    await test_db.refresh(workflow)
+    assert workflow.id is not None
+    assert workflow.is_enabled is True
 
 
 @pytest.mark.asyncio

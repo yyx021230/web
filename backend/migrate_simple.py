@@ -44,21 +44,24 @@ async def main():
                 print(f"  Error on {mig.revision}: {e}")
         await conn.commit()
 
-    # Create admin user
-    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed = pwd_ctx.hash("admin123456")
+    admin_password = os.getenv("MIGRATION_ADMIN_PASSWORD", "").strip()
+    if admin_password:
+        admin_username = os.getenv("MIGRATION_ADMIN_USERNAME", "admin").strip() or "admin"
+        admin_email = os.getenv("MIGRATION_ADMIN_EMAIL", "admin@local.com").strip() or "admin@local.com"
+        pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        hashed = pwd_ctx.hash(admin_password)
 
-    async with engine.connect() as conn:
-        await conn.execute(text("""
-            INSERT INTO users (username, email, hashed_password, role, is_active)
-            VALUES ('admin', 'admin@local.com', :pwd, 'admin', true)
-            ON CONFLICT DO NOTHING
-        """), {"pwd": hashed})
-        await conn.commit()
+        async with engine.connect() as conn:
+            await conn.execute(text("""
+                INSERT INTO users (username, email, hashed_password, role, is_active)
+                VALUES (:username, :email, :pwd, 'admin', true)
+                ON CONFLICT DO NOTHING
+            """), {"username": admin_username, "email": admin_email, "pwd": hashed})
+            await conn.commit()
 
-    print("\nAdmin user created:")
-    print("  Username: admin")
-    print("  Password: admin123456")
+        print(f"\nAdmin user created: {admin_username}")
+    else:
+        print("\nAdmin user creation skipped; set MIGRATION_ADMIN_PASSWORD to enable it")
 
     await engine.dispose()
 

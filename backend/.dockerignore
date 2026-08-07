@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.DS_Store
+._*
+*.db
+*.db-*
+*.db-shm
+*.db-wal
+db_backups/
+uploads/
+content_tag_*.csv
+test*.db

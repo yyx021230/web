@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+data
+android/SmsRelay/.gradle
+android/SmsRelay/app/build
+android/SmsRelay/build
+.env
+.DS_Store

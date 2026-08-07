@@ -1,12 +1,16 @@
-from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, func, Float
+from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, func, Float, UniqueConstraint
 from app.db.base import Base
 
 
 class AITask(Base):
     __tablename__ = "ai_tasks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_request_id", name="uq_ai_tasks_user_client_request"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
+    client_request_id = Column(String(64), nullable=True, index=True)
     model_name = Column(String(50), nullable=False)  # seedream, midjourney, etc.
     prompt = Column(Text, nullable=False)
     negative_prompt = Column(Text)

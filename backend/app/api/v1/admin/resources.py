@@ -1,6 +1,8 @@
 """Admin resource management API (projects, AI tasks, copywritings)"""
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
@@ -12,10 +14,83 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.ai_task import AITask
 from app.models.dify_task import DifyTask
+from app.models.dify_run_log import DifyRunLog
 from app.models.dify_workflow import DifyWorkflowConfig
 from app.models.copywriting import Copywriting
+from app.utils.timezone import utc_naive_to_aware_iso
+from app.utils.timezone import cst_now_naive
 
 router = APIRouter()
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return utc_naive_to_aware_iso(value) if value else None
+
+
+def _serialize_ai_task_logs(task: AITask) -> list[dict]:
+    params = task.params or {}
+    upstream_debug = params.get("upstream_debug") if isinstance(params.get("upstream_debug"), dict) else None
+    logs: list[dict] = [
+        {
+            "timestamp": _iso_or_none(task.created_at),
+            "level": "info",
+            "title": "任务已创建",
+            "message": f"模型={task.model_name}，状态={task.status}",
+            "payload": {
+                "prompt": task.prompt,
+                "negative_prompt": task.negative_prompt,
+                "params": task.params or {},
+            },
+        }
+    ]
+    if task.status == "processing":
+        logs.append({
+            "timestamp": _iso_or_none(task.created_at),
+            "level": "info",
+            "title": "任务处理中",
+            "message": "任务已进入处理队列并开始生成",
+            "payload": None,
+        })
+    if task.result_urls:
+        logs.append({
+            "timestamp": _iso_or_none(task.finished_at) or _iso_or_none(task.created_at),
+            "level": "success",
+            "title": "生成完成",
+            "message": f"已生成 {len(task.result_urls)} 张图片",
+            "payload": {"result_urls": task.result_urls},
+        })
+    if task.error:
+        logs.append({
+            "timestamp": _iso_or_none(task.finished_at) or _iso_or_none(task.created_at),
+            "level": "error" if task.status == "failed" else "warn",
+            "title": "任务异常",
+            "message": task.error,
+            "payload": None,
+        })
+    if upstream_debug:
+        response = upstream_debug.get("response") if isinstance(upstream_debug.get("response"), dict) else {}
+        request = upstream_debug.get("request") if isinstance(upstream_debug.get("request"), dict) else {}
+        logs.append({
+            "timestamp": upstream_debug.get("captured_at") or _iso_or_none(task.finished_at) or _iso_or_none(task.created_at),
+            "level": "error" if task.status == "failed" else "warn",
+            "title": "上游响应快照",
+            "message": (
+                f"{request.get('method') or 'POST'} {request.get('url') or '-'} "
+                f"-> HTTP {response.get('status_code') or '-'}"
+            ),
+            "payload": upstream_debug,
+        })
+    return logs
+
+
+async def _resolve_user_id(db: AsyncSession, username: str | None) -> int | None:
+    if not username:
+        return None
+    normalized = username.strip()
+    if not normalized:
+        return None
+    result = await db.execute(select(User.id).where(User.username == normalized))
+    return result.scalar_one_or_none()
 
 
 # --- Dify Workflow Tasks ---
@@ -31,12 +106,13 @@ async def list_workflow_tasks(
     current_user: User = Depends(require_admin),
 ):
     """工作流运行任务列表（管理员）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = []
-    if username:
-        user_result = await db.execute(select(User).where(User.username == username))
-        u = user_result.scalar_one_or_none()
-        if u:
-            conditions.append(DifyTask.user_id == u.id)
+    if filter_user_id is not None:
+        conditions.append(DifyTask.user_id == filter_user_id)
     if status:
         conditions.append(DifyTask.status == status)
     if workflow_id:
@@ -107,6 +183,78 @@ async def delete_workflow_task(
     return ApiResponse(message="已删除")
 
 
+@router.get("/workflow-tasks/{task_id}")
+async def get_workflow_task_detail(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """工作流任务详情（管理员）"""
+    result = await db.execute(
+        select(DifyTask, User.username, DifyWorkflowConfig.app_name)
+        .outerjoin(User, DifyTask.user_id == User.id)
+        .outerjoin(DifyWorkflowConfig, DifyTask.workflow_id == DifyWorkflowConfig.id)
+        .where(DifyTask.id == task_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    task, username, workflow_name = row
+    log_conditions = [
+        DifyRunLog.workflow_id == task.workflow_id,
+        DifyRunLog.user_id == task.user_id,
+    ]
+    if task.task_id:
+        log_conditions.append(DifyRunLog.task_id == task.task_id)
+    else:
+        log_conditions.append(DifyRunLog.started_at >= task.created_at)
+
+    logs_result = await db.execute(
+        select(DifyRunLog)
+        .where(*log_conditions)
+        .order_by(desc(DifyRunLog.started_at))
+        .limit(20)
+    )
+    run_logs = list(logs_result.scalars().all())
+
+    return ApiResponse(data={
+        "id": task.id,
+        "user_id": task.user_id,
+        "username": username,
+        "workflow_id": task.workflow_id,
+        "workflow_name": workflow_name or f"#{task.workflow_id}",
+        "task_id": task.task_id,
+        "status": task.status,
+        "inputs": task.inputs,
+        "outputs": task.outputs,
+        "error": task.error,
+        "progress": task.progress,
+        "elapsed_ms": task.elapsed_ms,
+        "created_at": _iso_or_none(task.created_at),
+        "finished_at": _iso_or_none(task.finished_at),
+        "logs": [
+            {
+                "id": log.id,
+                "timestamp": _iso_or_none(log.started_at),
+                "finished_at": _iso_or_none(log.finished_at),
+                "level": "error" if log.status == "failed" else "success" if log.status == "succeeded" else "info",
+                "title": f"运行日志 #{log.id}",
+                "message": log.error or f"状态={log.status}",
+                "status": log.status,
+                "task_id": log.task_id,
+                "elapsed_ms": log.elapsed_ms,
+                "payload": {
+                    "inputs": log.inputs,
+                    "outputs": log.outputs,
+                    "error": log.error,
+                },
+            }
+            for log in run_logs
+        ],
+    })
+
+
 # --- Projects ---
 
 @router.get("/projects")
@@ -119,9 +267,13 @@ async def list_projects(
     current_user: User = Depends(require_admin),
 ):
     """项目列表（管理员）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = [Project.deleted_at.is_(None)]
-    if username:
-        conditions.append(User.username.ilike(f"%{username.strip()}%"))
+    if filter_user_id is not None:
+        conditions.append(Project.user_id == filter_user_id)
     if status:
         conditions.append(Project.status == status)
 
@@ -222,12 +374,13 @@ async def list_ai_tasks(
     current_user: User = Depends(require_admin),
 ):
     """AI 生图任务列表（管理员）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = []
-    if username:
-        user_result = await db.execute(select(User).where(User.username == username))
-        u = user_result.scalar_one_or_none()
-        if u:
-            conditions.append(AITask.user_id == u.id)
+    if filter_user_id is not None:
+        conditions.append(AITask.user_id == filter_user_id)
     if status:
         conditions.append(AITask.status == status)
     if model_name:
@@ -260,12 +413,14 @@ async def list_ai_tasks(
                 "user_id": t.user_id,
                 "username": uname,
                 "model_name": t.model_name,
+                "provider_name": ((t.params or {}).get("provider") or {}).get("name"),
+                "provider_kind": ((t.params or {}).get("provider") or {}).get("provider_kind"),
                 "prompt": t.prompt[:100] if t.prompt else "",
                 "status": t.status,
                 "result_urls": t.result_urls,
                 "error": t.error,
                 "elapsed_seconds": t.elapsed_seconds,
-                "created_at": str(t.created_at),
+                "created_at": utc_naive_to_aware_iso(t.created_at),
             }
             for t, uname in rows
         ],
@@ -273,6 +428,72 @@ async def list_ai_tasks(
         "page": page,
         "limit": limit,
     })
+
+
+@router.get("/ai-tasks/{task_id}")
+async def get_ai_task_detail(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """AI 生图任务详情（管理员）"""
+    result = await db.execute(
+        select(AITask, User.username)
+        .outerjoin(User, AITask.user_id == User.id)
+        .where(AITask.id == task_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    task, username = row
+    params = task.params or {}
+    provider = params.get("provider") or {}
+    upstream_debug = params.get("upstream_debug") if isinstance(params.get("upstream_debug"), dict) else None
+    return ApiResponse(data={
+        "id": task.id,
+        "user_id": task.user_id,
+        "username": username,
+        "model_name": task.model_name,
+        "provider_name": provider.get("name"),
+        "provider_kind": provider.get("provider_kind"),
+        "prompt": task.prompt,
+        "negative_prompt": task.negative_prompt,
+        "params": task.params or {},
+        "status": task.status,
+        "result_urls": task.result_urls or [],
+        "error": task.error,
+        "upstream_debug": upstream_debug,
+        "elapsed_seconds": task.elapsed_seconds,
+        "created_at": _iso_or_none(task.created_at),
+        "finished_at": _iso_or_none(task.finished_at),
+        "logs": _serialize_ai_task_logs(task),
+    })
+
+
+@router.post("/ai-tasks/{task_id}/fail")
+async def fail_ai_task(
+    task_id: int,
+    req: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """管理员手动终止 AI 生图任务并标记失败"""
+    result = await db.execute(select(AITask).where(AITask.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if task.status in ("completed", "failed"):
+        raise HTTPException(status_code=400, detail=f"任务已{task.status}，无需重复终止")
+
+    reason = ((req or {}).get("reason") or "").strip() or "管理员手动终止任务"
+    task.status = "failed"
+    task.error = reason
+    task.finished_at = cst_now_naive()
+    await db.commit()
+    await db.refresh(task)
+    return ApiResponse(data={"id": task.id, "status": task.status}, message="任务已终止并标记失败")
 
 
 # --- Copywritings ---
@@ -288,12 +509,13 @@ async def list_copywritings(
     current_user: User = Depends(require_admin),
 ):
     """文案列表（管理员）"""
+    filter_user_id = await _resolve_user_id(db, username)
+    if (username or "").strip() and filter_user_id is None:
+        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
     conditions = [Copywriting.deleted_at.is_(None)]
-    if username:
-        user_result = await db.execute(select(User).where(User.username == username))
-        u = user_result.scalar_one_or_none()
-        if u:
-            conditions.append(Copywriting.created_by == u.id)
+    if filter_user_id is not None:
+        conditions.append(Copywriting.created_by == filter_user_id)
     if category:
         conditions.append(Copywriting.category == category)
     if search:

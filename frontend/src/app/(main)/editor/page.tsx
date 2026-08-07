@@ -900,7 +900,7 @@ export default function EditorPage() {
       .finally(() => setLoadingTemplates(false));
 
     setLoadingMaterials(true);
-    editorApi.getMaterials(undefined, 1, 100)
+    editorApi.getMaterials(undefined, 1, 100, true)
       .then(res => setBackendMaterials(res.data?.items ?? []))
       .catch(() => setBackendMaterials([]))
       .finally(() => setLoadingMaterials(false));
@@ -951,14 +951,8 @@ export default function EditorPage() {
               try {
                 const res = await fetch(localUrl, { cache: 'no-store' });
                 if (res.ok) {
-                  let svgText = await res.text();
-                  for (let i = 0; i < colors.length; i++) {
-                    const regex = new RegExp(`\\{\\{colors\\[${i}\\]\\}\\}`, 'g');
-                    svgText = svgText.replace(regex, colors[i]);
-                  }
-                  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-                  el.url = dataUrl;
-                  svgCache[originalUrl] = dataUrl;
+                  el.url = localUrl;
+                  svgCache[originalUrl] = localUrl;
                 }
               } catch { /* ignore */ }
             }
@@ -1039,14 +1033,8 @@ export default function EditorPage() {
                     try {
                       const res = await fetch(localUrl, { cache: 'no-store' });
                       if (res.ok) {
-                        let svgText = await res.text();
-                        for (let i = 0; i < colors.length; i++) {
-                          const regex = new RegExp(`\\{\\{colors\\[${i}\\]\\}\\}`, 'g');
-                          svgText = svgText.replace(regex, colors[i]);
-                        }
-                        const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-                        el.url = dataUrl;
-                        svgCache[originalUrl] = dataUrl;
+                        el.url = localUrl;
+                        svgCache[originalUrl] = localUrl;
                       }
                     } catch { /* ignore */ }
                   }

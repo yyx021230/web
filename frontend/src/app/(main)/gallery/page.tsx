@@ -47,6 +47,7 @@ interface GalleryImage {
 
 type FolderKey = 'drafts' | 'templates' | 'car-models';
 type TemplateSubKey = string; // 用户可自定义文件夹名称
+const MATERIALS_PAGE_SIZE = 50;
 
 function getUserScopedStorageKey(base: string): string {
   try {
@@ -60,6 +61,19 @@ function getUserScopedStorageKey(base: string): string {
     // ignore
   }
   return `${base}:guest`;
+}
+
+function getUserScopedStorageItems(base: string): string[] {
+  const scopedKey = getUserScopedStorageKey(base);
+  try {
+    const scoped = localStorage.getItem(scopedKey);
+    if (scoped) return JSON.parse(scoped) as string[];
+
+    const legacy = localStorage.getItem(base);
+    return legacy ? JSON.parse(legacy) as string[] : [];
+  } catch {
+    return [];
+  }
 }
 
 const FOLDERS: { key: FolderKey; label: string; icon: React.ReactNode }[] = [
@@ -101,14 +115,12 @@ function SearchableSelect({ options, value, onChange, placeholder = '请选择..
     return opt.toLowerCase().includes(q);
   });
 
-  // Limit displayed items
-  const displayItems = filtered.slice(0, 20);
-  const hasMore = filtered.length > 20;
+  const displayItems = filtered;
 
   const displayValue = value || '';
 
   return (
-    <div ref={wrapperRef} className={cn('relative', className)}>
+    <div ref={wrapperRef} className={cn('relative', open && 'z-[90]', className)}>
       <div
         onClick={() => { setOpen(!open); setQuery(''); }}
         className={cn(
@@ -125,7 +137,7 @@ function SearchableSelect({ options, value, onChange, placeholder = '请选择..
       </div>
 
       {open && (
-        <div className="absolute top-full mt-1 z-50 w-56 rounded-lg border bg-card shadow-lg overflow-hidden">
+        <div className="absolute top-full mt-1 z-[100] w-56 overflow-hidden rounded-lg border bg-card shadow-2xl">
           {/* Search input */}
           <div className="p-2 border-b">
             <input
@@ -157,11 +169,6 @@ function SearchableSelect({ options, value, onChange, placeholder = '请选择..
                   {opt}
                 </div>
               ))
-            )}
-            {hasMore && (
-              <div className="px-3 py-1 text-[10px] text-muted-foreground text-center border-t">
-                还有 {filtered.length - 20} 项，请输入关键词搜索
-              </div>
             )}
           </div>
         </div>
@@ -195,57 +202,118 @@ export default function GalleryPage() {
   const [draftPage, setDraftPage] = useState(1);
   const [draftHasMore, setDraftHasMore] = useState(false);
   const [loadingMoreDrafts, setLoadingMoreDrafts] = useState(false);
+  const [loadingAllDrafts, setLoadingAllDrafts] = useState(false);
+  const [draftTotalCount, setDraftTotalCount] = useState(0);
   const [templatePage, setTemplatePage] = useState(1);
   const [templateHasMore, setTemplateHasMore] = useState(false);
   const [loadingMoreTemplates, setLoadingMoreTemplates] = useState(false);
+  const [loadingAllTemplates, setLoadingAllTemplates] = useState(false);
+  const [templateTotalCount, setTemplateTotalCount] = useState(0);
 
   // Storage usage
   const [storageUsedMB, setStorageUsedMB] = useState(0);
   const [storagePercent, setStoragePercent] = useState(0);
   const [storageLoading, setStorageLoading] = useState(true);
 
-  // Fetch all data on mount (first page only, load more on demand)
+  const mapDraftMaterial = useCallback((m: Awaited<ReturnType<typeof editorApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
+    id: m.id,
+    name: m.name,
+    url: m.url || '',
+    width: m.width || 1200,
+    height: m.height || 800,
+    folder: 'drafts',
+    isDesign: m.type === 'design',
+    designJson: m.design_json,
+    aiMeta: m.ai_meta,
+    liked: false,
+    createdAt: m.created_at,
+    format: m.type,
+    tags: m.tags || [],
+  }), []);
+
+  const mapTemplateMaterial = useCallback((m: Awaited<ReturnType<typeof editorApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
+    id: m.id,
+    name: m.name,
+    url: m.url || '',
+    width: m.width || 2048,
+    height: m.height || 2048,
+    folder: 'templates',
+    aiMeta: m.ai_meta,
+    createdAt: m.created_at,
+    tags: m.tags || [],
+  }), []);
+
+  const loadRemainingDraftPages = useCallback(async (startingPage: number, initialItems: GalleryImage[], total: number) => {
+    if (initialItems.length >= total) return;
+    setLoadingAllDrafts(true);
+    try {
+      let page = startingPage;
+      let allItems = [...initialItems];
+      while (allItems.length < total) {
+        const res = await editorApi.getMaterials(undefined, page, MATERIALS_PAGE_SIZE, true, 'ai-template');
+        const nextItems = (res.data.items || []).map(mapDraftMaterial);
+        if (nextItems.length === 0) break;
+        allItems = [...allItems, ...nextItems];
+        setDraftImages(allItems);
+        setDraftPage(page);
+        setDraftHasMore(allItems.length < total && nextItems.length === MATERIALS_PAGE_SIZE);
+        page += 1;
+      }
+    } catch (e) {
+      console.error('Failed to auto-load remaining drafts:', e);
+    } finally {
+      setLoadingAllDrafts(false);
+    }
+  }, [mapDraftMaterial]);
+
+  const loadRemainingTemplatePages = useCallback(async (startingPage: number, initialItems: GalleryImage[], total: number) => {
+    if (initialItems.length >= total) return;
+    setLoadingAllTemplates(true);
+    try {
+      let page = startingPage;
+      let allItems = [...initialItems];
+      while (allItems.length < total) {
+        const res = await editorApi.getMaterials('ai-template', page, MATERIALS_PAGE_SIZE, true);
+        const nextItems = (res.data.items || [])
+          .filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design')
+          .map(mapTemplateMaterial);
+        if (nextItems.length === 0) break;
+        allItems = [...allItems, ...nextItems];
+        setTemplateImages(allItems);
+        setTemplatePage(page);
+        setTemplateHasMore(allItems.length < total && nextItems.length === MATERIALS_PAGE_SIZE);
+        page += 1;
+      }
+    } catch (e) {
+      console.error('Failed to auto-load remaining templates:', e);
+    } finally {
+      setLoadingAllTemplates(false);
+    }
+  }, [mapTemplateMaterial]);
+
+  // Fetch all data on mount, then continue loading remaining pages in background.
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         // Drafts: exclude template category
-        const res = await editorApi.getMaterials(undefined, 1, 50, true, 'ai-template');
-        const drafts: GalleryImage[] = (res.data.items || []).map(m => ({
-          id: m.id,
-          name: m.name,
-          url: m.url || '',
-          width: m.width || 1200,
-          height: m.height || 800,
-          folder: 'drafts' as const,
-          isDesign: m.type === 'design',
-          designJson: m.design_json,
-          aiMeta: m.ai_meta,
-          liked: false,
-          createdAt: m.created_at,
-          format: m.type,
-        }));
+        const res = await editorApi.getMaterials(undefined, 1, MATERIALS_PAGE_SIZE, true, 'ai-template');
+        const drafts = (res.data.items || []).map(mapDraftMaterial);
         setDraftImages(drafts);
-        setDraftHasMore(res.data.items.length === 50);
+        setDraftTotalCount(res.data.total || drafts.length);
+        setDraftHasMore(drafts.length < (res.data.total || drafts.length));
         setDraftPage(1);
+        void loadRemainingDraftPages(2, drafts, res.data.total || drafts.length);
 
         // Templates: first page of user's templates
-        const tRes = await editorApi.getMaterials('ai-template', 1, 50, true);
+        const tRes = await editorApi.getMaterials('ai-template', 1, MATERIALS_PAGE_SIZE, true);
         const tItems = (tRes.data.items || []).filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design');
-        const templates: GalleryImage[] = tItems.map(m => ({
-          id: m.id,
-          name: m.name,
-          url: m.url || '',
-          width: m.width || 2048,
-          height: m.height || 2048,
-          folder: 'templates' as const,
-          aiMeta: m.ai_meta,
-          createdAt: m.created_at,
-          tags: m.tags || [],
-        }));
+        const templates = tItems.map(mapTemplateMaterial);
         setTemplateImages(templates);
-        setTemplateHasMore(tItems.length === 50);
+        setTemplateTotalCount(tRes.data.total || templates.length);
+        setTemplateHasMore(templates.length < (tRes.data.total || templates.length));
         setTemplatePage(1);
+        void loadRemainingTemplatePages(2, templates, tRes.data.total || templates.length);
 
         // Car models: fetch brands and initialize
         const brandsRes = await carModelsApi.getBrands();
@@ -276,23 +344,21 @@ export default function GalleryPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [loadRemainingDraftPages, loadRemainingTemplatePages, mapDraftMaterial, mapTemplateMaterial]);
 
   /* Load more drafts */
   const loadMoreDrafts = async () => {
     setLoadingMoreDrafts(true);
     try {
       const nextPage = draftPage + 1;
-      const res = await editorApi.getMaterials(undefined, nextPage, 50, true, 'ai-template');
-      const newDrafts: GalleryImage[] = (res.data.items || []).map(m => ({
-        id: m.id, name: m.name, url: m.url || '',
-        width: m.width || 1200, height: m.height || 800,
-        folder: 'drafts' as const, isDesign: m.type === 'design',
-        designJson: m.design_json, aiMeta: m.ai_meta,
-        liked: false, createdAt: m.created_at, format: m.type,
-      }));
-      setDraftImages(prev => [...prev, ...newDrafts]);
-      setDraftHasMore(res.data.items.length === 50);
+      const res = await editorApi.getMaterials(undefined, nextPage, MATERIALS_PAGE_SIZE, true, 'ai-template');
+      const newDrafts = (res.data.items || []).map(mapDraftMaterial);
+      setDraftImages(prev => {
+        const merged = [...prev, ...newDrafts];
+        setDraftHasMore(merged.length < (res.data.total || merged.length));
+        return merged;
+      });
+      setDraftTotalCount(res.data.total || draftTotalCount);
       setDraftPage(nextPage);
     } catch (e) { console.error('Failed to load more drafts:', e); }
     finally { setLoadingMoreDrafts(false); }
@@ -303,16 +369,15 @@ export default function GalleryPage() {
     setLoadingMoreTemplates(true);
     try {
       const nextPage = templatePage + 1;
-      const res = await editorApi.getMaterials('ai-template', nextPage, 50, true);
+      const res = await editorApi.getMaterials('ai-template', nextPage, MATERIALS_PAGE_SIZE, true);
       const tItems = (res.data.items || []).filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design');
-      const newTemplates: GalleryImage[] = tItems.map(m => ({
-        id: m.id, name: m.name, url: m.url || '',
-        width: m.width || 2048, height: m.height || 2048,
-        folder: 'templates' as const, aiMeta: m.ai_meta,
-        createdAt: m.created_at, tags: m.tags || [],
-      }));
-      setTemplateImages(prev => [...prev, ...newTemplates]);
-      setTemplateHasMore(tItems.length === 50);
+      const newTemplates = tItems.map(mapTemplateMaterial);
+      setTemplateImages(prev => {
+        const merged = [...prev, ...newTemplates];
+        setTemplateHasMore(merged.length < (res.data.total || merged.length));
+        return merged;
+      });
+      setTemplateTotalCount(res.data.total || templateTotalCount);
       setTemplatePage(nextPage);
     } catch (e) { console.error('Failed to load more templates:', e); }
     finally { setLoadingMoreTemplates(false); }
@@ -391,6 +456,21 @@ export default function GalleryPage() {
   }, [activeFolder, templateSubFolder, draftImages, templateImages, carImages, searchQuery]);
 
   const currentImages = filteredImages();
+  const activeFolderLoadedCount = activeFolder === 'drafts'
+    ? draftImages.length
+    : activeFolder === 'templates'
+      ? templateImages.length
+      : currentImages.length;
+  const activeFolderTotalCount = activeFolder === 'drafts'
+    ? draftTotalCount
+    : activeFolder === 'templates'
+      ? templateTotalCount
+      : currentImages.length;
+  const isAutoLoadingActiveFolder = activeFolder === 'drafts'
+    ? loadingAllDrafts
+    : activeFolder === 'templates'
+      ? loadingAllTemplates
+      : false;
 
   // Selection
   const toggleSelect = (id: string, e?: React.MouseEvent) => {
@@ -408,8 +488,8 @@ export default function GalleryPage() {
   };
 
   const getFolderCount = useCallback((folder: FolderKey) => {
-    if (folder === 'drafts') return draftImages.length;
-    if (folder === 'templates') return templateImages.length;
+    if (folder === 'drafts') return Math.max(draftTotalCount, draftImages.length);
+    if (folder === 'templates') return Math.max(templateTotalCount, templateImages.length);
     // For car models, show total across all brands
     if (carData) {
       let total = 0;
@@ -421,50 +501,40 @@ export default function GalleryPage() {
       return total;
     }
     return carImages.length;
-  }, [draftImages, templateImages, carImages, carData]);
+  }, [draftImages, templateImages, carImages, carData, draftTotalCount, templateTotalCount]);
 
-  const getTemplateSubCount = useCallback((tag: TemplateSubKey) => {
-    if (!tag) return templateImages.length;
-    return templateImages.filter(img => img.tags && img.tags.includes(tag)).length;
+  const getSubCount = useCallback((tag: TemplateSubKey) => {
+    const source = templateImages;
+    if (!tag) return source.length;
+    return source.filter(img => img.tags && img.tags.includes(tag)).length;
   }, [templateImages]);
 
   // 动态计算模版子分类（从 tags 中提取所有非空标签）
   // 用户手动创建的文件夹也合并进来
   // 用户手动创建的文件夹持久化到 localStorage
-  const userFoldersStorageKey = getUserScopedStorageKey('user_created_folders');
-  const [userCreatedFolders, setUserCreatedFolders] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(userFoldersStorageKey);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const templateFoldersStorageKey = getUserScopedStorageKey('user_created_folders:templates');
+  const [templateUserFolders, setTemplateUserFolders] = useState<string[]>(() => getUserScopedStorageItems('user_created_folders:templates'));
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderInput, setNewFolderInput] = useState('');
 
   const templateFolders = useMemo(() => {
     const folderSet = new Set<string>();
-    // 先加入用户手动创建的文件夹
-    for (const f of userCreatedFolders) {
-      folderSet.add(f);
-    }
-    // 再从已有图片的 tags 中提取
+    for (const f of templateUserFolders) folderSet.add(f);
     for (const img of templateImages) {
       for (const tag of (img.tags || [])) {
         if (tag) folderSet.add(tag);
       }
     }
     return Array.from(folderSet).sort();
-  }, [templateImages, userCreatedFolders]);
+  }, [templateImages, templateUserFolders]);
 
   const handleCreateFolder = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (!templateFolders.includes(trimmed)) {
-      setUserCreatedFolders(prev => {
+      setTemplateUserFolders(prev => {
         const next = [...prev, trimmed];
-        localStorage.setItem(userFoldersStorageKey, JSON.stringify(next));
+        localStorage.setItem(templateFoldersStorageKey, JSON.stringify(next));
         return next;
       });
     }
@@ -512,6 +582,7 @@ export default function GalleryPage() {
     try {
       await editorApi.deleteMaterial(id);
       setDraftImages(prev => prev.filter(img => img.id !== id));
+      setDraftTotalCount(prev => Math.max(0, prev - 1));
       setSelectedImages(prev => { const n = new Set(prev); n.delete(String(id)); return n; });
     } catch (err) {
       alert('删除失败: ' + (err instanceof Error ? err.message : '未知错误'));
@@ -525,6 +596,7 @@ export default function GalleryPage() {
     try {
       await editorApi.deleteMaterial(id);
       setTemplateImages(prev => prev.filter(img => img.id !== id));
+      setTemplateTotalCount(prev => Math.max(0, prev - 1));
       setSelectedImages(prev => { const n = new Set(prev); n.delete(String(id)); return n; });
     } catch (err) {
       alert('删除失败: ' + (err instanceof Error ? err.message : '未知错误'));
@@ -581,6 +653,7 @@ export default function GalleryPage() {
       editorApi.deleteMaterial(id).catch(() => {});
     });
     setDraftImages(prev => prev.filter(img => !selectedImages.has(String(img.id))));
+    setDraftTotalCount(prev => Math.max(0, prev - selectedImages.size));
     setSelectedImages(new Set());
   };
 
@@ -607,8 +680,10 @@ export default function GalleryPage() {
         liked: false,
         createdAt: m.created_at,
         format: m.type,
+        tags: m.tags || [],
       };
       setDraftImages(prev => [newImg, ...prev]);
+      setDraftTotalCount(prev => prev + 1);
     } catch (err) {
       alert('上传失败: ' + (err instanceof Error ? err.message : '未知错误'));
     }
@@ -618,6 +693,7 @@ export default function GalleryPage() {
   // Upload handler for templates
   const templateFileInputRef = useRef<HTMLInputElement>(null);
   const [pendingUploadId, setPendingUploadId] = useState<number | null>(null);
+  const [pendingUploadName, setPendingUploadName] = useState('');
 
   const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -641,6 +717,7 @@ export default function GalleryPage() {
         tags: [],
       };
       setTemplateImages(prev => [newImg, ...prev]);
+      setTemplateTotalCount(prev => prev + 1);
     } catch (err) {
       alert('上传失败: ' + (err instanceof Error ? err.message : '未知错误'));
     }
@@ -671,9 +748,6 @@ export default function GalleryPage() {
   const [showEditNewFolderInput, setShowEditNewFolderInput] = useState(false);
   const [editNewFolderInput, setEditNewFolderInput] = useState('');
 
-  /** 上传后选择分类 */
-  const [pendingUploadName, setPendingUploadName] = useState('');
-
   /** 文件夹管理（重命名/删除） */
   const [folderAction, setFolderAction] = useState<{
     type: 'rename' | 'delete';
@@ -687,9 +761,9 @@ export default function GalleryPage() {
     try {
       await editorApi.renameFolder(folderAction.name, folderAction.newName.trim());
       // Update local state + persist
-      setUserCreatedFolders(prev => {
+      setTemplateUserFolders(prev => {
         const next = prev.map(f => f === folderAction.name ? folderAction.newName.trim() : f);
-        localStorage.setItem(userFoldersStorageKey, JSON.stringify(next));
+        localStorage.setItem(templateFoldersStorageKey, JSON.stringify(next));
         return next;
       });
       if (templateSubFolder === folderAction.name) {
@@ -707,14 +781,12 @@ export default function GalleryPage() {
     try {
       await editorApi.deleteFolder(folderAction.name);
       // Update local state + persist
-      setUserCreatedFolders(prev => {
+      setTemplateUserFolders(prev => {
         const next = prev.filter(f => f !== folderAction.name);
-        localStorage.setItem(userFoldersStorageKey, JSON.stringify(next));
+        localStorage.setItem(templateFoldersStorageKey, JSON.stringify(next));
         return next;
       });
-      if (templateSubFolder === folderAction.name) {
-        setTemplateSubFolder('');
-      }
+      if (templateSubFolder === folderAction.name) setTemplateSubFolder('');
       setFolderAction(null);
       alert('✅ 文件夹已删除，图片已移至未分类');
     } catch (err) {
@@ -725,7 +797,7 @@ export default function GalleryPage() {
   const openEditTemplate = (img: GalleryImage) => {
     setEditingTemplate(img);
     setEditName(img.name);
-    const currentTag = img.tags?.find(t => ['大字报', '汽车报价单图', '汽车产品主图'].includes(t)) as TemplateSubKey || '';
+    const currentTag = img.tags?.[0] || '';
     setEditTag(currentTag);
   };
 
@@ -734,19 +806,27 @@ export default function GalleryPage() {
     setSavingEdit(true);
     try {
       // Build new tags list: keep non-template tags, add current template tag
-      const otherTags = (editingTemplate.tags || []).filter(t => !['大字报', '汽车报价单图', '汽车产品主图'].includes(t));
-      const newTags = editTag ? [...otherTags, editTag] : otherTags;
+      const newTags = editTag ? [editTag] : [];
       await editorApi.updateMaterial(Number(editingTemplate.id), {
         name: editName,
         tags: newTags,
       });
       // Update local state
-      setTemplateImages(prev => prev.map(t =>
-        t.id === editingTemplate.id ? { ...t, name: editName, tags: newTags } : t
-      ));
-      setPreviewImg(prev =>
-        prev && String(prev.id) === String(editingTemplate.id) ? { ...prev, name: editName, tags: newTags } : prev
-      );
+      if (editingTemplate.folder === 'templates') {
+        setTemplateImages(prev => prev.map(t =>
+          t.id === editingTemplate.id ? { ...t, name: editName, tags: newTags } : t
+        ));
+      } else {
+        setDraftImages(prev => prev.map(t =>
+          t.id === editingTemplate.id ? { ...t, name: editName } : t
+        ));
+      }
+      setPreviewImg(prev => {
+        if (!prev || String(prev.id) !== String(editingTemplate.id)) return prev;
+        return editingTemplate.folder === 'templates'
+          ? { ...prev, name: editName, tags: newTags }
+          : { ...prev, name: editName };
+      });
       setEditingTemplate(null);
       alert('✅ 已更新');
     } catch (err) {
@@ -756,17 +836,18 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="cloud-page flex h-full gap-4 p-4">
       {/* Hidden file input for upload */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
       {/* Hidden file input for template upload */}
       <input ref={templateFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleTemplateUpload} />
 
       {/* ===== 左侧文件夹 ===== */}
-      <div className="flex w-52 shrink-0 flex-col border-r bg-card">
-        <div className="border-b px-4 py-4">
-          <h2 className="text-sm font-semibold">我的图库</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">管理您的图片素材</p>
+      <div className="cloud-panel flex w-60 shrink-0 flex-col overflow-hidden rounded-[28px]">
+        <div className="border-b border-slate-200/70 px-4 py-4">
+          <div className="text-[11px] font-semibold text-indigo-600">Cloud Studio</div>
+          <h2 className="text-sm font-semibold text-slate-950">我的图库</h2>
+          <p className="text-xs text-slate-500 mt-0.5">管理您的图片素材</p>
         </div>
 
         <nav className="flex-1 overflow-auto py-2">
@@ -779,8 +860,8 @@ export default function GalleryPage() {
                   className={cn(
                     'flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors',
                     isActive
-                      ? 'bg-primary/10 text-primary font-medium'
-                      : 'text-foreground hover:bg-accent'
+                      ? 'bg-indigo-50 text-indigo-600 font-medium'
+                      : 'text-slate-700 hover:bg-white/60'
                   )}
                 >
                   <div className="flex items-center gap-2.5">
@@ -800,14 +881,12 @@ export default function GalleryPage() {
                       onClick={() => setTemplateSubFolder('')}
                       className={cn(
                         'flex w-full items-center justify-between px-3 py-2 text-xs transition-colors rounded-r',
-                        !templateSubFolder
-                          ? 'text-primary font-medium'
-                          : 'text-muted-foreground hover:text-foreground'
+                        !templateSubFolder ? 'text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
                       )}
                     >
                       <span>全部</span>
                       <span className={cn(!templateSubFolder ? 'text-primary/70' : 'text-muted-foreground/60')}>
-                        {getTemplateSubCount('')}
+                        {getSubCount('')}
                       </span>
                     </button>
                     {templateFolders.map(sub => (
@@ -823,10 +902,9 @@ export default function GalleryPage() {
                         >
                           <span className="truncate">{sub}</span>
                           <span className={cn(templateSubFolder === sub ? 'text-primary/70' : 'text-muted-foreground/60')}>
-                            {getTemplateSubCount(sub)}
+                            {getSubCount(sub)}
                           </span>
                         </button>
-                        {/* Hover actions */}
                         <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/folder:flex items-center gap-0.5">
                           <button
                             onClick={(e) => {
@@ -835,7 +913,7 @@ export default function GalleryPage() {
                                 type: 'rename',
                                 name: sub,
                                 newName: sub,
-                                imageCount: getTemplateSubCount(sub),
+                                imageCount: getSubCount(sub),
                               });
                             }}
                             className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-accent"
@@ -850,7 +928,7 @@ export default function GalleryPage() {
                                 type: 'delete',
                                 name: sub,
                                 newName: '',
-                                imageCount: getTemplateSubCount(sub),
+                                imageCount: getSubCount(sub),
                               });
                             }}
                             className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-red-500 hover:bg-accent"
@@ -861,7 +939,6 @@ export default function GalleryPage() {
                         </div>
                       </div>
                     ))}
-                    {/* 新建文件夹输入框 */}
                     {showNewFolderInput ? (
                       <div className="flex items-center gap-1 px-2 py-1">
                         <input
@@ -919,7 +996,7 @@ export default function GalleryPage() {
 
         {/* Storage info */}
         <div className="border-t p-4">
-          <div className="text-xs text-muted-foreground mb-2">存储空间</div>
+          <div className="text-xs text-slate-500 mb-2">存储空间</div>
           {storageLoading ? (
             <div className="h-1.5 rounded-full bg-muted animate-pulse" />
           ) : (
@@ -951,9 +1028,9 @@ export default function GalleryPage() {
       </div>
 
       {/* ===== 主内容 ===== */}
-      <div className="flex flex-1 flex-col">
+      <div className="cloud-panel flex flex-1 flex-col overflow-visible rounded-[28px]">
         {/* 顶部工具栏 */}
-        <div className="flex items-center justify-between border-b bg-card px-4 py-2.5">
+        <div className="cloud-toolbar flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -962,9 +1039,22 @@ export default function GalleryPage() {
                 placeholder="搜索图片..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="rounded-lg border bg-background py-1.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-64"
+                className="cloud-pill w-64 rounded-2xl py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100"
               />
             </div>
+            {(activeFolder === 'drafts' || activeFolder === 'templates') && (
+              <div className="flex items-center gap-2 rounded-xl bg-slate-100/80 px-3 py-2 text-xs text-slate-600">
+                <span>
+                  已加载 {activeFolderLoadedCount} / 共 {Math.max(activeFolderTotalCount, activeFolderLoadedCount)} 张
+                </span>
+                {isAutoLoadingActiveFolder && (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+                    <span className="text-indigo-600">正在继续加载</span>
+                  </>
+                )}
+              </div>
+            )}
             {selectedImages.size > 0 && activeFolder === 'drafts' && (
               <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5">
                 <Check className="h-4 w-4 text-primary" />
@@ -979,24 +1069,16 @@ export default function GalleryPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {activeFolder === 'drafts' && (
+            {(activeFolder === 'drafts' || activeFolder === 'templates') && (
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
-              >
-                <Upload className="h-3.5 w-3.5" />上传
-              </button>
-            )}
-            {activeFolder === 'templates' && (
-              <button
-                onClick={() => templateFileInputRef.current?.click()}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
+                onClick={() => activeFolder === 'drafts' ? fileInputRef.current?.click() : templateFileInputRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-2 text-xs font-medium text-white shadow-lg shadow-indigo-200 transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" />导入图片
               </button>
             )}
             <div className="h-5 w-px bg-border" />
-            <div className="flex items-center rounded-lg border p-0.5">
+            <div className="cloud-pill flex items-center rounded-xl p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 className={cn('flex h-7 w-7 items-center justify-center rounded-md transition-colors', viewMode === 'grid' ? 'bg-accent' : '')}
@@ -1015,7 +1097,7 @@ export default function GalleryPage() {
 
         {/* ===== 车型库筛选栏 ===== */}
         {activeFolder === 'car-models' && (
-          <div className="flex items-center gap-3 border-b bg-card px-4 py-2.5">
+          <div className="cloud-toolbar relative z-20 flex items-center gap-3 px-4 py-2.5">
             <span className="text-xs text-muted-foreground whitespace-nowrap">品牌:</span>
             <SearchableSelect
               options={carBrands}
@@ -1069,17 +1151,9 @@ export default function GalleryPage() {
               <p className="text-xs text-muted-foreground mb-4">
                 {activeFolder === 'drafts' ? '上传或生成第一张图片' : activeFolder === 'templates' ? '从 AI 生图保存或手动导入图片' : '暂无数据'}
               </p>
-              {activeFolder === 'drafts' && (
+              {(activeFolder === 'drafts' || activeFolder === 'templates') && (
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
-                >
-                  <Upload className="h-3.5 w-3.5" />上传图片
-                </button>
-              )}
-              {activeFolder === 'templates' && (
-                <button
-                  onClick={() => templateFileInputRef.current?.click()}
+                  onClick={() => activeFolder === 'drafts' ? fileInputRef.current?.click() : templateFileInputRef.current?.click()}
                   className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary/90 transition-colors"
                 >
                   <Upload className="h-3.5 w-3.5" />导入图片
@@ -1093,7 +1167,7 @@ export default function GalleryPage() {
                 <div
                   key={String(img.id)}
                   className={cn(
-                    'group relative aspect-square cursor-pointer rounded-xl overflow-hidden border transition-all',
+                    'cloud-card cloud-card-hover group relative aspect-square cursor-pointer overflow-hidden rounded-3xl transition-all',
                     selectedImages.has(String(img.id))
                       ? 'ring-2 ring-primary ring-offset-2'
                       : 'hover:shadow-md'
@@ -1102,7 +1176,7 @@ export default function GalleryPage() {
                   {/* 点击：设计稿跳转到编辑器，普通图片打开预览 */}
                   <div
                     onClick={() => {
-                      if (img.isDesign) {
+                      if (img.isDesign && activeFolder !== 'drafts') {
                         openDesignInEditor(img);
                       } else {
                         setPreviewImg(img);
@@ -1128,11 +1202,11 @@ export default function GalleryPage() {
                       <span>设计稿</span>
                     </div>
                   )}
-                  {/* AI 模版标识 */}
-                  {activeFolder === 'templates' && img.aiMeta && (
+                  {/* AI 图片标识 */}
+                  {(activeFolder === 'templates' || activeFolder === 'drafts') && img.aiMeta && (
                     <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-600/90 text-white text-[9px] font-medium">
                       <Sparkles className="h-2.5 w-2.5" />
-                      <span>AI 模版</span>
+                      <span>{activeFolder === 'templates' ? 'AI 模版' : 'AI 草稿'}</span>
                     </div>
                   )}
                   {/* 普通模版标识（手动导入） */}
@@ -1167,9 +1241,9 @@ export default function GalleryPage() {
                     {img.isDesign && (
                       <p className="text-[10px] text-primary/80">点击打开编辑</p>
                     )}
-                    {activeFolder === 'templates' && img.tags && img.tags.length > 0 && (
+                    {(activeFolder === 'templates' || activeFolder === 'drafts') && img.tags && img.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {img.tags.filter(t => ['大字报', '汽车报价单图', '汽车产品主图'].includes(t)).map(tag => (
+                        {img.tags.map(tag => (
                           <span key={tag} className="text-[9px] bg-white/20 text-white px-1 py-0.5 rounded">{tag}</span>
                         ))}
                       </div>
@@ -1219,6 +1293,30 @@ export default function GalleryPage() {
                       </button>
                     </div>
                   )}
+                  {/* 草稿快速操作按钮（普通图片） */}
+                  {activeFolder === 'drafts' && !img.isDesign && (
+                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditTemplate(img);
+                        }}
+                        className="flex items-center gap-1 rounded-md bg-blue-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-blue-600"
+                      >
+                        <Edit3 className="h-2.5 w-2.5" />编辑
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const draftId = Number(img.id);
+                          if (!isNaN(draftId)) deleteDraft(draftId);
+                        }}
+                        className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-red-600"
+                      >
+                        <Trash2 className="h-2.5 w-2.5" />删除
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               </div>
@@ -1228,10 +1326,10 @@ export default function GalleryPage() {
                   <button
                     onClick={loadMoreDrafts}
                     disabled={loadingMoreDrafts}
-                    className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                  className="cloud-pill flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium hover:bg-indigo-50 disabled:opacity-50"
                   >
                     {loadingMoreDrafts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多
+                    加载更多 ({draftImages.length}/{Math.max(draftTotalCount, draftImages.length)})
                   </button>
                 </div>
               )}
@@ -1240,10 +1338,10 @@ export default function GalleryPage() {
                   <button
                     onClick={loadMoreTemplates}
                     disabled={loadingMoreTemplates}
-                    className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                    className="cloud-pill flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium hover:bg-indigo-50 disabled:opacity-50"
                   >
                     {loadingMoreTemplates ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多
+                    加载更多 ({templateImages.length}/{Math.max(templateTotalCount, templateImages.length)})
                   </button>
                 </div>
               )}
@@ -1254,7 +1352,7 @@ export default function GalleryPage() {
               {currentImages.map(img => (
                 <div
                   key={String(img.id)}
-                  className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 hover:bg-accent/50 transition-colors"
+                  className="cloud-card flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors hover:bg-white/90"
                 >
                   {/* Checkbox (only for drafts) */}
                   {activeFolder === 'drafts' && (
@@ -1319,7 +1417,7 @@ export default function GalleryPage() {
                     className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
                   >
                     {loadingMoreDrafts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多
+                    加载更多 ({draftImages.length}/{Math.max(draftTotalCount, draftImages.length)})
                   </button>
                 </div>
               )}
@@ -1331,7 +1429,7 @@ export default function GalleryPage() {
                     className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
                   >
                     {loadingMoreTemplates ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多
+                    加载更多 ({templateImages.length}/{Math.max(templateTotalCount, templateImages.length)})
                   </button>
                 </div>
               )}
@@ -1421,8 +1519,8 @@ export default function GalleryPage() {
                   );
                 })()}
               </div>
-              {/* AI 模版元数据展示 */}
-              {activeFolder === 'templates' && previewImg.aiMeta && (
+              {/* AI 元数据展示 */}
+              {(activeFolder === 'templates' || activeFolder === 'drafts') && previewImg.aiMeta && (
                 <div className="mt-3 pt-3 border-t space-y-2.5">
                   {/* 提示词 */}
                   <div>
@@ -1497,8 +1595,8 @@ export default function GalleryPage() {
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
                     className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
-                {/* 分类标签 */}
-                <div>
+                {/* 分类标签（仅模版库） */}
+                {editingTemplate.folder === 'templates' && <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">分类</label>
                   <div className="flex flex-wrap gap-2">
                     {templateFolders.map(tag => (
@@ -1559,7 +1657,7 @@ export default function GalleryPage() {
                       </button>
                     )}
                   </div>
-                </div>
+                </div>}
                 {/* 操作按钮 */}
                 <div className="flex gap-2 justify-end pt-2">
                   <button onClick={() => setEditingTemplate(null)}
@@ -1607,7 +1705,7 @@ export default function GalleryPage() {
                     <span>{tag}</span>
                   </div>
                   <span className="text-xs text-muted-foreground/60">
-                    {getTemplateSubCount(tag)}
+                    {getSubCount(tag)}
                   </span>
                 </button>
               ))}

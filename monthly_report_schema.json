@@ -1,0 +1,93 @@
+{
+  "monthlyHeadline": "string",
+  "managementSummary": [
+    "string"
+  ],
+  "monthlyCoreMetrics": [
+    {
+      "label": "string",
+      "value": "string",
+      "note": "string"
+    }
+  ],
+  "resourceAllocation": [
+    {
+      "action": "加码 | 继续测 | 暂停 | 改承接 | 淘汰",
+      "target": "string",
+      "reason": "string",
+      "evidence": "string",
+      "nextAction": "string"
+    }
+  ],
+  "winningPatterns": [
+    {
+      "title": "string",
+      "reason": "string",
+      "structure": {
+        "topic": "string",
+        "vehicle": "string",
+        "titleStyle": "string",
+        "bodyStyle": "string",
+        "ctaStyle": "string"
+      },
+      "examples": [
+        "string"
+      ],
+      "nextAction": "string"
+    }
+  ],
+  "losingPatterns": [
+    {
+      "title": "string",
+      "reason": "string",
+      "examples": [
+        "string"
+      ],
+      "decision": "继续小样本测试 | 正式暂停 | 重写后复测 | 降级处理"
+    }
+  ],
+  "representativePosts": [
+    {
+      "type": "best_conversion | best_organic | high_click_low_conversion | worst_spend",
+      "title": "string",
+      "metric": "string",
+      "reason": "string",
+      "lesson": "string"
+    }
+  ],
+  "nextMonthBattlePlan": [
+    {
+      "title": "string",
+      "items": [
+        "string"
+      ],
+      "note": "string"
+    }
+  ],
+  "monthlyToolkit": {
+    "topicDirections": [
+      "string"
+    ],
+    "titleTemplates": [
+      "string"
+    ],
+    "coverTemplates": [
+      "string"
+    ],
+    "openingTemplates": [
+      "string"
+    ],
+    "ctaTemplates": [
+      "string"
+    ],
+    "stopList": [
+      "string"
+    ]
+  },
+  "dataGaps": [
+    {
+      "label": "string",
+      "note": "string"
+    }
+  ]
+}

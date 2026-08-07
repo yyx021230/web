@@ -4,15 +4,7 @@ from __future__ import annotations
 import time
 import json
 import asyncio
-from datetime import datetime, timezone, timedelta
-from zoneinfo import ZoneInfo
-
-# 北京时间 (UTC+8)
-CST = timezone(timedelta(hours=8))
-
-
-def now_cst():
-    return datetime.now(CST).replace(tzinfo=None)
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +23,13 @@ from app.services.dify.dify_client import DifyClient
 from app.models.user import User
 from app.models.dify_workflow import DifyWorkflowConfig
 from app.core.deps import get_current_user, require_admin
+from app.core.roles import has_role
+from app.utils.timezone import cst_now_naive
 from sqlalchemy import select
+
+
+def now_cst():
+    return cst_now_naive()
 
 router = APIRouter()
 
@@ -661,6 +659,8 @@ async def mark_task_viewed(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
+    if task.user_id != current_user.id and not has_role(current_user, "admin"):
+        raise HTTPException(status_code=403, detail="无权操作")
     task.viewed = 1
     await db.commit()
     return ApiResponse(message="已标记")
@@ -673,18 +673,23 @@ async def get_all_logs(
     page: int = Query(default=1, ge=1, description="页码"),
     limit: int = Query(default=20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """获取所有运行日志"""
     from app.models.dify_run_log import DifyRunLog
     from sqlalchemy import desc, func
+    conditions = []
+    if not has_role(current_user, "admin"):
+        conditions.append(DifyRunLog.user_id == current_user.id)
     # Count
-    count_stmt = select(func.count()).select_from(DifyRunLog)
+    count_stmt = select(func.count()).select_from(DifyRunLog).where(*conditions)
     count_result = await db.execute(count_stmt)
     total = count_result.scalar() or 0
 
     # Paginate
     stmt = (
         select(DifyRunLog)
+        .where(*conditions)
         .order_by(desc(DifyRunLog.started_at))
         .offset((page - 1) * limit)
         .limit(limit)
@@ -720,10 +725,28 @@ async def get_logs(
     page: int = Query(default=1, ge=1, description="页码"),
     limit: int = Query(default=20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """获取运行日志"""
-    service = DifyWorkflowService(db)
-    logs, total = await service.get_run_logs(workflow_id, page, limit)
+    from app.models.dify_run_log import DifyRunLog
+    from sqlalchemy import desc, func
+
+    conditions = [DifyRunLog.workflow_id == workflow_id]
+    if not has_role(current_user, "admin"):
+        conditions.append(DifyRunLog.user_id == current_user.id)
+
+    total_result = await db.execute(
+        select(func.count()).select_from(DifyRunLog).where(*conditions)
+    )
+    total = total_result.scalar() or 0
+    result = await db.execute(
+        select(DifyRunLog)
+        .where(*conditions)
+        .order_by(desc(DifyRunLog.started_at))
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+    logs = list(result.scalars().all())
     return ApiResponse(data={
         "items": [
             {

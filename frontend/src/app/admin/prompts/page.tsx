@@ -424,8 +424,8 @@ export default function AdminPromptsPage() {
                       <td className="px-4 py-3 text-gray-500 max-w-[300px] truncate">{ex.chinese_example}</td>
                       <td className="px-4 py-3">
                         {ex.image_url ? (
-                          <div className="w-10 h-10 rounded overflow-hidden border">
-                            <img src={ex.image_url} alt="" className="w-full h-full object-cover"
+                          <div className="h-16 w-12 rounded-lg overflow-hidden border bg-slate-50 bg-[radial-gradient(circle_at_1px_1px,rgba(100,116,139,0.16)_1px,transparent_0)] [background-size:10px_10px]">
+                            <img src={ex.image_url} alt="" className="w-full h-full object-cover object-[center_68%] rounded"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           </div>
                         ) : (
@@ -844,8 +844,8 @@ function ExModal({ example, categories, onClose, onSaved }: {
               </label>
             </div>
             {imageUrl && (
-              <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden border">
-                <img src={imageUrl} alt="" className="w-full h-full object-cover"
+              <div className="mt-2 aspect-[3/4] max-h-80 rounded-xl overflow-hidden border bg-slate-50 bg-[radial-gradient(circle_at_1px_1px,rgba(100,116,139,0.16)_1px,transparent_0)] [background-size:14px_14px] p-2 flex items-center justify-center">
+                <img src={imageUrl} alt="" className="w-full h-full object-cover object-[center_68%] rounded-lg"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
             )}

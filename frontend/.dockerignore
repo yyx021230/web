@@ -1,0 +1,13 @@
+.env
+.env.*
+node_modules
+.next
+out
+.DS_Store
+._*
+*.db
+*.db-*
+*.db-shm
+*.db-wal
+uploads/
+tsconfig.tsbuildinfo
