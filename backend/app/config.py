@@ -114,6 +114,7 @@ class Settings(BaseSettings):
     xhs_enable_sync_task_loop: bool = False
     xhs_enable_account_notes_sync_loop: bool = False
     xhs_homepage_sync_shadow_enabled: bool = False
+    xhs_engagement_detail_sync_shadow_enabled: bool = False
     xhs_report_refresh_shadow_enabled: bool = False
     dify_task_shadow_enabled: bool = False
     scheduler_leader_enabled: bool = True

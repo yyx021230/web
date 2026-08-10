@@ -21,6 +21,7 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - An admin-only report-refresh parity endpoint that independently detects missing, duplicate, orphaned, or altered shadow jobs before any execution cutover.
 - A disabled-by-default Dify task shadow that mirrors user/admin workflow lifecycle evidence without copying input or output content and without issuing a second Dify request.
 - An admin-only Dify parity report with fixed-query missing/duplicate/orphan detection, deletion audit snapshots, and cancellation-versus-late-success drift reporting.
+- Disabled-by-default engagement/detail sync shadows with per-account terminal evidence, low-write detail mirroring, independent parity reporting, and persistent queued-cancellation closure.
 - Database-backed scheduler Leader election with atomic renewal, bounded failover, fail-closed loop cancellation, child-loop supervision, and an admin health endpoint.
 
 ### Not Yet Connected

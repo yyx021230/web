@@ -22,13 +22,45 @@ logger = logging.getLogger(__name__)
 SHADOW_JOB_TYPE = "xhs_homepage_sync"
 SHADOW_WORKER_TYPE = "legacy_shadow"
 SHADOW_SOURCE_TYPE = "xhs_account_sync_run"
-SHADOW_PROGRESS_PHASES = frozenset(
-    {
-        "fetching_account_posts",
-        "account_posts_completed",
-        "account_posts_failed",
-    }
-)
+SHADOW_JOB_TYPES = {
+    "posts": SHADOW_JOB_TYPE,
+    "engagement": "xhs_engagement_sync",
+    "details": "xhs_note_detail_sync",
+}
+SHADOW_IDEMPOTENCY_PREFIXES = {
+    "posts": "legacy-homepage-sync",
+    "engagement": "legacy-engagement-sync",
+    "details": "legacy-note-detail-sync",
+}
+SHADOW_PROGRESS_PHASES_BY_KIND = {
+    "posts": frozenset(
+        {
+            "fetching_account_posts",
+            "account_posts_completed",
+            "account_posts_failed",
+        }
+    ),
+    "engagement": frozenset(
+        {
+            "fetching_account_engagements",
+            "syncing_account_engagements",
+            "account_engagement_completed",
+            "account_engagement_skipped",
+            "account_engagement_failed",
+        }
+    ),
+    # Detail-sync progress is per note and can be very frequent. Terminal mirroring
+    # still captures every account item without adding database writes per note.
+    "details": frozenset(),
+}
+SHADOW_PROGRESS_PHASES = SHADOW_PROGRESS_PHASES_BY_KIND["posts"]
+SECONDARY_SYNC_KINDS = frozenset({"engagement", "details"})
+
+SYNC_KIND_LABELS = {
+    "posts": "homepage sync",
+    "engagement": "engagement sync",
+    "details": "note detail sync",
+}
 
 LEGACY_TERMINAL_STATUS_MAP = {
     "succeeded": JobStatus.SUCCEEDED.value,
@@ -40,9 +72,15 @@ LEGACY_TERMINAL_STATUS_MAP = {
 class HomepageSyncShadowAdapter:
     """Mirror legacy homepage-sync records without executing business work."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        *,
+        sync_kinds: frozenset[str] = frozenset({"posts"}),
+    ):
         self.db = db
         self.jobs = JobService(db)
+        self.sync_kinds = sync_kinds
 
     async def mirror(
         self,
@@ -51,7 +89,7 @@ class HomepageSyncShadowAdapter:
         legacy_job: dict[str, Any] | None = None,
     ) -> Job | None:
         run = await self._load_run(history_run_id)
-        if run is None or run.sync_kind != "posts":
+        if run is None or run.sync_kind not in self.sync_kinds:
             return None
 
         legacy_snapshot = copy.deepcopy(legacy_job or {})
@@ -59,7 +97,11 @@ class HomepageSyncShadowAdapter:
         legacy_items = list(run.items or [])
         await self._mirror_items(
             job,
-            self._items_for_snapshot(legacy_items, legacy_snapshot),
+            self._items_for_snapshot(
+                legacy_items,
+                legacy_snapshot,
+                sync_kind=run.sync_kind,
+            ),
         )
         await self._mirror_status(job, run, legacy_snapshot)
         self._mirror_progress_and_result(job, run, legacy_snapshot)
@@ -102,13 +144,15 @@ class HomepageSyncShadowAdapter:
                 )
             ).scalar_one_or_none()
 
+        job_type = SHADOW_JOB_TYPES[run.sync_kind]
+        idempotency_prefix = SHADOW_IDEMPOTENCY_PREFIXES[run.sync_kind]
         job, _ = await self.jobs.create_job(
-            job_type=SHADOW_JOB_TYPE,
+            job_type=job_type,
             scope_key="internal",
             worker_type=SHADOW_WORKER_TYPE,
             requested_by_user_id=_legacy_optional_int(run.requested_by_user_id),
             parent_job_id=parent_job_id,
-            idempotency_key=f"legacy-homepage-sync:{run.job_id}",
+            idempotency_key=f"{idempotency_prefix}:{run.job_id}",
             source_type=SHADOW_SOURCE_TYPE,
             source_id=str(run.id),
             progress_total=len(run.items or []),
@@ -116,6 +160,7 @@ class HomepageSyncShadowAdapter:
                 "shadow_mode": True,
                 "legacy_run_id": run.id,
                 "legacy_job_id": run.job_id,
+                "legacy_sync_kind": run.sync_kind,
                 "legacy_source": run.source,
                 "legacy_parent_run_id": run.parent_run_id,
                 "request_config": copy.deepcopy(run.request_config or {}),
@@ -151,6 +196,8 @@ class HomepageSyncShadowAdapter:
     def _items_for_snapshot(
         items: list[XHSAccountSyncRunItem],
         legacy_job: dict[str, Any],
+        *,
+        sync_kind: str,
     ) -> list[XHSAccountSyncRunItem]:
         legacy_status = str(legacy_job.get("status") or "queued").strip().lower()
         if legacy_status in LEGACY_TERMINAL_STATUS_MAP:
@@ -161,7 +208,8 @@ class HomepageSyncShadowAdapter:
             return items
         phase = str(progress.get("phase") or "").strip()
         account_name = str(progress.get("account_name") or "").strip()
-        if phase not in SHADOW_PROGRESS_PHASES or not account_name:
+        progress_phases = SHADOW_PROGRESS_PHASES_BY_KIND.get(sync_kind, frozenset())
+        if phase not in progress_phases or not account_name:
             return items
 
         # Legacy history updates the first exact-name match, so mirror that same row.
@@ -212,6 +260,7 @@ class HomepageSyncShadowAdapter:
         legacy_job: dict[str, Any],
     ) -> None:
         legacy_status = str(legacy_job.get("status") or run.status or "queued").lower()
+        sync_label = SYNC_KIND_LABELS.get(run.sync_kind, "account sync")
         cancel_requested = bool(
             legacy_job.get("cancel_requested")
         ) or legacy_status in {
@@ -223,7 +272,7 @@ class HomepageSyncShadowAdapter:
                 job,
                 actor_type="legacy_shadow",
                 actor_id=str(run.id),
-                message="Legacy homepage sync requested cancellation",
+                message=f"Legacy {sync_label} requested cancellation",
             )
 
         if legacy_status in {"running", "cancelling"}:
@@ -241,7 +290,7 @@ class HomepageSyncShadowAdapter:
             await self.jobs.transition(
                 job,
                 target_status,
-                message="Legacy homepage sync cancelled",
+                message=f"Legacy {sync_label} cancelled",
                 actor_type="legacy_shadow",
                 actor_id=str(run.id),
                 now=_legacy_datetime_to_utc(run.finished_at) or utc_now_naive(),
@@ -253,7 +302,7 @@ class HomepageSyncShadowAdapter:
             job,
             target_status,
             message=_legacy_text(run.message)
-            or f"Legacy homepage sync {legacy_status}",
+            or f"Legacy {sync_label} {legacy_status}",
             error_code="legacy_sync_failed"
             if target_status == JobStatus.FAILED.value
             else None,
@@ -273,11 +322,12 @@ class HomepageSyncShadowAdapter:
         )
 
     async def _ensure_running(self, job: Job, run: XHSAccountSyncRun) -> None:
+        sync_label = SYNC_KIND_LABELS.get(run.sync_kind, "account sync")
         if job.status == JobStatus.QUEUED.value:
             await self.jobs.transition(
                 job,
                 JobStatus.LEASED,
-                message="Legacy homepage sync accepted",
+                message=f"Legacy {sync_label} accepted",
                 actor_type="legacy_shadow",
                 actor_id=str(run.id),
                 now=_legacy_datetime_to_utc(run.started_at) or utc_now_naive(),
@@ -286,7 +336,7 @@ class HomepageSyncShadowAdapter:
             await self.jobs.transition(
                 job,
                 JobStatus.RUNNING,
-                message="Legacy homepage sync started",
+                message=f"Legacy {sync_label} started",
                 actor_type="legacy_shadow",
                 actor_id=str(run.id),
                 now=_legacy_datetime_to_utc(run.started_at) or utc_now_naive(),
@@ -327,6 +377,7 @@ class HomepageSyncShadowAdapter:
             "shadow_mode": True,
             "legacy_run_id": run.id,
             "legacy_job_id": run.job_id,
+            "legacy_sync_kind": run.sync_kind,
             "legacy_status": legacy_status,
             "history_status": run.status,
             "total_accounts": len(items),
@@ -409,6 +460,35 @@ async def mirror_homepage_sync_shadow_safely(
     except Exception:
         logger.exception(
             "homepage sync shadow mirror failed: history_run_id=%s",
+            history_run_id,
+        )
+        return None
+
+
+async def mirror_account_data_sync_shadow_safely(
+    history_run_id: int | None,
+    *,
+    legacy_job: dict[str, Any] | None = None,
+) -> int | None:
+    """Mirror engagement/detail sync without adding another business execution."""
+
+    if not settings.xhs_engagement_detail_sync_shadow_enabled or not history_run_id:
+        return None
+    legacy_snapshot = copy.deepcopy(legacy_job or {})
+    try:
+        async with async_session() as db:
+            job = await HomepageSyncShadowAdapter(
+                db,
+                sync_kinds=SECONDARY_SYNC_KINDS,
+            ).mirror(
+                history_run_id,
+                legacy_job=legacy_snapshot,
+            )
+            await db.commit()
+            return job.id if job is not None else None
+    except Exception:
+        logger.exception(
+            "account data sync shadow mirror failed: history_run_id=%s",
             history_run_id,
         )
         return None

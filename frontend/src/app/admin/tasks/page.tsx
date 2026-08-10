@@ -30,6 +30,10 @@ const DURABLE_STATUS_LABELS: Record<string, string> = {
 const DURABLE_JOB_LABELS: Record<string, string> = {
   ai_image_generation: 'AI 生图',
   xhs_homepage_sync: '主页帖子同步',
+  xhs_engagement_sync: '账号互动同步',
+  xhs_note_detail_sync: '帖子详情同步',
+  xhs_report_refresh: '投流报表刷新',
+  dify_workflow: '工作流执行',
   report_refresh: '报表刷新',
 };
 

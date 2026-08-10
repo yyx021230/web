@@ -54,7 +54,8 @@ from app.services.xhs_ad_dashboard_service import XHSAdDashboardService
 from app.services.vehicle_catalog_service import VehicleCatalogService
 from app.services.xhs_profile_stat_service import XHSProfileStatService
 from app.services.xhs_homepage_sync_shadow import (
-    SHADOW_PROGRESS_PHASES,
+    SHADOW_PROGRESS_PHASES_BY_KIND,
+    mirror_account_data_sync_shadow_safely,
     mirror_homepage_sync_shadow_safely,
 )
 from app.services.xhs_report_refresh_shadow import (
@@ -521,7 +522,28 @@ async def _create_sync_history_run(
     job["history_run_id"] = run.id
     if sync_kind == "posts":
         await mirror_homepage_sync_shadow_safely(run.id, legacy_job=job)
+    elif sync_kind in {"engagement", "details"}:
+        await mirror_account_data_sync_shadow_safely(run.id, legacy_job=job)
     return run
+
+
+async def _mirror_account_sync_shadow_safely(
+    history_run_id: int | None,
+    *,
+    legacy_job: dict,
+) -> int | None:
+    job_type = str(legacy_job.get("job_type") or "")
+    if job_type == "account_notes_sync":
+        return await mirror_homepage_sync_shadow_safely(
+            history_run_id,
+            legacy_job=legacy_job,
+        )
+    if job_type in {"account_note_engagement_sync", "account_note_details_sync"}:
+        return await mirror_account_data_sync_shadow_safely(
+            history_run_id,
+            legacy_job=legacy_job,
+        )
+    return None
 
 
 async def _update_sync_history_from_progress(history_run_id: int | None, payload: dict) -> None:
@@ -657,9 +679,14 @@ async def _finish_sync_history_run(
         items = list((await session.execute(select(XHSAccountSyncRunItem).where(XHSAccountSyncRunItem.run_id == history_run_id))).scalars().all())
         for item in items:
             if item.status in {"queued", "running"}:
-                item.status = "failed"
-                item.error = error or "任务未返回该账号的完成回执，请重新运行"
-                item.message = "未确认完成"
+                if status == "cancelled":
+                    item.status = "cancelled"
+                    item.error = None
+                    item.message = message or "任务已中止"
+                else:
+                    item.status = "failed"
+                    item.error = error or "任务未返回该账号的完成回执，请重新运行"
+                    item.message = "未确认完成"
                 item.finished_at = now
         await session.commit()
 
@@ -838,12 +865,11 @@ async def _run_account_note_sync_job(
     target_note_ids: str | None = None,
 ) -> None:
     job = XHS_BACKGROUND_JOBS[job_id]
-    mirror_homepage_shadow = not details and not engagement_only
+    sync_kind = "details" if details else "engagement" if engagement_only else "posts"
     if job.get("cancel_requested"):
         _finish_sync_job(job, status="cancelled", message="任务已中止", details=details)
         await _finish_sync_history_run(history_run_id, status="cancelled", message="任务已中止")
-        if mirror_homepage_shadow:
-            await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=job)
+        await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
         XHS_BACKGROUND_JOB_TASKS.pop(job_id, None)
         return
     job["status"] = "running"
@@ -861,8 +887,7 @@ async def _run_account_note_sync_job(
         total=0,
         percent=0,
     )
-    if mirror_homepage_shadow:
-        await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=job)
+    await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
     try:
         async def report_progress(payload: dict) -> None:
             current_job = XHS_BACKGROUND_JOBS.get(job_id)
@@ -870,8 +895,11 @@ async def _run_account_note_sync_job(
                 return
             _update_job_progress(current_job, **payload)
             await _update_sync_history_from_progress(history_run_id, payload)
-            if mirror_homepage_shadow and str(payload.get("phase") or "") in SHADOW_PROGRESS_PHASES:
-                await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=current_job)
+            if str(payload.get("phase") or "") in SHADOW_PROGRESS_PHASES_BY_KIND[sync_kind]:
+                await _mirror_account_sync_shadow_safely(
+                    history_run_id,
+                    legacy_job=current_job,
+                )
 
         async with async_session() as session:
             user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
@@ -940,13 +968,11 @@ async def _run_account_note_sync_job(
             metric_synced_notes=int(result.get("metric_synced_notes") or 0) if isinstance(result, dict) else 0,
         )
         await _finish_sync_history_run(history_run_id, status="succeeded", message=job["message"])
-        if mirror_homepage_shadow:
-            await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=job)
+        await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
     except SyncJobCancelled as exc:
         _finish_sync_job(job, status="cancelled", message=str(exc), details=details)
         await _finish_sync_history_run(history_run_id, status="cancelled", message=str(exc))
-        if mirror_homepage_shadow:
-            await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=job)
+        await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
     except Exception as exc:
         logger.exception("账号帖子同步后台任务失败: job_id=%s details=%s", job_id, details)
         job["status"] = "failed"
@@ -956,8 +982,7 @@ async def _run_account_note_sync_job(
         job["finished_at"] = _now_iso()
         _update_job_progress(job, phase="failed", detail=str(exc))
         await _finish_sync_history_run(history_run_id, status="failed", message=str(exc), error=str(exc))
-        if mirror_homepage_shadow:
-            await mirror_homepage_sync_shadow_safely(history_run_id, legacy_job=job)
+        await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
     finally:
         XHS_BACKGROUND_JOB_TASKS.pop(job_id, None)
 
@@ -2300,13 +2325,24 @@ async def cancel_account_note_sync_job(
         task = XHS_BACKGROUND_JOB_TASKS.pop(job_id, None)
         if task is not None:
             task.cancel()
-        await mirror_homepage_sync_shadow_safely(job.get("history_run_id"), legacy_job=job)
+        await _finish_sync_history_run(
+            job.get("history_run_id"),
+            status="cancelled",
+            message="任务已中止，未开始的任务已取消",
+        )
+        await _mirror_account_sync_shadow_safely(
+            job.get("history_run_id"),
+            legacy_job=job,
+        )
         return ApiResponse(data=job, message="同步任务已中止")
 
     job["status"] = "cancelling"
     job["message"] = "正在中止任务，已完成的数据会保留"
     _update_job_progress(job, phase="cancelling", detail=job["message"])
-    await mirror_homepage_sync_shadow_safely(job.get("history_run_id"), legacy_job=job)
+    await _mirror_account_sync_shadow_safely(
+        job.get("history_run_id"),
+        legacy_job=job,
+    )
     return ApiResponse(data=job, message="已发送中止请求")
 
 

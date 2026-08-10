@@ -17,7 +17,7 @@ from app.models.xhs_account_sync_run import (
 )
 from app.services.xhs_homepage_sync_shadow import (
     LEGACY_TERMINAL_STATUS_MAP,
-    SHADOW_JOB_TYPE,
+    SHADOW_JOB_TYPES,
     SHADOW_SOURCE_TYPE,
     SHADOW_WORKER_TYPE,
 )
@@ -40,13 +40,30 @@ MANUAL_MIGRATION_CHECKS = (
     "确认开启影子记录后，主页同步耗时和数据库负载没有明显增加",
     "确认失败账号重跑与取消任务的操作结果符合预期",
 )
+MANUAL_MIGRATION_CHECKS_BY_KIND = {
+    "posts": MANUAL_MIGRATION_CHECKS,
+    "engagement": (
+        "确认旧执行器是唯一业务执行方，没有重复抓取账号互动数据",
+        "确认开启影子记录后，互动同步耗时和数据库负载没有明显增加",
+        "确认失败账号重跑与取消任务的操作结果符合预期",
+    ),
+    "details": (
+        "确认旧执行器是唯一业务执行方，没有重复抓取帖子详情",
+        "确认影子记录只在批次边界落库，没有按每条帖子增加高频写入",
+        "确认失败帖子重跑与取消任务的操作结果符合预期",
+    ),
+}
 
 
 class HomepageSyncParityService:
-    """Independently compare legacy homepage-sync history with shadow jobs."""
+    """Independently compare legacy account-sync history with shadow jobs."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, *, sync_kind: str = "posts"):
+        if sync_kind not in SHADOW_JOB_TYPES:
+            raise ValueError(f"unsupported sync_kind: {sync_kind}")
         self.db = db
+        self.sync_kind = sync_kind
+        self.shadow_job_type = SHADOW_JOB_TYPES[sync_kind]
 
     async def build_report(
         self,
@@ -75,7 +92,7 @@ class HomepageSyncParityService:
             raise ValueError("finished_from must not be later than finished_to")
 
         legacy_filters = [
-            XHSAccountSyncRun.sync_kind == "posts",
+            XHSAccountSyncRun.sync_kind == self.sync_kind,
             XHSAccountSyncRun.status.in_(LEGACY_TERMINAL_STATUS_MAP.keys()),
         ]
         if normalized_from is not None:
@@ -130,7 +147,7 @@ class HomepageSyncParityService:
                 (
                     await self.db.execute(
                         select(Job).where(
-                            Job.job_type == SHADOW_JOB_TYPE,
+                            Job.job_type == self.shadow_job_type,
                             Job.worker_type == SHADOW_WORKER_TYPE,
                             Job.source_type == SHADOW_SOURCE_TYPE,
                             Job.source_id.in_([str(run_id) for run_id in run_ids]),
@@ -259,6 +276,7 @@ class HomepageSyncParityService:
             "job_id": job.public_id if job is not None else None,
             "legacy_run_id": int(legacy_run.id),
             "legacy_job_id": legacy_run.job_id,
+            "sync_kind": legacy_run.sync_kind,
             "source": legacy_run.source,
             "job_status": job.status if job is not None else None,
             "legacy_status": legacy_run.status,
@@ -290,7 +308,7 @@ class HomepageSyncParityService:
             )
         )
         filters = [
-            Job.job_type == SHADOW_JOB_TYPE,
+            Job.job_type == self.shadow_job_type,
             Job.worker_type == SHADOW_WORKER_TYPE,
             Job.source_type == SHADOW_SOURCE_TYPE,
             Job.status.in_(TERMINAL_SHADOW_STATUSES),
@@ -611,7 +629,12 @@ class HomepageSyncParityService:
         else:
             decision = "manual_validation_required"
         return {
-            "feature_enabled": settings.xhs_homepage_sync_shadow_enabled,
+            "feature_enabled": (
+                settings.xhs_homepage_sync_shadow_enabled
+                if self.sync_kind == "posts"
+                else settings.xhs_engagement_detail_sync_shadow_enabled
+            ),
+            "sync_kind": self.sync_kind,
             "scope": {
                 "finished_from": utc_naive_to_aware_iso(finished_from),
                 "finished_to": utc_naive_to_aware_iso(finished_to),
@@ -637,7 +660,9 @@ class HomepageSyncParityService:
                 "decision": decision,
                 "automated_checks_passed": automated_checks_passed,
                 "execution_cutover_allowed": False,
-                "manual_checks_required": list(MANUAL_MIGRATION_CHECKS),
+                "manual_checks_required": list(
+                    MANUAL_MIGRATION_CHECKS_BY_KIND[self.sync_kind]
+                ),
             },
             "samples": samples,
         }
