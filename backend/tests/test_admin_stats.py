@@ -86,7 +86,9 @@ async def test_username_filter_applies_to_overview_active_rankings_and_usage(cli
     await _seed_base_users()
     now_cst = _now_cst_naive()
     day_start = now_cst.replace(hour=0, minute=0, second=0, microsecond=0)
-    ai_time_today_utc = _cst_to_ai_utc_naive(day_start + timedelta(hours=10))
+    # Keep this fixture in the past at every time of day. A fixed 10:00 value
+    # makes the test fail before 10:00 because the API correctly excludes future tasks.
+    ai_time_today_utc = _cst_to_ai_utc_naive(day_start)
 
     async with async_session() as db:
         wf = DifyWorkflowConfig(api_key="k", base_url="http://x", app_name="WF-1", app_type="workflow", created_by=1)
