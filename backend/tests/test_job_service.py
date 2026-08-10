@@ -971,6 +971,441 @@ async def test_start_and_heartbeat_changes_follow_caller_transaction(client):
 
 
 @pytest.mark.asyncio
+async def test_expired_lease_retries_then_requeues_and_can_be_claimed_again(client):
+    claim_time = utc_now_naive()
+    recovery_time = claim_time + timedelta(seconds=10)
+    retry_time = recovery_time + timedelta(seconds=30)
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="recover_and_retry", max_retries=2)
+        claimed = await service.claim_next_job(
+            worker_id="expired-worker",
+            job_types=["recover_and_retry"],
+            lease_seconds=10,
+            now=claim_time,
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        first_attempt_id = claimed[1].id
+
+    async with async_session() as db:
+        service = JobService(db)
+        recovered = await service.recover_expired_leases(
+            now=recovery_time, retry_delay_seconds=30
+        )
+        await db.commit()
+
+        assert len(recovered) == 1
+        assert recovered[0].job_id == job_id
+        assert recovered[0].attempt_id == first_attempt_id
+        assert recovered[0].previous_status == JobStatus.LEASED.value
+        assert recovered[0].target_status == JobStatus.RETRY_WAIT.value
+        assert recovered[0].retry_count == 1
+        assert recovered[0].max_retries == 2
+        assert recovered[0].retry_at == retry_time
+
+    async with async_session() as db:
+        stored_job = await db.get(Job, job_id)
+        stored_attempt = await db.get(JobAttempt, first_attempt_id)
+        assert stored_job is not None
+        assert stored_attempt is not None
+        assert stored_job.status == JobStatus.RETRY_WAIT.value
+        assert stored_job.retry_count == 1
+        assert stored_job.run_after == retry_time
+        assert stored_job.lease_owner is None
+        assert stored_job.lease_expires_at is None
+        assert stored_job.heartbeat_at is None
+        assert stored_attempt.status == JobStatus.FAILED.value
+        assert stored_attempt.finished_at == recovery_time
+        assert stored_attempt.error_code == "lease_expired"
+        assert stored_attempt.lease_expires_at == recovery_time
+
+        recovery_event = (
+            await db.execute(
+                select(JobEvent).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.from_status == JobStatus.LEASED.value,
+                    JobEvent.to_status == JobStatus.RETRY_WAIT.value,
+                )
+            )
+        ).scalar_one()
+        assert recovery_event.level == "warning"
+        assert recovery_event.details["attempt_id"] == first_attempt_id
+        assert recovery_event.details["retry_count"] == 1
+        assert recovery_event.details["retry_at"] == retry_time.isoformat()
+
+        assert (
+            await JobService(db).requeue_due_retries(
+                now=retry_time - timedelta(microseconds=1)
+            )
+            == []
+        )
+
+    async with async_session() as db:
+        released = await JobService(db).requeue_due_retries(now=retry_time)
+        await db.commit()
+        assert len(released) == 1
+        assert released[0].job_id == job_id
+        assert released[0].target_status == JobStatus.QUEUED.value
+
+    async with async_session() as db:
+        reclaimed = await JobService(db).claim_next_job(
+            worker_id="replacement-worker",
+            job_types=["recover_and_retry"],
+            now=retry_time,
+        )
+        await db.commit()
+        assert reclaimed is not None
+        assert reclaimed[0].id == job_id
+        assert reclaimed[1].attempt_number == 2
+        assert reclaimed[0].error_code is None
+        assert reclaimed[0].user_message is None
+        assert reclaimed[0].internal_error is None
+
+        first_attempt = await db.get(JobAttempt, first_attempt_id)
+        assert first_attempt is not None
+        assert first_attempt.error_code == "lease_expired"
+
+
+@pytest.mark.asyncio
+async def test_expired_running_lease_preserves_previous_status_in_event(client):
+    claim_time = utc_now_naive()
+    recovery_time = claim_time + timedelta(seconds=15)
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="recover_running", max_retries=1)
+        claimed = await service.claim_next_job(
+            worker_id="running-worker", lease_seconds=15, now=claim_time
+        )
+        assert claimed is not None
+        await service.start_claimed_job(
+            job_id=job.id,
+            attempt_id=claimed[1].id,
+            worker_id="running-worker",
+            now=claim_time + timedelta(seconds=1),
+        )
+        await db.commit()
+        job_id = job.id
+
+    async with async_session() as db:
+        recovered = await JobService(db).recover_expired_leases(
+            now=recovery_time, retry_delay_seconds=5
+        )
+        await db.commit()
+        assert len(recovered) == 1
+        assert recovered[0].previous_status == JobStatus.RUNNING.value
+        assert recovered[0].target_status == JobStatus.RETRY_WAIT.value
+
+        event = (
+            await db.execute(
+                select(JobEvent).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.from_status == JobStatus.RUNNING.value,
+                    JobEvent.to_status == JobStatus.RETRY_WAIT.value,
+                )
+            )
+        ).scalar_one()
+        assert event.details["worker_id"] == "running-worker"
+
+
+@pytest.mark.asyncio
+async def test_expired_lease_cancellation_wins_and_retry_limit_dead_letters(client):
+    claim_time = utc_now_naive()
+    recovery_time = claim_time + timedelta(seconds=5)
+    async with async_session() as db:
+        service = JobService(db)
+        cancelled_job, _ = await service.create_job(
+            job_type="expired_cancel", max_retries=3
+        )
+        cancelled_claim = await service.claim_next_job(
+            worker_id="cancel-worker",
+            job_types=["expired_cancel"],
+            lease_seconds=5,
+            now=claim_time,
+        )
+        assert cancelled_claim is not None
+        await service.request_cancel(cancelled_job, actor_id="operator-1")
+
+        dead_job, _ = await service.create_job(job_type="expired_dead", max_retries=0)
+        dead_claim = await service.claim_next_job(
+            worker_id="dead-worker",
+            job_types=["expired_dead"],
+            lease_seconds=5,
+            now=claim_time,
+        )
+        assert dead_claim is not None
+        await db.commit()
+        cancelled_id = cancelled_job.id
+        cancelled_attempt_id = cancelled_claim[1].id
+        dead_id = dead_job.id
+        dead_attempt_id = dead_claim[1].id
+
+    async with async_session() as db:
+        recovered = await JobService(db).recover_expired_leases(
+            now=recovery_time, retry_delay_seconds=10
+        )
+        await db.commit()
+        outcomes = {row.job_id: row for row in recovered}
+        assert outcomes[cancelled_id].target_status == JobStatus.CANCELLED.value
+        assert outcomes[cancelled_id].retry_count == 0
+        assert outcomes[dead_id].target_status == JobStatus.DEAD_LETTER.value
+        assert outcomes[dead_id].retry_count == 1
+
+    async with async_session() as db:
+        cancelled = await db.get(Job, cancelled_id)
+        cancelled_attempt = await db.get(JobAttempt, cancelled_attempt_id)
+        dead = await db.get(Job, dead_id)
+        dead_attempt = await db.get(JobAttempt, dead_attempt_id)
+        assert cancelled is not None and cancelled_attempt is not None
+        assert dead is not None and dead_attempt is not None
+        assert cancelled.status == JobStatus.CANCELLED.value
+        assert cancelled.retry_count == 0
+        assert cancelled.finished_at == recovery_time
+        assert cancelled_attempt.status == JobStatus.CANCELLED.value
+        assert dead.status == JobStatus.DEAD_LETTER.value
+        assert dead.retry_count == 1
+        assert dead.finished_at == recovery_time
+        assert dead.run_after is None
+        assert dead_attempt.status == JobStatus.FAILED.value
+        assert dead_attempt.error_code == "lease_expired"
+
+
+@pytest.mark.asyncio
+async def test_expired_lease_recovery_respects_limit_and_ignores_active_jobs(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        ids: list[int] = []
+        for index, lease_seconds in enumerate((5, 10, 100)):
+            job_type = f"recovery_limit_{index}"
+            job, _ = await service.create_job(job_type=job_type)
+            claimed = await service.claim_next_job(
+                worker_id=f"limit-worker-{index}",
+                job_types=[job_type],
+                lease_seconds=lease_seconds,
+                now=claim_time,
+            )
+            assert claimed is not None
+            ids.append(job.id)
+        await db.commit()
+
+    recovery_time = claim_time + timedelta(seconds=20)
+    async with async_session() as db:
+        first = await JobService(db).recover_expired_leases(limit=1, now=recovery_time)
+        await db.commit()
+        assert [row.job_id for row in first] == [ids[0]]
+
+    async with async_session() as db:
+        second = await JobService(db).recover_expired_leases(
+            limit=10, now=recovery_time
+        )
+        await db.commit()
+        assert [row.job_id for row in second] == [ids[1]]
+        active = await db.get(Job, ids[2])
+        assert active is not None
+        assert active.status == JobStatus.LEASED.value
+        assert active.retry_count == 0
+
+
+@pytest.mark.asyncio
+async def test_concurrent_expired_lease_recovery_runs_exactly_once(client):
+    claim_time = utc_now_naive()
+    recovery_time = claim_time + timedelta(seconds=5)
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="concurrent_recovery", max_retries=2)
+        claimed = await service.claim_next_job(
+            worker_id="crashed-worker", lease_seconds=5, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+
+    async def recover_once():
+        async with async_session() as db:
+            rows = await JobService(db).recover_expired_leases(
+                limit=1, now=recovery_time
+            )
+            await db.commit()
+            return [row.job_id for row in rows]
+
+    results = await asyncio.gather(recover_once(), recover_once())
+    assert sorted(len(rows) for rows in results) == [0, 1]
+    assert [job_id] in results
+
+    async with async_session() as db:
+        stored_job = await db.get(Job, job_id)
+        assert stored_job is not None
+        assert stored_job.retry_count == 1
+        recovery_events = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.to_status == JobStatus.RETRY_WAIT.value,
+                )
+            )
+        ).scalar_one()
+        assert recovery_events == 1
+
+
+@pytest.mark.asyncio
+async def test_concurrent_due_retry_release_runs_exactly_once(client):
+    now = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="concurrent_retry_release")
+        await service.transition(job, JobStatus.LEASED)
+        await service.schedule_retry(job, run_after=now)
+        await db.commit()
+        job_id = job.id
+
+    async def release_once():
+        async with async_session() as db:
+            rows = await JobService(db).requeue_due_retries(limit=1, now=now)
+            await db.commit()
+            return [row.job_id for row in rows]
+
+    results = await asyncio.gather(release_once(), release_once())
+    assert sorted(len(rows) for rows in results) == [0, 1]
+    assert [job_id] in results
+
+    async with async_session() as db:
+        stored_job = await db.get(Job, job_id)
+        assert stored_job is not None
+        assert stored_job.status == JobStatus.QUEUED.value
+        release_events = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.from_status == JobStatus.RETRY_WAIT.value,
+                    JobEvent.to_status == JobStatus.QUEUED.value,
+                )
+            )
+        ).scalar_one()
+        assert release_events == 1
+
+
+@pytest.mark.asyncio
+async def test_retry_wait_cancellation_is_released_before_future_due_time(client):
+    now = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="cancel_retry_wait")
+        await service.transition(job, JobStatus.LEASED)
+        await service.schedule_retry(job, run_after=now + timedelta(hours=1))
+        await service.request_cancel(job, actor_id="operator-2")
+        await db.commit()
+        job_id = job.id
+
+    async with async_session() as db:
+        released = await JobService(db).requeue_due_retries(now=now)
+        await db.commit()
+        assert len(released) == 1
+        assert released[0].job_id == job_id
+        assert released[0].target_status == JobStatus.CANCELLED.value
+
+        stored_job = await db.get(Job, job_id)
+        assert stored_job is not None
+        assert stored_job.status == JobStatus.CANCELLED.value
+        assert stored_job.finished_at == now
+        assert stored_job.run_after is None
+
+
+@pytest.mark.asyncio
+async def test_expired_lease_recovery_follows_caller_transaction(client):
+    claim_time = utc_now_naive()
+    recovery_time = claim_time + timedelta(seconds=5)
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="recovery_rollback")
+        claimed = await service.claim_next_job(
+            worker_id="rollback-recovery-worker",
+            lease_seconds=5,
+            now=claim_time,
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    async with async_session() as db:
+        recovered = await JobService(db).recover_expired_leases(now=recovery_time)
+        assert len(recovered) == 1
+        await db.rollback()
+
+    async with async_session() as db:
+        stored_job = await db.get(Job, job_id)
+        stored_attempt = await db.get(JobAttempt, attempt_id)
+        assert stored_job is not None and stored_attempt is not None
+        assert stored_job.status == JobStatus.LEASED.value
+        assert stored_job.retry_count == 0
+        assert stored_job.lease_owner == "rollback-recovery-worker"
+        assert stored_attempt.status == JobStatus.LEASED.value
+        recovery_events = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.to_status == JobStatus.RETRY_WAIT.value,
+                )
+            )
+        ).scalar_one()
+        assert recovery_events == 0
+
+
+@pytest.mark.asyncio
+async def test_recovery_validates_batch_and_retry_delay(client):
+    async with async_session() as db:
+        service = JobService(db)
+        with pytest.raises(ValueError, match="limit"):
+            await service.recover_expired_leases(limit=0)
+        with pytest.raises(ValueError, match="limit"):
+            await service.requeue_due_retries(limit=1001)
+        with pytest.raises(ValueError, match="retry_delay_seconds"):
+            await service.recover_expired_leases(retry_delay_seconds=-1)
+
+
+def test_recovery_statements_use_skip_locked_only_for_postgresql():
+    now = utc_now_naive()
+    retry_at = now + timedelta(seconds=30)
+    postgres_recovery = str(
+        JobService._build_expired_lease_recovery_statement(
+            recovery_time=now,
+            retry_at=retry_at,
+            dialect_name="postgresql",
+        ).compile(dialect=postgresql.dialect())
+    )
+    sqlite_recovery = str(
+        JobService._build_expired_lease_recovery_statement(
+            recovery_time=now,
+            retry_at=retry_at,
+            dialect_name="sqlite",
+        ).compile(dialect=sqlite.dialect())
+    )
+    postgres_release = str(
+        JobService._build_due_retry_release_statement(
+            release_time=now,
+            dialect_name="postgresql",
+        ).compile(dialect=postgresql.dialect())
+    )
+    sqlite_release = str(
+        JobService._build_due_retry_release_statement(
+            release_time=now,
+            dialect_name="sqlite",
+        ).compile(dialect=sqlite.dialect())
+    )
+
+    assert "FOR UPDATE SKIP LOCKED" in postgres_recovery
+    assert "FOR UPDATE SKIP LOCKED" in postgres_release
+    assert "RETURNING jobs.id" in postgres_recovery
+    assert "RETURNING jobs.id" in postgres_release
+    assert "FOR UPDATE" not in sqlite_recovery
+    assert "FOR UPDATE" not in sqlite_release
+    assert "RETURNING id" in sqlite_recovery
+    assert "RETURNING id" in sqlite_release
+
+
+@pytest.mark.asyncio
 async def test_idempotency_is_atomic_across_concurrent_sessions(client):
     async def create_once():
         async with async_session() as db:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import uuid
 from collections.abc import Collection
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -93,6 +94,24 @@ class JobLeaseLost(JobStateError):
         self.job_id = job_id
         self.attempt_id = attempt_id
         self.worker_id = worker_id
+
+
+@dataclass(frozen=True)
+class LeaseRecoveryResult:
+    job_id: int
+    attempt_id: int
+    previous_status: str
+    target_status: str
+    retry_count: int
+    max_retries: int
+    retry_at: datetime | None
+
+
+@dataclass(frozen=True)
+class RetryReleaseResult:
+    job_id: int
+    target_status: str
+    retry_count: int
 
 
 def normalize_job_status(status: JobStatus | str) -> str:
@@ -392,6 +411,9 @@ class JobService:
                 lease_expires_at=lease_expires_at,
                 heartbeat_at=claim_time,
                 run_after=None,
+                error_code=None,
+                user_message=None,
+                internal_error=None,
             )
             .returning(Job.id)
             .execution_options(synchronize_session=False)
@@ -611,6 +633,341 @@ class JobService:
         if job is None or attempt is None:
             raise RuntimeError("renewed job or attempt could not be loaded")
         return job, attempt
+
+    async def recover_expired_leases(
+        self,
+        *,
+        limit: int = 100,
+        retry_delay_seconds: int = 30,
+        now: datetime | None = None,
+        actor_id: str = "lease-recovery",
+    ) -> list[LeaseRecoveryResult]:
+        """Recover expired worker leases without allowing duplicate recovery."""
+
+        self._validate_batch_limit(limit)
+        if retry_delay_seconds < 0:
+            raise ValueError("retry_delay_seconds must be non-negative")
+        recovery_time = now or utc_now_naive()
+        retry_at = recovery_time + timedelta(seconds=retry_delay_seconds)
+        dialect_name = self._durable_job_dialect_name()
+        recovered: list[LeaseRecoveryResult] = []
+
+        for _ in range(limit):
+            statement = self._build_expired_lease_recovery_statement(
+                recovery_time=recovery_time,
+                retry_at=retry_at,
+                dialect_name=dialect_name,
+            )
+            recovered_id = (await self.db.execute(statement)).scalar_one_or_none()
+            if recovered_id is None:
+                break
+
+            job = await self.db.get(Job, recovered_id)
+            if job is None:
+                raise RuntimeError("recovered job could not be loaded")
+            await self.db.refresh(job)
+
+            lease_owner = job.lease_owner
+            lease_expired_at = job.lease_expires_at
+            attempt = (
+                (
+                    await self.db.execute(
+                        select(JobAttempt)
+                        .where(
+                            JobAttempt.job_id == job.id,
+                            JobAttempt.worker_id == lease_owner,
+                            JobAttempt.status.in_(
+                                [JobStatus.LEASED.value, JobStatus.RUNNING.value]
+                            ),
+                        )
+                        .order_by(JobAttempt.attempt_number.desc())
+                        .limit(1)
+                    )
+                )
+                .scalars()
+                .one_or_none()
+            )
+            if attempt is None:
+                raise RuntimeError(
+                    f"expired job {job.id} has no active attempt for {lease_owner}"
+                )
+
+            previous_status = normalize_job_status(attempt.status)
+            target_status = normalize_job_status(job.status)
+            if target_status not in {
+                JobStatus.RETRY_WAIT.value,
+                JobStatus.DEAD_LETTER.value,
+                JobStatus.CANCELLED.value,
+            }:
+                raise RuntimeError(
+                    f"expired job {job.id} recovered to invalid status {target_status}"
+                )
+
+            cancelled = target_status == JobStatus.CANCELLED.value
+            attempt.status = (
+                JobStatus.CANCELLED.value if cancelled else JobStatus.FAILED.value
+            )
+            attempt.finished_at = recovery_time
+            attempt.error_code = "cancelled" if cancelled else "lease_expired"
+            attempt.user_message = (
+                "Job cancelled after its worker lease expired"
+                if cancelled
+                else "Worker stopped responding before the lease expired"
+            )
+            attempt.internal_error = (
+                f"lease expired at {lease_expired_at.isoformat()}"
+                if lease_expired_at is not None
+                else "lease expiry timestamp missing"
+            )
+
+            if not cancelled:
+                job.error_code = "lease_expired"
+                job.user_message = "Worker stopped responding; task recovery applied"
+                job.internal_error = attempt.internal_error
+            job.lease_owner = None
+            job.lease_expires_at = None
+            job.heartbeat_at = None
+
+            event_message = {
+                JobStatus.RETRY_WAIT.value: "Worker lease expired; retry scheduled",
+                JobStatus.DEAD_LETTER.value: (
+                    "Worker lease expired; retry limit exhausted"
+                ),
+                JobStatus.CANCELLED.value: (
+                    "Cancellation applied after worker lease expired"
+                ),
+            }[target_status]
+            await self._append_event(
+                job=job,
+                event_type="status_changed",
+                from_status=previous_status,
+                to_status=target_status,
+                level=(
+                    "error"
+                    if target_status == JobStatus.DEAD_LETTER.value
+                    else "warning"
+                ),
+                message=event_message,
+                details={
+                    "attempt_id": attempt.id,
+                    "attempt_number": attempt.attempt_number,
+                    "worker_id": lease_owner,
+                    "lease_expired_at": (
+                        lease_expired_at.isoformat()
+                        if lease_expired_at is not None
+                        else None
+                    ),
+                    "retry_count": int(job.retry_count or 0),
+                    "max_retries": int(job.max_retries or 0),
+                    "retry_at": (
+                        job.run_after.isoformat() if job.run_after is not None else None
+                    ),
+                },
+                actor_type="system",
+                actor_id=actor_id,
+                created_at=recovery_time,
+            )
+            await self.db.flush()
+            recovered.append(
+                LeaseRecoveryResult(
+                    job_id=job.id,
+                    attempt_id=attempt.id,
+                    previous_status=previous_status,
+                    target_status=target_status,
+                    retry_count=int(job.retry_count or 0),
+                    max_retries=int(job.max_retries or 0),
+                    retry_at=job.run_after,
+                )
+            )
+
+        return recovered
+
+    @staticmethod
+    def _build_expired_lease_recovery_statement(
+        *,
+        recovery_time: datetime,
+        retry_at: datetime,
+        dialect_name: str,
+    ) -> Update:
+        expired_conditions = [
+            Job.status.in_([JobStatus.LEASED.value, JobStatus.RUNNING.value]),
+            Job.lease_owner.is_not(None),
+            Job.lease_expires_at.is_not(None),
+            Job.lease_expires_at <= recovery_time,
+        ]
+        candidate = (
+            select(Job.id)
+            .where(and_(*expired_conditions))
+            .order_by(Job.lease_expires_at.asc(), Job.id.asc())
+            .limit(1)
+        )
+        if dialect_name == "postgresql":
+            candidate = candidate.with_for_update(skip_locked=True)
+        elif dialect_name != "sqlite":
+            raise RuntimeError(
+                f"durable jobs do not support database dialect: {dialect_name or 'unknown'}"
+            )
+
+        cancelled = Job.cancel_requested.is_(True)
+        retry_exhausted = Job.retry_count >= Job.max_retries
+        target_status = case(
+            (cancelled, JobStatus.CANCELLED.value),
+            (retry_exhausted, JobStatus.DEAD_LETTER.value),
+            else_=JobStatus.RETRY_WAIT.value,
+        )
+        return (
+            update(Job)
+            .where(
+                Job.id == candidate.scalar_subquery(),
+                and_(*expired_conditions),
+            )
+            .values(
+                status=target_status,
+                retry_count=case(
+                    (cancelled, Job.retry_count),
+                    else_=Job.retry_count + 1,
+                ),
+                run_after=case(
+                    (cancelled, None),
+                    (retry_exhausted, None),
+                    else_=retry_at,
+                ),
+                finished_at=case(
+                    (or_(cancelled, retry_exhausted), recovery_time),
+                    else_=None,
+                ),
+            )
+            .returning(Job.id)
+            .execution_options(synchronize_session=False)
+        )
+
+    async def requeue_due_retries(
+        self,
+        *,
+        limit: int = 100,
+        now: datetime | None = None,
+        actor_id: str = "retry-release",
+    ) -> list[RetryReleaseResult]:
+        """Move due retry waits back to queued, or apply pending cancellation."""
+
+        self._validate_batch_limit(limit)
+        release_time = now or utc_now_naive()
+        dialect_name = self._durable_job_dialect_name()
+        released: list[RetryReleaseResult] = []
+
+        for _ in range(limit):
+            statement = self._build_due_retry_release_statement(
+                release_time=release_time,
+                dialect_name=dialect_name,
+            )
+            released_id = (await self.db.execute(statement)).scalar_one_or_none()
+            if released_id is None:
+                break
+
+            job = await self.db.get(Job, released_id)
+            if job is None:
+                raise RuntimeError("released retry job could not be loaded")
+            await self.db.refresh(job)
+            target_status = normalize_job_status(job.status)
+            if target_status not in {
+                JobStatus.QUEUED.value,
+                JobStatus.CANCELLED.value,
+            }:
+                raise RuntimeError(
+                    f"retry job {job.id} released to invalid status {target_status}"
+                )
+
+            scheduled_for = job.run_after
+            job.run_after = None
+            if target_status == JobStatus.CANCELLED.value:
+                job.finished_at = release_time
+            await self._append_event(
+                job=job,
+                event_type="status_changed",
+                from_status=JobStatus.RETRY_WAIT.value,
+                to_status=target_status,
+                level=(
+                    "warning" if target_status == JobStatus.CANCELLED.value else "info"
+                ),
+                message=(
+                    "Cancellation applied while waiting to retry"
+                    if target_status == JobStatus.CANCELLED.value
+                    else "Retry is ready to run"
+                ),
+                details={
+                    "retry_count": int(job.retry_count or 0),
+                    "max_retries": int(job.max_retries or 0),
+                    "scheduled_for": (
+                        scheduled_for.isoformat() if scheduled_for is not None else None
+                    ),
+                },
+                actor_type="system",
+                actor_id=actor_id,
+                created_at=release_time,
+            )
+            await self.db.flush()
+            released.append(
+                RetryReleaseResult(
+                    job_id=job.id,
+                    target_status=target_status,
+                    retry_count=int(job.retry_count or 0),
+                )
+            )
+
+        return released
+
+    @staticmethod
+    def _build_due_retry_release_statement(
+        *, release_time: datetime, dialect_name: str
+    ) -> Update:
+        due_conditions = [
+            Job.status == JobStatus.RETRY_WAIT.value,
+            or_(
+                Job.cancel_requested.is_(True),
+                Job.run_after.is_(None),
+                Job.run_after <= release_time,
+            ),
+        ]
+        candidate = (
+            select(Job.id)
+            .where(and_(*due_conditions))
+            .order_by(Job.cancel_requested.desc(), Job.run_after.asc(), Job.id.asc())
+            .limit(1)
+        )
+        if dialect_name == "postgresql":
+            candidate = candidate.with_for_update(skip_locked=True)
+        elif dialect_name != "sqlite":
+            raise RuntimeError(
+                f"durable jobs do not support database dialect: {dialect_name or 'unknown'}"
+            )
+
+        return (
+            update(Job)
+            .where(
+                Job.id == candidate.scalar_subquery(),
+                and_(*due_conditions),
+            )
+            .values(
+                status=case(
+                    (
+                        Job.cancel_requested.is_(True),
+                        JobStatus.CANCELLED.value,
+                    ),
+                    else_=JobStatus.QUEUED.value,
+                )
+            )
+            .returning(Job.id)
+            .execution_options(synchronize_session=False)
+        )
+
+    def _durable_job_dialect_name(self) -> str:
+        bind = self.db.get_bind()
+        return bind.dialect.name if bind is not None else ""
+
+    @staticmethod
+    def _validate_batch_limit(limit: int) -> None:
+        if limit <= 0 or limit > 1000:
+            raise ValueError("limit must be between 1 and 1000")
 
     async def _load_job_attempt(
         self, *, job_id: int, attempt_id: int
