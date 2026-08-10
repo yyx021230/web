@@ -11,6 +11,7 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - PostgreSQL/SQLite atomic idempotency through native conflict handling without committing the caller transaction.
 - Atomic worker claiming, lease ownership, heartbeats, expired-lease recovery, bounded retries, and cancellation-priority recovery.
 - A disabled-by-default homepage-sync shadow adapter that mirrors legacy batch/account outcomes and parity without executing duplicate work.
+- An admin-only homepage shadow parity report that independently compares legacy and durable records before execution migration is allowed.
 
 ### Not Yet Connected
 

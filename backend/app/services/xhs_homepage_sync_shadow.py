@@ -236,6 +236,7 @@ class HomepageSyncShadowAdapter:
         if (
             target_status == JobStatus.CANCELLED.value
             and job.status == JobStatus.QUEUED.value
+            and run.started_at is None
         ):
             await self.jobs.transition(
                 job,
