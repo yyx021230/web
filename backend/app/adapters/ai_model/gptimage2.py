@@ -1,9 +1,10 @@
-from __future__ import annotations
 """GPT Image 2 模型适配器
 
 默认走 OpenAI 兼容的图片生成接口；如果环境里仍配置了旧的 batch 网关，
 则保留兼容路径。
 """
+
+from __future__ import annotations
 
 import asyncio
 import base64
@@ -11,7 +12,7 @@ import hashlib
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 from urllib.parse import unquote
 
 import httpx
@@ -287,6 +288,7 @@ class GPTImage2Adapter(AIModelAdapter):
         **kwargs,
     ) -> dict:
         """根据配置调用 OpenAI 兼容接口，必要时兼容旧 batch 网关"""
+        on_upstream_accepted = kwargs.pop("_on_upstream_accepted", None)
         env_key, env_url = _read_backend_env_overrides()
         api_key = env_key or settings.gpt_image2_api_key
         if not api_key:
@@ -305,6 +307,7 @@ class GPTImage2Adapter(AIModelAdapter):
                 images_data=images_data,
                 api_url=api_url,
                 api_key=api_key,
+                on_upstream_accepted=on_upstream_accepted,
             )
 
         return await self._generate_with_openai_compatible(
@@ -425,6 +428,7 @@ class GPTImage2Adapter(AIModelAdapter):
         images_data: list[str] | None,
         api_url: str,
         api_key: str,
+        on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
     ) -> dict:
         batch_count = max(1, min(int(count or 1), 4))
         ref_sources = _collect_reference_sources(images_data, image_data, image_url)
@@ -498,6 +502,21 @@ class GPTImage2Adapter(AIModelAdapter):
                 "image_urls": [],
                 "error": f"响应中没有 batch_id: {str(submit_result)[:200]}",
             }
+
+        if on_upstream_accepted:
+            try:
+                await on_upstream_accepted(
+                    {
+                        "upstream_task_id": str(batch_id),
+                        "provider_id": None,
+                        "provider_kind": "legacy_batch_adapter",
+                        "provider_model": _DEFAULT_MODEL,
+                        "query_capability": "legacy_batch_gateway",
+                    }
+                )
+            except Exception:
+                # Observability must never fail the legacy generation request.
+                pass
 
         result = await self._poll_batch(batch_id, api_url=batch_base_url)
         if result.get("status") == "completed" and result.get("image_urls"):

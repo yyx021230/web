@@ -550,7 +550,13 @@ async def test_recovery_marks_only_interrupted_processing_task_unknown(
         await _create_task(db, task_id=502, status="queued")
 
         recovery = await AIImageService(db=db).recover_incomplete_tasks()
-        assert recovery["reset_processing"] == 1
+        assert recovery == {
+            "reset_processing": 0,
+            "waiting_review": 1,
+            "requeued_processing": 1,
+            "enqueued_missing": 1,
+            "discarded_processing": 1,
+        }
 
     async with async_session() as db:
         interrupted = await _load_shadow_job(db, 501)
@@ -565,3 +571,10 @@ async def test_recovery_marks_only_interrupted_processing_task_unknown(
         assert interrupted.status == JobStatus.WAITING_REVIEW.value
         assert interrupted.result_summary["requires_reconciliation"] is True
         assert normal_queued_count == 0
+        interrupted_task = await db.get(AITask, 501)
+        queued_task = await db.get(AITask, 502)
+        assert interrupted_task is not None
+        assert queued_task is not None
+        assert interrupted_task.status == "failed"
+        assert "停止自动重试" in interrupted_task.error
+        assert queued_task.status == "queued"

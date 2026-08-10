@@ -559,3 +559,162 @@ async def test_openai_images_retries_tool_choice_error(monkeypatch):
     assert result["status"] == "completed"
     assert result["task_id"] == "456"
     assert result["image_urls"] == ["/uploads/ai-images/tool-choice.png"]
+
+
+@pytest.mark.asyncio
+async def test_mentalout_batch_reports_id_before_polling(monkeypatch):
+    provider = AIImageProvider(
+        id=77,
+        name="MentalOut Batch",
+        model_name="gptimage2",
+        provider_kind="mentalout_batch",
+        provider_model="gpt-image-2",
+        endpoint_url="https://image.example.com",
+        api_key="test-key",
+        is_enabled=True,
+        config={"poll_interval": 0, "max_polls": 2, "upstream_retry_attempts": 1},
+    )
+    callbacks: list[dict] = []
+    responses = iter(
+        [
+            {
+                "id": "batch-accepted",
+            },
+            {
+                "status": "completed",
+                "tasks": [
+                    {
+                        "status": "completed",
+                        "imageUrl": "https://images.example.com/result.png",
+                    }
+                ],
+            },
+        ]
+    )
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+        headers = {"content-type": "application/json"}
+
+        def __init__(self, payload):
+            self.payload = payload
+
+        def json(self):
+            return self.payload
+
+    class DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def request(self, method, url, **kwargs):
+            return FakeResponse(next(responses))
+
+    async def fake_sleep(_seconds):
+        return None
+
+    async def accepted(details: dict) -> None:
+        callbacks.append(details)
+
+    monkeypatch.setattr(
+        "app.services.ai_image_provider_service.httpx.AsyncClient", DummyClient
+    )
+    monkeypatch.setattr(
+        "app.services.ai_image_provider_service.asyncio.sleep", fake_sleep
+    )
+    result = await AIImageProviderService(None)._call_mentalout_batch(  # type: ignore[arg-type]
+        provider,
+        "batch prompt",
+        {"width": 768, "height": 1024, "count": 1},
+        on_upstream_accepted=accepted,
+    )
+
+    assert callbacks == [
+        {
+            "upstream_task_id": "batch-accepted",
+            "provider_id": 77,
+            "provider_kind": "mentalout_batch",
+            "provider_model": "gpt-image-2",
+            "query_capability": "mentalout_batch",
+        }
+    ]
+    assert result == {
+        "task_id": "batch-accepted",
+        "status": "completed",
+        "image_urls": ["https://images.example.com/result.png"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_provider_upstream_status_query_never_submits_work(client, monkeypatch):
+    requests: list[tuple[str, str]] = []
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+        headers = {"content-type": "application/json"}
+
+        def json(self):
+            return {
+                "status": "completed",
+                "tasks": [
+                    {
+                        "status": "completed",
+                        "output": {"imageUrl": "/api/files/result.png"},
+                    }
+                ],
+            }
+
+    class DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def request(self, method, url, **kwargs):
+            requests.append((method, url))
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.services.ai_image_provider_service.httpx.AsyncClient", DummyClient
+    )
+    async with async_session() as db:
+        db.add(
+            AIImageProvider(
+                id=88,
+                name="Queryable Batch",
+                model_name="gptimage2",
+                provider_kind="mentalout_batch",
+                provider_model="gpt-image-2",
+                endpoint_url="https://image.example.com",
+                api_key="test-key",
+                is_enabled=True,
+                config={},
+            )
+        )
+        await db.commit()
+        result = await AIImageProviderService(db).get_upstream_task_status(
+            88,
+            "batch-query",
+        )
+
+    assert requests == [
+        ("GET", "https://image.example.com/api/batches/batch-query")
+    ]
+    assert result == {
+        "task_id": "batch-query",
+        "status": "completed",
+        "raw_status": "completed",
+        "image_urls": ["https://image.example.com/api/files/result.png"],
+        "error": None,
+    }

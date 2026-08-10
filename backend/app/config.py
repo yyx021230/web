@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     ai_task_worker_poll_timeout_seconds: int = 5
     ai_task_worker_min_interval_seconds: float = 10.0
     ai_image_shadow_enabled: bool = False
+    ai_image_reconciliation_enabled: bool = False
+    ai_image_reconciliation_interval_seconds: int = 60
+    ai_image_reconciliation_batch_size: int = 20
 
     # AI Watermark Removal (HTTP API)
     remove_ai_watermarks_enabled: bool = True

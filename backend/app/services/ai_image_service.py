@@ -14,6 +14,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 
+from app.db.session import async_session
 from app.models.ai_task import AITask
 from app.adapters.ai_model.base import AIModelAdapter
 from app.adapters.ai_model.registry import model_registry
@@ -28,6 +29,17 @@ logger = logging.getLogger("app")
 
 MAX_USER_ACTIVE_IMAGE_TASKS = 6
 _DIMENSION_PROMPT_MARKER = "画幅约束："
+
+
+async def _complete_critical_write_before_cancellation(coro) -> None:
+    """Finish evidence persistence before propagating a worker timeout."""
+
+    task = asyncio.create_task(coro)
+    try:
+        await asyncio.shield(task)
+    except asyncio.CancelledError:
+        await task
+        raise
 
 
 _CONTENT_TYPE_EXT: dict[str, str] = {
@@ -278,6 +290,71 @@ class AIImageService:
         )
         return True
 
+    async def _mark_task_upstream_accepted(
+        self,
+        session: AsyncSession,
+        task_id: int,
+        details: dict,
+    ) -> bool:
+        upstream_task_id = str(details.get("upstream_task_id") or "").strip()
+        if not upstream_task_id:
+            return False
+        result = await session.execute(select(AITask).where(AITask.id == int(task_id)))
+        task = result.scalar_one_or_none()
+        if task is None:
+            return False
+
+        attempt = {
+            "upstream_task_id": upstream_task_id[:160],
+            "provider_id": details.get("provider_id"),
+            "provider_kind": str(details.get("provider_kind") or "")[:50] or None,
+            "provider_model": str(details.get("provider_model") or "")[:100] or None,
+            "query_capability": str(details.get("query_capability") or "")[:50] or None,
+            "accepted_at": self._now_naive_utc().isoformat(),
+        }
+        params = dict(task.params or {})
+        attempts = [
+            dict(item)
+            for item in (params.get("_upstream_attempts") or [])
+            if isinstance(item, dict)
+        ]
+        identity = (
+            attempt["upstream_task_id"],
+            attempt.get("provider_id"),
+            attempt.get("provider_kind"),
+        )
+        exists = any(
+            (
+                str(item.get("upstream_task_id") or ""),
+                item.get("provider_id"),
+                item.get("provider_kind"),
+            )
+            == identity
+            for item in attempts
+        )
+        if not exists:
+            attempts.append(attempt)
+            params["_upstream_attempts"] = attempts[-20:]
+            task.params = params
+            await session.commit()
+        else:
+            attempt = next(
+                item
+                for item in attempts
+                if (
+                    str(item.get("upstream_task_id") or ""),
+                    item.get("provider_id"),
+                    item.get("provider_kind"),
+                )
+                == identity
+            )
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase="upstream_accepted",
+            details=attempt,
+        )
+        return not exists
+
     async def cleanup_stale_tasks(self, stale_after_minutes: int = 30) -> int:
         """将长期未收尾的队列任务自动降级，防止前端永久转圈。"""
         if not self.db:
@@ -328,6 +405,7 @@ class AIImageService:
         drained_processing_ids = await ai_image_task_queue.drain_processing_tasks()
         requeue_processing_ids: list[int] = []
         reset_processing_ids: list[int] = []
+        review_processing_ids: list[int] = []
         discarded_processing_ids: list[int] = []
         reset_processing = 0
 
@@ -343,25 +421,39 @@ class AIImageService:
                     discarded_processing_ids.append(task_id)
                     continue
                 if task.status == "processing":
-                    task.status = "queued"
-                    task.error = None
-                    task.elapsed_seconds = None
-                    task.finished_at = None
-                    requeue_processing_ids.append(task_id)
-                    reset_processing_ids.append(task_id)
-                    reset_processing += 1
+                    if settings.ai_image_shadow_enabled:
+                        task.status = "failed"
+                        task.error = "Worker 重启时上游结果未知，已停止自动重试并等待核验"
+                        task.finished_at = self._now_naive_utc()
+                        review_processing_ids.append(task_id)
+                        discarded_processing_ids.append(task_id)
+                    else:
+                        task.status = "queued"
+                        task.error = None
+                        task.elapsed_seconds = None
+                        task.finished_at = None
+                        requeue_processing_ids.append(task_id)
+                        reset_processing_ids.append(task_id)
+                        reset_processing += 1
                 elif task.status == "queued":
                     requeue_processing_ids.append(task_id)
                 else:
                     discarded_processing_ids.append(task_id)
 
-            if reset_processing:
+            if reset_processing or review_processing_ids:
                 await self.db.commit()
                 for task_id in reset_processing_ids:
                     await mirror_ai_image_shadow_safely(
                         task_id,
                         phase="worker_recovered",
                         details={"reason": "worker_restart"},
+                        result_unknown=True,
+                    )
+                for task_id in review_processing_ids:
+                    await mirror_ai_image_shadow_safely(
+                        task_id,
+                        phase="worker_recovered",
+                        details={"reason": "worker_restart_retry_blocked"},
                         result_unknown=True,
                     )
 
@@ -378,6 +470,7 @@ class AIImageService:
 
         return {
             "reset_processing": reset_processing,
+            "waiting_review": len(review_processing_ids),
             "requeued_processing": len(requeue_processing_ids),
             "enqueued_missing": enqueued_missing,
             "discarded_processing": len(discarded_processing_ids),
@@ -656,6 +749,26 @@ class AIImageService:
         task_id: int | None = None,
     ) -> dict:
         """优先使用管理后台配置的生图入口；没有配置时回落到静态 adapter。"""
+        async def mark_upstream_accepted(details: dict) -> None:
+            if not task_id:
+                return
+            try:
+                async def persist() -> None:
+                    async with async_session() as session:
+                        await self._mark_task_upstream_accepted(
+                            session,
+                            int(task_id),
+                            details,
+                        )
+
+                await _complete_critical_write_before_cancellation(persist())
+            except Exception as exc:
+                logger.warning(
+                    "Failed to persist accepted upstream image task: task_id=%s error=%s",
+                    task_id,
+                    exc,
+                )
+
         if self.db and self.adapter.name == "gptimage2":
             provider_service = AIImageProviderService(self.db)
             providers = await provider_service.list_providers("gptimage2")
@@ -664,9 +777,16 @@ class AIImageService:
                     if not task_id:
                         return
                     try:
-                        await self._mark_task_provider(self.db, int(task_id), provider)
+                        async def persist() -> None:
+                            async with async_session() as session:
+                                await self._mark_task_provider(
+                                    session,
+                                    int(task_id),
+                                    provider,
+                                )
+
+                        await _complete_critical_write_before_cancellation(persist())
                     except Exception as exc:
-                        await self.db.rollback()
                         logger.warning(
                             "Failed to mark selected image provider: task_id=%s error=%s",
                             task_id,
@@ -679,10 +799,14 @@ class AIImageService:
                     user_id=user_id,
                     model_name="gptimage2",
                     on_provider_selected=mark_selected_provider if task_id else None,
+                    on_upstream_accepted=mark_upstream_accepted if task_id else None,
                 )
                 if not self._should_fallback_to_adapter(provider_result):
                     return provider_result
-        return await self.adapter.generate_image(prompt=prompt, **params)
+        adapter_params = dict(params)
+        if task_id:
+            adapter_params["_on_upstream_accepted"] = mark_upstream_accepted
+        return await self.adapter.generate_image(prompt=prompt, **adapter_params)
 
     async def submit(
         self,

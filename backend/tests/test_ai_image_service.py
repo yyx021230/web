@@ -82,6 +82,7 @@ async def test_generate_does_not_fallback_when_configured_provider_fails(client,
             user_id=None,
             model_name="gptimage2",
             on_provider_selected=None,
+            on_upstream_accepted=None,
         ):
             return {
                 "task_id": "",
@@ -386,9 +387,17 @@ async def test_execute_submitted_task_persists_provider_when_selected(client, mo
         ))
         await db.commit()
 
-        async def fake_call_provider(self, provider, prompt, params):
+        async def fake_call_provider(
+            self,
+            provider,
+            prompt,
+            params,
+            *,
+            on_upstream_accepted=None,
+        ):
             result = await db.execute(select(AITask).where(AITask.id == 341))
             task = result.scalar_one()
+            await db.refresh(task)
             assert task.status == "processing"
             assert task.params["provider"] == {
                 "id": 401,

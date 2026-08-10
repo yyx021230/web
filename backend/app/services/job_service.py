@@ -1096,6 +1096,38 @@ class JobService:
         await self.db.flush()
         return True
 
+    async def append_event(
+        self,
+        job: Job,
+        *,
+        event_type: str,
+        level: str = "info",
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
+        actor_type: str = "system",
+        actor_id: str | None = None,
+        created_at: datetime | None = None,
+    ) -> JobEvent:
+        """Append an audit event without changing task state."""
+
+        normalized_type = str(event_type or "").strip()
+        if not normalized_type:
+            raise ValueError("event_type must not be empty")
+        event = await self._append_event(
+            job=job,
+            event_type=normalized_type[:64],
+            from_status=job.status,
+            to_status=job.status,
+            level=str(level or "info")[:16],
+            message=message,
+            details=details,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            created_at=created_at,
+        )
+        await self.db.flush()
+        return event
+
     async def schedule_retry(
         self,
         job: Job,

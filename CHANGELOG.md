@@ -13,10 +13,12 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - A disabled-by-default homepage-sync shadow adapter that mirrors legacy batch/account outcomes and parity without executing duplicate work.
 - An admin-only homepage shadow parity report that independently compares legacy and durable records before execution migration is allowed.
 - A disabled-by-default AI image shadow lifecycle that records generation phases and isolates uncertain upstream outcomes for reconciliation without taking execution ownership.
+- Cancellation-safe AI upstream task-ID capture, restart duplicate-submission protection, automatic status reconciliation, and audited manual resolution for uncertain image outcomes.
+- Admin-only AI reconciliation list, retry, and manual-resolution endpoints that exclude prompts and Provider credentials.
 
 ### Not Yet Connected
 
-- Existing AI, Dify, Xiaohongshu publishing, report, and homepage-sync execution still use their current paths; AI generation and homepage sync are connected only for optional shadow observation.
+- Existing AI, Dify, Xiaohongshu publishing, report, and homepage-sync execution still use their current paths; AI reconciliation observes accepted upstream tasks but does not replace the legacy Redis execution owner.
 - Durable worker integration and the unified task-center API will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk

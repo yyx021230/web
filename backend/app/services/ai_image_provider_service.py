@@ -763,6 +763,7 @@ class AIImageProviderService:
         user_id: int | None = None,
         model_name: str = "gptimage2",
         on_provider_selected: Callable[[dict], Awaitable[None]] | None = None,
+        on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
     ) -> dict:
         providers = await self.list_providers(model_name)
         has_reference = bool(params.get("image_data") or params.get("image_url") or params.get("images_data"))
@@ -807,7 +808,12 @@ class AIImageProviderService:
                     exc,
                 )
         try:
-            result = await self._call_provider(provider, prompt, params)
+            result = await self._call_provider(
+                provider,
+                prompt,
+                params,
+                on_upstream_accepted=on_upstream_accepted,
+            )
             elapsed_ms = (time.time() - start) * 1000.0
             await self._mark_success(provider, elapsed_ms)
             result["provider"] = provider_meta
@@ -829,6 +835,119 @@ class AIImageProviderService:
             }
         finally:
             await self._release_provider_slot(provider.id)
+
+    async def get_upstream_task_status(
+        self,
+        provider_id: int,
+        upstream_task_id: str,
+    ) -> dict[str, Any]:
+        """Query a previously accepted batch without submitting new work."""
+
+        provider = await self.get_provider(int(provider_id))
+        task_id = str(upstream_task_id or "").strip()
+        if provider is None:
+            return {
+                "task_id": task_id,
+                "status": "unknown",
+                "image_urls": [],
+                "error": "生图入口已不存在",
+            }
+        if not task_id:
+            return {
+                "task_id": "",
+                "status": "unknown",
+                "image_urls": [],
+                "error": "缺少上游任务 ID",
+            }
+        if (provider.provider_kind or "").strip().lower() != "mentalout_batch":
+            return {
+                "task_id": task_id,
+                "status": "unsupported",
+                "image_urls": [],
+                "error": "当前生图入口不支持按任务 ID 查询",
+            }
+
+        api_base = provider.endpoint_url.rstrip("/")
+        timeout = min(60.0, max(5.0, float((provider.config or {}).get("status_timeout", 30) or 30)))
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+                response = await _request_with_retries(
+                    client,
+                    "GET",
+                    f"{api_base}/api/batches/{task_id}",
+                    retries=2,
+                    retry_delay=1,
+                    retry_on_statuses={502, 503, 504},
+                )
+            if response.status_code >= 400:
+                return {
+                    "task_id": task_id,
+                    "status": "unknown",
+                    "image_urls": [],
+                    "error": f"查询上游任务失败：HTTP {response.status_code}",
+                }
+            data = response.json()
+        except Exception as exc:
+            return {
+                "task_id": task_id,
+                "status": "unknown",
+                "image_urls": [],
+                "error": f"查询上游任务失败：{str(exc)[:300]}",
+            }
+
+        raw_status = str(data.get("status") or "").strip()
+        tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
+        image_urls: list[str] = []
+        for item in tasks:
+            if not isinstance(item, dict):
+                continue
+            image_url = _batch_task_image_url(item, api_base)
+            item_status = item.get("status")
+            if image_url and (
+                _batch_success_status(item_status)
+                or _batch_success_status(raw_status)
+                or not item_status
+            ):
+                image_urls.append(image_url)
+        if image_urls:
+            return {
+                "task_id": task_id,
+                "status": "completed",
+                "raw_status": raw_status,
+                "image_urls": image_urls,
+                "error": None,
+            }
+        if _batch_failure_status(raw_status):
+            error = next(
+                (
+                    _batch_task_error(item)
+                    for item in tasks
+                    if isinstance(item, dict) and _batch_task_error(item)
+                ),
+                "",
+            )
+            return {
+                "task_id": task_id,
+                "status": "failed",
+                "raw_status": raw_status,
+                "image_urls": [],
+                "error": error or f"任务{raw_status or 'failed'}",
+            }
+        if _batch_success_status(raw_status):
+            return {
+                "task_id": task_id,
+                "status": "unknown",
+                "raw_status": raw_status,
+                "image_urls": [],
+                "error": "上游任务已完成但没有返回图片",
+            }
+        return {
+            "task_id": task_id,
+            "status": "generating",
+            "raw_status": raw_status,
+            "image_urls": [],
+            "error": None,
+        }
 
     async def test_provider(self, provider_id: int, prompt: str, params: dict) -> dict:
         """后台真实调用指定入口生成测试图片。"""
@@ -1000,12 +1119,24 @@ class AIImageProviderService:
                 provider.avg_latency_ms = round(elapsed_ms, 2)
         await self.db.commit()
 
-    async def _call_provider(self, provider: AIImageProvider, prompt: str, params: dict) -> dict:
+    async def _call_provider(
+        self,
+        provider: AIImageProvider,
+        prompt: str,
+        params: dict,
+        *,
+        on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> dict:
         kind = (provider.provider_kind or "openai_images").lower()
         if kind == "openai_images":
             return await self._call_openai_images(provider, prompt, params)
         if kind == "mentalout_batch":
-            return await self._call_mentalout_batch(provider, prompt, params)
+            return await self._call_mentalout_batch(
+                provider,
+                prompt,
+                params,
+                on_upstream_accepted=on_upstream_accepted,
+            )
         raise ValueError(f"不支持的 provider_kind: {provider.provider_kind}")
 
     async def _call_openai_images(self, provider: AIImageProvider, prompt: str, params: dict) -> dict:
@@ -1220,7 +1351,14 @@ class AIImageProviderService:
                 pass
         return resp.text[:300] or f"HTTP {resp.status_code}"
 
-    async def _call_mentalout_batch(self, provider: AIImageProvider, prompt: str, params: dict) -> dict:
+    async def _call_mentalout_batch(
+        self,
+        provider: AIImageProvider,
+        prompt: str,
+        params: dict,
+        *,
+        on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> dict:
         api_base = provider.endpoint_url.rstrip("/")
         upstream_base = _normalize_legacy_batch_api_base(
             str(provider.config.get("api_base_url") or "https://api.duckcoding.ai/v1")
@@ -1273,6 +1411,23 @@ class AIImageProviderService:
                 batch_id = submit.get("id") or submit.get("batch_id")
                 if not batch_id:
                     raise ValueError(f"响应中没有 batch id: {str(submit)[:200]}")
+                if on_upstream_accepted:
+                    try:
+                        await on_upstream_accepted(
+                            {
+                                "upstream_task_id": str(batch_id),
+                                "provider_id": int(provider.id),
+                                "provider_kind": str(provider.provider_kind),
+                                "provider_model": str(provider.provider_model),
+                                "query_capability": "mentalout_batch",
+                            }
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to persist accepted upstream batch: provider_id=%s batch_id=%s",
+                            provider.id,
+                            batch_id,
+                        )
 
                 for _ in range(int(provider.config.get("max_polls", 200))):
                     await asyncio.sleep(float(provider.config.get("poll_interval", 3)))

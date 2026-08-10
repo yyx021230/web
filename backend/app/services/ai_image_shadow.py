@@ -29,6 +29,7 @@ AI_SHADOW_PHASE_PROGRESS = {
     "worker_recovered": 0,
     "worker_started": 1,
     "upstream_started": 1,
+    "upstream_accepted": 2,
     "provider_selected": 2,
     "upstream_finished": 3,
     "result_stored": 4,
@@ -312,8 +313,16 @@ class AIImageShadowAdapter:
         previous = copy.deepcopy(job.result_summary or {})
         previous_unknown = previous.get("result_certainty") == "unknown"
         provider = _provider_snapshot(task.params)
-        upstream_task_id = details.get("upstream_task_id") or previous.get(
-            "upstream_task_id"
+        upstream_attempts = _merge_upstream_attempts(
+            previous.get("upstream_attempts"),
+            task.params,
+            details,
+        )
+        upstream_task_id = (
+            upstream_attempts[-1].get("upstream_task_id")
+            if upstream_attempts
+            else details.get("upstream_task_id")
+            or previous.get("upstream_task_id")
         )
         certainty = "unknown" if result_unknown or previous_unknown else "known"
         job.result_summary = {
@@ -326,6 +335,7 @@ class AIImageShadowAdapter:
             "requires_reconciliation": certainty == "unknown",
             "provider": provider,
             "upstream_task_id": upstream_task_id,
+            "upstream_attempts": upstream_attempts,
             "image_count": len(task.result_urls or []),
             "legacy_error": _optional_text(task.error),
         }
@@ -384,6 +394,63 @@ def _provider_snapshot(params: Any) -> dict[str, Any] | None:
         for key in ("id", "name", "provider_kind", "provider_model")
         if provider.get(key) is not None
     }
+
+
+def _merge_upstream_attempts(
+    previous: Any,
+    params: Any,
+    details: dict[str, Any],
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+
+    def upsert(value: Any) -> None:
+        if not isinstance(value, dict):
+            return
+        task_id = str(
+            value.get("upstream_task_id") or value.get("task_id") or ""
+        ).strip()
+        if not task_id:
+            return
+        normalized = {
+            key: copy.deepcopy(value.get(key))
+            for key in (
+                "provider_id",
+                "provider_kind",
+                "provider_model",
+                "query_capability",
+                "accepted_at",
+                "status",
+                "raw_status",
+                "checked_at",
+                "error",
+                "image_count",
+            )
+            if value.get(key) is not None
+        }
+        normalized["upstream_task_id"] = task_id[:160]
+        identity = (
+            normalized["upstream_task_id"],
+            normalized.get("provider_id"),
+            normalized.get("provider_kind"),
+        )
+        for index, item in enumerate(merged):
+            if (
+                item.get("upstream_task_id"),
+                item.get("provider_id"),
+                item.get("provider_kind"),
+            ) == identity:
+                merged[index] = {**item, **normalized}
+                return
+        merged.append(normalized)
+
+    for item in previous if isinstance(previous, list) else []:
+        upsert(item)
+    if isinstance(params, dict):
+        for item in params.get("_upstream_attempts") or []:
+            upsert(item)
+    if details.get("upstream_task_id"):
+        upsert(details)
+    return merged[-20:]
 
 
 def _sanitize_details(value: Any, *, depth: int = 0) -> Any:
