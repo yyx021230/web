@@ -6,7 +6,7 @@ from collections.abc import Collection
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, case, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,6 +83,16 @@ class InvalidJobTransition(JobStateError):
 
 class InvalidJobProgress(JobStateError):
     pass
+
+
+class JobLeaseLost(JobStateError):
+    def __init__(self, job_id: int, attempt_id: int, worker_id: str):
+        super().__init__(
+            f"job lease is not active: job={job_id} attempt={attempt_id} worker={worker_id}"
+        )
+        self.job_id = job_id
+        self.attempt_id = attempt_id
+        self.worker_id = worker_id
 
 
 def normalize_job_status(status: JobStatus | str) -> str:
@@ -386,6 +396,283 @@ class JobService:
             .returning(Job.id)
             .execution_options(synchronize_session=False)
         )
+
+    async def start_claimed_job(
+        self,
+        *,
+        job_id: int,
+        attempt_id: int,
+        worker_id: str,
+        now: datetime | None = None,
+    ) -> tuple[Job, JobAttempt]:
+        """Move an actively leased job into running state exactly once."""
+
+        normalized_worker_id = self._normalize_worker_id(worker_id)
+        start_time = now or utc_now_naive()
+        active_attempt = exists(
+            select(JobAttempt.id).where(
+                JobAttempt.id == attempt_id,
+                JobAttempt.job_id == Job.id,
+                JobAttempt.worker_id == normalized_worker_id,
+                JobAttempt.status == JobStatus.LEASED.value,
+                JobAttempt.lease_expires_at.is_not(None),
+                JobAttempt.lease_expires_at > start_time,
+            )
+        ).correlate(Job)
+        statement = (
+            update(Job)
+            .where(
+                Job.id == job_id,
+                Job.status == JobStatus.LEASED.value,
+                Job.lease_owner == normalized_worker_id,
+                Job.lease_expires_at.is_not(None),
+                Job.lease_expires_at > start_time,
+                active_attempt,
+            )
+            .values(
+                status=JobStatus.RUNNING.value,
+                started_at=func.coalesce(Job.started_at, start_time),
+                heartbeat_at=start_time,
+            )
+            .returning(Job.id)
+            .execution_options(synchronize_session=False)
+        )
+        updated_id = (await self.db.execute(statement)).scalar_one_or_none()
+        if updated_id is None:
+            existing_job, existing_attempt = await self._load_job_attempt(
+                job_id=job_id, attempt_id=attempt_id
+            )
+            if self._is_active_running_lease(
+                job=existing_job,
+                attempt=existing_attempt,
+                worker_id=normalized_worker_id,
+                now=start_time,
+            ):
+                if existing_job is None or existing_attempt is None:
+                    raise AssertionError(
+                        "active running lease must have job and attempt"
+                    )
+                return existing_job, existing_attempt
+            raise JobLeaseLost(job_id, attempt_id, normalized_worker_id)
+
+        attempt_statement = (
+            update(JobAttempt)
+            .where(
+                JobAttempt.id == attempt_id,
+                JobAttempt.job_id == job_id,
+                JobAttempt.worker_id == normalized_worker_id,
+                JobAttempt.status == JobStatus.LEASED.value,
+                JobAttempt.lease_expires_at.is_not(None),
+                JobAttempt.lease_expires_at > start_time,
+            )
+            .values(
+                status=JobStatus.RUNNING.value,
+                heartbeat_at=start_time,
+            )
+            .returning(JobAttempt.id)
+            .execution_options(synchronize_session=False)
+        )
+        updated_attempt_id = (
+            await self.db.execute(attempt_statement)
+        ).scalar_one_or_none()
+        if updated_attempt_id is None:
+            raise RuntimeError("claimed attempt changed while starting job")
+
+        job, attempt = await self._load_job_attempt(
+            job_id=updated_id, attempt_id=updated_attempt_id
+        )
+        if job is None or attempt is None:
+            raise RuntimeError("started job or attempt could not be loaded")
+        await self._append_event(
+            job=job,
+            event_type="status_changed",
+            from_status=JobStatus.LEASED.value,
+            to_status=JobStatus.RUNNING.value,
+            message="Job started",
+            details={
+                "attempt_id": attempt.id,
+                "attempt_number": attempt.attempt_number,
+            },
+            actor_type="worker",
+            actor_id=normalized_worker_id,
+            created_at=start_time,
+        )
+        await self.db.flush()
+        return job, attempt
+
+    async def renew_job_lease(
+        self,
+        *,
+        job_id: int,
+        attempt_id: int,
+        worker_id: str,
+        lease_seconds: int = 60,
+        now: datetime | None = None,
+    ) -> tuple[Job, JobAttempt]:
+        """Renew an active lease without creating high-volume heartbeat events."""
+
+        normalized_worker_id = self._normalize_worker_id(worker_id)
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive")
+        heartbeat_time = now or utc_now_naive()
+        lease_expires_at = heartbeat_time + timedelta(seconds=lease_seconds)
+        active_attempt = exists(
+            select(JobAttempt.id).where(
+                JobAttempt.id == attempt_id,
+                JobAttempt.job_id == Job.id,
+                JobAttempt.worker_id == normalized_worker_id,
+                JobAttempt.status.in_(
+                    [JobStatus.LEASED.value, JobStatus.RUNNING.value]
+                ),
+                JobAttempt.status == Job.status,
+                JobAttempt.lease_expires_at.is_not(None),
+                JobAttempt.lease_expires_at > heartbeat_time,
+                or_(
+                    JobAttempt.heartbeat_at.is_(None),
+                    JobAttempt.heartbeat_at <= heartbeat_time,
+                ),
+            )
+        ).correlate(Job)
+        job_statement = (
+            update(Job)
+            .where(
+                Job.id == job_id,
+                Job.status.in_([JobStatus.LEASED.value, JobStatus.RUNNING.value]),
+                Job.lease_owner == normalized_worker_id,
+                Job.lease_expires_at.is_not(None),
+                Job.lease_expires_at > heartbeat_time,
+                or_(Job.heartbeat_at.is_(None), Job.heartbeat_at <= heartbeat_time),
+                active_attempt,
+            )
+            .values(
+                heartbeat_at=heartbeat_time,
+                lease_expires_at=case(
+                    (Job.lease_expires_at > lease_expires_at, Job.lease_expires_at),
+                    else_=lease_expires_at,
+                ),
+            )
+            .returning(Job.id)
+            .execution_options(synchronize_session=False)
+        )
+        updated_id = (await self.db.execute(job_statement)).scalar_one_or_none()
+        if updated_id is None:
+            existing_job, existing_attempt = await self._load_job_attempt(
+                job_id=job_id, attempt_id=attempt_id
+            )
+            if self._is_active_owned_lease(
+                job=existing_job,
+                attempt=existing_attempt,
+                worker_id=normalized_worker_id,
+                now=heartbeat_time,
+            ):
+                if existing_job is None or existing_attempt is None:
+                    raise AssertionError("active lease must have job and attempt")
+                return existing_job, existing_attempt
+            raise JobLeaseLost(job_id, attempt_id, normalized_worker_id)
+
+        attempt_statement = (
+            update(JobAttempt)
+            .where(
+                JobAttempt.id == attempt_id,
+                JobAttempt.job_id == job_id,
+                JobAttempt.worker_id == normalized_worker_id,
+                JobAttempt.status.in_(
+                    [JobStatus.LEASED.value, JobStatus.RUNNING.value]
+                ),
+                JobAttempt.lease_expires_at.is_not(None),
+                JobAttempt.lease_expires_at > heartbeat_time,
+                or_(
+                    JobAttempt.heartbeat_at.is_(None),
+                    JobAttempt.heartbeat_at <= heartbeat_time,
+                ),
+            )
+            .values(
+                heartbeat_at=heartbeat_time,
+                lease_expires_at=case(
+                    (
+                        JobAttempt.lease_expires_at > lease_expires_at,
+                        JobAttempt.lease_expires_at,
+                    ),
+                    else_=lease_expires_at,
+                ),
+            )
+            .returning(JobAttempt.id)
+            .execution_options(synchronize_session=False)
+        )
+        updated_attempt_id = (
+            await self.db.execute(attempt_statement)
+        ).scalar_one_or_none()
+        if updated_attempt_id is None:
+            raise RuntimeError("claimed attempt changed while renewing lease")
+
+        job, attempt = await self._load_job_attempt(
+            job_id=updated_id, attempt_id=updated_attempt_id
+        )
+        if job is None or attempt is None:
+            raise RuntimeError("renewed job or attempt could not be loaded")
+        return job, attempt
+
+    async def _load_job_attempt(
+        self, *, job_id: int, attempt_id: int
+    ) -> tuple[Job | None, JobAttempt | None]:
+        job = await self.db.get(Job, job_id)
+        attempt = await self.db.get(JobAttempt, attempt_id)
+        if job is not None:
+            await self.db.refresh(job)
+        if attempt is not None:
+            await self.db.refresh(attempt)
+        return job, attempt
+
+    @staticmethod
+    def _is_active_running_lease(
+        *,
+        job: Job | None,
+        attempt: JobAttempt | None,
+        worker_id: str,
+        now: datetime,
+    ) -> bool:
+        return bool(
+            job is not None
+            and attempt is not None
+            and attempt.job_id == job.id
+            and job.status == JobStatus.RUNNING.value
+            and attempt.status == JobStatus.RUNNING.value
+            and job.lease_owner == worker_id
+            and attempt.worker_id == worker_id
+            and job.lease_expires_at is not None
+            and attempt.lease_expires_at is not None
+            and job.lease_expires_at > now
+            and attempt.lease_expires_at > now
+        )
+
+    @staticmethod
+    def _is_active_owned_lease(
+        *,
+        job: Job | None,
+        attempt: JobAttempt | None,
+        worker_id: str,
+        now: datetime,
+    ) -> bool:
+        return bool(
+            job is not None
+            and attempt is not None
+            and attempt.job_id == job.id
+            and job.status in {JobStatus.LEASED.value, JobStatus.RUNNING.value}
+            and attempt.status == job.status
+            and job.lease_owner == worker_id
+            and attempt.worker_id == worker_id
+            and job.lease_expires_at is not None
+            and attempt.lease_expires_at is not None
+            and job.lease_expires_at > now
+            and attempt.lease_expires_at > now
+        )
+
+    @staticmethod
+    def _normalize_worker_id(worker_id: str) -> str:
+        normalized_worker_id = worker_id.strip()
+        if not normalized_worker_id:
+            raise ValueError("worker_id must not be empty")
+        return normalized_worker_id
 
     async def transition(
         self,

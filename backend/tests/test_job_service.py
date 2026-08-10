@@ -23,6 +23,7 @@ from app.services.job_service import (
     ALLOWED_JOB_TRANSITIONS,
     InvalidJobProgress,
     InvalidJobTransition,
+    JobLeaseLost,
     JobService,
     JobStateError,
     normalize_job_status,
@@ -551,6 +552,422 @@ def test_claim_statement_uses_postgresql_skip_locked_and_sqlite_atomic_update():
     assert "RETURNING jobs.id" in postgresql_sql
     assert "FOR UPDATE" not in sqlite_sql
     assert "RETURNING id" in sqlite_sql
+
+
+@pytest.mark.asyncio
+async def test_start_claimed_job_updates_job_attempt_and_event_once(client):
+    claim_time = utc_now_naive()
+    start_time = claim_time + timedelta(seconds=5)
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="start_job")
+        claimed = await service.claim_next_job(
+            worker_id="worker-1", lease_seconds=60, now=claim_time
+        )
+        assert claimed is not None
+        attempt = claimed[1]
+        await db.commit()
+        job_id = job.id
+        attempt_id = attempt.id
+
+    async with async_session() as db:
+        service = JobService(db)
+        started_job, started_attempt = await service.start_claimed_job(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-1",
+            now=start_time,
+        )
+        duplicate_job, duplicate_attempt = await service.start_claimed_job(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-1",
+            now=start_time + timedelta(seconds=1),
+        )
+        await db.commit()
+
+        assert started_job.status == JobStatus.RUNNING.value
+        assert started_job.started_at == start_time
+        assert started_job.heartbeat_at == start_time
+        assert started_attempt.status == JobStatus.RUNNING.value
+        assert started_attempt.heartbeat_at == start_time
+        assert duplicate_job.id == started_job.id
+        assert duplicate_attempt.id == started_attempt.id
+
+        start_events = (
+            (
+                await db.execute(
+                    select(JobEvent).where(
+                        JobEvent.job_id == job_id,
+                        JobEvent.from_status == JobStatus.LEASED.value,
+                        JobEvent.to_status == JobStatus.RUNNING.value,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(start_events) == 1
+        assert start_events[0].details["attempt_id"] == attempt_id
+
+
+@pytest.mark.asyncio
+async def test_concurrent_duplicate_start_records_one_transition(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="concurrent_start")
+        claimed = await service.claim_next_job(
+            worker_id="same-worker", lease_seconds=60, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    async def start_once():
+        async with async_session() as db:
+            result = await JobService(db).start_claimed_job(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="same-worker",
+                now=claim_time + timedelta(seconds=1),
+            )
+            await db.commit()
+            return result[0].id, result[1].id
+
+    first, second = await asyncio.gather(start_once(), start_once())
+    assert first == second == (job_id, attempt_id)
+
+    async with async_session() as db:
+        transition_count = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.from_status == JobStatus.LEASED.value,
+                    JobEvent.to_status == JobStatus.RUNNING.value,
+                )
+            )
+        ).scalar_one()
+        assert transition_count == 1
+
+
+@pytest.mark.asyncio
+async def test_start_claimed_job_rejects_wrong_owner_attempt_and_expired_lease(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="guard_start")
+        claimed = await service.claim_next_job(
+            worker_id="owner", lease_seconds=30, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    async with async_session() as db:
+        service = JobService(db)
+        with pytest.raises(JobLeaseLost):
+            await service.start_claimed_job(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="other-worker",
+                now=claim_time + timedelta(seconds=1),
+            )
+        with pytest.raises(JobLeaseLost):
+            await service.start_claimed_job(
+                job_id=job_id,
+                attempt_id=attempt_id + 999,
+                worker_id="owner",
+                now=claim_time + timedelta(seconds=1),
+            )
+        with pytest.raises(JobLeaseLost):
+            await service.start_claimed_job(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="owner",
+                now=claim_time + timedelta(seconds=30),
+            )
+        await db.commit()
+
+    async with async_session() as db:
+        stored_job = (
+            await db.execute(select(Job).where(Job.id == job_id))
+        ).scalar_one()
+        stored_attempt = (
+            await db.execute(select(JobAttempt).where(JobAttempt.id == attempt_id))
+        ).scalar_one()
+        running_events = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.to_status == JobStatus.RUNNING.value,
+                )
+            )
+        ).scalar_one()
+        assert stored_job.status == JobStatus.LEASED.value
+        assert stored_attempt.status == JobStatus.LEASED.value
+        assert running_events == 0
+
+
+@pytest.mark.asyncio
+async def test_renew_job_lease_updates_leased_and_running_heartbeats_without_events(
+    client,
+):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="heartbeat")
+        claimed = await service.claim_next_job(
+            worker_id="worker-heartbeat", lease_seconds=30, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    first_heartbeat = claim_time + timedelta(seconds=10)
+    async with async_session() as db:
+        service = JobService(db)
+        leased_job, leased_attempt = await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-heartbeat",
+            lease_seconds=60,
+            now=first_heartbeat,
+        )
+        assert leased_job.lease_expires_at == first_heartbeat + timedelta(seconds=60)
+        assert leased_attempt.lease_expires_at == leased_job.lease_expires_at
+        first_expiry = leased_job.lease_expires_at
+        shorter_job, shorter_attempt = await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-heartbeat",
+            lease_seconds=5,
+            now=first_heartbeat + timedelta(seconds=1),
+        )
+        assert shorter_job.lease_expires_at == first_expiry
+        assert shorter_attempt.lease_expires_at == first_expiry
+        await service.start_claimed_job(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-heartbeat",
+            now=first_heartbeat + timedelta(seconds=1),
+        )
+        second_heartbeat = first_heartbeat + timedelta(seconds=20)
+        running_job, running_attempt = await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="worker-heartbeat",
+            lease_seconds=90,
+            now=second_heartbeat,
+        )
+        await db.commit()
+
+        assert running_job.status == JobStatus.RUNNING.value
+        assert running_attempt.status == JobStatus.RUNNING.value
+        assert running_job.heartbeat_at == second_heartbeat
+        assert running_attempt.heartbeat_at == second_heartbeat
+        assert running_job.lease_expires_at == second_heartbeat + timedelta(seconds=90)
+        assert running_attempt.lease_expires_at == running_job.lease_expires_at
+
+        event_count = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(JobEvent.job_id == job_id)
+            )
+        ).scalar_one()
+        assert event_count == 3
+
+
+@pytest.mark.asyncio
+async def test_concurrent_heartbeats_keep_the_latest_lease(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="concurrent_heartbeat")
+        claimed = await service.claim_next_job(
+            worker_id="heartbeat-worker", lease_seconds=30, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    async def heartbeat_at(offset_seconds: int):
+        async with async_session() as db:
+            result = await JobService(db).renew_job_lease(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="heartbeat-worker",
+                lease_seconds=60,
+                now=claim_time + timedelta(seconds=offset_seconds),
+            )
+            await db.commit()
+            return result[0].id, result[1].id
+
+    results = await asyncio.gather(heartbeat_at(5), heartbeat_at(10))
+    assert results == [(job_id, attempt_id), (job_id, attempt_id)]
+
+    async with async_session() as db:
+        stored_job = await db.get(Job, job_id)
+        stored_attempt = await db.get(JobAttempt, attempt_id)
+        assert stored_job is not None
+        assert stored_attempt is not None
+        expected_heartbeat = claim_time + timedelta(seconds=10)
+        expected_expiry = expected_heartbeat + timedelta(seconds=60)
+        assert stored_job.heartbeat_at == expected_heartbeat
+        assert stored_attempt.heartbeat_at == expected_heartbeat
+        assert stored_job.lease_expires_at == expected_expiry
+        assert stored_attempt.lease_expires_at == expected_expiry
+
+
+@pytest.mark.asyncio
+async def test_out_of_order_heartbeat_is_a_noop_and_never_moves_time_backwards(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="ordered_heartbeat")
+        claimed = await service.claim_next_job(
+            worker_id="ordered-worker", lease_seconds=30, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+
+    latest_heartbeat = claim_time + timedelta(seconds=15)
+    async with async_session() as db:
+        service = JobService(db)
+        latest_job, latest_attempt = await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="ordered-worker",
+            lease_seconds=60,
+            now=latest_heartbeat,
+        )
+        latest_expiry = latest_job.lease_expires_at
+        latest_attempt_expiry = latest_attempt.lease_expires_at
+        stale_job, stale_attempt = await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="ordered-worker",
+            lease_seconds=10,
+            now=claim_time + timedelta(seconds=5),
+        )
+        await db.commit()
+
+        assert stale_job.heartbeat_at == latest_heartbeat
+        assert stale_attempt.heartbeat_at == latest_heartbeat
+        assert stale_job.lease_expires_at == latest_expiry
+        assert stale_attempt.lease_expires_at == latest_attempt_expiry
+
+
+@pytest.mark.asyncio
+async def test_renew_job_lease_rejects_wrong_or_expired_lease_without_partial_update(
+    client,
+):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="heartbeat_guard")
+        claimed = await service.claim_next_job(
+            worker_id="lease-owner", lease_seconds=20, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+        original_expiry = claimed[0].lease_expires_at
+
+    async with async_session() as db:
+        service = JobService(db)
+        with pytest.raises(JobLeaseLost):
+            await service.renew_job_lease(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="stale-worker",
+                now=claim_time + timedelta(seconds=1),
+            )
+        with pytest.raises(JobLeaseLost):
+            await service.renew_job_lease(
+                job_id=job_id,
+                attempt_id=attempt_id + 1,
+                worker_id="lease-owner",
+                now=claim_time + timedelta(seconds=1),
+            )
+        with pytest.raises(JobLeaseLost):
+            await service.renew_job_lease(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                worker_id="lease-owner",
+                now=claim_time + timedelta(seconds=20),
+            )
+        await db.commit()
+
+    async with async_session() as db:
+        stored_job = (
+            await db.execute(select(Job).where(Job.id == job_id))
+        ).scalar_one()
+        stored_attempt = (
+            await db.execute(select(JobAttempt).where(JobAttempt.id == attempt_id))
+        ).scalar_one()
+        assert stored_job.lease_expires_at == original_expiry
+        assert stored_attempt.lease_expires_at == original_expiry
+
+
+@pytest.mark.asyncio
+async def test_start_and_heartbeat_changes_follow_caller_transaction(client):
+    claim_time = utc_now_naive()
+    async with async_session() as db:
+        service = JobService(db)
+        job, _ = await service.create_job(job_type="lease_rollback")
+        claimed = await service.claim_next_job(
+            worker_id="rollback-worker", lease_seconds=60, now=claim_time
+        )
+        assert claimed is not None
+        await db.commit()
+        job_id = job.id
+        attempt_id = claimed[1].id
+        original_expiry = claimed[0].lease_expires_at
+
+    async with async_session() as db:
+        service = JobService(db)
+        await service.start_claimed_job(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="rollback-worker",
+            now=claim_time + timedelta(seconds=1),
+        )
+        await service.renew_job_lease(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            worker_id="rollback-worker",
+            lease_seconds=120,
+            now=claim_time + timedelta(seconds=2),
+        )
+        await db.rollback()
+
+    async with async_session() as db:
+        stored_job = (
+            await db.execute(select(Job).where(Job.id == job_id))
+        ).scalar_one()
+        stored_attempt = (
+            await db.execute(select(JobAttempt).where(JobAttempt.id == attempt_id))
+        ).scalar_one()
+        running_events = (
+            await db.execute(
+                select(func.count(JobEvent.id)).where(
+                    JobEvent.job_id == job_id,
+                    JobEvent.to_status == JobStatus.RUNNING.value,
+                )
+            )
+        ).scalar_one()
+        assert stored_job.status == JobStatus.LEASED.value
+        assert stored_attempt.status == JobStatus.LEASED.value
+        assert stored_job.lease_expires_at == original_expiry
+        assert stored_attempt.lease_expires_at == original_expiry
+        assert running_events == 0
 
 
 @pytest.mark.asyncio
