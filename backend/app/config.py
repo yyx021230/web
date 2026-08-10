@@ -110,6 +110,7 @@ class Settings(BaseSettings):
     xhs_worker_internal_token: str = ""
     xhs_enable_sync_task_loop: bool = False
     xhs_enable_account_notes_sync_loop: bool = False
+    xhs_homepage_sync_shadow_enabled: bool = False
     xhs_enable_scheduled_publish_loop: bool = True
     xhs_enable_profile_stat_sync_loop: bool = False
     xhs_account_scrape_environment_id: int = 0

@@ -9,11 +9,13 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - Additive durable job tables for jobs, batch items, worker attempts, and audit events.
 - A validated job state machine with idempotent creation, monotonic progress, cancellation requests, retry scheduling, and dead-letter handling.
 - PostgreSQL/SQLite atomic idempotency through native conflict handling without committing the caller transaction.
+- Atomic worker claiming, lease ownership, heartbeats, expired-lease recovery, bounded retries, and cancellation-priority recovery.
+- A disabled-by-default homepage-sync shadow adapter that mirrors legacy batch/account outcomes and parity without executing duplicate work.
 
 ### Not Yet Connected
 
-- Existing AI, Dify, Xiaohongshu sync, publishing, and report jobs still use their current execution paths.
-- Worker leasing, heartbeats, expired-lease recovery, and the unified task-center API will be added in subsequent v0.3 steps.
+- Existing AI, Dify, Xiaohongshu publishing, report, and homepage-sync execution still use their current paths; homepage sync is connected only for optional shadow observation.
+- Durable worker integration and the unified task-center API will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk
 
