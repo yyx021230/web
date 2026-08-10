@@ -32,7 +32,7 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ### Fixed
 
-- Repaired the historical empty-database migration chain by restoring the pre-`6ac6769ce0b2` Dify task schema, removing duplicate baseline indexes, and making the corresponding SQLite downgrade reversible.
+- Repaired the historical empty-database migration chain by restoring the required Dify and material schema, removing duplicate baseline indexes, and making the corresponding SQLite downgrade reversible.
 - Added an empty-database upgrade/downgrade/re-upgrade regression covering the complete Alembic graph and the v0.3 task tables.
 
 ## [0.2.0] - Unreleased

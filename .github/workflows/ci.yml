@@ -1,4 +1,4 @@
-name: v0.2 release checks
+name: v0.3 release checks
 
 on:
   push:
@@ -65,7 +65,7 @@ jobs:
       - name: Production build
         working-directory: frontend
         env:
-          NEXT_PUBLIC_APP_VERSION: 0.2.0-ci
+          NEXT_PUBLIC_APP_VERSION: 0.3.0-ci
           NEXT_PUBLIC_GIT_COMMIT: ${{ github.sha }}
           NEXT_PUBLIC_BUILD_TIME: ci
         run: npm run build
@@ -83,7 +83,7 @@ jobs:
       XHS_WORKER_INTERNAL_TOKEN: ci-worker-token
       MINIO_ROOT_USER: ci-minio
       MINIO_ROOT_PASSWORD: ci-minio-password
-      APP_VERSION: 0.2.0-ci
+      APP_VERSION: 0.3.0-ci
       GIT_COMMIT: ${{ github.sha }}
       BUILD_TIME: ci
     steps:

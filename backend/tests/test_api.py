@@ -5,6 +5,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from app.config import settings
 from app.core.security import hash_password
 from app.models.user import User
 from tests.conftest import make_auth_headers, session_factory
@@ -52,7 +53,7 @@ async def test_health_check(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
-    assert data["version"] == "0.2.0"
+    assert data["version"] == settings.app_version
     assert data["environment"] == "test"
 
 
@@ -63,7 +64,7 @@ async def test_version_and_request_trace_headers(client):
     assert resp.headers["X-Request-ID"] == "release-smoke-001"
     assert float(resp.headers["X-Process-Time"]) >= 0
     assert resp.json() == {
-        "version": "0.2.0",
+        "version": settings.app_version,
         "commit": "unknown",
         "buildTime": "unknown",
         "environment": "test",

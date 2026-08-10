@@ -65,12 +65,12 @@ services:
     logging: *default-logging
 
   backend:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.2.0}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.3.0}
     build:
       context: ./backend
       args:
         PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11.13-slim-bookworm}
-        APP_VERSION: ${APP_VERSION:-0.2.0}
+        APP_VERSION: ${APP_VERSION:-0.3.0}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
@@ -82,7 +82,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
       PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
-      APP_VERSION: ${APP_VERSION:-0.2.0}
+      APP_VERSION: ${APP_VERSION:-0.3.0}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       BUILD_TIME: ${BUILD_TIME:-unknown}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
@@ -98,6 +98,13 @@ services:
       AI_IMAGE_RECONCILIATION_ENABLED: ${AI_IMAGE_RECONCILIATION_ENABLED:-false}
       AI_IMAGE_RECONCILIATION_INTERVAL_SECONDS: ${AI_IMAGE_RECONCILIATION_INTERVAL_SECONDS:-60}
       AI_IMAGE_RECONCILIATION_BATCH_SIZE: ${AI_IMAGE_RECONCILIATION_BATCH_SIZE:-20}
+      XHS_HOMEPAGE_SYNC_SHADOW_ENABLED: ${XHS_HOMEPAGE_SYNC_SHADOW_ENABLED:-false}
+      XHS_ENGAGEMENT_DETAIL_SYNC_SHADOW_ENABLED: ${XHS_ENGAGEMENT_DETAIL_SYNC_SHADOW_ENABLED:-false}
+      XHS_REPORT_REFRESH_SHADOW_ENABLED: ${XHS_REPORT_REFRESH_SHADOW_ENABLED:-false}
+      DIFY_TASK_SHADOW_ENABLED: ${DIFY_TASK_SHADOW_ENABLED:-false}
+      SCHEDULER_LEADER_ENABLED: ${SCHEDULER_LEADER_ENABLED:-true}
+      SCHEDULER_LEADER_LEASE_SECONDS: ${SCHEDULER_LEADER_LEASE_SECONDS:-30}
+      SCHEDULER_LEADER_HEARTBEAT_SECONDS: ${SCHEDULER_LEADER_HEARTBEAT_SECONDS:-10}
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,7 +123,7 @@ services:
     logging: *default-logging
 
   ai-worker:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.2.0}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.3.0}
     command: ["python", "-m", "app.scripts.ai_worker"]
     restart: unless-stopped
     stop_grace_period: 45m
@@ -126,7 +133,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
       PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
-      APP_VERSION: ${APP_VERSION:-0.2.0}
+      APP_VERSION: ${APP_VERSION:-0.3.0}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       BUILD_TIME: ${BUILD_TIME:-unknown}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
@@ -154,14 +161,14 @@ services:
     logging: *default-logging
 
   frontend:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/frontend:${APP_VERSION:-0.2.0}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/frontend:${APP_VERSION:-0.3.0}
     build:
       context: ./frontend
       args:
         NODE_IMAGE: ${NODE_IMAGE:-node:20.19.4-alpine3.22}
         BACKEND_ORIGIN: http://backend:8000
         NEXT_PUBLIC_API_BASE: /api/backend
-        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.2.0}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.3.0}
         NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
         NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
@@ -170,7 +177,7 @@ services:
     environment:
       BACKEND_ORIGIN: http://backend:8000
       NEXT_PUBLIC_API_BASE: /api/backend
-      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.2.0}
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.3.0}
       NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
       NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
     depends_on:

@@ -61,4 +61,4 @@ bash scripts/migrate_internal.sh
 ```
 
 ### 回滚（代码版本）
-正式环境不要直接 `git pull` 回滚，按 [v0.2.0 发布手册](./V0.2_RELEASE_RUNBOOK.md) 使用版本包和对应备份恢复。
+正式环境不要直接 `git pull` 回滚，按 [v0.3.0 发布手册](./V0.3_RELEASE_RUNBOOK.md) 使用版本包和对应备份恢复。

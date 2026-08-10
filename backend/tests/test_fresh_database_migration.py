@@ -87,6 +87,14 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
             "ix_dify_workflows_created_by",
         }.issubset(_indexes(connection, "dify_workflows"))
 
+        material_columns = _columns(connection, "materials")
+        assert {"design_json", "ai_meta", "file_size"}.issubset(material_columns)
+        material_info = {
+            str(row[1]): row
+            for row in connection.execute("PRAGMA table_info('materials')")
+        }
+        assert material_info["url"][3] == 0
+
     _run_alembic(database_path, "downgrade", "base")
     with sqlite3.connect(database_path) as connection:
         remaining_tables = {

@@ -5,9 +5,9 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc
 
-from app.db.session import get_db, async_session
+from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.workflow import DifyWorkflowCreate, DifyWorkflowUpdate, WorkflowRunRequest, WorkflowRunResponse
 from app.core.deps import require_admin
@@ -21,7 +21,6 @@ from app.services.dify_task_shadow import (
     detach_deleted_dify_task_safely,
     mirror_dify_task_safely,
 )
-from app.schemas.workflow import WorkflowRunRequest
 from app.utils.timezone import cst_now_naive
 
 def now_cst():
@@ -251,7 +250,6 @@ async def admin_run_workflow(
 
     try:
         client, app_type = await service.get_client(workflow_id)
-        is_streaming = req.response_mode == "streaming"
         start_time = time.time()
 
         if app_type == "workflow":

@@ -1,4 +1,4 @@
-# AI Creative Studio v0.2.0
+# AI Creative Studio v0.3.0
 
 AI 创意工作台 — 基于 Fabric.js 的在线设计编辑器，集成 AI 生图和 Dify 工作流。
 
@@ -118,7 +118,7 @@ cd /Users/yyx/ztqc/web
 ./deploy-to-windows.sh
 ```
 
-完整准备、备份、恢复和回滚流程见 [v0.2.0 发布手册](docs/V0.2_RELEASE_RUNBOOK.md)。生产密钥只能放在 Windows 的 `.env` 文件或 CI Secret 中。
+完整准备、灰度、备份和回滚流程见 [v0.3.0 发布手册](docs/V0.3_RELEASE_RUNBOOK.md)。生产密钥只能放在 Windows 的 `.env` 文件或 CI Secret 中。
 
 ## Dify 集成
 
