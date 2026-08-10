@@ -30,9 +30,10 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - Scheduler leadership prevents duplicate polling across healthy API replicas, but scheduled triggers do not create executable durable jobs until each business flow passes its worker-cutover gate.
 - Durable worker integration and operator controls such as cancellation or failed-item reruns will be added in subsequent v0.3 steps.
 
-### Known Migration Risk
+### Fixed
 
-- The incremental chain through `6f7a8b9c0d1e` is upgrade/downgrade verified. A pre-existing empty-SQLite migration-chain failure remains at revision `6ac6769ce0b2` and must be fixed before treating empty-database recovery as validated.
+- Repaired the historical empty-database migration chain by restoring the pre-`6ac6769ce0b2` Dify task schema, removing duplicate baseline indexes, and making the corresponding SQLite downgrade reversible.
+- Added an empty-database upgrade/downgrade/re-upgrade regression covering the complete Alembic graph and the v0.3 task tables.
 
 ## [0.2.0] - Unreleased
 

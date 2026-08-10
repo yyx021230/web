@@ -85,10 +85,8 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime, nullable=True),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
     )
-    op.create_index("ix_materials_id", "materials", ["id"])
-    op.create_index("ix_materials_category", "materials", ["category"])
-    op.create_index("ix_materials_created_by", "materials", ["created_by"])
-    op.create_index("ix_materials_deleted_at", "materials", ["deleted_at"])
+    # Revision 6ac6769ce0b2 creates the material indexes. Keeping the
+    # pre-6ac baseline index-free lets a fresh database replay that migration.
 
     # AI Tasks
     op.create_table(
@@ -126,8 +124,8 @@ def upgrade() -> None:
     op.create_table(
         "dify_workflows",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("instance_id", sa.Integer, sa.ForeignKey("dify_instances.id"), nullable=False),
-        sa.Column("app_id", sa.String(100), nullable=False),
+        sa.Column("api_key", sa.String(500), nullable=False),
+        sa.Column("base_url", sa.String(500)),
         sa.Column("app_name", sa.String(255), nullable=False),
         sa.Column("app_type", sa.String(20), nullable=False),
         sa.Column("inputs_schema", sa.JSON, default={}),
@@ -136,8 +134,28 @@ def upgrade() -> None:
         sa.Column("created_by", sa.Integer),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
     )
-    op.create_index("ix_dify_workflows_id", "dify_workflows", ["id"])
-    op.create_index("ix_dify_workflows_instance_id", "dify_workflows", ["instance_id"])
+
+    # Dify Tasks. The historical 6ac6769ce0b2 migration changes task_id and
+    # progress from Text to bounded strings, replaces the status index, and
+    # adds the id/user indexes. This is intentionally the pre-6ac shape.
+    op.create_table(
+        "dify_tasks",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("workflow_id", sa.Integer, nullable=False),
+        sa.Column("user_id", sa.Integer, nullable=False),
+        sa.Column("task_id", sa.Text),
+        sa.Column("status", sa.String(20), default="pending"),
+        sa.Column("inputs", sa.JSON, default={}),
+        sa.Column("outputs", sa.JSON, default={}),
+        sa.Column("error", sa.Text),
+        sa.Column("progress", sa.Text, default=""),
+        sa.Column("elapsed_ms", sa.Float),
+        sa.Column("viewed", sa.Integer, default=0),
+        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("finished_at", sa.DateTime),
+    )
+    op.create_index("ix_dify_tasks_status", "dify_tasks", ["status"])
+    op.create_index("ix_dify_tasks_workflow_id", "dify_tasks", ["workflow_id"])
 
     # Dify Run Logs
     op.create_table(
@@ -161,6 +179,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("dify_run_logs")
+    op.drop_table("dify_tasks")
     op.drop_table("dify_workflows")
     op.drop_table("dify_instances")
     op.drop_table("ai_tasks")
