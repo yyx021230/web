@@ -5,7 +5,6 @@ from __future__ import annotations
 from functools import lru_cache
 from urllib.parse import unquote, urlparse
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -72,6 +71,7 @@ class Settings(BaseSettings):
     ai_task_worker_concurrency: int = 15
     ai_task_worker_poll_timeout_seconds: int = 5
     ai_task_worker_min_interval_seconds: float = 10.0
+    ai_image_shadow_enabled: bool = False
 
     # AI Watermark Removal (HTTP API)
     remove_ai_watermarks_enabled: bool = True

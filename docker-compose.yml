@@ -94,6 +94,7 @@ services:
       STORAGE_PATH: /app/uploads
       XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?set XHS_WORKER_INTERNAL_TOKEN in .env}
       XHS_MCP_BIN_PATH: ${XHS_MCP_BIN_PATH:-/app/bin/xiaohongshu-mcp}
+      AI_IMAGE_SHADOW_ENABLED: ${AI_IMAGE_SHADOW_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,6 +135,7 @@ services:
       XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?set XHS_WORKER_INTERNAL_TOKEN in .env}
       AI_TASK_WORKER_CONCURRENCY: ${AI_TASK_WORKER_CONCURRENCY:-15}
       AI_TASK_WORKER_MIN_INTERVAL_SECONDS: ${AI_TASK_WORKER_MIN_INTERVAL_SECONDS:-10}
+      AI_IMAGE_SHADOW_ENABLED: ${AI_IMAGE_SHADOW_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy

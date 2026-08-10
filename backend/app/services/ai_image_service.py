@@ -1,5 +1,6 @@
-from __future__ import annotations
 """AI 生图服务 - 通过适配器模式支持多模型，并持久化任务"""
+
+from __future__ import annotations
 
 import time
 import asyncio
@@ -20,6 +21,7 @@ from app.adapters.storage import get_storage
 from app.config import settings
 from app.services.request_queue import image_generation_queue
 from app.services.ai_image_provider_service import AIImageProviderService
+from app.services.ai_image_shadow import mirror_ai_image_shadow_safely
 from app.services.ai_task_queue import ai_image_task_queue
 
 logger = logging.getLogger("app")
@@ -225,6 +227,8 @@ class AIImageService:
         elapsed_seconds: float | None = None,
         provider: dict | None = None,
         upstream_debug: dict | None = None,
+        shadow_phase: str | None = None,
+        result_unknown: bool = False,
     ) -> bool:
         result = await session.execute(select(AITask).where(AITask.id == task_id))
         task = result.scalar_one_or_none()
@@ -242,6 +246,15 @@ class AIImageService:
         task.elapsed_seconds = elapsed_seconds
         task.finished_at = self._now_naive_utc()
         await session.commit()
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase=shadow_phase or ("completed" if status == "completed" else "failed"),
+            details={
+                "legacy_status": status,
+                "image_count": len(result_urls or []),
+            },
+            result_unknown=result_unknown,
+        )
         return True
 
     async def _mark_task_provider(
@@ -258,6 +271,11 @@ class AIImageService:
             return False
         task.params = {**(task.params or {}), "provider": provider}
         await session.commit()
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase="provider_selected",
+            details={"provider": provider},
+        )
         return True
 
     async def cleanup_stale_tasks(self, stale_after_minutes: int = 30) -> int:
@@ -273,6 +291,7 @@ class AIImageService:
 
         now = self._now_naive_utc()
         recovered = 0
+        recovered_task_ids: list[int] = []
         for task in tasks:
             processing_started_at = self._parse_naive_datetime(
                 (task.params or {}).get("_processing_started_at")
@@ -290,7 +309,15 @@ class AIImageService:
             )
             task.finished_at = now
             recovered += 1
+            recovered_task_ids.append(int(task.id))
         await self.db.commit()
+        for task_id in recovered_task_ids:
+            await mirror_ai_image_shadow_safely(
+                task_id,
+                phase="result_unknown",
+                details={"reason": "stale_processing_cleanup"},
+                result_unknown=True,
+            )
         return recovered
 
     async def recover_incomplete_tasks(self) -> dict[str, int]:
@@ -300,6 +327,7 @@ class AIImageService:
 
         drained_processing_ids = await ai_image_task_queue.drain_processing_tasks()
         requeue_processing_ids: list[int] = []
+        reset_processing_ids: list[int] = []
         discarded_processing_ids: list[int] = []
         reset_processing = 0
 
@@ -320,6 +348,7 @@ class AIImageService:
                     task.elapsed_seconds = None
                     task.finished_at = None
                     requeue_processing_ids.append(task_id)
+                    reset_processing_ids.append(task_id)
                     reset_processing += 1
                 elif task.status == "queued":
                     requeue_processing_ids.append(task_id)
@@ -328,6 +357,13 @@ class AIImageService:
 
             if reset_processing:
                 await self.db.commit()
+                for task_id in reset_processing_ids:
+                    await mirror_ai_image_shadow_safely(
+                        task_id,
+                        phase="worker_recovered",
+                        details={"reason": "worker_restart"},
+                        result_unknown=True,
+                    )
 
         if requeue_processing_ids:
             await ai_image_task_queue.requeue_drained_tasks(requeue_processing_ids)
@@ -422,7 +458,7 @@ class AIImageService:
                 if resp.status_code == 503:
                     # 所有 GPU 忙，等一会重试
                     logger.warning("去水印 API 繁忙 (503)，%d/%d 次重试", attempt + 1, retries)
-                    last_error = f"API busy (503)"
+                    last_error = "API busy (503)"
                     await asyncio.sleep(5 * (attempt + 1))
                     continue
 
@@ -451,14 +487,41 @@ class AIImageService:
         upstream_prompt = prompt
         if self.adapter.name == "gptimage2":
             upstream_prompt = _append_dimension_prompt_instruction(prompt, params)
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase="upstream_started",
+            details={"model_name": self.adapter.name},
+        )
         result = self._normalize_failed_result(
             await self._generate_with_configured_provider(upstream_prompt, params, user_id, task_id)
         )
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase="upstream_finished",
+            details={
+                "status": result.get("status"),
+                "upstream_task_id": result.get("task_id"),
+                "image_count": len(result.get("image_urls") or []),
+            },
+        )
         raw_urls = result.get("image_urls", [])
         stored_urls = await _store_images(raw_urls)
+        await mirror_ai_image_shadow_safely(
+            task_id,
+            phase="result_stored",
+            details={
+                "source_count": len(raw_urls),
+                "stored_count": len(stored_urls),
+            },
+        )
         # AI 水印移除 (visible + invisible + metadata)
         if stored_urls and result.get("status") == "completed":
             stored_urls = await self._remove_watermarks(stored_urls)
+            await mirror_ai_image_shadow_safely(
+                task_id,
+                phase="watermark_finished",
+                details={"image_count": len(stored_urls)},
+            )
         return result, raw_urls, stored_urls
 
     async def generate(self, prompt: str, params: dict, user_id: int | None = None) -> dict:
@@ -477,6 +540,7 @@ class AIImageService:
             self.db.add(ai_task)
             await self.db.commit()
             await self.db.refresh(ai_task)
+            await mirror_ai_image_shadow_safely(ai_task.id, phase="queued")
 
         async def _do_generate():
             """实际执行生成的内部协程"""
@@ -488,6 +552,10 @@ class AIImageService:
                 ai_task.status = "processing"
                 self._mark_processing_started(ai_task)
                 await self.db.commit()
+                await mirror_ai_image_shadow_safely(
+                    ai_task.id,
+                    phase="worker_started",
+                )
 
             start_time = time.time()
             raw_urls: list[str] = []
@@ -535,6 +603,8 @@ class AIImageService:
                             status="failed",
                             error=error,
                             elapsed_seconds=elapsed,
+                            shadow_phase="result_unknown",
+                            result_unknown=True,
                         )
                 return {
                     "task_id": "",
@@ -663,6 +733,7 @@ class AIImageService:
         self.db.add(ai_task)
         await self.db.commit()
         await self.db.refresh(ai_task)
+        await mirror_ai_image_shadow_safely(ai_task.id, phase="queued")
         try:
             await ai_image_task_queue.enqueue_task(ai_task.id)
         except Exception as exc:
@@ -670,6 +741,11 @@ class AIImageService:
             ai_task.error = f"任务入队失败: {exc}"
             ai_task.finished_at = self._now_naive_utc()
             await self.db.commit()
+            await mirror_ai_image_shadow_safely(
+                ai_task.id,
+                phase="enqueue_failed",
+                details={"reason": "queue_unavailable"},
+            )
             raise RuntimeError("AI 生图队列暂时不可用，请稍后重试") from exc
         return {
             "task_id": str(ai_task.id),
@@ -731,6 +807,7 @@ class AIImageService:
         task.elapsed_seconds = None
         self._mark_processing_started(task)
         await self.db.commit()
+        await mirror_ai_image_shadow_safely(task.id, phase="worker_started")
 
         start_time = time.time()
         try:
@@ -757,11 +834,11 @@ class AIImageService:
                 task.id,
                 status=final_status,
                 error=gen_result.get("error"),
-                            result_urls=stored_urls,
-                            elapsed_seconds=elapsed,
-                            provider=gen_result.get("provider"),
-                            upstream_debug=gen_result.get("upstream_debug"),
-                        )
+                result_urls=stored_urls,
+                elapsed_seconds=elapsed,
+                provider=gen_result.get("provider"),
+                upstream_debug=gen_result.get("upstream_debug"),
+            )
             return final_status
         except asyncio.TimeoutError:
             elapsed = time.time() - start_time
@@ -771,6 +848,8 @@ class AIImageService:
                 status="failed",
                 error=self._task_timeout_error(),
                 elapsed_seconds=elapsed,
+                shadow_phase="result_unknown",
+                result_unknown=True,
             )
             return "failed"
         except Exception as e:
@@ -837,6 +916,10 @@ class AIImageService:
                     )
                     task.finished_at = self._now_naive_utc()
                     await self.db.commit()
+                    await mirror_ai_image_shadow_safely(
+                        task.id,
+                        phase="cancelled",
+                    )
                     try:
                         await ai_image_task_queue.remove_pending_task(int(task_id))
                     except Exception as exc:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.config import settings
 from app.db.session import async_session
 from app.models.ai_image_provider import AIImageProvider
 from app.models.user import User
@@ -24,7 +25,9 @@ async def _seed_admin() -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_list_ai_image_providers(client):
+async def test_admin_list_ai_image_providers(client, monkeypatch):
+    monkeypatch.setattr(settings, "gpt_image2_api_key", "test-api-key")
+    monkeypatch.setattr(settings, "gpt_image2_api_url", "https://image.mentalout.top")
     await _seed_admin()
     resp = await client.get("/api/v1/admin/ai-image/providers", headers=make_auth_headers(1))
     assert resp.status_code == 200
