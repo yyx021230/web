@@ -20,6 +20,12 @@ from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_schedule_setting import XHSScheduleSetting
 from app.services.xhs_service import XHSService
+from app.services.xhs_report_refresh_shadow import (
+    create_report_refresh_run_safely,
+    finish_report_refresh_run_safely,
+    mark_report_refresh_running_safely,
+    record_report_refresh_result_safely,
+)
 from app.utils.timezone import cst_now_naive, utc_now_naive, utc_naive_to_aware_iso, utc_naive_to_cst_naive
 
 logger = logging.getLogger(__name__)
@@ -644,7 +650,12 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
     return "；".join(summary_parts)
 
 
-async def _execute_ad_data_refresh(session: AsyncSession, config: dict[str, Any]) -> str:
+async def _execute_ad_data_refresh(
+    session: AsyncSession,
+    config: dict[str, Any],
+    *,
+    history_run_id: int | None = None,
+) -> str:
     service = XHSService(session)
     start_d, end_d, days = _resolve_ad_refresh_date_range(config)
     report_types = [str(item).strip() for item in (config.get("report_types") or AD_REPORT_TYPES) if str(item).strip() in AD_REPORT_TYPES]
@@ -653,19 +664,48 @@ async def _execute_ad_data_refresh(session: AsyncSession, config: dict[str, Any]
     total_accounts = 0
     total_rows = 0
     errors: list[str] = []
+    await mark_report_refresh_running_safely(history_run_id)
     for report_type in report_types:
-        result = await service.refresh_jg_report_cache(
+        try:
+            result = await service.refresh_jg_report_cache(
+                report_type=report_type,
+                start_date=start_d.isoformat(),
+                end_date=end_d.isoformat(),
+                days=days,
+            )
+        except Exception as exc:
+            await record_report_refresh_result_safely(
+                history_run_id,
+                report_type=report_type,
+                status="failed",
+                error=str(exc),
+            )
+            await finish_report_refresh_run_safely(
+                history_run_id,
+                status="failed",
+                message=f"{report_type} 报表刷新失败",
+                error=str(exc),
+            )
+            raise
+        await record_report_refresh_result_safely(
+            history_run_id,
             report_type=report_type,
-            start_date=start_d.isoformat(),
-            end_date=end_d.isoformat(),
-            days=days,
+            status="succeeded",
+            result=result,
         )
         total_accounts += int(result.get("updated_accounts") or 0)
         total_rows += int(result.get("updated_rows") or 0)
         errors.extend(str(item) for item in (result.get("errors") or []))
     if errors:
-        return f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行，异常 {len(errors)} 条"
-    return f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行，异常 {len(errors)} 条"
+    else:
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行"
+    await finish_report_refresh_run_safely(
+        history_run_id,
+        status="succeeded",
+        message=message,
+    )
+    return message
 
 
 async def _execute_ad_report_publish(session: AsyncSession, config: dict[str, Any]) -> str:
@@ -793,7 +833,23 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
             if task_key == ACCOUNT_DATA_SYNC_TASK:
                 message = await _execute_account_data_sync(session, config)
             elif task_key == AD_DATA_REFRESH_TASK:
-                message = await _execute_ad_data_refresh(session, config)
+                start_d, end_d, days = _resolve_ad_refresh_date_range(config)
+                history_run_id = await create_report_refresh_run_safely(
+                    job_id=f"schedule:{run_log_id}:ad-data-refresh",
+                    source=source,
+                    schedule_run_id=run_log_id,
+                    request_config={
+                        "report_types": config.get("report_types") or AD_REPORT_TYPES,
+                        "start_date": start_d.isoformat(),
+                        "end_date": end_d.isoformat(),
+                        "days": days,
+                    },
+                )
+                message = await _execute_ad_data_refresh(
+                    session,
+                    config,
+                    history_run_id=history_run_id,
+                )
             elif task_key == AD_REPORT_PUBLISH_TASK:
                 message = await _execute_ad_report_publish(session, config)
             else:

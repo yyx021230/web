@@ -35,7 +35,6 @@ from app.schemas.xhs import (
     AccountNoteListOut,
     AccountNoteOut,
     AccountNoteBrowseRecordRequest,
-    AccountNoteSyncOut,
     AccountNoteBatchUpdateRequest,
     AccountNoteContentTagOut,
     AccountNoteContentTagRequest,
@@ -57,6 +56,12 @@ from app.services.xhs_profile_stat_service import XHSProfileStatService
 from app.services.xhs_homepage_sync_shadow import (
     SHADOW_PROGRESS_PHASES,
     mirror_homepage_sync_shadow_safely,
+)
+from app.services.xhs_report_refresh_shadow import (
+    create_report_refresh_run_safely,
+    finish_report_refresh_run_safely,
+    mark_report_refresh_running_safely,
+    record_report_refresh_result_safely,
 )
 from app.config import settings
 import logging
@@ -966,12 +971,14 @@ async def _run_report_refresh_job(
     start_date: str | None,
     end_date: str | None,
     days: int,
+    history_run_id: int | None = None,
 ) -> None:
     job = XHS_BACKGROUND_JOBS[job_id]
     job["status"] = "running"
     job["started_at"] = _now_iso()
     job["updated_at"] = _now_iso()
     job["message"] = f"正在刷新{report_type}报表缓存"
+    await mark_report_refresh_running_safely(history_run_id)
     try:
         async with async_session() as session:
             service = XHSService(session)
@@ -983,11 +990,22 @@ async def _run_report_refresh_job(
                 end_date=end_date,
                 days=days,
             )
+        await record_report_refresh_result_safely(
+            history_run_id,
+            report_type=report_type,
+            status="succeeded",
+            result=result,
+        )
         job["status"] = "succeeded"
         job["message"] = "报表缓存刷新完成"
         job["result"] = result
         job["updated_at"] = _now_iso()
         job["finished_at"] = _now_iso()
+        await finish_report_refresh_run_safely(
+            history_run_id,
+            status="succeeded",
+            message=job["message"],
+        )
     except Exception as exc:
         logger.exception("报表缓存刷新后台任务失败: job_id=%s report_type=%s", job_id, report_type)
         job["status"] = "failed"
@@ -995,6 +1013,18 @@ async def _run_report_refresh_job(
         job["error"] = str(exc)
         job["updated_at"] = _now_iso()
         job["finished_at"] = _now_iso()
+        await record_report_refresh_result_safely(
+            history_run_id,
+            report_type=report_type,
+            status="failed",
+            error=str(exc),
+        )
+        await finish_report_refresh_run_safely(
+            history_run_id,
+            status="failed",
+            message=job["message"],
+            error=str(exc),
+        )
 
 REPORT_EXPORT_COLUMNS = [
     ("账户名称", "account_name"),
@@ -2538,6 +2568,21 @@ async def refresh_report_cache(
         end_date=end_date,
         days=days,
     )
+    history_run_id = await create_report_refresh_run_safely(
+        job_id=str(job["job_id"]),
+        source="manual",
+        requested_by_user_id=int(current_user.id),
+        request_config={
+            "report_types": [report_type],
+            "account_id": account_id,
+            "account_name": account_name,
+            "start_date": start_date,
+            "end_date": end_date,
+            "days": days,
+        },
+    )
+    if history_run_id:
+        job["history_run_id"] = history_run_id
     asyncio.create_task(
         _run_report_refresh_job(
             job["job_id"],
@@ -2547,6 +2592,7 @@ async def refresh_report_cache(
             start_date=start_date,
             end_date=end_date,
             days=days,
+            history_run_id=history_run_id,
         )
     )
     return ApiResponse(data=job, message="报表缓存刷新任务已开始")

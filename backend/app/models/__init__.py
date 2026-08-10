@@ -21,6 +21,9 @@ from app.models.xhs_post import XHSPost
 from app.models.xhs_schedule_setting import XHSScheduleSetting
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.models.xhs_account_sync_run import XHSAccountSyncRun, XHSAccountSyncRunItem
+from app.models.xhs_report_refresh_run import (
+    XHSReportRefreshRun as XHSReportRefreshRun,
+)
 from app.models.user_xhs_env import UserXHSEnvironment
 from app.models.xhs_report import (
     XHSAdStatsDailyAccount,

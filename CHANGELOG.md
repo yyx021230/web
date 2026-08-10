@@ -17,15 +17,17 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - Admin-only AI reconciliation list, retry, and manual-resolution endpoints that exclude prompts and Provider credentials.
 - Admin-only unified durable-job list and detail endpoints with bounded evidence, fixed-query loading, and server-side secret redaction.
 - A read-only reliable-task tab in the existing admin task center with workload summaries, filters, progress, item outcomes, attempts, and an event timeline.
+- A disabled-by-default Xiaohongshu report-refresh shadow adapter for manual refreshes and the configured scheduled refresh, with persistent per-report evidence and no duplicate upstream execution.
+- An admin-only report-refresh parity endpoint that independently detects missing, duplicate, orphaned, or altered shadow jobs before any execution cutover.
 
 ### Not Yet Connected
 
-- Existing AI, Dify, Xiaohongshu publishing, report, and homepage-sync execution still use their current paths; AI reconciliation observes accepted upstream tasks but does not replace the legacy Redis execution owner.
+- Existing AI, Dify, Xiaohongshu publishing, report-refresh, and homepage-sync execution still use their current paths; shadow adapters observe selected flows but do not replace their legacy execution owners.
 - Durable worker integration and operator controls such as cancellation or failed-item reruns will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk
 
-- The new `4d5e6f7a8b9c -> 5e6f7a8b9c0d` migration is upgrade/downgrade verified. A pre-existing empty-SQLite migration-chain failure remains at revision `6ac6769ce0b2` and must be fixed before treating empty-database recovery as validated.
+- The incremental chain through `6f7a8b9c0d1e` is upgrade/downgrade verified. A pre-existing empty-SQLite migration-chain failure remains at revision `6ac6769ce0b2` and must be fixed before treating empty-database recovery as validated.
 
 ## [0.2.0] - Unreleased
 

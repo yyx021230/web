@@ -23,6 +23,9 @@ from app.services.job_query_service import (
     JobQueryService,
 )
 from app.services.xhs_homepage_sync_parity_service import HomepageSyncParityService
+from app.services.xhs_report_refresh_parity_service import (
+    ReportRefreshParityService,
+)
 
 
 router = APIRouter()
@@ -46,6 +49,29 @@ async def get_xhs_homepage_shadow_parity(
 
     try:
         report = await HomepageSyncParityService(db).build_report(
+            finished_from=finished_from,
+            finished_to=finished_to,
+            sample_limit=sample_limit,
+            min_samples=min_samples,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ApiResponse(data=report)
+
+
+@router.get("/xhs-report-refresh-shadow")
+async def get_xhs_report_refresh_shadow_parity(
+    finished_from: datetime | None = Query(default=None),
+    finished_to: datetime | None = Query(default=None),
+    sample_limit: int = Query(default=100, ge=1, le=500),
+    min_samples: int = Query(default=20, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Compare persistent legacy refresh runs with their shadow jobs."""
+
+    try:
+        report = await ReportRefreshParityService(db).build_report(
             finished_from=finished_from,
             finished_to=finished_to,
             sample_limit=sample_limit,
