@@ -9,6 +9,7 @@ from app.models.dify_run_log import DifyRunLog
 from app.models.dify_task import DifyTask
 from app.models.ai_task import AITask
 from app.models.job import Job, JobAttempt, JobEvent, JobItem, JobStatus
+from app.models.scheduler_lease import SchedulerLease
 from app.models.ai_image_provider import AIImageProvider
 from app.models.copywriting import Copywriting
 from app.models.user_workflow import user_workflow_access

@@ -71,7 +71,7 @@ def test_report_refresh_migration_upgrade_downgrade_and_constraints(tmp_path):
     database_path = tmp_path / "report-refresh-migration.db"
     _prepare_previous_revision(database_path)
 
-    _run_alembic(database_path, "upgrade", "head")
+    _run_alembic(database_path, "upgrade", CURRENT_REVISION)
     assert _current_revision(database_path) == CURRENT_REVISION
     assert _has_table(database_path, "xhs_report_refresh_runs")
 
@@ -137,6 +137,6 @@ def test_report_refresh_migration_upgrade_downgrade_and_constraints(tmp_path):
     assert _current_revision(database_path) == PREVIOUS_REVISION
     assert not _has_table(database_path, "xhs_report_refresh_runs")
 
-    _run_alembic(database_path, "upgrade", "head")
+    _run_alembic(database_path, "upgrade", CURRENT_REVISION)
     assert _current_revision(database_path) == CURRENT_REVISION
     assert _has_table(database_path, "xhs_report_refresh_runs")

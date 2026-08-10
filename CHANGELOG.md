@@ -21,10 +21,12 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - An admin-only report-refresh parity endpoint that independently detects missing, duplicate, orphaned, or altered shadow jobs before any execution cutover.
 - A disabled-by-default Dify task shadow that mirrors user/admin workflow lifecycle evidence without copying input or output content and without issuing a second Dify request.
 - An admin-only Dify parity report with fixed-query missing/duplicate/orphan detection, deletion audit snapshots, and cancellation-versus-late-success drift reporting.
+- Database-backed scheduler Leader election with atomic renewal, bounded failover, fail-closed loop cancellation, child-loop supervision, and an admin health endpoint.
 
 ### Not Yet Connected
 
 - Existing AI, Dify, Xiaohongshu publishing, report-refresh, and homepage-sync execution still use their current paths; available shadow adapters observe selected flows but do not replace their legacy execution owners.
+- Scheduler leadership prevents duplicate polling across healthy API replicas, but scheduled triggers do not create executable durable jobs until each business flow passes its worker-cutover gate.
 - Durable worker integration and operator controls such as cancellation or failed-item reruns will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk

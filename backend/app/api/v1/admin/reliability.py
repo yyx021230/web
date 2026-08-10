@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.deps import require_admin
 from app.db.session import get_db
 from app.models.user import User
@@ -27,9 +28,52 @@ from app.services.xhs_report_refresh_parity_service import (
     ReportRefreshParityService,
 )
 from app.services.dify_task_parity_service import DifyTaskParityService
+from app.services.scheduler_leader import (
+    SCHEDULER_LEASE_KEY,
+    SchedulerLeaseService,
+    normalized_scheduler_lease_settings,
+)
+from app.utils.timezone import utc_naive_to_aware_iso, utc_now_naive
 
 
 router = APIRouter()
+
+
+@router.get("/scheduler-leader")
+async def get_scheduler_leader_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Return the current database-backed scheduler leader lease."""
+
+    lease = await SchedulerLeaseService(db).get(SCHEDULER_LEASE_KEY)
+    now = utc_now_naive()
+    lease_seconds, heartbeat_seconds = normalized_scheduler_lease_settings()
+    is_healthy = bool(
+        lease
+        and lease.owner_id
+        and lease.lease_expires_at
+        and lease.lease_expires_at > now
+    )
+    return ApiResponse(
+        data={
+            "enabled": settings.scheduler_leader_enabled,
+            "lease_key": SCHEDULER_LEASE_KEY,
+            "owner_id": lease.owner_id if lease else None,
+            "is_healthy": is_healthy,
+            "acquired_at": utc_naive_to_aware_iso(
+                lease.acquired_at if lease else None
+            ),
+            "heartbeat_at": utc_naive_to_aware_iso(
+                lease.heartbeat_at if lease else None
+            ),
+            "lease_expires_at": utc_naive_to_aware_iso(
+                lease.lease_expires_at if lease else None
+            ),
+            "lease_seconds": lease_seconds,
+            "heartbeat_seconds": heartbeat_seconds,
+        }
+    )
 
 
 class AIImageManualResolutionRequest(BaseModel):

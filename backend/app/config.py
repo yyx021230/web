@@ -116,6 +116,9 @@ class Settings(BaseSettings):
     xhs_homepage_sync_shadow_enabled: bool = False
     xhs_report_refresh_shadow_enabled: bool = False
     dify_task_shadow_enabled: bool = False
+    scheduler_leader_enabled: bool = True
+    scheduler_leader_lease_seconds: int = 30
+    scheduler_leader_heartbeat_seconds: int = 10
     xhs_enable_scheduled_publish_loop: bool = True
     xhs_enable_profile_stat_sync_loop: bool = False
     xhs_account_scrape_environment_id: int = 0

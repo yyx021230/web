@@ -54,12 +54,11 @@ if missing_optional_settings and settings.debug:
 async def lifespan(app: FastAPI):
     """应用生命周期管理：启动定时同步任务"""
     from app.db.session import async_session
-    from app.services.scheduler import (
-        sync_task_loop,
-        scheduled_publish_loop,
-        xhs_configured_task_loop,
+    from app.services.scheduler_leader import (
+        SchedulerLeaderCoordinator,
+        build_scheduler_loop_specs,
+        normalized_scheduler_lease_settings,
     )
-    from app.services.xhs_profile_stat_service import profile_stat_daily_sync_loop
     from app.services.ai_image_provider_service import AIImageProviderService
     from app.services.xhs_ad_dashboard_service import warm_default_ad_dashboard_cache
 
@@ -71,55 +70,39 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Skipped default AI image provider seed: %s", e)
 
-    # 启动后台定时同步任务
-    sync_task = (
-        asyncio.create_task(sync_task_loop(async_session))
-        if settings.xhs_enable_sync_task_loop
-        else None
-    )
-    xhs_configured_task = asyncio.create_task(xhs_configured_task_loop(async_session))
-    scheduled_publish_task = (
-        asyncio.create_task(scheduled_publish_loop(async_session))
-        if settings.xhs_enable_scheduled_publish_loop
-        else None
-    )
-    profile_stat_sync_task = (
-        asyncio.create_task(profile_stat_daily_sync_loop(async_session))
-        if settings.xhs_enable_profile_stat_sync_loop
-        else None
-    )
+    scheduler_specs = build_scheduler_loop_specs(async_session)
+    if settings.scheduler_leader_enabled:
+        lease_seconds, heartbeat_seconds = normalized_scheduler_lease_settings()
+        scheduler_coordinator = SchedulerLeaderCoordinator(
+            async_session,
+            scheduler_specs,
+            lease_seconds=lease_seconds,
+            heartbeat_seconds=heartbeat_seconds,
+        )
+        scheduler_tasks = [
+            asyncio.create_task(
+                scheduler_coordinator.run(),
+                name="scheduler-leader-coordinator",
+            )
+        ]
+    else:
+        logger.warning(
+            "Scheduler leader lease is disabled; legacy loops are safe only with one API instance"
+        )
+        scheduler_tasks = [
+            asyncio.create_task(spec.factory(), name=f"scheduler:{spec.name}")
+            for spec in scheduler_specs
+        ]
     ad_dashboard_warm_task = asyncio.create_task(warm_default_ad_dashboard_cache())
 
     yield
 
     # 关闭时取消同步任务
     ad_dashboard_warm_task.cancel()
-    if sync_task is not None:
-        sync_task.cancel()
-    xhs_configured_task.cancel()
-    if scheduled_publish_task is not None:
-        scheduled_publish_task.cancel()
-    if profile_stat_sync_task is not None:
-        profile_stat_sync_task.cancel()
-    if sync_task is not None:
-        try:
-            await sync_task
-        except asyncio.CancelledError:
-            pass
-    if scheduled_publish_task is not None:
-        try:
-            await scheduled_publish_task
-        except asyncio.CancelledError:
-            pass
-    try:
-        await xhs_configured_task
-    except asyncio.CancelledError:
-        pass
-    if profile_stat_sync_task is not None:
-        try:
-            await profile_stat_sync_task
-        except asyncio.CancelledError:
-            pass
+    for scheduler_task in scheduler_tasks:
+        scheduler_task.cancel()
+    if scheduler_tasks:
+        await asyncio.gather(*scheduler_tasks, return_exceptions=True)
     try:
         await ad_dashboard_warm_task
     except asyncio.CancelledError:
