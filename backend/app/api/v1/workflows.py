@@ -20,6 +20,10 @@ from app.schemas.workflow import (
 )
 from app.services.dify.workflow_service import DifyWorkflowService
 from app.services.dify.dify_client import DifyClient
+from app.services.dify_task_shadow import (
+    detach_deleted_dify_task_safely,
+    mirror_dify_task_safely,
+)
 from app.models.user import User
 from app.models.dify_workflow import DifyWorkflowConfig
 from app.core.deps import get_current_user, require_admin
@@ -256,6 +260,7 @@ async def create_task(
     await db.commit()
     await db.refresh(task)
     task_id = task.id
+    await mirror_dify_task_safely(task_id)
 
     # Start background executor — 每个 workflow 串行，不同 workflow 并行
     asyncio.create_task(_execute_queued_task(workflow_id, task_id, req.get("inputs", {}), current_user.id))
@@ -294,6 +299,7 @@ async def _execute_queued_task(workflow_id: int, task_id: int, inputs: dict, use
             task_rec.status = "running"
             task_rec.progress = "正在执行..."
             await bg_db.commit()
+        await mirror_dify_task_safely(task_id)
 
         # 执行 Dify API 调用
         try:
@@ -344,6 +350,7 @@ async def _execute_queued_task(workflow_id: int, task_id: int, inputs: dict, use
                 task_rec.elapsed_ms = elapsed_ms
                 task_rec.finished_at = now_cst()
                 await bg_db.commit()
+                await mirror_dify_task_safely(task_id)
 
                 log = DifyRunLog(
                     workflow_id=workflow_id,
@@ -374,6 +381,7 @@ async def _execute_queued_task(workflow_id: int, task_id: int, inputs: dict, use
                         task_rec.progress = ""
                         task_rec.finished_at = now_cst()
                         await bg_db.commit()
+                        await mirror_dify_task_safely(task_id)
             except Exception:
                 pass
 
@@ -604,6 +612,7 @@ async def stop_task(
         task.status = "cancelled"
         task.finished_at = now_cst()
         await db.commit()
+        await mirror_dify_task_safely(task_id)
         return ApiResponse(message="任务已取消")
 
     return ApiResponse(message="已停止")
@@ -640,9 +649,13 @@ async def delete_task(
         task.status = "cancelled"
         task.finished_at = now_cst()
         await db.commit()
+        await mirror_dify_task_safely(task_id)
+
+    await mirror_dify_task_safely(task_id)
 
     await db.delete(task)
     await db.commit()
+    await detach_deleted_dify_task_safely(task_id)
     return ApiResponse(message="已删除")
 
 

@@ -17,6 +17,10 @@ from app.models.dify_task import DifyTask
 from app.models.dify_run_log import DifyRunLog
 from app.services.dify.workflow_service import DifyWorkflowService
 from app.services.dify.dify_client import DifyClient
+from app.services.dify_task_shadow import (
+    detach_deleted_dify_task_safely,
+    mirror_dify_task_safely,
+)
 from app.schemas.workflow import WorkflowRunRequest
 from app.utils.timezone import cst_now_naive
 
@@ -331,6 +335,7 @@ async def admin_create_task(
     await db.commit()
     await db.refresh(task)
     task_id = task.id
+    await mirror_dify_task_safely(task_id)
 
     async def run_in_background():
         import logging
@@ -353,6 +358,7 @@ async def admin_create_task(
                 task_rec.status = "running"
                 task_rec.progress = "正在执行..."
                 await bg_db.commit()
+                await mirror_dify_task_safely(task_id)
 
                 client = DifyClient(base_url=wf.base_url, api_key=wf.api_key)
                 start_time = time.time()
@@ -392,6 +398,7 @@ async def admin_create_task(
                 task_rec.elapsed_ms = elapsed_ms
                 task_rec.finished_at = now_cst()
                 await bg_db.commit()
+                await mirror_dify_task_safely(task_id)
 
                 log = DifyRunLog(
                     workflow_id=workflow_id,
@@ -422,6 +429,7 @@ async def admin_create_task(
                         task_rec.progress = ""
                         task_rec.finished_at = now_cst()
                         await bg_db.commit()
+                        await mirror_dify_task_safely(task_id)
             except Exception:
                 pass
 
@@ -513,8 +521,10 @@ async def admin_delete_task(
     if task.status in ("running", "pending"):
         raise HTTPException(status_code=400, detail="执行中的任务不允许删除")
 
+    await mirror_dify_task_safely(task_id)
     await db.delete(task)
     await db.commit()
+    await detach_deleted_dify_task_safely(task_id)
     return ApiResponse(message="已删除")
 
 
@@ -566,6 +576,7 @@ async def admin_fail_task(
 
     await db.commit()
     await db.refresh(task)
+    await mirror_dify_task_safely(task_id)
     return ApiResponse(data={"id": task.id, "status": task.status}, message="任务已终止并标记失败")
 
 

@@ -19,10 +19,12 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - A read-only reliable-task tab in the existing admin task center with workload summaries, filters, progress, item outcomes, attempts, and an event timeline.
 - A disabled-by-default Xiaohongshu report-refresh shadow adapter for manual refreshes and the configured scheduled refresh, with persistent per-report evidence and no duplicate upstream execution.
 - An admin-only report-refresh parity endpoint that independently detects missing, duplicate, orphaned, or altered shadow jobs before any execution cutover.
+- A disabled-by-default Dify task shadow that mirrors user/admin workflow lifecycle evidence without copying input or output content and without issuing a second Dify request.
+- An admin-only Dify parity report with fixed-query missing/duplicate/orphan detection, deletion audit snapshots, and cancellation-versus-late-success drift reporting.
 
 ### Not Yet Connected
 
-- Existing AI, Dify, Xiaohongshu publishing, report-refresh, and homepage-sync execution still use their current paths; shadow adapters observe selected flows but do not replace their legacy execution owners.
+- Existing AI, Dify, Xiaohongshu publishing, report-refresh, and homepage-sync execution still use their current paths; available shadow adapters observe selected flows but do not replace their legacy execution owners.
 - Durable worker integration and operator controls such as cancellation or failed-item reruns will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk
