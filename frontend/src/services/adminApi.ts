@@ -1,5 +1,122 @@
 import api from './api';
 
+export type DurableJobStatus =
+  | 'queued'
+  | 'leased'
+  | 'running'
+  | 'retry_wait'
+  | 'waiting_review'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'dead_letter';
+
+export interface DurableJobListItem {
+  id: number;
+  public_id: string;
+  job_type: string;
+  worker_type: string;
+  status: DurableJobStatus;
+  priority: number;
+  requested_by_user_id: number | null;
+  username: string | null;
+  display_name: string | null;
+  source_type: string | null;
+  source_id: string | null;
+  progress_current: number;
+  progress_total: number;
+  current_step: string | null;
+  retry_count: number;
+  max_retries: number;
+  cancel_requested: boolean;
+  error_code: string | null;
+  user_message: string | null;
+  lease_owner: string | null;
+  run_after: string | null;
+  lease_expires_at: string | null;
+  heartbeat_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface DurableJobDetail extends DurableJobListItem {
+  scope_key: string;
+  idempotency_key: string | null;
+  parent: { id: number; public_id: string; job_type: string; status: string } | null;
+  children: Array<{ id: number; public_id: string; job_type: string; status: string }>;
+  payload: Record<string, unknown>;
+  result_summary: Record<string, unknown> | null;
+  items: Array<{
+    id: number;
+    item_key: string;
+    item_type: string | null;
+    display_name: string | null;
+    status: string;
+    attempt_count: number;
+    payload: Record<string, unknown>;
+    result: Record<string, unknown> | null;
+    error_code: string | null;
+    user_message: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  }>;
+  attempts: Array<{
+    id: number;
+    attempt_number: number;
+    worker_id: string | null;
+    status: string;
+    lease_expires_at: string | null;
+    heartbeat_at: string | null;
+    metrics: Record<string, unknown>;
+    error_code: string | null;
+    user_message: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    created_at: string | null;
+  }>;
+  events: Array<{
+    id: number;
+    event_type: string;
+    from_status: string | null;
+    to_status: string | null;
+    level: string;
+    message: string | null;
+    details: Record<string, unknown>;
+    actor_type: string;
+    actor_id: string | null;
+    created_at: string | null;
+  }>;
+  diagnostics: {
+    item_count: number;
+    attempt_count: number;
+    event_count: number;
+    items_truncated: boolean;
+    attempts_truncated: boolean;
+    events_truncated: boolean;
+  };
+}
+
+export interface DurableJobListResponse {
+  items: DurableJobListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    total: number;
+    active: number;
+    attention: number;
+    status_counts: Record<DurableJobStatus, number>;
+  };
+  filters: {
+    job_types: string[];
+    worker_types: string[];
+  };
+}
+
 export const adminApi = {
   // Dashboard stats
   getOverview: (username?: string) =>
@@ -189,6 +306,19 @@ export const adminApi = {
 
   failAiTask: (taskId: number, reason?: string) =>
     api.post(`/admin/resources/ai-tasks/${taskId}/fail`, { reason }),
+
+  getDurableJobs: (params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    job_type?: string;
+    worker_type?: string;
+    username?: string;
+    search?: string;
+  }) => api.get<DurableJobListResponse>('/admin/reliability/jobs', { params }),
+
+  getDurableJobDetail: (jobId: number) =>
+    api.get<DurableJobDetail>(`/admin/reliability/jobs/${jobId}`),
 
   getWorkflowTasks: (params: { page?: number; limit?: number; username?: string; status?: string; workflow_id?: number }) =>
     api.get<{ items: any[]; total: number; page: number; limit: number }>('/admin/resources/workflow-tasks', { params }),

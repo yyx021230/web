@@ -15,11 +15,13 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - A disabled-by-default AI image shadow lifecycle that records generation phases and isolates uncertain upstream outcomes for reconciliation without taking execution ownership.
 - Cancellation-safe AI upstream task-ID capture, restart duplicate-submission protection, automatic status reconciliation, and audited manual resolution for uncertain image outcomes.
 - Admin-only AI reconciliation list, retry, and manual-resolution endpoints that exclude prompts and Provider credentials.
+- Admin-only unified durable-job list and detail endpoints with bounded evidence, fixed-query loading, and server-side secret redaction.
+- A read-only reliable-task tab in the existing admin task center with workload summaries, filters, progress, item outcomes, attempts, and an event timeline.
 
 ### Not Yet Connected
 
 - Existing AI, Dify, Xiaohongshu publishing, report, and homepage-sync execution still use their current paths; AI reconciliation observes accepted upstream tasks but does not replace the legacy Redis execution owner.
-- Durable worker integration and the unified task-center API will be added in subsequent v0.3 steps.
+- Durable worker integration and operator controls such as cancellation or failed-item reruns will be added in subsequent v0.3 steps.
 
 ### Known Migration Risk
 
