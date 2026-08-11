@@ -6,6 +6,9 @@ import sqlite3
 import subprocess
 import sys
 
+import app.models  # noqa: F401 - register every ORM table on Base.metadata
+from app.db.base import Base
+
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 CURRENT_REVISION = "7a8b9c0d1e2f"
@@ -44,6 +47,29 @@ def _indexes(connection: sqlite3.Connection, table_name: str) -> set[str]:
     }
 
 
+def _assert_migrated_schema_covers_orm_metadata(
+    connection: sqlite3.Connection,
+) -> None:
+    migrated_tables = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        )
+        if not str(row[0]).startswith("sqlite_")
+    }
+    expected_tables = set(Base.metadata.tables)
+    missing_tables = expected_tables - migrated_tables
+    assert not missing_tables, f"ORM tables missing from migrations: {missing_tables}"
+
+    missing_columns: dict[str, set[str]] = {}
+    for table_name, table in Base.metadata.tables.items():
+        migrated_columns = set(_columns(connection, table_name))
+        absent = set(table.columns.keys()) - migrated_columns
+        if absent:
+            missing_columns[table_name] = absent
+    assert not missing_columns, f"ORM columns missing from migrations: {missing_columns}"
+
+
 def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
     database_path = tmp_path / "fresh-database-migration.db"
 
@@ -51,6 +77,7 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
 
     with sqlite3.connect(database_path) as connection:
         assert _revision(connection) == CURRENT_REVISION
+        _assert_migrated_schema_covers_orm_metadata(connection)
         tables = {
             str(row[0])
             for row in connection.execute(

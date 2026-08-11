@@ -1,0 +1,12 @@
+[run]
+branch = True
+source = app
+
+[report]
+fail_under = 70
+show_missing = False
+skip_covered = False
+precision = 0
+
+[json]
+output = coverage.json

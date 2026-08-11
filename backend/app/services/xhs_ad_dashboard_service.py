@@ -249,7 +249,7 @@ def _note_owner_name_from_values(profile_nickname: object, account_name: object)
 
 
 def _clean_content_tag(tag: object) -> str:
-    value = str(tag or "").strip().lstrip("#").strip()
+    value = str(tag or "").strip().strip("#").strip()
     value = re.sub(r"[\[【(（]\s*话题\s*[\]】)）]?$", "", value).strip()
     value = re.sub(r"[#\s]*话题\s*[\]】)）]?$", "", value).strip()
     value = value.rstrip("#").strip()

@@ -23,13 +23,14 @@ from urllib.parse import quote
 if "DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./dev.db"
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import func, or_, select
 
 from app.db.base import Base
 from app.models.template import Template
 from app.models.material import Material
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.core.roles import ROLE_ADMIN, set_user_roles
 from app.core.security import hash_password
 
 
@@ -42,6 +43,62 @@ def get_local_session():
     else:
         engine = create_async_engine(db_url, echo=False, pool_size=5)
     return async_sessionmaker(engine, expire_on_commit=False)
+
+
+def _required_seed_admin_credentials() -> tuple[str, str, str]:
+    username = os.getenv("SEED_ADMIN_USERNAME", "").strip()
+    email = os.getenv("SEED_ADMIN_EMAIL", "").strip().lower()
+    password = os.getenv("SEED_ADMIN_PASSWORD", "")
+    if not username or not email or not password:
+        raise RuntimeError(
+            "缺少 SEED_ADMIN_USERNAME / SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD，"
+            "拒绝创建默认管理员"
+        )
+    return username, email, password
+
+
+async def _ensure_seed_admin(db: AsyncSession) -> tuple[User, bool]:
+    admin = (
+        await db.execute(
+            select(User)
+            .outerjoin(UserRole, UserRole.user_id == User.id)
+            .where(or_(User.role == ROLE_ADMIN, UserRole.role == ROLE_ADMIN))
+            .order_by(User.id.asc())
+            .limit(1)
+        )
+    ).scalars().first()
+    if admin is not None:
+        assigned_roles = list(
+            (
+                await db.execute(
+                    select(UserRole.role).where(UserRole.user_id == admin.id)
+                )
+            ).scalars()
+        )
+        await set_user_roles(db, admin, [*assigned_roles, ROLE_ADMIN])
+        return admin, False
+
+    username, email, password = _required_seed_admin_credentials()
+    conflict = (
+        await db.execute(
+            select(User).where(
+                or_(User.username == username, func.lower(User.email) == email)
+            )
+        )
+    ).scalar_one_or_none()
+    if conflict is not None:
+        raise RuntimeError("种子管理员用户名或邮箱已被非管理员账户占用")
+
+    admin = User(
+        username=username,
+        email=email,
+        hashed_password=hash_password(password),
+        is_active=True,
+    )
+    db.add(admin)
+    await db.flush()
+    await set_user_roles(db, admin, [ROLE_ADMIN])
+    return admin, True
 
 
 # ============================================================
@@ -390,17 +447,24 @@ async def seed():
 
         # 检查是否已有数据
         tpl_count = (await db.execute(select(func.count(Template.id)))).scalar() or 0
+        material_count = (await db.execute(select(func.count(Material.id)))).scalar() or 0
         force = "--reset" in sys.argv
 
-        if tpl_count > 0 and not force:
-            print(f"数据库已有 {tpl_count} 条模板。如需重新填充，请运行: python -m app.scripts.seed_data --reset")
+        if (tpl_count > 0 or material_count > 0) and not force:
+            admin, created = await _ensure_seed_admin(db)
+            await db.commit()
+            action = "补建" if created else "确认"
+            print(
+                f"数据库已有 {tpl_count} 条模板、{material_count} 条素材；"
+                f"已{action}管理员 {admin.username}。"
+            )
+            print("如需重新填充模板与素材，请运行: python -m app.scripts.seed_data --reset")
             return
 
-        if tpl_count > 0 and force:
-            print(f"清除现有 {tpl_count} 条模板和素材...")
+        if force:
+            print(f"清除现有 {tpl_count} 条模板、{material_count} 条素材...")
             await db.execute(Template.__table__.delete())
             await db.execute(Material.__table__.delete())
-            await db.execute(User.__table__.delete())
             await db.commit()
             print("已清除。")
 
@@ -408,24 +472,10 @@ async def seed():
         print("开始填充种子数据...")
         print("=" * 50)
 
-        # 1. 创建初始管理员（必须显式配置，避免默认弱口令进入环境）
-        admin_username = os.getenv("SEED_ADMIN_USERNAME", "").strip()
-        admin_email = os.getenv("SEED_ADMIN_EMAIL", "").strip()
-        admin_password = os.getenv("SEED_ADMIN_PASSWORD", "")
-        if not admin_username or not admin_email or not admin_password:
-            raise RuntimeError(
-                "缺少 SEED_ADMIN_USERNAME / SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD，"
-                "拒绝创建默认管理员"
-            )
-        admin = User(
-            username=admin_username,
-            email=admin_email,
-            hashed_password=hash_password(admin_password),
-            is_active=True,
-        )
-        db.add(admin)
-        await db.flush()
-        print(f"[1/4] 创建初始管理员: {admin_username}")
+        # 1. 创建或复用初始管理员（避免重置模板时误删用户）
+        admin, admin_created = await _ensure_seed_admin(db)
+        admin_action = "创建" if admin_created else "复用"
+        print(f"[1/4] {admin_action}初始管理员: {admin.username}")
 
         # 2. 模板素材
         for t in TEMPLATES:
@@ -474,10 +524,10 @@ async def seed():
         final_tpl = (await db.execute(select(func.count(Template.id)))).scalar()
         final_mat = (await db.execute(select(func.count(Material.id)))).scalar()
         print("=" * 50)
-        print(f"填充完成!")
+        print("填充完成!")
         print(f"  模板: {final_tpl} 条")
         print(f"  素材: {final_mat} 条")
-        print(f"  管理员账号: {admin_username} / <来自 SEED_ADMIN_PASSWORD>")
+        print(f"  管理员账号: {admin.username}")
         print("=" * 50)
 
 

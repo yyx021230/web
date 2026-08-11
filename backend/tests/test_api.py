@@ -1,8 +1,6 @@
 """测试 API 路由"""
 
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.config import settings

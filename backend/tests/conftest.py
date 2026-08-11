@@ -1,4 +1,5 @@
 """测试配置和 fixture - 使用 SQLite 替代 PostgreSQL"""
+# ruff: noqa: E402
 
 import os
 import asyncio

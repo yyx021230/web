@@ -85,6 +85,8 @@ async def _save_b64_to_local(b64_json: str) -> str:
     """将 base64 图片保存到本地存储，返回本地 URL"""
     from app.adapters.storage import get_storage
 
+    if b64_json.startswith("data:"):
+        _, b64_json = b64_json.split(",", 1)
     image_bytes = base64.b64decode(b64_json)
     name_hash = hashlib.md5(image_bytes[:1024]).hexdigest()[:12]
     filename = f"ai_gpt2_{name_hash}.png"

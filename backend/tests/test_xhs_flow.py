@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -1164,6 +1167,137 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     assert note_814 is not None
     assert note_814.view_count == 99
     assert note_814.share_count == 1
+
+
+def test_open_sms_api_headers_follow_documented_hmac_format(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(xhs_service_module.time, "time", lambda: 1782280063.148)
+    monkeypatch.setattr(xhs_service_module.uuid, "uuid4", lambda: uuid.UUID("12345678-1234-5678-1234-567812345678"))
+
+    raw_body = service._compact_json({"phoneNumber": "17570049665", "platform": "小红书"})
+    path = "/api/v1/open/sms-code-requests"
+    headers = service._open_sms_api_headers("POST", path, raw_body, idempotency_key="xhs-login-1")
+
+    body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()
+    canonical = "\n".join(("POST", path, "1782280063148", "12345678123456781234567812345678", body_hash))
+    expected_signature = hmac.new(b"test-open-api-secret", canonical.encode("utf-8"), hashlib.sha256).hexdigest()
+    assert headers == {
+        "Content-Type": "application/json",
+        "X-Client-Id": "xhs-backend",
+        "X-Timestamp": "1782280063148",
+        "X-Nonce": "12345678123456781234567812345678",
+        "X-Signature": expected_signature,
+        "Idempotency-Key": "xhs-login-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_open_sms_code_request_uses_signed_open_api_payload(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    calls: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        status_code = 201
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"ok": True, "request": {"requestId": "request-1", "status": "waiting"}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, headers: dict[str, str], content: bytes):
+            calls.append({"url": url, "headers": headers, "content": content})
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._create_open_sms_code_request("17570049665", "xhs-login-1")
+
+    assert result == {"requestId": "request-1", "status": "waiting"}
+    assert calls[0]["url"] == "https://sms.example.test/api/v1/open/sms-code-requests"
+    assert calls[0]["content"] == b'{"phoneNumber":"17570049665","platform":"\xe5\xb0\x8f\xe7\xba\xa2\xe4\xb9\xa6"}'
+    assert calls[0]["headers"]["X-Client-Id"] == "xhs-backend"  # type: ignore[index]
+    assert calls[0]["headers"]["Idempotency-Key"] == "xhs-login-1"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_uses_open_sms_request_without_business_token(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    events: list[tuple[str, object]] = []
+    env = XHSEnvironment(id=901, shop_id="shop_901", account_name="测试账号", login_phone_number="17570049665")
+
+    async def fake_login_status(self: XHSService, api_base: str):
+        events.append(("login-status", api_base))
+        return {"is_logged_in": False}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        events.append(("create-request", phone_number))
+        assert client_request_id.startswith("xhs-login-901-")
+        return {"requestId": "request-901", "status": "waiting", "deviceId": "device-901"}
+
+    async def fake_wait_request(self: XHSService, request_id: str):
+        events.append(("wait-request", request_id))
+        return {"requestId": request_id, "status": "received", "code": "246810", "deviceId": "device-901"}
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        def __init__(self, payload: dict):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            events.append(("mcp-post", {"url": url, "json": json}))
+            if url.endswith("/request-code"):
+                return _FakeResponse({"success": True, "data": {}})
+            if url.endswith("/submit-code"):
+                return _FakeResponse({"success": True, "data": {"is_logged_in": True}})
+            raise AssertionError(f"unexpected url: {url}")
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BUSINESS_API_TOKEN", "")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env)
+
+    assert events == [
+        ("login-status", "http://mcp.test"),
+        ("create-request", "17570049665"),
+        ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/request-code", "json": {"phone_number": "17570049665"}}),
+        ("wait-request", "request-901"),
+        ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/submit-code", "json": {"phone_number": "17570049665", "code": "246810"}}),
+    ]
 
 
 @pytest.mark.asyncio

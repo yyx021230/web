@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.vehicle_catalog import VehicleCatalog
@@ -53,7 +54,9 @@ class VehicleCatalogService:
         if replace:
             await self.db.execute(delete(VehicleCatalog))
 
-        stmt = insert(VehicleCatalog).values(rows)
+        bind = self.db.get_bind()
+        insert_factory = sqlite_insert if bind is not None and bind.dialect.name == "sqlite" else insert
+        stmt = insert_factory(VehicleCatalog).values(rows)
         stmt = stmt.on_conflict_do_nothing(index_elements=["brand", "model"])
         await self.db.execute(stmt)
         await self.db.commit()

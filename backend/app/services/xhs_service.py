@@ -12,6 +12,7 @@ import base64
 import uuid
 import json
 import hashlib
+import hmac
 import threading
 import socket
 import io
@@ -110,9 +111,15 @@ _report_worker_api_base = getattr(settings, "xhs_report_worker_api_base_url", ""
 XHS_REPORT_WORKER_API_BASE = _report_worker_api_base.strip().rstrip("/")
 XHS_REPORT_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_report_worker_internal_token", "") or ""
 SMS_CODE_CENTER_BASE_URL = (getattr(settings, "sms_code_center_base_url", "http://47.98.127.132") or "").strip().rstrip("/")
+SMS_CODE_CENTER_OPEN_API_CLIENT_ID = (getattr(settings, "sms_code_center_open_api_client_id", "") or "").strip()
+SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET = getattr(settings, "sms_code_center_open_api_client_secret", "") or ""
 SMS_CODE_CENTER_BUSINESS_API_TOKEN = getattr(settings, "sms_code_center_business_api_token", "") or ""
 SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS = max(5, int(getattr(settings, "sms_code_center_wait_timeout_seconds", 60) or 60))
 SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS = max(30, int(getattr(settings, "sms_code_center_activation_ttl_seconds", 300) or 300))
+SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS = min(
+    5.0,
+    max(3.0, float(getattr(settings, "sms_code_center_open_api_poll_interval_seconds", 4.0) or 4.0)),
+)
 _uploads_public_base = getattr(settings, "uploads_public_base_url", "") or ""
 UPLOADS_PUBLIC_BASE_URL = _uploads_public_base.strip().rstrip("/")
 XHS_BROWSER_STOP_COOLDOWN_SECONDS = max(
@@ -6383,60 +6390,70 @@ class XHSService:
         if not phone_number:
             account_name = str(getattr(env, "account_name", "") or "").strip()
             raise RuntimeError(f"{account_name or '当前环境'} 未登录且未配置手机号，无法自动接码登录")
-        if not SMS_CODE_CENTER_BUSINESS_API_TOKEN:
-            raise RuntimeError("未配置 SMS_CODE_CENTER_BUSINESS_API_TOKEN，无法自动接码登录")
         if not SMS_CODE_CENTER_BASE_URL:
             raise RuntimeError("未配置短信验证码中台地址，无法自动接码登录")
+        if not SMS_CODE_CENTER_OPEN_API_CLIENT_ID or not SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET:
+            raise RuntimeError("未配置 SMS_CODE_CENTER_OPEN_API_CLIENT_ID / SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET，无法自动接码登录")
 
         client_request_id = f"xhs-login-{getattr(env, 'id', 'env')}-{uuid.uuid4().hex}"
-        activation = await self._create_sms_activation(phone_number, client_request_id)
-        activation_id = str(activation.get("activationId") or activation.get("activation_id") or "").strip()
-        if not activation_id:
-            raise RuntimeError("验证码中台未返回 activationId")
+        request_id = ""
+        sms_received = False
+        try:
+            sms_request = await self._create_open_sms_code_request(phone_number, client_request_id)
+            request_id = str(sms_request.get("requestId") or sms_request.get("request_id") or "").strip()
+            if not request_id:
+                raise RuntimeError("验证码中台未返回 requestId")
 
-        ready_activation = await self._wait_sms_activation_ready(activation_id)
-        if str(ready_activation.get("status") or "").strip() == "received":
-            received_activation = ready_activation
-        else:
-            async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=60.0)) as client:
+            request_status = str(sms_request.get("status") or "").strip()
+            if request_status == "received":
+                received_request = sms_request
+            elif request_status == "waiting":
+                async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=60.0)) as client:
+                    resp = await client.post(
+                        f"{api_base}/api/v1/login/phone/request-code",
+                        json={"phone_number": phone_number},
+                    )
+                if resp.status_code != 200:
+                    raise RuntimeError(f"触发小红书发送验证码失败: HTTP {resp.status_code}")
+                payload = resp.json() if resp.content else {}
+                if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+                    raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
+                received_request = await self._wait_open_sms_code_request(request_id)
+            else:
+                raise RuntimeError(f"验证码请求创建后状态异常: {request_status or 'unknown'}")
+
+            sms_received = True
+            code = str(received_request.get("code") or "").strip()
+            if not code:
+                raise RuntimeError("验证码中台返回 received 但 code 为空")
+            async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
                 resp = await client.post(
-                    f"{api_base}/api/v1/login/phone/request-code",
-                    json={"phone_number": phone_number},
+                    f"{api_base}/api/v1/login/phone/submit-code",
+                    json={"phone_number": phone_number, "code": code},
                 )
             if resp.status_code != 200:
-                raise RuntimeError(f"触发小红书发送验证码失败: HTTP {resp.status_code}")
+                raise RuntimeError(f"提交小红书验证码失败: HTTP {resp.status_code}")
             payload = resp.json() if resp.content else {}
             if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-                raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
-
-            received_activation = await self._wait_sms_activation(activation_id)
-        code = str(received_activation.get("code") or "").strip()
-        if not code:
-            raise RuntimeError("验证码中台返回 received 但 code 为空")
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
-            resp = await client.post(
-                f"{api_base}/api/v1/login/phone/submit-code",
-                json={"phone_number": phone_number, "code": code},
-            )
-        if resp.status_code != 200:
-            raise RuntimeError(f"提交小红书验证码失败: HTTP {resp.status_code}")
-        payload = resp.json() if resp.content else {}
-        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-            raise RuntimeError(str(payload.get("message") or payload.get("error") or "提交小红书验证码失败"))
-        result = payload.get("data") if isinstance(payload.get("data"), dict) else {}
-        if not bool(result.get("is_logged_in")):
-            if bool(result.get("requires_qr")):
-                await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_activation, env=env)
-                status = await self._get_mcp_login_status(api_base)
-                if not bool(status.get("is_logged_in")):
-                    raise RuntimeError("验证码和二维码确认已处理，但小红书登录态确认失败")
-            else:
-                status = await self._get_mcp_login_status(api_base)
-                if not bool(status.get("is_logged_in")):
-                    await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_activation, env=env)
+                raise RuntimeError(str(payload.get("message") or payload.get("error") or "提交小红书验证码失败"))
+            result = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+            if not bool(result.get("is_logged_in")):
+                if bool(result.get("requires_qr")):
+                    await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_request, env=env)
                     status = await self._get_mcp_login_status(api_base)
                     if not bool(status.get("is_logged_in")):
                         raise RuntimeError("验证码和二维码确认已处理，但小红书登录态确认失败")
+                else:
+                    status = await self._get_mcp_login_status(api_base)
+                    if not bool(status.get("is_logged_in")):
+                        await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_request, env=env)
+                        status = await self._get_mcp_login_status(api_base)
+                        if not bool(status.get("is_logged_in")):
+                            raise RuntimeError("验证码和二维码确认已处理，但小红书登录态确认失败")
+        except Exception:
+            if request_id and not sms_received:
+                await self._cancel_open_sms_code_request(request_id)
+            raise
 
     async def _get_mcp_login_status(self, api_base: str) -> dict[str, Any]:
         async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
@@ -6449,88 +6466,92 @@ class XHSService:
         data = payload.get("data") or {}
         return data if isinstance(data, dict) else {}
 
-    async def _create_sms_activation(self, phone_number: str, client_request_id: str) -> dict[str, Any]:
-        headers = {"Authorization": f"Bearer {SMS_CODE_CENTER_BUSINESS_API_TOKEN}"}
-        payload = {
-            "phoneNumber": phone_number,
-            "platform": "小红书",
-            "ttlSeconds": SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS,
-            "clientRequestId": client_request_id,
-            "purpose": "login",
+    @staticmethod
+    def _compact_json(value: dict[str, Any]) -> str:
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+    def _open_sms_api_headers(
+        self,
+        method: str,
+        path: str,
+        raw_body: str = "",
+        *,
+        idempotency_key: str | None = None,
+    ) -> dict[str, str]:
+        timestamp = str(int(time.time() * 1000))
+        nonce = uuid.uuid4().hex
+        body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()
+        canonical = "\n".join((method.upper(), path, timestamp, nonce, body_hash))
+        signature = hmac.new(
+            SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET.encode("utf-8"),
+            canonical.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        headers = {
+            "Content-Type": "application/json",
+            "X-Client-Id": SMS_CODE_CENTER_OPEN_API_CLIENT_ID,
+            "X-Timestamp": timestamp,
+            "X-Nonce": nonce,
+            "X-Signature": signature,
         }
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
+        return headers
+
+    async def _create_open_sms_code_request(self, phone_number: str, client_request_id: str) -> dict[str, Any]:
+        path = "/api/v1/open/sms-code-requests"
+        raw_body = self._compact_json({"phoneNumber": phone_number, "platform": "小红书"})
+        headers = self._open_sms_api_headers("POST", path, raw_body, idempotency_key=client_request_id)
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(f"{SMS_CODE_CENTER_BASE_URL}/api/v1/activations", headers=headers, json=payload)
+            resp = await client.post(f"{SMS_CODE_CENTER_BASE_URL}{path}", headers=headers, content=raw_body.encode("utf-8"))
         data = resp.json() if resp.content else {}
-        if resp.status_code == 409 and isinstance(data, dict) and data.get("error") == "active_activation_exists":
-            activation = data.get("activation") or {}
-            if isinstance(activation, dict):
-                return activation
         if resp.status_code not in (200, 201):
-            raise RuntimeError(f"创建验证码订单失败: HTTP {resp.status_code} {str(data)[:300]}")
-        activation = data.get("activation") if isinstance(data, dict) else None
-        if not isinstance(activation, dict):
-            raise RuntimeError("验证码中台创建订单响应结构异常")
-        return activation
+            raise RuntimeError(f"创建验证码请求失败: HTTP {resp.status_code} {str(data)[:300]}")
+        sms_request = data.get("request") if isinstance(data, dict) else None
+        if not isinstance(sms_request, dict):
+            raise RuntimeError("验证码中台创建请求响应结构异常")
+        return sms_request
 
-    async def _wait_sms_activation_ready(self, activation_id: str) -> dict[str, Any]:
-        headers = {"Authorization": f"Bearer {SMS_CODE_CENTER_BUSINESS_API_TOKEN}"}
-        deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
-        async with httpx.AsyncClient(timeout=SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS + 10.0) as client:
-            while True:
-                remaining = deadline - asyncio.get_running_loop().time()
-                if remaining <= 0:
-                    raise RuntimeError("等待手机确认验证码监听窗口超时")
-                timeout_seconds = min(SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS, max(5, int(remaining)))
-                resp = await client.get(
-                    f"{SMS_CODE_CENTER_BASE_URL}/api/v1/activations/{activation_id}/wait",
-                    headers=headers,
-                    params={"timeout": timeout_seconds},
-                )
-                data = resp.json() if resp.content else {}
-                if resp.status_code != 200:
-                    raise RuntimeError(f"等待手机确认验证码监听窗口失败: HTTP {resp.status_code} {str(data)[:300]}")
-                activation = data.get("activation") if isinstance(data, dict) else None
-                if not isinstance(activation, dict):
-                    raise RuntimeError("验证码中台等待响应结构异常")
-                status = str(activation.get("status") or "").strip()
-                if status in {"waiting", "received"}:
-                    return activation
-                if status == "arming":
-                    await asyncio.sleep(1)
-                    continue
-                if status in {"expired", "ambiguous", "cancelled"}:
-                    raise RuntimeError(f"验证码订单未进入监听状态: {status}")
-                raise RuntimeError(f"验证码订单状态异常: {status or 'unknown'}")
+    async def _get_open_sms_code_request(self, request_id: str) -> dict[str, Any]:
+        path = f"/api/v1/open/sms-code-requests/{request_id}"
+        headers = self._open_sms_api_headers("GET", path)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(f"{SMS_CODE_CENTER_BASE_URL}{path}", headers=headers)
+        data = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(f"查询验证码请求失败: HTTP {resp.status_code} {str(data)[:300]}")
+        sms_request = data.get("request") if isinstance(data, dict) else None
+        if not isinstance(sms_request, dict):
+            raise RuntimeError("验证码中台查询响应结构异常")
+        return sms_request
 
-    async def _wait_sms_activation(self, activation_id: str) -> dict[str, Any]:
-        headers = {"Authorization": f"Bearer {SMS_CODE_CENTER_BUSINESS_API_TOKEN}"}
+    async def _wait_open_sms_code_request(self, request_id: str) -> dict[str, Any]:
         deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
-        async with httpx.AsyncClient(timeout=SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS + 10.0) as client:
-            while True:
-                remaining = deadline - asyncio.get_running_loop().time()
-                if remaining <= 0:
-                    raise RuntimeError("等待小红书验证码超时")
-                timeout_seconds = min(SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS, max(5, int(remaining)))
-                resp = await client.get(
-                    f"{SMS_CODE_CENTER_BASE_URL}/api/v1/activations/{activation_id}/wait",
-                    headers=headers,
-                    params={"timeout": timeout_seconds},
-                )
-                data = resp.json() if resp.content else {}
-                if resp.status_code != 200:
-                    raise RuntimeError(f"等待验证码失败: HTTP {resp.status_code} {str(data)[:300]}")
-                activation = data.get("activation") if isinstance(data, dict) else None
-                if not isinstance(activation, dict):
-                    raise RuntimeError("验证码中台等待响应结构异常")
-                status = str(activation.get("status") or "").strip()
-                if status == "received":
-                    return activation
-                if status in {"arming", "waiting"}:
-                    await asyncio.sleep(1)
-                    continue
-                if status in {"expired", "ambiguous", "cancelled"}:
-                    raise RuntimeError(f"验证码订单未收到验证码: {status}")
-                raise RuntimeError(f"验证码订单状态异常: {status or 'unknown'}")
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise RuntimeError("等待小红书验证码超时")
+            sms_request = await self._get_open_sms_code_request(request_id)
+            status = str(sms_request.get("status") or "").strip()
+            if status == "received":
+                return sms_request
+            if status in {"expired", "cancelled", "failed"}:
+                raise RuntimeError(f"验证码请求未收到验证码: {status}")
+            if status != "waiting":
+                raise RuntimeError(f"验证码请求状态异常: {status or 'unknown'}")
+            await asyncio.sleep(min(SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS, remaining))
+
+    async def _cancel_open_sms_code_request(self, request_id: str) -> None:
+        path = f"/api/v1/open/sms-code-requests/{request_id}/cancel"
+        raw_body = "{}"
+        headers = self._open_sms_api_headers("POST", path, raw_body)
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(f"{SMS_CODE_CENTER_BASE_URL}{path}", headers=headers, content=raw_body.encode("utf-8"))
+            if resp.status_code not in (200, 201, 204, 404, 409):
+                logger.warning("取消验证码请求失败: request_id=%s status=%s", request_id, resp.status_code)
+        except Exception:
+            logger.warning("取消验证码请求异常: request_id=%s", request_id, exc_info=True)
 
     async def _complete_xhs_qr_login_if_needed(
         self,
