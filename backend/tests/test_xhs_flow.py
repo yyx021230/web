@@ -1235,7 +1235,117 @@ async def test_create_open_sms_code_request_uses_signed_open_api_payload(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_creator_auto_login_uses_open_sms_request_without_business_token(monkeypatch):
+async def test_create_xhs_qr_task_uses_existing_phone_cloud_admin_route(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    calls: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        status_code = 201
+        content = b"ok"
+
+        def __init__(self, payload: dict | None = None, status_code: int = 201):
+            self._payload = payload or {"ok": True, "task": {"taskId": "qr-task-1", "status": "queued"}}
+            self.status_code = status_code
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, headers: dict[str, str]):
+            calls.append({"method": "GET", "url": url, "headers": headers})
+            return _FakeResponse({
+                "devices": [{
+                    "deviceId": "adb:test-device",
+                    "sims": [{"phoneNumber": "+86 17570049665", "enabled": True}],
+                    "xhsAccounts": [{"appSlot": "app2", "accountName": "小迪买车情报站", "enabled": True}],
+                }]
+            }, status_code=200)
+
+        async def post(self, url: str, *, headers: dict[str, str], json: dict):
+            calls.append({"method": "POST", "url": url, "headers": headers, "json": json})
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_ADMIN_API_TOKEN", "phone-cloud-admin-token")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._create_phone_cloud_xhs_qr_task(
+        "17570049665",
+        "小迪买车情报站",
+        "data:image/png;base64,cXItYnl0ZXM=",
+        device_id="adb:test-device",
+        xhs_app_slot="app2",
+    )
+
+    assert result == {"taskId": "qr-task-1", "status": "queued", "_adminToken": "phone-cloud-admin-token"}
+    assert calls[0] == {
+        "method": "GET",
+        "url": "https://sms.example.test/api/v1/devices",
+        "headers": {"Authorization": "Bearer phone-cloud-admin-token"},
+    }
+    assert calls[1] == {
+        "method": "POST",
+        "url": "https://sms.example.test/api/v1/xhs/qr-scan-tasks",
+        "headers": {"Authorization": "Bearer phone-cloud-admin-token"},
+        "json": {
+        "deviceId": "adb:test-device",
+        "qrImageDataUrl": "data:image/png;base64,cXItYnl0ZXM=",
+        "xhsAppSlot": "app2",
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_phone_cloud_qr_auth_can_create_short_lived_admin_session(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    calls: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"ok": True, "session": {"token": "short-lived-admin-session"}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            calls.append({"url": url, "json": json})
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_ADMIN_API_TOKEN", "")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_ADMIN_USERNAME", "phone-cloud-admin")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_ADMIN_PASSWORD", "phone-cloud-password")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    assert await service._get_phone_cloud_admin_token() == "short-lived-admin-session"
+    assert calls == [{
+        "url": "https://sms.example.test/api/v1/auth/login",
+        "json": {"username": "phone-cloud-admin", "password": "phone-cloud-password"},
+    }]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_uses_signed_open_sms_request(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     events: list[tuple[str, object]] = []
     env = XHSEnvironment(id=901, shop_id="shop_901", account_name="测试账号", login_phone_number="17570049665")
@@ -1283,7 +1393,6 @@ async def test_creator_auto_login_uses_open_sms_request_without_business_token(m
 
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
-    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BUSINESS_API_TOKEN", "")
     monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
     monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
     monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
@@ -1298,6 +1407,192 @@ async def test_creator_auto_login_uses_open_sms_request_without_business_token(m
         ("wait-request", "request-901"),
         ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/submit-code", "json": {"phone_number": "17570049665", "code": "246810"}}),
     ]
+
+
+@pytest.mark.asyncio
+async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    events: list[tuple[str, object]] = []
+    env = XHSEnvironment(id=902, shop_id="shop_902", account_name="测试账号", login_phone_number="17570049665")
+
+    async def fake_qrcode(self: XHSService, api_base: str):
+        events.append(("get-qr", api_base))
+        return {"is_logged_in": False, "img": "cXItYnl0ZXM="}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        events.append(("arm-sms", phone_number))
+        assert client_request_id.startswith("xhs-login-secondary-902-")
+        return {"requestId": "secondary-902", "status": "waiting"}
+
+    async def fake_create_qr_task(
+        self: XHSService,
+        phone_number: str,
+        xhs_account: str,
+        qr_image_data_url: str,
+        **kwargs,
+    ):
+        events.append(("dispatch-qr", phone_number))
+        assert xhs_account == "测试账号"
+        assert qr_image_data_url.startswith("data:image/png;base64,")
+        assert kwargs["device_id"] == "device-902"
+        return {"taskId": "qr-902", "_adminToken": "admin-token"}
+
+    async def fake_wait_qr(self: XHSService, task_id: str, admin_token: str):
+        events.append(("qr-succeeded", task_id))
+        return {"taskId": task_id, "status": "succeeded"}
+
+    async def fake_finish_secondary(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        request_id: str,
+        **kwargs,
+    ):
+        events.append(("check-secondary", request_id))
+        return False
+
+    async def fake_cancel(self: XHSService, request_id: str):
+        events.append(("cancel-unused", request_id))
+
+    monkeypatch.setattr(XHSService, "_get_mcp_login_qrcode", fake_qrcode)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_create_phone_cloud_xhs_qr_task", fake_create_qr_task)
+    monkeypatch.setattr(XHSService, "_wait_phone_cloud_xhs_qr_task", fake_wait_qr)
+    monkeypatch.setattr(XHSService, "_complete_xhs_post_qr_verification", fake_finish_secondary)
+    monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
+
+    await service._complete_xhs_qr_login_if_needed(
+        "http://mcp.test",
+        "17570049665",
+        {"deviceId": "device-902"},
+        env=env,
+    )
+
+    assert events == [
+        ("get-qr", "http://mcp.test"),
+        ("arm-sms", "17570049665"),
+        ("dispatch-qr", "17570049665"),
+        ("qr-succeeded", "qr-902"),
+        ("check-secondary", "secondary-902"),
+        ("cancel-unused", "secondary-902"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_post_qr_verification_submits_automatically_received_code(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    events: list[tuple[str, object]] = []
+
+    async def fake_login_status(self: XHSService, api_base: str):
+        events.append(("login-status", api_base))
+        return {"is_logged_in": False}
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
+        events.append(("submit-secondary", {"phone": phone_number, "code": code}))
+        return {"is_logged_in": True}
+
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+
+    consumed = await service._complete_xhs_post_qr_verification(
+        "http://mcp.test",
+        "17570049665",
+        "secondary-903",
+        initial_request={"requestId": "secondary-903", "status": "received", "code": "135790"},
+    )
+
+    assert consumed is True
+    assert events == [
+        ("login-status", "http://mcp.test"),
+        ("submit-secondary", {"phone": "17570049665", "code": "135790"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_post_qr_verification_cancels_listener_when_qr_login_is_direct(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    async def fake_login_status(self: XHSService, api_base: str):
+        return {"is_logged_in": True}
+
+    async def fake_get_request(self: XHSService, request_id: str):
+        return {"requestId": request_id, "status": "waiting"}
+
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_get_open_sms_code_request", fake_get_request)
+
+    consumed = await service._complete_xhs_post_qr_verification(
+        "http://mcp.test",
+        "17570049665",
+        "secondary-904",
+        initial_request={"requestId": "secondary-904", "status": "waiting"},
+    )
+
+    assert consumed is False
+
+
+@pytest.mark.asyncio
+async def test_post_qr_verification_refreshes_waiting_request_before_first_decision(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    events: list[str] = []
+
+    async def fake_login_status(self: XHSService, api_base: str):
+        events.append("login-status")
+        return {"is_logged_in": False}
+
+    async def fake_get_request(self: XHSService, request_id: str):
+        events.append("refresh-sms")
+        return {"requestId": request_id, "status": "received", "code": "246810"}
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
+        events.append(f"submit:{code}")
+        return {"is_logged_in": True}
+
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_get_open_sms_code_request", fake_get_request)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+
+    consumed = await service._complete_xhs_post_qr_verification(
+        "http://mcp.test",
+        "17570049665",
+        "secondary-906",
+        initial_request={"requestId": "secondary-906", "status": "waiting"},
+    )
+
+    assert consumed is True
+    assert set(events[:2]) == {"login-status", "refresh-sms"}
+    assert events[2] == "submit:246810"
+
+
+def test_normalize_cn_phone_number_accepts_country_code():
+    assert XHSService._normalize_cn_phone_number("+86 175-7075-5085") == "17570755085"
+    assert XHSService._normalize_cn_phone_number("17570755085") == "17570755085"
+
+
+@pytest.mark.asyncio
+async def test_post_qr_verification_keeps_waiting_when_login_status_check_fails(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    submitted: list[str] = []
+
+    async def fake_login_status(self: XHSService, api_base: str):
+        raise RuntimeError("temporary browser status failure")
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
+        submitted.append(code)
+        return {"is_logged_in": True}
+
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+
+    consumed = await service._complete_xhs_post_qr_verification(
+        "http://mcp.test",
+        "17570049665",
+        "secondary-905",
+        initial_request={"requestId": "secondary-905", "status": "received", "code": "975310"},
+    )
+
+    assert consumed is True
+    assert submitted == ["975310"]
 
 
 @pytest.mark.asyncio

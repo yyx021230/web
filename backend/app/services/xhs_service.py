@@ -113,7 +113,9 @@ XHS_REPORT_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_report_worker_internal
 SMS_CODE_CENTER_BASE_URL = (getattr(settings, "sms_code_center_base_url", "http://47.98.127.132") or "").strip().rstrip("/")
 SMS_CODE_CENTER_OPEN_API_CLIENT_ID = (getattr(settings, "sms_code_center_open_api_client_id", "") or "").strip()
 SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET = getattr(settings, "sms_code_center_open_api_client_secret", "") or ""
-SMS_CODE_CENTER_BUSINESS_API_TOKEN = getattr(settings, "sms_code_center_business_api_token", "") or ""
+SMS_CODE_CENTER_ADMIN_API_TOKEN = getattr(settings, "sms_code_center_admin_api_token", "") or ""
+SMS_CODE_CENTER_ADMIN_USERNAME = (getattr(settings, "sms_code_center_admin_username", "") or "").strip()
+SMS_CODE_CENTER_ADMIN_PASSWORD = getattr(settings, "sms_code_center_admin_password", "") or ""
 SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS = max(5, int(getattr(settings, "sms_code_center_wait_timeout_seconds", 60) or 60))
 SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS = max(30, int(getattr(settings, "sms_code_center_activation_ttl_seconds", 300) or 300))
 SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS = min(
@@ -6382,11 +6384,12 @@ class XHSService:
         return rows
 
     async def _ensure_xhs_creator_login(self, api_base: str, *, env: XHSEnvironment | None = None) -> None:
+        flow_started_at = time.monotonic()
         login_status = await self._get_mcp_login_status(api_base)
         if bool(login_status.get("is_logged_in")):
             return
 
-        phone_number = re.sub(r"\D+", "", str(getattr(env, "login_phone_number", "") or ""))
+        phone_number = self._normalize_cn_phone_number(str(getattr(env, "login_phone_number", "") or ""))
         if not phone_number:
             account_name = str(getattr(env, "account_name", "") or "").strip()
             raise RuntimeError(f"{account_name or '当前环境'} 未登录且未配置手机号，无法自动接码登录")
@@ -6403,6 +6406,12 @@ class XHSService:
             request_id = str(sms_request.get("requestId") or sms_request.get("request_id") or "").strip()
             if not request_id:
                 raise RuntimeError("验证码中台未返回 requestId")
+            logger.info(
+                "小红书自动登录第一条接码订单已创建: env_id=%s request_id=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                request_id,
+                round((time.monotonic() - flow_started_at) * 1000),
+            )
 
             request_status = str(sms_request.get("status") or "").strip()
             if request_status == "received":
@@ -6413,11 +6422,20 @@ class XHSService:
                         f"{api_base}/api/v1/login/phone/request-code",
                         json={"phone_number": phone_number},
                     )
-                if resp.status_code != 200:
-                    raise RuntimeError(f"触发小红书发送验证码失败: HTTP {resp.status_code}")
                 payload = resp.json() if resp.content else {}
+                if resp.status_code != 200:
+                    raise RuntimeError(
+                        f"触发小红书发送验证码失败: HTTP {resp.status_code} "
+                        f"{self._mcp_error_detail(payload)}"
+                    )
                 if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
                     raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
+                logger.info(
+                    "小红书第一条验证码已触发发送: env_id=%s request_id=%s elapsed_ms=%s",
+                    getattr(env, "id", None),
+                    request_id,
+                    round((time.monotonic() - flow_started_at) * 1000),
+                )
                 received_request = await self._wait_open_sms_code_request(request_id)
             else:
                 raise RuntimeError(f"验证码请求创建后状态异常: {request_status or 'unknown'}")
@@ -6426,17 +6444,14 @@ class XHSService:
             code = str(received_request.get("code") or "").strip()
             if not code:
                 raise RuntimeError("验证码中台返回 received 但 code 为空")
-            async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
-                resp = await client.post(
-                    f"{api_base}/api/v1/login/phone/submit-code",
-                    json={"phone_number": phone_number, "code": code},
-                )
-            if resp.status_code != 200:
-                raise RuntimeError(f"提交小红书验证码失败: HTTP {resp.status_code}")
-            payload = resp.json() if resp.content else {}
-            if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-                raise RuntimeError(str(payload.get("message") or payload.get("error") or "提交小红书验证码失败"))
-            result = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+            result = await self._submit_mcp_phone_code(api_base, phone_number, code)
+            logger.info(
+                "小红书第一条验证码已提交: env_id=%s request_id=%s requires_qr=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                request_id,
+                bool(result.get("requires_qr")),
+                round((time.monotonic() - flow_started_at) * 1000),
+            )
             if not bool(result.get("is_logged_in")):
                 if bool(result.get("requires_qr")):
                     await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_request, env=env)
@@ -6450,6 +6465,12 @@ class XHSService:
                         status = await self._get_mcp_login_status(api_base)
                         if not bool(status.get("is_logged_in")):
                             raise RuntimeError("验证码和二维码确认已处理，但小红书登录态确认失败")
+            logger.info(
+                "小红书自动登录完成: env_id=%s request_id=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                request_id,
+                round((time.monotonic() - flow_started_at) * 1000),
+            )
         except Exception:
             if request_id and not sms_received:
                 await self._cancel_open_sms_code_request(request_id)
@@ -6465,6 +6486,30 @@ class XHSService:
             raise RuntimeError(str(payload.get("message") or payload.get("error") or "检查小红书登录状态失败"))
         data = payload.get("data") or {}
         return data if isinstance(data, dict) else {}
+
+    async def _submit_mcp_phone_code(self, api_base: str, phone_number: str, code: str) -> dict[str, Any]:
+        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
+            resp = await client.post(
+                f"{api_base}/api/v1/login/phone/submit-code",
+                json={"phone_number": phone_number, "code": code},
+            )
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"提交小红书验证码失败: HTTP {resp.status_code} "
+                f"{self._mcp_error_detail(payload)}"
+            )
+        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+            raise RuntimeError(str(payload.get("message") or payload.get("error") or "提交小红书验证码失败"))
+        data = payload.get("data") or {}
+        return data if isinstance(data, dict) else {}
+
+    @staticmethod
+    def _mcp_error_detail(payload: Any) -> str:
+        if not isinstance(payload, dict):
+            return str(payload)[:500]
+        values = [payload.get("error"), payload.get("message"), payload.get("details"), payload.get("code")]
+        return " | ".join(str(value).strip() for value in values if value not in (None, ""))[:500]
 
     @staticmethod
     def _compact_json(value: dict[str, Any]) -> str:
@@ -6561,6 +6606,7 @@ class XHSService:
         *,
         env: XHSEnvironment | None = None,
     ) -> None:
+        qr_started_at = time.monotonic()
         qr_payload = await self._get_mcp_login_qrcode(api_base)
         if bool(qr_payload.get("is_logged_in")):
             return
@@ -6571,20 +6617,171 @@ class XHSService:
         if not qr_image.startswith("data:image/"):
             qr_image = f"data:image/png;base64,{qr_image}"
 
-        device_id = self._extract_sms_activation_device_id(activation)
-        if not device_id:
-            raise RuntimeError("验证码已提交但未登录，验证码订单未返回 deviceId，无法下发二维码扫码任务")
-
         xhs_account = str(getattr(env, "account_name", "") or "").strip()
         if not xhs_account:
             raise RuntimeError("验证码已提交但未登录，当前环境未配置小红书账号名，无法下发二维码扫码任务")
 
-        xhs_app_slot = self._infer_xhs_app_slot(env)
-        command = await self._create_xhs_qr_login_command(device_id, xhs_account, qr_image, xhs_app_slot=xhs_app_slot)
-        command_id = str(command.get("commandId") or command.get("command_id") or "").strip()
-        if not command_id:
-            raise RuntimeError("二维码扫码任务创建成功但未返回 commandId")
-        await self._wait_xhs_qr_login_command(device_id, command_id)
+        # The post-scan verification SMS is sent automatically as soon as the
+        # phone confirms the QR login. Arm the receiver before dispatching the
+        # phone task so a fast device cannot click before an activation exists.
+        secondary_request_id = ""
+        secondary_code_consumed = False
+        try:
+            secondary_request = await self._create_open_sms_code_request(
+                phone_number,
+                f"xhs-login-secondary-{getattr(env, 'id', 'env')}-{uuid.uuid4().hex}",
+            )
+            secondary_request_id = str(
+                secondary_request.get("requestId") or secondary_request.get("request_id") or ""
+            ).strip()
+            if not secondary_request_id:
+                raise RuntimeError("二维码二次验证接码订单未返回 requestId")
+            secondary_status = str(secondary_request.get("status") or "").strip()
+            if secondary_status not in {"waiting", "received"}:
+                raise RuntimeError(f"二维码二次验证接码订单状态异常: {secondary_status or 'unknown'}")
+
+            logger.info(
+                "小红书二维码二次验证已预挂接码订单: env_id=%s request_id=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                secondary_request_id,
+                round((time.monotonic() - qr_started_at) * 1000),
+            )
+
+            xhs_app_slot = self._infer_xhs_app_slot(env)
+            task = await self._create_phone_cloud_xhs_qr_task(
+                phone_number,
+                xhs_account,
+                qr_image,
+                device_id=self._extract_sms_activation_device_id(activation) or None,
+                xhs_app_slot=xhs_app_slot,
+            )
+            task_id = str(task.get("taskId") or task.get("task_id") or "").strip()
+            if not task_id:
+                raise RuntimeError("二维码扫码任务创建成功但未返回 taskId")
+            logger.info(
+                "小红书二维码手机任务已创建: env_id=%s request_id=%s task_id=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                secondary_request_id,
+                task_id,
+                round((time.monotonic() - qr_started_at) * 1000),
+            )
+            qr_task = await self._wait_phone_cloud_xhs_qr_task(task_id, str(task.get("_adminToken") or ""))
+            logger.info(
+                "小红书二维码手机任务执行成功: env_id=%s request_id=%s task_id=%s elapsed_ms=%s result=%s",
+                getattr(env, "id", None),
+                secondary_request_id,
+                task_id,
+                round((time.monotonic() - qr_started_at) * 1000),
+                self._summarize_phone_cloud_qr_task(qr_task),
+            )
+            secondary_code_consumed = await self._complete_xhs_post_qr_verification(
+                api_base,
+                phone_number,
+                secondary_request_id,
+                initial_request=secondary_request,
+            )
+            logger.info(
+                "小红书二维码登录后置验证完成: env_id=%s request_id=%s task_id=%s secondary_code_used=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                secondary_request_id,
+                task_id,
+                secondary_code_consumed,
+                round((time.monotonic() - qr_started_at) * 1000),
+            )
+        finally:
+            if secondary_request_id and not secondary_code_consumed:
+                await self._cancel_open_sms_code_request(secondary_request_id)
+
+    async def _complete_xhs_post_qr_verification(
+        self,
+        api_base: str,
+        phone_number: str,
+        request_id: str,
+        *,
+        initial_request: dict[str, Any] | None = None,
+    ) -> bool:
+        """Finish either direct QR login or the automatically sent second SMS."""
+        deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+        sms_request = initial_request
+        last_sms_status = ""
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise RuntimeError("扫码后等待登录成功或二次验证码超时")
+
+            current_status = str((sms_request or {}).get("status") or "").strip()
+            if sms_request is None or current_status == "waiting":
+                login_result, sms_request = await asyncio.gather(
+                    self._get_mcp_login_status(api_base),
+                    self._get_open_sms_code_request(request_id),
+                    return_exceptions=True,
+                )
+                if isinstance(sms_request, BaseException):
+                    raise sms_request
+                if isinstance(login_result, BaseException):
+                    logger.warning(
+                        "扫码后二次验证登录态查询失败，继续等待短信: request_id=%s error=%s",
+                        request_id,
+                        login_result,
+                    )
+                    login_status = {}
+                else:
+                    login_status = login_result
+            else:
+                try:
+                    login_status = await self._get_mcp_login_status(api_base)
+                except Exception as exc:
+                    logger.warning(
+                        "扫码后二次验证登录态查询失败，继续等待短信: request_id=%s error=%s",
+                        request_id,
+                        exc,
+                    )
+                    login_status = {}
+
+            request_status = str(sms_request.get("status") or "").strip()
+            if request_status != last_sms_status:
+                logger.info(
+                    "小红书扫码后二次接码订单状态变化: request_id=%s status=%s",
+                    request_id,
+                    request_status or "unknown",
+                )
+                last_sms_status = request_status
+
+            if bool(login_status.get("is_logged_in")):
+                if request_status == "received":
+                    logger.info("小红书扫码已登录且二次短信已到达，无需再次提交: request_id=%s", request_id)
+                    return True
+                logger.info("小红书扫码后直接登录成功，无需二次验证码: request_id=%s", request_id)
+                return False
+
+            if request_status == "received":
+                code = str(sms_request.get("code") or "").strip()
+                if not code:
+                    raise RuntimeError("二维码二次验证接码订单已收到短信但验证码为空")
+                result = await self._submit_mcp_phone_code(api_base, phone_number, code)
+                logger.info("小红书扫码后二次验证码已提交: request_id=%s", request_id)
+                if bool(result.get("is_logged_in")):
+                    return True
+                await self._wait_for_mcp_login(api_base, timeout_seconds=min(30.0, remaining))
+                return True
+            if request_status in {"expired", "cancelled", "failed"}:
+                raise RuntimeError(f"扫码后二次验证码请求未收到验证码: {request_status}")
+            if request_status != "waiting":
+                raise RuntimeError(f"扫码后二次验证码请求状态异常: {request_status or 'unknown'}")
+
+            sms_request = None
+            await asyncio.sleep(min(SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS, remaining))
+
+    async def _wait_for_mcp_login(self, api_base: str, *, timeout_seconds: float) -> None:
+        deadline = asyncio.get_running_loop().time() + max(1.0, timeout_seconds)
+        while True:
+            status = await self._get_mcp_login_status(api_base)
+            if bool(status.get("is_logged_in")):
+                return
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise RuntimeError("二次验证码已提交，但小红书登录态确认失败")
+            await asyncio.sleep(min(1.0, remaining))
 
     async def _get_mcp_login_qrcode(self, api_base: str) -> dict[str, Any]:
         async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
@@ -6597,41 +6794,44 @@ class XHSService:
         data = payload.get("data") or {}
         return data if isinstance(data, dict) else {}
 
-    async def _create_xhs_qr_login_command(
+    async def _create_phone_cloud_xhs_qr_task(
         self,
-        device_id: str,
+        phone_number: str,
         xhs_account: str,
         qr_image_data_url: str,
         *,
+        device_id: str | None = None,
         xhs_app_slot: str | None = None,
     ) -> dict[str, Any]:
-        headers = {"Authorization": f"Bearer {SMS_CODE_CENTER_BUSINESS_API_TOKEN}"}
-        command_payload = {
-            "qrImageDataUrl": qr_image_data_url,
-            "fileName": f"xhs-login-{uuid.uuid4().hex[:8]}.jpeg",
-            "strategy": "server_workflow_script",
-            "autoConfirmLogin": True,
-            "xhsAccount": xhs_account,
-        }
-        if xhs_app_slot in {"app1", "app2"}:
-            command_payload["xhsAppSlot"] = xhs_app_slot
+        admin_token = await self._get_phone_cloud_admin_token()
+        target = await self._resolve_phone_cloud_xhs_target(
+            phone_number,
+            xhs_account,
+            admin_token,
+            device_id=device_id,
+            xhs_app_slot=xhs_app_slot,
+        )
         payload = {
-            "type": "xhs_qr_from_gallery",
-            "payload": command_payload,
+            "deviceId": target["deviceId"],
+            "xhsAppSlot": target["xhsAppSlot"],
+            "qrImageDataUrl": qr_image_data_url,
         }
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/devices/{device_id}/commands",
-                headers=headers,
+                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/xhs/qr-scan-tasks",
+                headers={"Authorization": f"Bearer {admin_token}"},
                 json=payload,
             )
         data = resp.json() if resp.content else {}
         if resp.status_code not in (200, 201):
             raise RuntimeError(f"创建小红书二维码扫码任务失败: HTTP {resp.status_code} {str(data)[:300]}")
-        command = data.get("command") if isinstance(data, dict) else None
-        if not isinstance(command, dict):
+        task = data.get("task") if isinstance(data, dict) else None
+        if not isinstance(task, dict):
             raise RuntimeError("二维码扫码任务响应结构异常")
-        return command
+        # The token is used only by this in-process polling call and is never
+        # persisted with the task or exposed to API callers.
+        task["_adminToken"] = admin_token
+        return task
 
     @staticmethod
     def _infer_xhs_app_slot(env: XHSEnvironment | None) -> str | None:
@@ -6647,32 +6847,136 @@ class XHSService:
             return "app1"
         return None
 
-    async def _wait_xhs_qr_login_command(self, device_id: str, command_id: str) -> dict[str, Any]:
-        headers = {"Authorization": f"Bearer {SMS_CODE_CENTER_BUSINESS_API_TOKEN}"}
+    async def _wait_phone_cloud_xhs_qr_task(self, task_id: str, admin_token: str) -> dict[str, Any]:
         deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+        started_at = time.monotonic()
+        last_status = ""
         async with httpx.AsyncClient(timeout=20.0) as client:
             while True:
                 if asyncio.get_running_loop().time() >= deadline:
                     raise RuntimeError("等待小红书二维码扫码确认超时")
                 resp = await client.get(
-                    f"{SMS_CODE_CENTER_BASE_URL}/api/v1/devices/{device_id}/commands",
-                    headers=headers,
+                    f"{SMS_CODE_CENTER_BASE_URL}/api/v1/xhs/qr-scan-tasks/{task_id}",
+                    headers={"Authorization": f"Bearer {admin_token}"},
                 )
                 data = resp.json() if resp.content else {}
                 if resp.status_code != 200:
                     raise RuntimeError(f"查询二维码扫码任务失败: HTTP {resp.status_code} {str(data)[:300]}")
-                command = self._find_sms_command(data, command_id)
-                if command is None:
-                    await asyncio.sleep(2)
-                    continue
-                status = str(command.get("status") or "").strip()
+                task = data.get("task") if isinstance(data, dict) else None
+                if not isinstance(task, dict):
+                    raise RuntimeError("二维码扫码任务查询响应结构异常")
+                status = str(task.get("status") or "").strip()
+                if status != last_status:
+                    logger.info(
+                        "小红书二维码手机任务状态变化: task_id=%s status=%s elapsed_ms=%s",
+                        task_id,
+                        status or "unknown",
+                        round((time.monotonic() - started_at) * 1000),
+                    )
+                    last_status = status
                 if status == "succeeded":
-                    return command
-                if status in {"failed", "cancelled"}:
-                    result = command.get("result") if isinstance(command.get("result"), dict) else {}
+                    return task
+                if status in {"failed", "cancelled", "expired"}:
+                    result = task.get("result") if isinstance(task.get("result"), dict) else {}
                     message = str(result.get("message") or result.get("error") or "").strip()
                     raise RuntimeError(f"小红书二维码扫码任务失败: {message or status}")
                 await asyncio.sleep(2)
+
+    @staticmethod
+    def _summarize_phone_cloud_qr_task(task: dict[str, Any]) -> str:
+        result = task.get("result") if isinstance(task.get("result"), dict) else {}
+        runner = result.get("runner") if isinstance(result.get("runner"), dict) else {}
+        summary = task.get("summary") if isinstance(task.get("summary"), dict) else {}
+        values = [
+            str(result.get("action") or "").strip(),
+            str(result.get("message") or "").strip(),
+            str(runner.get("action") or "").strip(),
+            str(summary.get("latestEvent") or "").strip(),
+        ]
+        return " | ".join(value for value in values if value)[:500] or "succeeded"
+
+    async def _get_phone_cloud_admin_token(self) -> str:
+        if SMS_CODE_CENTER_ADMIN_API_TOKEN:
+            return SMS_CODE_CENTER_ADMIN_API_TOKEN
+        if not SMS_CODE_CENTER_ADMIN_USERNAME or not SMS_CODE_CENTER_ADMIN_PASSWORD:
+            raise RuntimeError(
+                "未配置手机云控管理员鉴权：请设置 SMS_CODE_CENTER_ADMIN_API_TOKEN，"
+                "或设置 SMS_CODE_CENTER_ADMIN_USERNAME / SMS_CODE_CENTER_ADMIN_PASSWORD"
+            )
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/auth/login",
+                json={"username": SMS_CODE_CENTER_ADMIN_USERNAME, "password": SMS_CODE_CENTER_ADMIN_PASSWORD},
+            )
+        data = resp.json() if resp.content else {}
+        session = data.get("session") if isinstance(data, dict) else None
+        token = str(session.get("token") or "").strip() if isinstance(session, dict) else ""
+        if resp.status_code != 200 or not token:
+            raise RuntimeError(f"获取手机云控管理员会话失败: HTTP {resp.status_code} {str(data)[:300]}")
+        return token
+
+    async def _resolve_phone_cloud_xhs_target(
+        self,
+        phone_number: str,
+        xhs_account: str,
+        admin_token: str,
+        *,
+        device_id: str | None = None,
+        xhs_app_slot: str | None = None,
+    ) -> dict[str, str]:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(
+                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/devices",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        data = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(f"读取手机云控设备配置失败: HTTP {resp.status_code} {str(data)[:300]}")
+        devices = data.get("devices") if isinstance(data, dict) else None
+        if not isinstance(devices, list):
+            raise RuntimeError("手机云控设备列表响应结构异常")
+
+        normalized_phone = self._normalize_cn_phone_number(phone_number)
+        candidates = []
+        for device in devices:
+            if not isinstance(device, dict):
+                continue
+            current_id = str(device.get("deviceId") or "").strip()
+            if device_id and current_id != device_id:
+                continue
+            sims = device.get("sims") if isinstance(device.get("sims"), list) else []
+            if not any(
+                isinstance(sim, dict)
+                and sim.get("enabled") is not False
+                and self._normalize_cn_phone_number(str(sim.get("phoneNumber") or "")) == normalized_phone
+                for sim in sims
+            ):
+                continue
+            accounts = device.get("xhsAccounts") if isinstance(device.get("xhsAccounts"), list) else []
+            for account in accounts:
+                if not isinstance(account, dict) or account.get("enabled") is False:
+                    continue
+                slot = str(account.get("appSlot") or "").strip()
+                account_name = str(account.get("accountName") or "").strip()
+                if account_name != xhs_account:
+                    continue
+                if xhs_app_slot in {"app1", "app2"} and slot != xhs_app_slot:
+                    continue
+                candidates.append({"deviceId": current_id, "xhsAppSlot": slot})
+
+        if not candidates:
+            suffix = "指定设备" if device_id else "手机号对应设备"
+            raise RuntimeError(f"{suffix}未配置小红书账号“{xhs_account}”对应的应用槽位，请先在手机云控配置 app1/app2 账号映射")
+        if len(candidates) > 1:
+            raise RuntimeError(f"手机号 {phone_number} 对应多个同名小红书账号槽位，无法安全选择扫码手机")
+        return candidates[0]
+
+    @staticmethod
+    def _normalize_cn_phone_number(value: str) -> str:
+        digits = re.sub(r"\D+", "", str(value or ""))
+        if len(digits) == 13 and digits.startswith("86"):
+            return digits[2:]
+        return digits
 
     def _extract_sms_activation_device_id(self, activation: dict[str, Any]) -> str:
         for key in ("deviceId", "device_id"):
@@ -6687,19 +6991,6 @@ class XHSService:
                     return value
         return ""
 
-    def _find_sms_command(self, data: Any, command_id: str) -> dict[str, Any] | None:
-        commands: Any = data
-        if isinstance(data, dict):
-            commands = data.get("commands") or data.get("items") or data.get("list") or []
-        if not isinstance(commands, list):
-            return None
-        for command in commands:
-            if not isinstance(command, dict):
-                continue
-            current_id = str(command.get("commandId") or command.get("command_id") or "").strip()
-            if current_id == command_id:
-                return command
-        return None
 
     def _parse_creator_stats_excel(self, content: bytes) -> list[dict[str, Any]]:
         try:

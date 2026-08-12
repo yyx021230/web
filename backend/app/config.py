@@ -142,7 +142,11 @@ class Settings(BaseSettings):
     sms_code_center_open_api_client_id: str = ""
     sms_code_center_open_api_client_secret: str = ""
     sms_code_center_open_api_poll_interval_seconds: float = 4.0
+    # Retained only because older deployments still provide this setting.
     sms_code_center_business_api_token: str = ""
+    sms_code_center_admin_api_token: str = ""
+    sms_code_center_admin_username: str = ""
+    sms_code_center_admin_password: str = ""
     sms_code_center_wait_timeout_seconds: int = 60
     sms_code_center_activation_ttl_seconds: int = 300
     remote_image_allowed_hosts: list[str] = []
