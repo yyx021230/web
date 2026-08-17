@@ -9,6 +9,7 @@ MCP_BIN_TARGET="${PROJECT}/backend/bin/xiaohongshu-mcp"
 WIN_USER="${WIN_USER:-1}"
 WIN_IP="${WIN_IP:-192.168.10.107}"
 WIN_PATH="${WIN_PATH:-C:/projects/web}"
+WIN_PS_PATH="${WIN_PATH//\//\\}"
 WIN_PASS="${WIN_PASS:-}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
 REQUIRE_RELEASE_TAG="${REQUIRE_RELEASE_TAG:-true}"
@@ -23,6 +24,7 @@ PACKAGE_NAME="web-${VERSION}-${COMMIT}.tar.gz"
 TARBALL="/tmp/${PACKAGE_NAME}"
 REMOTE_INCOMING="${WIN_PATH}/.release/incoming"
 REMOTE_PACKAGE="${REMOTE_INCOMING}/${PACKAGE_NAME}"
+REMOTE_PS_PACKAGE="${WIN_PS_PATH}\\.release\\incoming\\${PACKAGE_NAME}"
 RELEASE_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/web-release-stage.XXXXXX")"
 SOURCE_ARCHIVE="${RELEASE_STAGE}/tracked-source.tar.gz"
 
@@ -75,8 +77,15 @@ done
 
 echo "[5/6] Deploy with backup, migration, health check, and automatic rollback"
 "${SSH[@]}" "$TARGET" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -File '${WIN_PATH}/scripts/windows/Deploy-Release.ps1' -PackagePath '${REMOTE_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PATH}'"
+  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${WIN_PS_PATH}\\scripts\\windows\\Deploy-Release.ps1' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'; if (-not \$?) { exit 1 }\""
 
 echo "[6/6] Verify deployed version"
-"${SSH[@]}" "$TARGET" \
-  "powershell -NoProfile -Command \"Invoke-RestMethod -Uri 'http://127.0.0.1:8000/version' | ConvertTo-Json -Compress\""
+DEPLOYED_JSON="$("${SSH[@]}" "$TARGET" \
+  "powershell -NoProfile -Command \"Invoke-RestMethod -Uri 'http://127.0.0.1:8000/version' | ConvertTo-Json -Compress\"")"
+echo "$DEPLOYED_JSON"
+DEPLOYED_VERSION="$(printf '%s' "$DEPLOYED_JSON" | jq -r '.version // empty')"
+DEPLOYED_COMMIT="$(printf '%s' "$DEPLOYED_JSON" | jq -r '.commit // empty')"
+if [[ "$DEPLOYED_VERSION" != "$VERSION" || "$DEPLOYED_COMMIT" != "$COMMIT" ]]; then
+  echo "Deployment verification failed: expected ${VERSION}/${COMMIT}, got ${DEPLOYED_VERSION}/${DEPLOYED_COMMIT}" >&2
+  exit 1
+fi
