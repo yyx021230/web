@@ -25,6 +25,7 @@ $originalFrontendImageId = ""
 $candidateBackendImage = ""
 $candidateFrontendImage = ""
 $migrationAttempted = $false
+$preMigrationRevision = ""
 $originalAppVersion = ""
 $originalGitCommit = ""
 $originalBuildTime = ""
@@ -192,6 +193,10 @@ try {
     if (-not $databaseUser -or -not $databaseName) {
         throw "Unable to resolve PostgreSQL credentials from the production container"
     }
+    $preMigrationRevision = "$(docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc 'SELECT version_num FROM alembic_version LIMIT 1;' | Select-Object -Last 1)".Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $preMigrationRevision) {
+        throw "Unable to resolve the production Alembic revision"
+    }
     $redisId = $currentRedisId
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "initial preflight"
 
@@ -277,6 +282,15 @@ try {
     $migrationAttempted = $true
     docker compose run --rm --no-deps backend alembic upgrade head
     if ($LASTEXITCODE -ne 0) { throw "Database migration failed" }
+    $postMigrationRevision = "$(docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc 'SELECT version_num FROM alembic_version LIMIT 1;' | Select-Object -Last 1)".Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $postMigrationRevision) {
+        throw "Unable to verify the post-migration Alembic revision"
+    }
+    if ($postMigrationRevision -eq $preMigrationRevision) {
+        # An application-only patch must never restore an older database backup
+        # if a later startup/health check fails.
+        $migrationAttempted = $false
+    }
     docker compose up -d --no-deps backend ai-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
