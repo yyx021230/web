@@ -324,7 +324,7 @@ export interface XHSAccountSyncHistoryRun {
   created_at?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
-  summary: { total: number; succeeded: number; failed: number; running: number };
+  summary: { total: number; succeeded: number; failed: number; cancelled: number; running: number };
   items: XHSAccountSyncHistoryItem[];
 }
 

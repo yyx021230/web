@@ -4777,7 +4777,7 @@ export default function XHSPublishManagePage() {
                               <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getAccountSyncJobStatusTone(run.status)}`}>{getAccountSyncJobStatusLabel(run.status)}</span>
                               {run.source === 'retry_failed' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">失败项重跑</span>}
                             </div>
-                            <div className="mt-1 text-xs text-slate-400">{formatAccountSyncJobTime(run.created_at)} · 成功 {run.summary.succeeded} · 失败 {run.summary.failed} · 进行中 {run.summary.running}</div>
+                            <div className="mt-1 text-xs text-slate-400">{formatAccountSyncJobTime(run.created_at)} · 成功 {run.summary.succeeded} · 失败 {run.summary.failed} · 已取消 {run.summary.cancelled ?? 0} · 进行中 {run.summary.running}</div>
                           </div>
                           {canRetry && (
                             <button

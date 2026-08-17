@@ -867,6 +867,14 @@ async def test_running_cancel_wins_over_failure_returned_by_remote_sync(
 
     async def fake_sync_account_notes(self: XHSService, **kwargs: Any) -> dict[str, Any]:
         job["cancel_requested"] = True
+        await kwargs["progress_callback"](
+            {
+                "phase": "account_posts_failed",
+                "account_name": "账号1",
+                "detail": "远端调用在取消后返回",
+                "error": "远端调用在取消后返回",
+            }
+        )
         return {
             "synced_accounts": 0,
             "failed_accounts": [
@@ -898,7 +906,16 @@ async def test_running_cancel_wins_over_failure_returned_by_remote_sync(
 
     async with async_session() as db:
         run = await db.get(XHSAccountSyncRun, history_run_id)
+        item = (
+            await db.execute(
+                select(XHSAccountSyncRunItem).where(
+                    XHSAccountSyncRunItem.run_id == history_run_id
+                )
+            )
+        ).scalar_one()
         shadow = await _load_shadow_job(db, history_run_id)
         assert run is not None and run.status == "cancelled"
+        assert item.status == "cancelled"
+        assert item.error is None
         assert shadow.status == JobStatus.CANCELLED.value
         assert shadow.result_summary["parity"]["status"] == "matched"

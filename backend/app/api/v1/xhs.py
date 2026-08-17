@@ -678,15 +678,18 @@ async def _finish_sync_history_run(
         run.finished_at = now
         items = list((await session.execute(select(XHSAccountSyncRunItem).where(XHSAccountSyncRunItem.run_id == history_run_id))).scalars().all())
         for item in items:
-            if item.status in {"queued", "running"}:
-                if status == "cancelled":
-                    item.status = "cancelled"
-                    item.error = None
-                    item.message = message or "任务已中止"
-                else:
-                    item.status = "failed"
-                    item.error = error or "任务未返回该账号的完成回执，请重新运行"
-                    item.message = "未确认完成"
+            # A remote callback can report an account failure after the user
+            # has already cancelled the run. Cancellation wins for every
+            # unfinished item, while completed successes remain preserved.
+            if status == "cancelled" and item.status != "succeeded":
+                item.status = "cancelled"
+                item.error = None
+                item.message = message or "任务已中止"
+                item.finished_at = now
+            elif item.status in {"queued", "running"}:
+                item.status = "failed"
+                item.error = error or "任务未返回该账号的完成回执，请重新运行"
+                item.message = "未确认完成"
                 item.finished_at = now
         await session.commit()
 
@@ -710,6 +713,7 @@ def _serialize_sync_history_run(run: XHSAccountSyncRun, *, include_items: bool =
             "total": len(items),
             "succeeded": sum(item.status == "succeeded" for item in items),
             "failed": sum(item.status == "failed" for item in items),
+            "cancelled": sum(item.status == "cancelled" for item in items),
             "running": sum(item.status in {"queued", "running"} for item in items),
         },
         "items": [
