@@ -12,6 +12,7 @@ WIN_PATH="${WIN_PATH:-C:/projects/web}"
 WIN_PASS="${WIN_PASS:-}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
 REQUIRE_RELEASE_TAG="${REQUIRE_RELEASE_TAG:-true}"
+GO_TOOLCHAIN="${GO_TOOLCHAIN:-go1.24.6}"
 
 cd "$PROJECT"
 VERSION="${APP_VERSION:-$(node -p "require('./frontend/package.json').version")}"
@@ -22,6 +23,13 @@ PACKAGE_NAME="web-${VERSION}-${COMMIT}.tar.gz"
 TARBALL="/tmp/${PACKAGE_NAME}"
 REMOTE_INCOMING="${WIN_PATH}/.release/incoming"
 REMOTE_PACKAGE="${REMOTE_INCOMING}/${PACKAGE_NAME}"
+RELEASE_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/web-release-stage.XXXXXX")"
+SOURCE_ARCHIVE="${RELEASE_STAGE}/tracked-source.tar.gz"
+
+cleanup() {
+  rm -rf "$RELEASE_STAGE"
+}
+trap cleanup EXIT
 
 if [[ "$ALLOW_DIRTY_DEPLOY" != "true" ]] && [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
   echo "Refusing to deploy a dirty working tree. Commit the release or set ALLOW_DIRTY_DEPLOY=true." >&2
@@ -43,28 +51,18 @@ TARGET="${WIN_USER}@${WIN_IP}"
 
 echo "[1/6] Build xiaohongshu-mcp for linux/amd64"
 cd "$MCP_PROJECT"
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$MCP_BIN_TARGET" .
+GOTOOLCHAIN="$GO_TOOLCHAIN" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$MCP_BIN_TARGET" .
 
 echo "[2/6] Create release package ${PACKAGE_NAME}"
 cd "$PROJECT"
 rm -f "$TARBALL"
-COPYFILE_DISABLE=1 tar czf "$TARBALL" \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='.next' \
-  --exclude='__pycache__' \
-  --exclude='.pytest_cache' \
-  --exclude='.mypy_cache' \
-  --exclude='.env*' \
-  --exclude='.venv' \
-  --exclude='*.db' \
-  --exclude='*.db-*' \
-  --exclude='backups' \
-  --exclude='uploads' \
-  --exclude='runtime' \
-  --exclude='.DS_Store' \
-  --exclude='._*' \
+git archive --format=tar.gz --output="$SOURCE_ARCHIVE" HEAD \
   backend frontend scripts docker-compose.yml docker-compose.dev.yml README.md
+tar xzf "$SOURCE_ARCHIVE" -C "$RELEASE_STAGE"
+mkdir -p "$RELEASE_STAGE/backend/bin"
+cp "$MCP_BIN_TARGET" "$RELEASE_STAGE/backend/bin/xiaohongshu-mcp"
+rm -f "$SOURCE_ARCHIVE"
+COPYFILE_DISABLE=1 tar czf "$TARBALL" -C "$RELEASE_STAGE" .
 
 echo "[3/6] Prepare remote release directories"
 "${SSH[@]}" "$TARGET" "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '${REMOTE_INCOMING}','${WIN_PATH}/scripts/windows' | Out-Null\""
