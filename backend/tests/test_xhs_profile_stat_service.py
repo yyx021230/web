@@ -24,6 +24,7 @@ from app.services.xhs_profile_stat_service import (
     get_youju_account_identifier,
     normalize_profile_account_id,
     normalize_profile_account_name,
+    sync_missing_profile_stat_days,
 )
 
 
@@ -206,6 +207,102 @@ async def test_upsert_sync_and_backfill_retry_skip(client, monkeypatch):
         )
         assert failed["updated_days"] == 0
         assert failed["errors"] == [{"date": "2026-06-04", "error": "permanent"}]
+
+
+@pytest.mark.asyncio
+async def test_backfill_only_delays_between_real_upstream_requests(client, monkeypatch):
+    day1 = date(2026, 6, 10)
+    day2 = date(2026, 6, 11)
+    day3 = date(2026, 6, 12)
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(seconds):
+        sleep_calls.append(seconds)
+
+    monkeypatch.setattr(module.asyncio, "sleep", fake_sleep)
+    async with session_factory() as db:
+        service = XHSProfileStatService(db)
+        existing = XHSProfileStatService._row_from_payload(
+            day1,
+            {"account_id_with_id": "【小红书】已有账号"},
+        )
+        await service.upsert_rows([existing])
+
+        requested: list[date] = []
+
+        async def sync_day(target):
+            requested.append(target)
+            return {"date": target.isoformat(), "rows": 1, "updated": 1}
+
+        monkeypatch.setattr(service, "sync_day", sync_day)
+        result = await service.backfill(
+            start_date=day1,
+            end_date=day3,
+            delay_seconds=65,
+            skip_existing=True,
+            max_retries=0,
+        )
+
+    assert requested == [day2, day3]
+    assert sleep_calls == [65]
+    assert result["updated_days"] == 2
+
+
+@pytest.mark.asyncio
+async def test_backfill_uses_long_retry_delay_when_upstream_is_throttled(client, monkeypatch):
+    sleep_calls: list[float] = []
+    attempts = 0
+
+    async def fake_sleep(seconds):
+        sleep_calls.append(seconds)
+
+    async def throttled_once(_target):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("profileStat HTTP 422: 请求过于频繁，五分钟后再试")
+        return {"date": "2026-06-13", "rows": 1, "updated": 1}
+
+    monkeypatch.setattr(module.asyncio, "sleep", fake_sleep)
+    async with session_factory() as db:
+        service = XHSProfileStatService(db)
+        monkeypatch.setattr(service, "sync_day", throttled_once)
+        result = await service.backfill(
+            start_date=date(2026, 6, 13),
+            end_date=date(2026, 6, 13),
+            delay_seconds=65,
+            retry_delay_seconds=305,
+            skip_existing=False,
+            max_retries=1,
+        )
+
+    assert sleep_calls == [305]
+    assert result["updated_days"] == 1
+    assert result["errors"] == []
+
+
+@pytest.mark.asyncio
+async def test_sync_missing_profile_stat_days_uses_bounded_catchup_window(client, monkeypatch):
+    captured = {}
+
+    async def fake_backfill(self, **kwargs):
+        captured.update(kwargs)
+        return {"start_date": str(kwargs["start_date"]), "end_date": str(kwargs["end_date"]), "errors": []}
+
+    monkeypatch.setattr(XHSProfileStatService, "backfill", fake_backfill)
+    monkeypatch.setattr(settings, "xhs_profile_stat_backfill_days", 30)
+    monkeypatch.setattr(settings, "xhs_profile_stat_sync_delay_seconds", 65.0)
+    monkeypatch.setattr(settings, "xhs_profile_stat_retry_delay_seconds", 305.0)
+    monkeypatch.setattr(settings, "xhs_profile_stat_max_retries", 2)
+
+    result = await sync_missing_profile_stat_days(session_factory, today=date(2026, 8, 18))
+
+    assert result["start_date"] == "2026-07-19"
+    assert result["end_date"] == "2026-08-17"
+    assert captured["skip_existing"] is True
+    assert captured["delay_seconds"] == 65.0
+    assert captured["retry_delay_seconds"] == 305.0
+    assert captured["max_retries"] == 2
 
 
 @pytest.mark.asyncio

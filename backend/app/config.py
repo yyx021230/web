@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.3"
+    app_version: str = "0.3.4"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -146,6 +146,11 @@ class Settings(BaseSettings):
     xhs_profile_stat_module: str = "custom_tag"
     xhs_profile_stat_script: str = "youju"
     xhs_profile_stat_daily_update_hour: int = 6
+    xhs_profile_stat_backfill_days: int = 30
+    xhs_profile_stat_sync_delay_seconds: float = 65.0
+    # A throttled profileStat response explicitly asks clients to retry in five minutes.
+    xhs_profile_stat_retry_delay_seconds: float = 305.0
+    xhs_profile_stat_max_retries: int = 2
     xhs_scrape_lab_base_url: str = "http://127.0.0.1:8787"
     xhs_scrape_lab_python_path: str = "python3"
     xhs_scrape_lab_server_path: str = ""

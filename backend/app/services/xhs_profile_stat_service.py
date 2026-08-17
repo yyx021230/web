@@ -357,16 +357,18 @@ class XHSProfileStatService:
         start_date: date,
         end_date: date,
         delay_seconds: float = 65.0,
+        retry_delay_seconds: float | None = None,
         skip_existing: bool = True,
         limit_days: int | None = None,
         max_retries: int = 2,
     ) -> dict:
         results: list[dict] = []
         errors: list[dict] = []
+        requested_days = 0
         days = list(_date_iter(start_date, end_date))
         if limit_days:
             days = days[: max(0, limit_days)]
-        for index, day in enumerate(days):
+        for day in days:
             if skip_existing:
                 exists = (
                     await self.db.execute(
@@ -376,6 +378,9 @@ class XHSProfileStatService:
                 if int(exists or 0) > 0:
                     results.append({"date": day.isoformat(), "skipped": True, "rows": int(exists or 0)})
                     continue
+            if requested_days > 0 and delay_seconds > 0:
+                await asyncio.sleep(delay_seconds)
+            requested_days += 1
             last_error: Exception | None = None
             for attempt in range(max(1, max_retries + 1)):
                 try:
@@ -386,12 +391,22 @@ class XHSProfileStatService:
                     await self.db.rollback()
                     last_error = exc
                     logger.warning("profileStat sync failed: date=%s attempt=%s error=%s", day, attempt + 1, exc)
-                    if attempt < max_retries and delay_seconds > 0:
-                        await asyncio.sleep(delay_seconds)
+                    if attempt < max_retries:
+                        error_text = str(exc)
+                        throttled = (
+                            "请求过于频繁" in error_text
+                            or "五分钟后再试" in error_text
+                            or "HTTP 429" in error_text
+                        )
+                        wait_seconds = (
+                            retry_delay_seconds
+                            if throttled and retry_delay_seconds is not None
+                            else delay_seconds
+                        )
+                        if wait_seconds and wait_seconds > 0:
+                            await asyncio.sleep(wait_seconds)
             if last_error is not None:
                 errors.append({"date": day.isoformat(), "error": str(last_error)})
-            if index < len(days) - 1 and delay_seconds > 0:
-                await asyncio.sleep(delay_seconds)
         return {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
@@ -534,18 +549,53 @@ class XHSProfileStatService:
         }
 
 
+async def sync_missing_profile_stat_days(
+    session_factory=async_session,
+    *,
+    today: date | None = None,
+) -> dict:
+    current_day = today or date.today()
+    end_date = current_day - timedelta(days=1)
+    lookback_days = max(1, int(settings.xhs_profile_stat_backfill_days or 30))
+    start_date = end_date - timedelta(days=lookback_days - 1)
+    async with session_factory() as db:
+        service = XHSProfileStatService(db)
+        return await service.backfill(
+            start_date=start_date,
+            end_date=end_date,
+            delay_seconds=max(0.0, float(settings.xhs_profile_stat_sync_delay_seconds or 0)),
+            retry_delay_seconds=max(0.0, float(settings.xhs_profile_stat_retry_delay_seconds or 0)),
+            skip_existing=True,
+            max_retries=max(0, int(settings.xhs_profile_stat_max_retries or 0)),
+        )
+
+
 async def profile_stat_daily_sync_loop(session_factory=async_session) -> None:
+    last_successful_run: date | None = None
     while True:
         now = datetime.now()
-        target = datetime.combine(now.date(), dt_time(hour=max(0, min(23, settings.xhs_profile_stat_daily_update_hour))))
-        if now >= target:
-            target = target + timedelta(days=1)
-        await asyncio.sleep(max(60, (target - now).total_seconds()))
+        update_hour = max(0, min(23, settings.xhs_profile_stat_daily_update_hour))
+        target = datetime.combine(now.date(), dt_time(hour=update_hour))
+        if now < target or last_successful_run == now.date():
+            if now >= target:
+                target += timedelta(days=1)
+            await asyncio.sleep(max(60, (target - now).total_seconds()))
+            continue
         try:
-            async with session_factory() as db:
-                service = XHSProfileStatService(db)
-                await service.sync_day(date.today() - timedelta(days=1))
+            result = await sync_missing_profile_stat_days(session_factory, today=now.date())
+            if result["errors"]:
+                logger.warning("profileStat catch-up incomplete: %s", result["errors"])
+                await asyncio.sleep(3600)
+                continue
+            last_successful_run = now.date()
+            logger.info(
+                "profileStat catch-up completed: start=%s end=%s updated_days=%s",
+                result["start_date"],
+                result["end_date"],
+                result["updated_days"],
+            )
         except asyncio.CancelledError:
             raise
         except Exception as exc:
             logger.warning("profileStat daily sync loop failed: %s", exc)
+            await asyncio.sleep(3600)
