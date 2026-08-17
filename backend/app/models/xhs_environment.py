@@ -13,6 +13,7 @@ class XHSEnvironment(Base):
     sync_cloud_api_key = Column(String(255), comment="云登开放平台 apiKey")
     sync_cloud_update_config = Column(Text, comment="账号数据同步前云登开放平台实例指纹更新参数(JSON)")
     sync_browser_start_config = Column(Text, comment="账号数据同步时云登浏览器启动参数(JSON)")
+    xhs_account_id = Column(String(100), index=True, comment="小红书账号ID")
     login_phone_number = Column(String(30), comment="小红书手机号登录号码")
     is_sync_runner = Column(Boolean, nullable=False, default=False, server_default="false", comment="是否作为账号数据同步环境")
     notes = Column(String(500), comment="备注")

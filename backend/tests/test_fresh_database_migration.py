@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "7a8b9c0d1e2f"
+CURRENT_REVISION = "9c0d1e2f3a4b"
 
 
 def _run_alembic(path: Path, *args: str) -> None:
@@ -93,7 +93,34 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
             "job_events",
             "scheduler_leases",
             "xhs_report_refresh_runs",
+            "xhs_creator_sync_rows",
         }.issubset(tables)
+
+        account_note_columns = _columns(connection, "xhs_account_notes")
+        assert {
+            "identity_status",
+            "creator_identity_key",
+            "creator_synced_at",
+            "homepage_synced_at",
+            "source_post_id",
+        }.issubset(account_note_columns)
+        account_note_info = {
+            str(row[1]): row
+            for row in connection.execute("PRAGMA table_info('xhs_account_notes')")
+        }
+        assert account_note_info["feed_id"][3] == 0
+        assert "uq_xhs_account_notes_env_creator_key" in _indexes(connection, "xhs_account_notes")
+
+        creator_sync_columns = _columns(connection, "xhs_creator_sync_rows")
+        assert {
+            "sync_run_id",
+            "environment_id",
+            "matched_note_id",
+            "source_key",
+            "metrics",
+            "raw_payload",
+            "match_status",
+        }.issubset(creator_sync_columns)
 
         task_columns = _columns(connection, "dify_tasks")
         assert task_columns["task_id"] == "VARCHAR(100)"

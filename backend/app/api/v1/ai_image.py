@@ -1,5 +1,7 @@
 """AI 生图 API"""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -108,6 +110,51 @@ async def get_task_status(
     raise HTTPException(status_code=404, detail="任务不存在")
 
 
+@router.get("/tasks/{task_id}/wait", response_model=ApiResponse[ImageTaskResponse])
+async def wait_for_task(
+    task_id: str,
+    model: str = "seedream",
+    timeout_seconds: int = Query(default=540, ge=1, le=600),
+    poll_seconds: int = Query(default=2, ge=1, le=10),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """等待异步生图任务进入终态，供工作流在同一次运行中继续做成图质检。"""
+    if not task_id.isdigit():
+        raise HTTPException(status_code=404, detail="任务不存在")
+    service = AIImageService(model_name=model, db=db)
+    current_user_id = current_user.id
+    allow_any_user = has_role(current_user, "admin")
+    loop = asyncio.get_running_loop()
+    # Dify 1.14.x 的 HTTP 节点单次读取会在约 30 秒被代理中断。
+    # 将一次长等待拆成不超过 20 秒的可重试短轮询：终态返回 200，
+    # 尚未完成返回 503，由工作流节点的 retry_config 继续请求。
+    attempt_timeout_seconds = min(timeout_seconds, 20)
+    deadline = loop.time() + attempt_timeout_seconds
+    while True:
+        db.expire_all()
+        result = await service.get_local_task_status(
+            int(task_id),
+            user_id=current_user_id,
+            allow_any_user=allow_any_user,
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        if result.get("status") in {"completed", "failed", "cancelled"}:
+            return ApiResponse(data=ImageTaskResponse(**result))
+        if loop.time() >= deadline:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "AI_IMAGE_TASK_PROCESSING",
+                    "message": "任务仍在处理中，请重试",
+                    "task_id": task_id,
+                    "status": result.get("status"),
+                },
+            )
+        await asyncio.sleep(min(poll_seconds, max(0.1, deadline - loop.time())))
+
+
 @router.post("/tasks/{task_id}/cancel")
 async def cancel_task(
     task_id: str,
@@ -138,6 +185,7 @@ async def get_history(
         "items": [
             {
                 "id": t.id,
+                "client_request_id": t.client_request_id,
                 "model_name": t.model_name,
                 "prompt": t.prompt,
                 "status": t.status,

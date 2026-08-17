@@ -42,6 +42,7 @@ interface ScheduleSetting {
     target_scope?: 'all' | 'owner_users' | 'environment_ids';
     target_user_ids?: number[];
     target_environment_ids?: number[];
+    yundeng_sync_concurrency?: number;
     post_sync_enabled?: boolean;
     post_sync_runner_ids?: number[];
     post_sync_limit_per_env?: number;
@@ -93,6 +94,7 @@ interface ScheduleDraft {
   target_scope?: 'all' | 'owner_users' | 'environment_ids';
   target_user_ids?: number[];
   target_environment_ids?: number[];
+  yundeng_sync_concurrency?: number;
   post_sync_enabled?: boolean;
   post_sync_runner_ids?: number[];
   post_sync_limit_per_env?: number;
@@ -153,6 +155,7 @@ function getUserRoleLabel(role?: string): string {
 function getScheduleStatusTone(status?: string | null, running = false): string {
   if (running || status === 'running') return 'border-sky-200 bg-sky-50 text-sky-700';
   if (status === 'succeeded') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status === 'partial') return 'border-amber-200 bg-amber-50 text-amber-700';
   if (status === 'failed') return 'border-rose-200 bg-rose-50 text-rose-700';
   return 'border-slate-200 bg-slate-100 text-slate-500';
 }
@@ -160,6 +163,7 @@ function getScheduleStatusTone(status?: string | null, running = false): string 
 function getScheduleStatusLabel(status?: string | null, running = false): string {
   if (running || status === 'running') return '执行中';
   if (status === 'succeeded') return '最近成功';
+  if (status === 'partial') return '部分成功';
   if (status === 'failed') return '最近失败';
   return '未执行';
 }
@@ -167,6 +171,7 @@ function getScheduleStatusLabel(status?: string | null, running = false): string
 function getRunStatusLabel(status?: string | null, running = false): string {
   if (running || status === 'running') return '执行中';
   if (status === 'succeeded') return '成功';
+  if (status === 'partial') return '部分成功';
   if (status === 'failed') return '失败';
   return '未执行';
 }
@@ -188,6 +193,7 @@ function buildScheduleDraft(setting: ScheduleSetting): ScheduleDraft {
     target_scope: setting.config?.target_scope || 'all',
     target_user_ids: setting.config?.target_user_ids || [],
     target_environment_ids: setting.config?.target_environment_ids || [],
+    yundeng_sync_concurrency: setting.config?.yundeng_sync_concurrency ?? 5,
     post_sync_enabled: !!setting.config?.post_sync_enabled,
     post_sync_runner_ids: setting.config?.post_sync_runner_ids || [],
     post_sync_limit_per_env: setting.config?.post_sync_limit_per_env ?? 60,
@@ -425,6 +431,7 @@ export default function AdminXhsSchedulesPage() {
               target_scope: draft.target_scope || 'all',
               target_user_ids: draft.target_user_ids || [],
               target_environment_ids: draft.target_environment_ids || [],
+              yundeng_sync_concurrency: Number(draft.yundeng_sync_concurrency || 5),
               post_sync_enabled: !!draft.post_sync_enabled,
               post_sync_runner_ids: draft.post_sync_runner_ids || [],
               post_sync_limit_per_env: Number(draft.post_sync_limit_per_env || 60),
@@ -799,6 +806,34 @@ export default function AdminXhsSchedulesPage() {
                         })}
                       </div>
                     ) : null}
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+                    <div className="grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-950">云登同步并发</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          主页、创作者中心和详情同步共用同一个并发上限；同一云登环境始终串行，服务器硬上限为 5。
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">同时运行环境数</div>
+                        <input
+                          type="number"
+                          min={1}
+                          max={5}
+                          value={activeDraft.yundeng_sync_concurrency ?? 5}
+                          onChange={(event) => setScheduleDrafts((prev) => ({
+                            ...prev,
+                            [activeSetting.task_key]: {
+                              ...prev[activeSetting.task_key],
+                              yundeng_sync_concurrency: Number(event.target.value || 5),
+                            },
+                          }))}
+                          className="mt-2 h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-[24px] border border-slate-200 bg-white p-4">

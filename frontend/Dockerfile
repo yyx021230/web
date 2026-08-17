@@ -7,7 +7,7 @@ RUN npm ci
 FROM ${NODE_IMAGE} AS builder
 ARG BACKEND_ORIGIN=http://backend:8000
 ARG NEXT_PUBLIC_API_BASE=/api/backend
-ARG NEXT_PUBLIC_APP_VERSION=0.3.0
+ARG NEXT_PUBLIC_APP_VERSION=0.3.1
 ARG NEXT_PUBLIC_GIT_COMMIT=unknown
 ARG NEXT_PUBLIC_BUILD_TIME=unknown
 ENV BACKEND_ORIGIN=${BACKEND_ORIGIN}
@@ -23,7 +23,7 @@ RUN npm run build
 FROM ${NODE_IMAGE} AS runner
 ARG BACKEND_ORIGIN=http://backend:8000
 ARG NEXT_PUBLIC_API_BASE=/api/backend
-ARG NEXT_PUBLIC_APP_VERSION=0.3.0
+ARG NEXT_PUBLIC_APP_VERSION=0.3.1
 ARG NEXT_PUBLIC_GIT_COMMIT=unknown
 ARG NEXT_PUBLIC_BUILD_TIME=unknown
 ENV BACKEND_ORIGIN=${BACKEND_ORIGIN}
@@ -33,11 +33,10 @@ ENV NEXT_PUBLIC_GIT_COMMIT=${NEXT_PUBLIC_GIT_COMMIT}
 ENV NEXT_PUBLIC_BUILD_TIME=${NEXT_PUBLIC_BUILD_TIME}
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/.next /app/.next
+ENV HOSTNAME=0.0.0.0
+COPY --from=builder /app/.next/standalone /app
+COPY --from=builder /app/.next/static /app/.next/static
 COPY --from=builder /app/public /app/public
-COPY --from=builder /app/package*.json /app/
-COPY --from=builder /app/node_modules /app/node_modules
-COPY --from=builder /app/next.config.mjs /app/next.config.mjs
 
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

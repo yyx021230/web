@@ -14,6 +14,7 @@ os.environ["STORAGE_PATH"] = "./test_uploads"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing"
 os.environ["APP_ENV"] = "test"
 os.environ["DEPLOYMENT_ENVIRONMENT"] = "test"
+os.environ["REMOVE_AI_WATERMARKS_ENABLED"] = "false"
 
 import pytest
 import pytest_asyncio

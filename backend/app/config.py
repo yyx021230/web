@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.0"
+    app_version: str = "0.3.1"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -78,8 +78,14 @@ class Settings(BaseSettings):
 
     # AI Watermark Removal (HTTP API)
     remove_ai_watermarks_enabled: bool = True
-    remove_ai_watermarks_api_url: str = "http://192.168.20.202:8899"
-    remove_ai_watermarks_timeout: int = 120
+    remove_ai_watermarks_api_url: str = (
+        "http://47.98.127.132/pureimage/watermark-api/remove-watermark"
+    )
+    remove_ai_watermarks_timeout: int = 240
+    remove_ai_watermarks_strict: bool = True
+    remove_ai_watermarks_max_concurrent: int = 4
+    remove_ai_watermarks_retries: int = 5
+    remove_ai_watermarks_retry_delay_seconds: float = 5.0
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -104,6 +110,11 @@ class Settings(BaseSettings):
     xhs_mcp_browser_download_dir: str = ""
     xhs_mcp_container_download_dir: str = ""
     xhs_publish_queue_workers: int = 2
+    xhs_yundeng_sync_concurrency: int = 5
+    xhs_yundeng_lease_seconds: int = 1800
+    xhs_yundeng_acquire_timeout_seconds: int = 3600
+    xhs_yundeng_start_stagger_seconds: float = 2.0
+    xhs_yundeng_distributed_coordinator_enabled: bool = True
     xhs_browser_stop_cooldown_seconds: float = 2.0
     xhs_browser_ws_probe_timeout_seconds: float = 3.0
     xhs_browser_start_retry_attempts: int = 3

@@ -15,6 +15,7 @@ interface XHSEnvironment {
   sync_cloud_api_key?: string;
   sync_cloud_update_config?: string;
   sync_browser_start_config?: string;
+  xhs_account_id?: string;
   login_phone_number?: string;
   is_sync_runner?: boolean;
   notes?: string;
@@ -174,6 +175,8 @@ function buildEnvSearchText(env: XHSEnvironment): string {
   return [
     env.account_name,
     env.shop_id,
+    env.xhs_account_id,
+    env.login_phone_number,
     env.notes,
     env.group_name,
     env.proxy_info,
@@ -222,6 +225,7 @@ export default function AdminXhsPage() {
   const [syncCloudApiKeyDrafts, setSyncCloudApiKeyDrafts] = useState<Record<number, string>>({});
   const [syncCloudUpdateConfigDrafts, setSyncCloudUpdateConfigDrafts] = useState<Record<number, string>>({});
   const [syncBrowserConfigDrafts, setSyncBrowserConfigDrafts] = useState<Record<number, string>>({});
+  const [xhsAccountIdDrafts, setXhsAccountIdDrafts] = useState<Record<number, string>>({});
   const [loginPhoneDrafts, setLoginPhoneDrafts] = useState<Record<number, string>>({});
   const [departmentDrafts, setDepartmentDrafts] = useState<Record<number, Exclude<DepartmentKey, 'all'>>>({});
   const [savingProfileId, setSavingProfileId] = useState<number | null>(null);
@@ -249,6 +253,7 @@ export default function AdminXhsPage() {
       setSyncCloudApiKeyDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.sync_cloud_api_key || ''])));
       setSyncCloudUpdateConfigDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.sync_cloud_update_config || ''])));
       setSyncBrowserConfigDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.sync_browser_start_config || ''])));
+      setXhsAccountIdDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.xhs_account_id || ''])));
       setLoginPhoneDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.login_phone_number || ''])));
       setDepartmentDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, normalizeDepartment(env.department)])));
       setUsers(userRes?.data?.items || []);
@@ -365,6 +370,7 @@ export default function AdminXhsPage() {
       (syncCloudApiKeyDrafts[selectedEnv.id] || '') !== (selectedEnv.sync_cloud_api_key || '') ||
       (syncCloudUpdateConfigDrafts[selectedEnv.id] || '') !== (selectedEnv.sync_cloud_update_config || '') ||
       (syncBrowserConfigDrafts[selectedEnv.id] || '') !== (selectedEnv.sync_browser_start_config || '') ||
+      (xhsAccountIdDrafts[selectedEnv.id] || '') !== (selectedEnv.xhs_account_id || '') ||
       (loginPhoneDrafts[selectedEnv.id] || '') !== (selectedEnv.login_phone_number || '') ||
       (departmentDrafts[selectedEnv.id] || 'xhs') !== normalizeDepartment(selectedEnv.department)
     );
@@ -377,6 +383,7 @@ export default function AdminXhsPage() {
     syncCloudApiKeyDrafts,
     syncCloudSessionDrafts,
     syncCloudUpdateConfigDrafts,
+    xhsAccountIdDrafts,
   ]);
 
   const stats = useMemo(() => {
@@ -444,6 +451,7 @@ export default function AdminXhsPage() {
     setSyncCloudApiKeyDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.sync_cloud_api_key || '' }));
     setSyncCloudUpdateConfigDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.sync_cloud_update_config || '' }));
     setSyncBrowserConfigDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.sync_browser_start_config || '' }));
+    setXhsAccountIdDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.xhs_account_id || '' }));
     setLoginPhoneDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.login_phone_number || '' }));
     setDepartmentDrafts((prev) => ({ ...prev, [selectedEnv.id]: normalizeDepartment(selectedEnv.department) }));
   }, [selectedEnv]);
@@ -458,6 +466,7 @@ export default function AdminXhsPage() {
         sync_cloud_api_key: (syncCloudApiKeyDrafts[envId] || '').trim(),
         sync_cloud_update_config: (syncCloudUpdateConfigDrafts[envId] || '').trim(),
         sync_browser_start_config: (syncBrowserConfigDrafts[envId] || '').trim(),
+        xhs_account_id: (xhsAccountIdDrafts[envId] || '').trim(),
         login_phone_number: (loginPhoneDrafts[envId] || '').trim(),
         department: departmentDrafts[envId] || 'xhs',
       });
@@ -800,6 +809,9 @@ export default function AdminXhsPage() {
                             </span>
                             <span className={`mt-1 block truncate text-[11px] ${selected ? 'text-white/58' : 'text-slate-400'}`}>{env.shop_id}</span>
                             <span className="mt-2 flex flex-wrap gap-1.5">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${selected ? 'bg-white/10 text-white' : env.xhs_account_id ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {env.xhs_account_id ? `ID：${env.xhs_account_id}` : '缺小红书 ID'}
+                              </span>
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${selected ? 'bg-white/10 text-white' : env.profile_url ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                                 {env.profile_url ? '主页' : '缺主页'}
                               </span>
@@ -847,6 +859,7 @@ export default function AdminXhsPage() {
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
                         <span className="rounded-full bg-white px-3 py-1">shop_id: {selectedEnv.shop_id}</span>
+                        <span className="rounded-full bg-white px-3 py-1">小红书 ID: {selectedEnv.xhs_account_id || '未配置'}</span>
                         <span className="rounded-full bg-white px-3 py-1">{selectedEnv.group_name || '未分组'}</span>
                         <span className="rounded-full bg-white px-3 py-1">{selectedEnv.notes || '无备注'}</span>
                         <span className="rounded-full bg-white px-3 py-1">{selectedEnv.proxy_info || '未记录代理'}</span>
@@ -948,6 +961,19 @@ export default function AdminXhsPage() {
                             </select>
                             <div className="mt-2 text-xs leading-5 text-slate-400">保存后，负责人候选人和部门负责人可见范围会按这个部门生效。</div>
                           </div>
+                          <div className="mt-4">
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">小红书 ID</label>
+                            <input
+                              value={xhsAccountIdDrafts[selectedEnv.id] ?? ''}
+                              onChange={(event) => setXhsAccountIdDrafts((prev) => ({ ...prev, [selectedEnv.id]: event.target.value }))}
+                              placeholder="例如：26819980796"
+                              inputMode="text"
+                              autoComplete="off"
+                              maxLength={100}
+                              className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-[#fbfaf7] px-3 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                            />
+                            <div className="mt-2 text-xs leading-5 text-slate-400">填写账号主页对应的小红书 ID；按文本保存，不会丢失长数字。</div>
+                          </div>
                           <textarea
                             value={profileDrafts[selectedEnv.id] ?? ''}
                             onChange={(event) => setProfileDrafts((prev) => ({ ...prev, [selectedEnv.id]: event.target.value }))}
@@ -970,7 +996,7 @@ export default function AdminXhsPage() {
                                 onClick={() => handleSaveProfileUrl(selectedEnv.id)}
                                 disabled={savingProfileId === selectedEnv.id || !hasDraftChanges}
                               >
-                                {savingProfileId === selectedEnv.id ? '保存中...' : '保存手机号'}
+                                {savingProfileId === selectedEnv.id ? '保存中...' : '保存账号配置'}
                               </button>
                             </div>
                             <div className="mt-2 text-xs leading-5 text-slate-400">未登录时会用这个手机号向验证码中台创建取码订单。</div>
@@ -1112,6 +1138,7 @@ export default function AdminXhsPage() {
                             ['同步资格', selectedBrowserStatus?.browser_status === 'online' ? '可执行' : '不可执行'],
                             ['同步环境', isSyncRunnerEnv(selectedEnv) ? '是' : '否'],
                             ['开放平台', selectedEnv.sync_cloud_session_id && selectedEnv.sync_cloud_api_key ? '已配置' : '未配置'],
+                            ['小红书 ID', selectedEnv.xhs_account_id || '未配置'],
                             ['登录手机号', selectedEnv.login_phone_number ? '已配置' : '未配置'],
                             ['运营负责人', selectedOwnerUser ? (selectedOwnerUser.display_name || selectedOwnerUser.username) : '未设置'],
                           ].map(([label, value]) => (

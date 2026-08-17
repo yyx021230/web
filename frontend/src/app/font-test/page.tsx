@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { fabric } from 'fabric';
 
 // 这些字体通过 globals.css 中的 @font-face 加载
 // Noto Sans SC = Google 版的思源黑体
@@ -98,8 +97,13 @@ export default function FontTestPage() {
 
   // Fabric.js Canvas
   useEffect(() => {
-    if (!canvasRef.current || !fontsLoaded) return;
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    if (!fontsLoaded) return;
+    let active = true;
+    let disposeCanvas: (() => void) | undefined;
+
+    void import('fabric').then(({ fabric }) => {
+      if (!active || !canvasRef.current) return;
+      const canvas = new fabric.Canvas(canvasRef.current, {
       width: 1242,
       height: 2800,
       backgroundColor: '#f5f5f5',
@@ -189,9 +193,20 @@ export default function FontTestPage() {
     });
     canvas.add(richText);
 
-    setFabricReady(true);
-    canvas.renderAll();
-    return () => { canvas.dispose(); };
+      setFabricReady(true);
+      canvas.renderAll();
+      disposeCanvas = () => canvas.dispose();
+    }).catch((error) => {
+      if (active) {
+        console.error('Failed to load Fabric.js for font preview', error);
+        setFabricReady(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      disposeCanvas?.();
+    };
   }, [fontsLoaded]);
 
   const scale = (v: number) => Math.round(v / 3);

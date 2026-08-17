@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, literal, union_all
+from sqlalchemy import select, func, desc, literal, union_all, and_, or_
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
@@ -93,6 +93,17 @@ def _successful_xhs_feed_ids_stmt():
     return select(XHSPost.feed_id).where(
         XHSPost.status == "success",
         XHSPost.feed_id.is_not(None),
+    )
+
+
+def _self_managed_account_note_condition():
+    return and_(
+        XHSAccountNote.source_post_id.is_(None),
+        or_(
+            XHSAccountNote.feed_id.is_(None),
+            func.trim(XHSAccountNote.feed_id) == "",
+            ~XHSAccountNote.feed_id.in_(_successful_xhs_feed_ids_stmt()),
+        ),
     )
 
 
@@ -598,7 +609,7 @@ async def get_xhs_publish_series(
         XHSAccountNote.published_at.is_not(None),
         XHSAccountNote.published_at >= start_utc,
         XHSAccountNote.published_at < end_utc,
-        ~XHSAccountNote.feed_id.in_(_successful_xhs_feed_ids_stmt()),
+        _self_managed_account_note_condition(),
     )
     if filter_user_id is not None:
         if not user_environment_ids:
@@ -657,7 +668,7 @@ async def get_xhs_published_posts(
 
     manual_count_stmt = select(func.count()).select_from(XHSAccountNote).where(
         XHSAccountNote.published_at.is_not(None),
-        ~XHSAccountNote.feed_id.in_(_successful_xhs_feed_ids_stmt()),
+        _self_managed_account_note_condition(),
     )
     if filter_user_id is not None:
         if not user_environment_ids:
@@ -715,7 +726,7 @@ async def get_xhs_published_posts(
         .join(XHSEnvironment, XHSAccountNote.environment_id == XHSEnvironment.id, isouter=True)
         .where(
             XHSAccountNote.published_at.is_not(None),
-            ~XHSAccountNote.feed_id.in_(_successful_xhs_feed_ids_stmt()),
+            _self_managed_account_note_condition(),
         )
     )
     if filter_user_id is not None:

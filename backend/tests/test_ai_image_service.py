@@ -352,6 +352,34 @@ async def test_request_recovery_endpoint_returns_only_current_user_task(client):
 
 
 @pytest.mark.asyncio
+async def test_wait_endpoint_returns_completed_task_and_history_tracking_id(client):
+    async with async_session() as db:
+        db.add(User(id=93, username="wait_owner", email="wait-owner@example.com", hashed_password="x"))
+        db.add(AITask(
+            id=393,
+            user_id=93,
+            client_request_id="xhs-p123-c0123456789ab-rtestrun-s1",
+            model_name="gptimage2",
+            prompt="wait for completed image",
+            status="completed",
+            result_urls=["/uploads/ai-images/wait-completed.png"],
+        ))
+        await db.commit()
+
+    headers = {"Authorization": f"Bearer {create_access_token(subject='93')}"}
+    wait_resp = await client.get(
+        "/api/v1/ai-image/tasks/393/wait?model=gptimage2&timeout_seconds=1",
+        headers=headers,
+    )
+    assert wait_resp.status_code == 200
+    assert wait_resp.json()["data"]["image_urls"] == ["/uploads/ai-images/wait-completed.png"]
+
+    history_resp = await client.get("/api/v1/ai-image/history?page=1&limit=10", headers=headers)
+    assert history_resp.status_code == 200
+    assert history_resp.json()["data"]["items"][0]["client_request_id"] == "xhs-p123-c0123456789ab-rtestrun-s1"
+
+
+@pytest.mark.asyncio
 async def test_runtime_config_endpoint_returns_backend_timeout(client):
     resp = await client.get("/api/v1/ai-image/runtime-config")
     assert resp.status_code == 200

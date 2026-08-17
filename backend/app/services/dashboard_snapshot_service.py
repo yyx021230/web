@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,6 +81,12 @@ class DashboardSnapshotService:
         }
         bind = self.db.get_bind()
         dialect_name = bind.dialect.name if bind is not None else ""
+        await self.db.execute(
+            delete(DashboardSnapshot).where(
+                DashboardSnapshot.expires_at.is_not(None),
+                DashboardSnapshot.expires_at < now - timedelta(days=1),
+            )
+        )
         if dialect_name == "postgresql":
             stmt = pg_insert(DashboardSnapshot).values(**values)
             stmt = stmt.on_conflict_do_update(

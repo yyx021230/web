@@ -1,6 +1,6 @@
 """Scheduling configuration and execution contracts."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -28,6 +28,7 @@ from app.services.xhs_schedule_service import (
     _resolve_ad_refresh_date_range,
     _scope_label,
     _scheduled_time_today,
+    due_xhs_schedule_task_keys,
     trigger_xhs_scheduled_task,
 )
 
@@ -49,6 +50,7 @@ def test_schedule_configuration_normalization_and_helpers(monkeypatch):
         {
             "target_scope": "bad",
             "target_user_ids": [2, 2, -1],
+            "yundeng_sync_concurrency": 99,
             "post_sync_runner_ids": [4, 3, 4],
             "post_sync_limit_per_env": 999,
             "detail_sync_mode": "bad",
@@ -64,6 +66,7 @@ def test_schedule_configuration_normalization_and_helpers(monkeypatch):
     )
     assert account["target_scope"] == "all"
     assert account["target_user_ids"] == [2]
+    assert account["yundeng_sync_concurrency"] == 5
     assert account["post_sync_runner_ids"] == [3, 4]
     assert account["post_sync_limit_per_env"] == 60
     assert account["detail_sync_mode"] == "unpublished_only"
@@ -146,6 +149,31 @@ async def test_schedule_settings_and_logs_round_trip(client):
         assert logs[0]["source"] == "manual"
 
 
+@pytest.mark.asyncio
+async def test_due_schedule_reconciles_stale_running_logs(client):
+    async with session_factory() as db:
+        service = XHSScheduleService(db)
+        row = await service.get_row(AD_DATA_REFRESH_TASK)
+        row.last_status = "running"
+        stale = XHSScheduleRunLog(
+            task_key=AD_DATA_REFRESH_TASK,
+            source="schedule",
+            status="running",
+            message="任务执行中",
+            started_at=datetime.utcnow() - timedelta(hours=13),
+        )
+        db.add(stale)
+        await db.commit()
+
+        await due_xhs_schedule_task_keys(db)
+        await db.refresh(stale)
+        await db.refresh(row)
+
+        assert stale.status == "failed"
+        assert stale.finished_at is not None
+        assert row.last_status == "failed"
+
+
 class _FakeXHSService:
     def __init__(self, _session):
         self.calls = []
@@ -165,8 +193,8 @@ class _FakeXHSService:
     async def refresh_jg_report_cache(self, **kwargs):
         self.calls.append(("report", kwargs))
         if kwargs["report_type"] == "creative":
-            return {"updated_accounts": 1, "updated_rows": 2, "errors": ["one"]}
-        return {"updated_accounts": 2, "updated_rows": 3, "errors": []}
+            return {"updated_accounts": 1, "updated_rows": 2, "changed_rows": 1, "errors": ["one"]}
+        return {"updated_accounts": 2, "updated_rows": 3, "changed_rows": 2, "errors": []}
 
 
 @pytest.mark.asyncio
@@ -232,7 +260,7 @@ async def test_ad_refresh_records_success_and_failure(client, monkeypatch):
             {"date_range_mode": "fixed", "start_date": "2026-06-01", "end_date": "2026-06-01", "report_types": ["simple", "creative"]},
             history_run_id=9,
         )
-        assert "更新 3 个账户、5 行，异常 1 条" in message
+        assert "读取 3 个账户、5 行，实际变更 3 行，异常 1 条" in message
         assert events
 
     class _Failing(_FakeXHSService):

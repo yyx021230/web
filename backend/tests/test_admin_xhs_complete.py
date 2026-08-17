@@ -191,6 +191,7 @@ async def test_admin_xhs_environment_assignment_profile_and_status(client, monke
             "sync_cloud_api_key": " key ",
             "sync_cloud_update_config": '{"ua":"new"}',
             "sync_browser_start_config": '{"width":1080}',
+            "xhs_account_id": " 26819980796 ",
             "login_phone_number": " 13800138000 ",
             "department": "brand",
         },
@@ -198,6 +199,20 @@ async def test_admin_xhs_environment_assignment_profile_and_status(client, monke
     )
     assert saved.status_code == 200
     assert saved.json()["data"]["department"] == "brand"
+    assert saved.json()["data"]["xhs_account_id"] == "26819980796"
+
+    legacy_update = await client.post(
+        "/api/v1/admin/xhs/profile-url",
+        json={"environment_id": 10, "profile_url": "https://xhs/profile/updated"},
+        headers=headers,
+    )
+    assert legacy_update.status_code == 200
+    assert legacy_update.json()["data"]["xhs_account_id"] == "26819980796"
+
+    async with async_session() as db:
+        saved_env = await db.get(XHSEnvironment, 10)
+        assert saved_env is not None
+        assert saved_env.xhs_account_id == "26819980796"
 
     assert (
         await client.post("/api/v1/admin/xhs/sync-runner", json={"environment_id": 999, "is_sync_runner": True}, headers=headers)

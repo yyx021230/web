@@ -60,7 +60,7 @@ def test_scheduler_lease_migration_upgrade_downgrade_and_reupgrade(tmp_path):
     database_path = tmp_path / "scheduler-lease-migration.db"
     _prepare_previous_revision(database_path)
 
-    _run_alembic(database_path, "upgrade", "head")
+    _run_alembic(database_path, "upgrade", CURRENT_REVISION)
     assert _revision(database_path) == CURRENT_REVISION
     assert _has_table(database_path, "scheduler_leases")
     with sqlite3.connect(database_path) as connection:
@@ -100,6 +100,6 @@ def test_scheduler_lease_migration_upgrade_downgrade_and_reupgrade(tmp_path):
     assert _revision(database_path) == PREVIOUS_REVISION
     assert not _has_table(database_path, "scheduler_leases")
 
-    _run_alembic(database_path, "upgrade", "head")
+    _run_alembic(database_path, "upgrade", CURRENT_REVISION)
     assert _revision(database_path) == CURRENT_REVISION
     assert _has_table(database_path, "scheduler_leases")

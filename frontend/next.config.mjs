@@ -52,6 +52,7 @@ const csp = [
 ].join('; ');
 
 const nextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [],
   },

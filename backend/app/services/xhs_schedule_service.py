@@ -37,6 +37,7 @@ ALL_SCHEDULE_TASK_KEYS = (ACCOUNT_DATA_SYNC_TASK, AD_DATA_REFRESH_TASK, AD_REPOR
 AD_REPORT_TYPES = ("simple", "standard", "creative", "simple_note", "standard_note")
 AD_SUMMARY_REPORT_TYPES = ("simple", "standard")
 _RUNNING_TASK_KEYS: set[str] = set()
+STALE_SCHEDULE_RUN_HOURS = 12
 
 
 def _normalize_run_time(value: object) -> str:
@@ -66,6 +67,7 @@ def _default_task_definition(task_key: str) -> dict[str, Any]:
                 "target_scope": "all",
                 "target_user_ids": [],
                 "target_environment_ids": [],
+                "yundeng_sync_concurrency": 5,
                 "post_sync_enabled": True,
                 "post_sync_runner_ids": [],
                 "post_sync_limit_per_env": 60,
@@ -133,6 +135,7 @@ def _normalize_task_config(task_key: str, config: dict[str, Any] | None) -> dict
             "target_scope": target_scope,
             "target_user_ids": sorted({int(item) for item in (merged.get("target_user_ids") or []) if int(item) > 0}),
             "target_environment_ids": sorted({int(item) for item in (merged.get("target_environment_ids") or []) if int(item) > 0}),
+            "yundeng_sync_concurrency": max(1, min(int(merged.get("yundeng_sync_concurrency") or 5), 5)),
             "post_sync_enabled": bool(merged.get("post_sync_enabled")),
             "post_sync_runner_ids": sorted({int(item) for item in (merged.get("post_sync_runner_ids") or []) if int(item) > 0}),
             "post_sync_limit_per_env": max(1, min(int(merged.get("post_sync_limit_per_env") or 60), 60)),
@@ -550,6 +553,22 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
     scope_label = _scope_label(normalized["target_scope"], target_env_ids, normalized)
 
     summary_parts: list[str] = []
+    if normalized["engagement_sync_enabled"]:
+        if target_env_ids:
+            admin_user = await _load_system_admin_user(session)
+            result = await service.sync_account_note_engagements(
+                user=admin_user,
+                environment_id=None,
+                target_environment_ids=target_env_ids,
+                sync_account_limit=len(target_env_ids),
+                concurrency=int(normalized["yundeng_sync_concurrency"]),
+            )
+            summary_parts.append(f"创作中心互动 {result.get('synced_accounts', 0)} 个账号，成功 {result.get('metric_synced_notes', 0)} 条")
+        else:
+            summary_parts.append("创作中心互动 0 个账号")
+
+    # Creator-center export owns the post inventory and metrics. Homepage sync
+    # follows it only to resolve feed IDs and enrich content-related fields.
     if normalized["post_sync_enabled"]:
         if not normalized["post_sync_runner_ids"]:
             raise ValueError("主页帖子同步已启用，但还没有选择同步环境")
@@ -563,24 +582,12 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
                 scrape_environment_ids=normalized["post_sync_runner_ids"],
                 sync_account_limit=len(target_env_ids),
                 runner_account_assignments=runner_assignments,
+                concurrency=int(normalized["yundeng_sync_concurrency"]),
                 limit_per_env=int(normalized["post_sync_limit_per_env"]),
             )
             summary_parts.append(
                 f"主页帖子 {scope_label} {result.get('synced_accounts', 0)} 个账号，新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
             )
-
-    if normalized["engagement_sync_enabled"]:
-        if target_env_ids:
-            admin_user = await _load_system_admin_user(session)
-            result = await service.sync_account_note_engagements(
-                user=admin_user,
-                environment_id=None,
-                target_environment_ids=target_env_ids,
-                sync_account_limit=len(target_env_ids),
-            )
-            summary_parts.append(f"创作中心互动 {result.get('synced_accounts', 0)} 个账号，成功 {result.get('metric_synced_notes', 0)} 条")
-        else:
-            summary_parts.append("创作中心互动 0 个账号")
 
     if normalized["detail_sync_enabled"]:
         if not normalized["detail_runner_ids"]:
@@ -607,6 +614,7 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
                     pause_seconds_min=float(normalized["detail_pause_min_seconds"]),
                     pause_seconds_max=float(normalized["detail_pause_max_seconds"]),
                     max_post_age_days=int(normalized["detail_max_post_age_days"]),
+                    concurrency=int(normalized["yundeng_sync_concurrency"]),
                 )
             )
         else:
@@ -625,6 +633,7 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
                         pause_seconds_min=float(normalized["detail_pause_min_seconds"]),
                         pause_seconds_max=float(normalized["detail_pause_max_seconds"]),
                         max_post_age_days=int(normalized["detail_max_post_age_days"]),
+                        concurrency=int(normalized["yundeng_sync_concurrency"]),
                     )
                 )
         if detail_results:
@@ -663,6 +672,7 @@ async def _execute_ad_data_refresh(
 
     total_accounts = 0
     total_rows = 0
+    total_changed_rows = 0
     errors: list[str] = []
     await mark_report_refresh_running_safely(history_run_id)
     for report_type in report_types:
@@ -695,11 +705,12 @@ async def _execute_ad_data_refresh(
         )
         total_accounts += int(result.get("updated_accounts") or 0)
         total_rows += int(result.get("updated_rows") or 0)
+        total_changed_rows += int(result.get("changed_rows") or 0)
         errors.extend(str(item) for item in (result.get("errors") or []))
     if errors:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行，异常 {len(errors)} 条"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
     else:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，更新 {total_accounts} 个账户、{total_rows} 行"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行"
     await finish_report_refresh_run_safely(
         history_run_id,
         status="succeeded",
@@ -855,13 +866,15 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
             else:
                 raise ValueError(f"未知任务类型: {task_key}")
             finished_at = utc_now_naive()
+            final_status = "partial" if "异常 " in message else "succeeded"
             row.last_run_at = finished_at
-            row.last_status = "succeeded"
-            row.last_message = f"{source}执行成功：{message}"
+            row.last_status = final_status
+            outcome_label = "部分成功" if final_status == "partial" else "成功"
+            row.last_message = f"{source}执行{outcome_label}：{message}"
             if run_log_id:
                 run_log = await session.get(XHSScheduleRunLog, run_log_id)
                 if run_log:
-                    run_log.status = "succeeded"
+                    run_log.status = final_status
                     run_log.message = row.last_message
                     run_log.finished_at = finished_at
             await session.commit()
@@ -902,6 +915,42 @@ async def trigger_xhs_scheduled_task(
 
 
 async def due_xhs_schedule_task_keys(db: AsyncSession) -> list[str]:
+    cutoff = utc_now_naive() - timedelta(hours=STALE_SCHEDULE_RUN_HOURS)
+    stale_rows = list(
+        (
+            await db.execute(
+                select(XHSScheduleRunLog).where(
+                    XHSScheduleRunLog.status == "running",
+                    XHSScheduleRunLog.started_at < cutoff,
+                )
+            )
+        ).scalars().all()
+    )
+    if stale_rows:
+        finished_at = utc_now_naive()
+        task_keys = {row.task_key for row in stale_rows}
+        for stale_row in stale_rows:
+            stale_row.status = "failed"
+            stale_row.finished_at = finished_at
+            stale_row.message = (
+                f"任务运行记录超过 {STALE_SCHEDULE_RUN_HOURS} 小时未收尾，已自动标记失败"
+            )
+        settings_rows = list(
+            (
+                await db.execute(
+                    select(XHSScheduleSetting).where(
+                        XHSScheduleSetting.task_key.in_(task_keys),
+                        XHSScheduleSetting.last_status == "running",
+                    )
+                )
+            ).scalars().all()
+        )
+        for settings_row in settings_rows:
+            settings_row.last_status = "failed"
+            settings_row.last_run_at = finished_at
+            settings_row.last_message = "上一次任务未正常收尾，已自动标记失败"
+        await db.commit()
+
     service = XHSScheduleService(db)
     rows = await service._ensure_rows()
     return [

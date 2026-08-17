@@ -9,6 +9,7 @@ export interface XHSEnvironment {
   sync_cloud_api_key?: string;
   sync_cloud_update_config?: string;
   sync_browser_start_config?: string;
+  xhs_account_id?: string;
   login_phone_number?: string;
   is_sync_runner?: boolean;
   notes?: string;
@@ -134,7 +135,17 @@ export interface XHSAccountNote {
   account_name: string;
   profile_nickname?: string | null;
   red_id?: string | null;
-  feed_id: string;
+  feed_id: string | null;
+  identity_status: 'resolved' | 'creator_only' | 'homepage_only' | 'ambiguous' | string;
+  creator_identity_key?: string | null;
+  identity_match_method?: string | null;
+  identity_match_confidence?: number | null;
+  creator_published_at_raw?: string | null;
+  creator_first_seen_at?: string | null;
+  creator_last_seen_at?: string | null;
+  creator_synced_at?: string | null;
+  homepage_synced_at?: string | null;
+  source_post_id?: number | null;
   xsec_token?: string | null;
   post_url?: string | null;
   cover_image_url?: string | null;
@@ -770,6 +781,7 @@ export async function syncXhsAccountNotes(
     scrape_environment_ids?: string;
     sync_account_limit?: number;
     runner_account_assignments?: string;
+    concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
   const response = await api.post('/xhs/account-notes/sync', null, { params });
@@ -782,6 +794,7 @@ export async function syncXhsAccountNoteEngagements(
     target_environment_ids?: string;
     sync_account_limit?: number;
     runner_account_assignments?: string;
+    concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
   const response = await api.post('/xhs/account-notes/sync-engagement', null, { params });
@@ -800,6 +813,7 @@ export async function syncXhsAccountNoteDetails(
     pause_seconds_min?: number;
     pause_seconds_max?: number;
     max_post_age_days?: number;
+    concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
   const response = await api.post('/xhs/account-notes/sync-details', null, { params });

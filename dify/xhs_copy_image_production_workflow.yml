@@ -1,0 +1,4422 @@
+app:
+  description: >-
+    从线上文案库、提示词库和车型库取材；一次生成 1-5 篇小红书文案，完成合规复核后，
+    使用“轻改提示词 + 对应车型辅助图”并发提交线上生图任务。政策事实只允许来自本次输入。
+  icon: 🚗
+  icon_background: '#E8F5E9'
+  mode: workflow
+  name: 小红书汽车文案配图生产（高保真复刻版）
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: 线上 Web 后端 API 代理根地址，结尾不要带斜杠
+    id: 63ecf424-e671-401e-af52-4f814c3a1001
+    name: BACKEND_BASE_URL
+    selector:
+    - env
+    - BACKEND_BASE_URL
+    value: http://47.98.127.132:18080/api/backend
+    value_type: string
+  - description: Web 线上服务登录用户名
+    id: 63ecf424-e671-401e-af52-4f814c3a1002
+    name: BACKEND_USERNAME
+    selector:
+    - env
+    - BACKEND_USERNAME
+    value: ''
+    value_type: secret
+  - description: Web 线上服务登录密码
+    id: 63ecf424-e671-401e-af52-4f814c3a1003
+    name: BACKEND_PASSWORD
+    selector:
+    - env
+    - BACKEND_PASSWORD
+    value: ''
+    value_type: secret
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .WEBP
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: true
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 15
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 1
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 1
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+      id: start-source-login-target
+      source: start
+      sourceHandle: source
+      target: login
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: login-source-token-target
+      source: login
+      sourceHandle: source
+      target: extract_token
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: code
+      id: token-source-query-target
+      source: extract_token
+      sourceHandle: source
+      target: build_queries
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: query-source-copy-target
+      source: build_queries
+      sourceHandle: source
+      target: fetch_copy_library
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: token-source-history-target
+      source: extract_token
+      sourceHandle: source
+      target: fetch_generation_history
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: query-source-copy2-target
+      source: build_queries
+      sourceHandle: source
+      target: fetch_copy_library_2
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: query-source-copy3-target
+      source: build_queries
+      sourceHandle: source
+      target: fetch_copy_library_3
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: query-source-prompt-target
+      source: build_queries
+      sourceHandle: source
+      target: fetch_prompt_library
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: query-source-car-target
+      source: build_queries
+      sourceHandle: source
+      target: fetch_car_images
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: copy-source-prepare-target
+      source: fetch_copy_library
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: history-source-prepare-target
+      source: fetch_generation_history
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: copy2-source-prepare-target
+      source: fetch_copy_library_2
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: copy3-source-prepare-target
+      source: fetch_copy_library_3
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: prompt-source-prepare-target
+      source: fetch_prompt_library
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: car-source-prepare-target
+      source: fetch_car_images
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: prepare-source-reference-target
+      source: prepare_materials
+      sourceHandle: source
+      target: analyze_reference
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: iteration
+      id: reference-source-copyiteration-target
+      source: analyze_reference
+      sourceHandle: source
+      target: copy_iteration
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        iteration_id: copy_iteration
+        sourceType: iteration-start
+        targetType: llm
+      id: copyiterationstart-source-copydraft-target
+      source: copy_iteration_start
+      sourceHandle: source
+      target: copy_draft
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        sourceType: iteration
+        targetType: code
+      id: copyiteration-source-draftsjson-target
+      source: copy_iteration
+      sourceHandle: source
+      target: drafts_to_json
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: draftsjson-source-audit-target
+      source: drafts_to_json
+      sourceHandle: source
+      target: compliance_audit
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: audit-source-validate-target
+      source: compliance_audit
+      sourceHandle: source
+      target: hard_validate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: iteration
+      id: validate-source-imageiteration-target
+      source: hard_validate
+      sourceHandle: source
+      target: image_iteration
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        iteration_id: image_iteration
+        sourceType: iteration-start
+        targetType: code
+      id: imageiterationstart-source-parseitem-target
+      source: image_iteration_start
+      sourceHandle: source
+      target: parse_image_item
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        iteration_id: image_iteration
+        sourceType: code
+        targetType: http-request
+      id: parseitem-source-submitimage-target
+      source: parse_image_item
+      sourceHandle: source
+      target: submit_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: http-request, targetType: code}
+      id: waitimage-source-parsecompleted-target
+      source: wait_image_task
+      sourceHandle: source
+      target: parse_completed_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: http-request}
+      id: parsecompleted-source-download-target
+      source: parse_completed_image
+      sourceHandle: source
+      target: download_completed_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: http-request, targetType: llm}
+      id: download-source-qualityreview-target
+      source: download_completed_image
+      sourceHandle: source
+      target: image_quality_review
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: llm, targetType: code}
+      id: qualityreview-source-parsequality-target
+      source: image_quality_review
+      sourceHandle: source
+      target: parse_image_quality
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: if-else}
+      id: parsequality-source-qualitygate-target
+      source: parse_image_quality
+      sourceHandle: source
+      target: image_quality_gate
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: if-else, targetType: code}
+      id: qualitygate-true-finalpass-target
+      source: image_quality_gate
+      sourceHandle: 'true'
+      target: finalize_passed_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: if-else, targetType: code}
+      id: qualitygate-false-buildretry-target
+      source: image_quality_gate
+      sourceHandle: 'false'
+      target: build_image_retry
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: http-request}
+      id: buildretry-source-submitretry-target
+      source: build_image_retry
+      sourceHandle: source
+      target: submit_image_retry
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: http-request, targetType: code}
+      id: submitretry-source-parseretry-target
+      source: submit_image_retry
+      sourceHandle: source
+      target: parse_retry_task
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: http-request}
+      id: parseretry-source-waitretry-target
+      source: parse_retry_task
+      sourceHandle: source
+      target: wait_image_retry
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: http-request, targetType: code}
+      id: waitretry-source-parseretrycompleted-target
+      source: wait_image_retry
+      sourceHandle: source
+      target: parse_retry_completed
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: http-request}
+      id: parseretrycompleted-source-downloadretry-target
+      source: parse_retry_completed
+      sourceHandle: source
+      target: download_retry_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: http-request, targetType: llm}
+      id: downloadretry-source-reviewretry-target
+      source: download_retry_image
+      sourceHandle: source
+      target: retry_quality_review
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: llm, targetType: code}
+      id: reviewretry-source-finalretry-target
+      source: retry_quality_review
+      sourceHandle: source
+      target: finalize_retry_image
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: variable-aggregator}
+      id: finalpass-source-finalresult-target
+      source: finalize_passed_image
+      sourceHandle: source
+      target: final_image_result
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data: {isInIteration: true, iteration_id: image_iteration, sourceType: code, targetType: variable-aggregator}
+      id: finalretry-source-finalresult-target
+      source: finalize_retry_image
+      sourceHandle: source
+      target: final_image_result
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        iteration_id: image_iteration
+        sourceType: http-request
+        targetType: code
+      id: submitimage-source-parsetask-target
+      source: submit_image
+      sourceHandle: source
+      target: parse_submitted_task
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        iteration_id: image_iteration
+        sourceType: code
+        targetType: http-request
+      id: parsetask-source-waitimage-target
+      source: parse_submitted_task
+      sourceHandle: source
+      target: wait_image_task
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        sourceType: iteration
+        targetType: code
+      id: imageiteration-source-assemble-target
+      source: image_iteration
+      sourceHandle: source
+      target: assemble_delivery
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: end
+      id: assemble-source-end-target
+      source: assemble_delivery
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: >-
+          一次处理同一账号、同一车型和同一政策口径的 1-5 篇帖子。政策内容必须从飞书政策文档原样粘贴；有参考图就上传。
+        selected: false
+        title: 输入生产要求
+        type: start
+        variables:
+        - label: 账号名称
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: account_name
+        - label: 品牌（必须与车型库一致）
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: brand
+        - label: 用户指定车型（不得改车型）
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: vehicle_model
+        - label: 飞书政策原文（唯一政策事实源）
+          max_length: 12000
+          options: []
+          required: true
+          type: paragraph
+          variable: policy_text
+        - label: 生成篇数
+          max_length: 8
+          options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          required: true
+          type: select
+          variable: post_count
+        - label: 政策表达策略
+          max_length: 32
+          options:
+          - 随机变化
+          - 说清楚
+          - 适度模糊
+          - 留悬念但不引流
+          required: true
+          type: select
+          variable: policy_style
+        - label: 文案库检索词（可空）
+          max_length: 100
+          options: []
+          required: false
+          type: text-input
+          variable: copy_keyword
+        - label: 提示词库检索词（可空）
+          max_length: 100
+          options: []
+          required: false
+          type: text-input
+          variable: prompt_keyword
+        - allowed_file_extensions:
+          - .JPG
+          - .JPEG
+          - .PNG
+          - .WEBP
+          allowed_file_types:
+          - image
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: 参考图（有则上传）
+          max_length: 1
+          options: []
+          required: false
+          type: file
+          variable: reference_image
+        - label: 参考图补充说明（无图时也可写）
+          max_length: 2000
+          options: []
+          required: false
+          type: paragraph
+          variable: reference_description
+        - label: 生图模型
+          max_length: 32
+          options:
+          - gptimage2
+          - seedream
+          required: true
+          type: select
+          variable: image_model
+        - label: 图片宽度
+          max_length: 8
+          options:
+          - '2048'
+          - '1536'
+          - '1024'
+          required: true
+          type: select
+          variable: image_width
+        - label: 图片高度
+          max_length: 8
+          options:
+          - '2048'
+          - '1536'
+          - '1024'
+          required: true
+          type: select
+          variable: image_height
+      height: 478
+      id: start
+      position:
+        x: 30
+        y: 300
+      positionAbsolute:
+        x: 30
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 290
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: |-
+            {
+              "username": "{{#env.BACKEND_USERNAME#}}",
+              "password": "{{#env.BACKEND_PASSWORD#}}"
+            }
+          type: json
+        desc: 获取线上 Web 服务访问令牌。
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 登录线上服务
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/auth/login'
+        variables: []
+      height: 154
+      id: login
+      position:
+        x: 370
+        y: 300
+      positionAbsolute:
+        x: 370
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 270
+    - data:
+        code: |-
+          import json
+
+          def main(body: str, status_code: int) -> dict:
+              if int(status_code or 0) < 200 or int(status_code or 0) >= 300:
+                  raise ValueError("线上服务登录失败，请检查 BACKEND_BASE_URL、用户名和密码")
+              try:
+                  payload = json.loads(body or "{}")
+              except Exception as exc:
+                  raise ValueError("登录接口没有返回 JSON") from exc
+              token = str(payload.get("access_token") or "").strip()
+              if not token:
+                  raise ValueError("登录响应中没有 access_token")
+              return {"token": token}
+        code_language: python3
+        desc: 提取 Bearer Token；登录失败时立即终止。
+        outputs:
+          token:
+            children: null
+            type: string
+        selected: false
+        title: 提取令牌
+        type: code
+        variables:
+        - value_selector:
+          - login
+          - body
+          variable: body
+        - value_selector:
+          - login
+          - status_code
+          variable: status_code
+      height: 98
+      id: extract_token
+      position:
+        x: 690
+        y: 300
+      positionAbsolute:
+        x: 690
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 270
+    - data:
+        code: |-
+          def main(run_id: str, post_count: str, vehicle_model: str, policy_text: str, account_name: str) -> dict:
+              model = str(vehicle_model or "").strip()
+              policy = str(policy_text or "").strip()
+              if not model:
+                  raise ValueError("车型不能为空")
+              if "A01" in model.upper():
+                  raise ValueError("A01 已按业务要求忽略，请输入本次实际需要生产的车型")
+              if len(policy) < 8:
+                  raise ValueError("政策原文过短；请粘贴飞书政策文档中的有效内容")
+              count = max(1, min(5, int(post_count or 1)))
+              seed = sum(ord(ch) for ch in (str(run_id or "") + "|" + str(account_name or "")))
+              copy_page = seed % 14 + 1
+              return {
+                  "copy_page": copy_page,
+                  "copy_page_2": (copy_page + 4 - 1) % 14 + 1,
+                  "copy_page_3": (copy_page + 9 - 1) % 14 + 1,
+                  "prompt_page": seed % 4 + 1,
+                  "slots": [str(i) for i in range(1, count + 1)]
+              }
+        code_language: python3
+        desc: 自动轮换文案库页，避免每次都取同一批素材，并生成批量生产槽位。
+        outputs:
+          copy_page:
+            children: null
+            type: number
+          copy_page_2:
+            children: null
+            type: number
+          copy_page_3:
+            children: null
+            type: number
+          prompt_page:
+            children: null
+            type: number
+          slots:
+            children: null
+            type: array[string]
+        selected: false
+        title: 轮换素材页并建批次
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - workflow_run_id
+          variable: run_id
+        - value_selector:
+          - start
+          - post_count
+          variable: post_count
+        - value_selector:
+          - start
+          - vehicle_model
+          variable: vehicle_model
+        - value_selector:
+          - start
+          - policy_text
+          variable: policy_text
+        - value_selector:
+          - start
+          - account_name
+          variable: account_name
+      height: 98
+      id: build_queries
+      position:
+        x: 1010
+        y: 300
+      positionAbsolute:
+        x: 1010
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 280
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 按运行 ID 轮换读取文案库候选页，每页 80 条；与另两页并行后合并。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取文案库
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/copywritings?page={{#build_queries.copy_page#}}&limit=80'
+        variables: []
+      height: 154
+      id: fetch_copy_library
+      position:
+        x: 1350
+        y: 80
+      positionAbsolute:
+        x: 1350
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 按运行 ID 错位读取第二个文案候选页，每页 80 条。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取文案库第2页
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/copywritings?page={{#build_queries.copy_page_2#}}&limit=80'
+        variables: []
+      height: 154
+      id: fetch_copy_library_2
+      position:
+        x: 1350
+        y: -120
+      positionAbsolute:
+        x: 1350
+        y: -120
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 按运行 ID 错位读取第三个文案候选页，每页 80 条。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取文案库第3页
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/copywritings?page={{#build_queries.copy_page_3#}}&limit=80'
+        variables: []
+      height: 154
+      id: fetch_copy_library_3
+      position:
+        x: 1350
+        y: -320
+      positionAbsolute:
+        x: 1350
+        y: -320
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 按运行 ID 轮换读取带原图和中英文提示词的候选提示词页。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取提示词库
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/prompts?page={{#build_queries.prompt_page#}}&limit=150'
+        variables: []
+      height: 154
+      id: fetch_prompt_library
+      position:
+        x: 1350
+        y: 300
+      positionAbsolute:
+        x: 1350
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 精确按用户指定品牌和车型读取辅助图，不允许替换车型。
+        headers: Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取对应车型图
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/car-models/images?brand={{#start.brand#}}&model={{#start.vehicle_model#}}'
+        variables: []
+      height: 154
+      id: fetch_car_images
+      position:
+        x: 1350
+        y: 520
+      positionAbsolute:
+        x: 1350
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 读取最近 100 个生图任务的追踪 ID，用于跨批次避开已用主参考和完全重复文案。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 500
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 60
+          max_write_timeout: 20
+        title: 读取近期生产历史
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/ai-image/history?page=1&limit=100'
+        variables: []
+      height: 154
+      id: fetch_generation_history
+      position:
+        x: 1350
+        y: 740
+      positionAbsolute:
+        x: 1350
+        y: 740
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        code: |-
+          import hashlib
+          import json
+          import re
+          from difflib import SequenceMatcher
+
+          def _payload(body, name):
+              try:
+                  raw = json.loads(body or "{}")
+              except Exception as exc:
+                  raise ValueError(name + "接口没有返回 JSON") from exc
+              if isinstance(raw, dict) and raw.get("code", 0) != 0:
+                  raise ValueError(name + "接口失败：" + str(raw.get("message") or raw))
+              return raw.get("data", raw) if isinstance(raw, dict) else raw
+
+          def _norm(value):
+              return str(value or "").strip()
+
+          def _style_profile(content):
+              text = _norm(content)
+              lines = [line.strip() for line in text.splitlines() if line.strip()]
+              paragraphs = [part for part in re.split(r"\n\s*\n", text) if part.strip()]
+              prefix_types = []
+              for line in lines[:12]:
+                  if re.match(r"^[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️]", line):
+                      prefix_types.append("emoji")
+                  elif re.match(r"^[-—_=·•]+$", line):
+                      prefix_types.append("separator")
+                  elif re.match(r"^[一二三四五六七八九十\d]+[、.）)]", line):
+                      prefix_types.append("number")
+                  elif re.match(r"^[🔸▪︎◾▶︎☑️✔️]", line):
+                      prefix_types.append("bullet")
+                  else:
+                      prefix_types.append("text")
+              emoji = re.findall(r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️]", text)
+              opening = "".join(lines[:2])[:180]
+              opening = re.sub(r"20\d{2}年\d{1,2}月\d{1,2}日|\d+(?:\.\d+)?", "数字", opening)
+              opening = re.sub(r"[A-Za-z]+\d+", "车型", opening)
+              opening = re.sub(r"[\s#\[\]话题，。！？、,.!~～—\-]", "", opening)
+              return {
+                  "line_band": min(10, len(lines) // 3),
+                  "paragraph_band": min(8, len(paragraphs)),
+                  "prefix": tuple(prefix_types),
+                  "emoji": tuple(emoji[:10]),
+                  "has_separator": any(kind == "separator" for kind in prefix_types),
+                  "has_question": "？" in text or "?" in text,
+                  "has_numbered": "number" in prefix_types,
+                  "opening": opening,
+              }
+
+          def _style_distance(left, right):
+              prefix_len = max(1, min(len(left["prefix"]), len(right["prefix"])))
+              same_prefix = sum(
+                  1 for idx in range(prefix_len)
+                  if left["prefix"][idx] == right["prefix"][idx]
+              ) / prefix_len
+              emoji_len = max(1, min(len(left["emoji"]), len(right["emoji"])))
+              same_emoji = sum(
+                  1 for idx in range(emoji_len)
+                  if idx < len(left["emoji"]) and idx < len(right["emoji"])
+                  and left["emoji"][idx] == right["emoji"][idx]
+              ) / emoji_len
+              opening_ratio = SequenceMatcher(None, left["opening"], right["opening"]).ratio()
+              return (
+                  min(3, abs(left["line_band"] - right["line_band"])) * 0.8
+                  + min(3, abs(left["paragraph_band"] - right["paragraph_band"])) * 0.7
+                  + (1 - same_prefix) * 3.5
+                  + (1 - same_emoji) * 2.0
+                  + (1.2 if left["has_separator"] != right["has_separator"] else 0)
+                  + (0.8 if left["has_question"] != right["has_question"] else 0)
+                  + (0.8 if left["has_numbered"] != right["has_numbered"] else 0)
+                  + (1 - opening_ratio) * 5.0
+              )
+
+          def _stable_jitter(run_id, item_id):
+              digest = hashlib.sha256((str(run_id) + ":" + str(item_id)).encode("utf-8")).hexdigest()
+              return int(digest[:8], 16) / 0xFFFFFFFF
+
+          LINE_BANNED = (
+              "私信", "加微信", "微信号", "扫码", "电话", "站外", "评论区", "评论",
+              "留言", "回复", "咨询", "点击", "领取", "进群", "联系方式", "城市+",
+              "地区+", "扣【", "留【", "立即咨询", "手慢无", "错过", "闭眼冲",
+          )
+          POLICY_OUTPUT_BANNED = (
+              "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
+              "白嫖", "白送", "送你", "免费", "发你", "评论区", "评论",
+              "国旗", "国家", "薅", "崩", "秒发", "底价",
+              "全网最低", "最便宜", "抄底", "闭眼冲", "直降", "下调",
+              "大跳水", "割韭菜", "内部", "隐藏福利", "行情曝光",
+              "618", "双11", "双12", "链接", "一手资讯", "抢先看",
+          )
+          POLICY_OUTPUT_SEMANTIC = re.compile(
+              r"月薪.{0,10}(?:轻松|也能).{0,8}(?:拥有|入手)|"
+              r"人人都能.{0,8}(?:拥有|入手)|轻松(?:拥有|入手)|"
+              r"被问.{0,6}链接|要链接|求链接|"
+              r"最高标准|辨识度拉满|实力拉满|操作丝滑|顶级|完美"
+          )
+          CTA_TEMPLATE_LINE = re.compile(
+              r"想预约|想体验|想知道|想了解|想看|想算|预约|咨询|滴滴|私信|"
+              r"留【|扣【|城市\s*\+|城市】|找我|发你|帮你"
+          )
+          POLICY_FACT_LINE = re.compile(
+              r"20\d{2}年|\d{1,2}月|\d{1,2}日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月|\d+(?:\.\d+)?\s*(?:元|万|万元|%|折)|"
+              r"价格|报价|优惠|福利|权益|补贴|金融|首付|月供|免息|利息|锁单|"
+              r"下定|提车价|指导价|库存|名额|限时|截止|截至|政策|新政|活动"
+          )
+          PRODUCT_FACT_LINE = re.compile(
+              r"续航|智驾|智能驾驶|座椅|底盘|动力|加速|空间|车机|配置|悬架|"
+              r"电池|内饰|外观|操控|车漆|轮毂|芯片|雷达|快充|油耗|功率|扭矩|"
+              r"安全气囊|后备箱|轴距|车长|纯电|增程|混动|版本"
+          )
+          UNSUPPORTED_STATE_LINE = re.compile(
+              r"已开启|已上线|已落地|已启动|进行中|正在开展|已经安排|已确认|已解锁"
+          )
+
+          def _compact(value):
+              return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", str(value or "")).lower()
+
+          def _current_model_source(title, content, vehicle_model):
+              model = _compact(vehicle_model)
+              core = re.sub(r"^(?:零跑汽车|零跑|leapmotor)", "", model)
+              title_text = _compact(title)
+              target_code = re.sub(r"\s+", "", core)
+              title_codes = {
+                  re.sub(r"\s+", "", value.lower())
+                  for value in re.findall(r"(?i)[a-z]{1,5}\s*\d{1,3}", str(title or ""))
+              }
+              # 只有标题明确写出目标车型，才允许保留产品事实。正文或话题标签出现目标
+              # 车型不足以证明整篇属于它；标题同时列出其他车型时也按跨车型处理。
+              return bool(
+                  ((model and model in title_text) or (len(core) >= 2 and core in title_text))
+                  and (not title_codes or title_codes == {target_code})
+              )
+
+          def _policy_facts(policy):
+              facts = []
+              for part in re.split(r"(?<=[。！？!?；;])|\n+", str(policy or "")):
+                  clean = part.strip()
+                  if (
+                      clean
+                      and not any(word in clean for word in POLICY_OUTPUT_BANNED)
+                      and not POLICY_OUTPUT_SEMANTIC.search(clean)
+                      and clean not in facts
+                  ):
+                      facts.append(clean)
+              return facts
+
+          def _policy_expression(fact, mode):
+              """只变表达，不改变车型、日期、金额、条件或核验口径。"""
+              original = str(fact or "").strip()
+              clean = original.rstrip("。！？!?；;")
+              deadline = re.match(
+                  r"^(.+?)(?:截止|截至)(20\d{2}年\d{1,2}月\d{1,2}日)$",
+                  clean,
+              )
+              if deadline:
+                  subject, date_text = deadline.groups()
+                  subject = subject.strip()
+                  if mode == 1:
+                      return f"准备参加{subject.replace('活动', '')}，可以先记下{date_text}这个时间点。"
+                  if mode == 2:
+                      return f"{subject}的时间节点为{date_text}。"
+                  if mode == 3:
+                      return f"准备看车的，可留意{subject}截至{date_text}。"
+                  if mode == 4:
+                      return f"{subject.replace('活动', '')}的截止时间是{date_text}。"
+                  return original
+              if "门店公布" in clean and "现场核验" in clean and "为准" in clean:
+                  variants = [
+                      original,
+                      "具体时间与到店细节，可参考门店公布信息，并结合现场核验结果。",
+                      "到店前可先查看门店公布内容，具体安排还需现场核验。",
+                      "确认具体安排时，可参考门店公布信息和现场核验结果。",
+                      "具体活动怎么安排，可结合门店公布信息与现场核验情况确认。",
+                  ]
+                  return variants[mode % len(variants)]
+              return original
+
+          def _template_policy_close(source, policy, vehicle_model, mode):
+              facts = _policy_facts(policy)
+              deadline_fact = next((fact for fact in facts if re.search(r"截止|截至", fact)), "")
+              deadline = re.search(r"20\d{2}年\d{1,2}月\d{1,2}日", deadline_fact)
+              gate_ok = any("门店公布" in fact and "现场核验" in fact for fact in facts)
+              if not deadline or not gate_ok:
+                  ending_emoji = "".join(re.findall(
+                      r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩]", str(source or "")
+                  )[-2:])
+                  model = str(vehicle_model or "").strip()
+                  lead_variants = [
+                      f"想知道{model}这次权益怎么搭配更合适？车型版本、购车方式和预算一起看会更清楚{ending_emoji}",
+                      f"想核算{model}的购车方案？先把城市、版本和预算整理好，比较起来更清楚{ending_emoji}",
+                      f"想了解{model}哪套金融方案更适合？把用车需求、车型版本和预算放在一起看{ending_emoji}",
+                      f"想体验{model}实车、再核算本地方案？城市、版本和预算这三项先准备好{ending_emoji}",
+                      f"想看{model}不同购车方式怎么选？按车型版本、预算和用车需求逐项比较更直观{ending_emoji}",
+                  ]
+                  variant_seed = int(hashlib.sha256(
+                      (str(source or "") + "|" + model).encode("utf-8")
+                  ).hexdigest()[:8], 16)
+                  return lead_variants[variant_seed % len(lead_variants)]
+              date_text = deadline.group(0)
+              model = str(vehicle_model or "").strip()
+              ending_emoji = "".join(re.findall(
+                  r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩]", str(source or "")
+              )[-2:])
+              source_text = str(source or "")
+              if "想知道" in source_text or "想算" in source_text or "？" in source_text or "?" in source_text:
+                  return f"想知道{model}到店试驾怎么安排？活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想预约" in source_text or "预约" in source_text:
+                  return f"想预约{model}实车体验、了解这次到店试驾安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想体验" in source_text:
+                  return f"想体验{model}、了解这次到店试驾安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想看" in source_text:
+                  return f"想看{model}实车、了解试驾细节和到店安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想了解" in source_text:
+                  return f"想了解{model}到店试驾信息，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              variants = [
+                  f"{model}到店试驾时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认。",
+                  f"准备看{model}的，可先记下{date_text}，到店安排结合门店公布信息和现场核验情况确认。",
+              ]
+              return variants[mode % len(variants)]
+
+          def _line_plan_with_policy_style(base_plan, policy, vehicle_model, mode):
+              plan = json.loads(json.dumps(base_plan, ensure_ascii=False))
+              facts = _policy_facts(policy)
+              replacements = [_policy_expression(fact, mode) for fact in facts]
+              has_safe_close = any(
+                  row.get("action") == "SAFE_POLICY_CLOSE" for row in plan.get("lines") or []
+              )
+              index = 0
+              for row in plan.get("lines") or []:
+                  if row.get("action") == "SAFE_POLICY_CLOSE":
+                      row["replacement"] = _template_policy_close(
+                          row.get("source"), policy, vehicle_model, mode
+                      )
+                      row["policy_source"] = facts
+                  elif row.get("action") == "POLICY_REPLACE":
+                      if has_safe_close:
+                          row["action"] = "DELETE"
+                          row["replacement"] = ""
+                      else:
+                          if index < len(replacements):
+                              row["replacement"] = replacements[index]
+                              row["policy_source"] = facts[index]
+                          index += 1
+              kept = [row for row in plan.get("lines") or [] if row.get("action") != "DELETE"]
+              plan["expected_output_line_count"] = len(kept)
+              plan["safe_emoji_sequence"] = [emoji for row in kept for emoji in row.get("emoji", [])]
+              plan["delete_count"] = len(plan.get("lines") or []) - len(kept)
+              plan["editable_ratio"] = len(kept) / max(1, len(plan.get("lines") or []))
+              plan["policy_expression_mode"] = [
+                  "原句直述", "时间提醒", "信息说明", "看车提醒", "截止时间"
+              ][mode % 5]
+              return plan
+
+          def _line_plan(title, content, vehicle_model, policy):
+              """先确定每一行怎么处理，再交给模型复刻，避免生成后把整篇删空。"""
+              same_model = _current_model_source(title, content, vehicle_model)
+              policy_facts = _policy_facts(policy)
+              policy_index = 0
+              plan = []
+              source_lines = [line for line in str(content or "").splitlines() if line.strip()]
+              for line_no, source in enumerate(source_lines, start=1):
+                  clean = source.strip()
+                  emoji = re.findall(r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️]", clean)
+                  if clean.startswith("#"):
+                      action = "REWRITE_TAGS"
+                      replacement = ""
+                  elif any(word in clean for word in LINE_BANNED):
+                      action = "SAFE_POLICY_CLOSE" if CTA_TEMPLATE_LINE.search(clean) else "DELETE"
+                      replacement = ""
+                  elif POLICY_FACT_LINE.search(clean) or UNSUPPORTED_STATE_LINE.search(clean):
+                      if policy_index < len(policy_facts):
+                          action = "POLICY_REPLACE"
+                          replacement = policy_facts[policy_index]
+                          policy_index += 1
+                      else:
+                          action = "DELETE"
+                          replacement = ""
+                  elif PRODUCT_FACT_LINE.search(clean) and not same_model:
+                      action = "DELETE"
+                      replacement = ""
+                  elif PRODUCT_FACT_LINE.search(clean) and same_model:
+                      action = "KEEP_SOURCE_FACT"
+                      replacement = ""
+                  else:
+                      action = "MIN_EDIT"
+                      replacement = ""
+                  plan.append({
+                      "line_no": line_no,
+                      "action": action,
+                      "source": clean,
+                      "replacement": replacement,
+                      "emoji": emoji,
+                  })
+              kept = [x for x in plan if x["action"] != "DELETE"]
+              return {
+                  "same_model_source": same_model,
+                  "policy_facts": policy_facts,
+                  "title_source": str(title or "").strip(),
+                  "lines": plan,
+                  "expected_output_line_count": len(kept),
+                  "safe_emoji_sequence": [emoji for row in kept for emoji in row["emoji"]],
+                  "delete_count": len(plan) - len(kept),
+                  "editable_ratio": len(kept) / max(1, len(plan)),
+              }
+
+          def main(copy_body: str, copy_body_2: str, copy_body_3: str,
+                   prompt_body: str, car_body: str, history_body: str,
+                   account_name: str, brand: str, vehicle_model: str,
+                   copy_keyword: str, prompt_keyword: str,
+                   policy_text: str, reference_description: str,
+                   run_id: str, post_count: str) -> dict:
+              copy_pages = [
+                  _payload(copy_body, "文案库第1页") or {},
+                  _payload(copy_body_2, "文案库第2页") or {},
+                  _payload(copy_body_3, "文案库第3页") or {},
+              ]
+              prompt_data = _payload(prompt_body, "提示词库") or {}
+              car_data = _payload(car_body, "车型库") or {}
+
+              copies = []
+              for page_data in copy_pages:
+                  copies.extend(list(page_data.get("items") or []))
+              prompts = list(prompt_data.get("items") or [])
+              images = list(car_data.get("images") or [])
+              if not copies:
+                  raise ValueError("当前检索条件没有找到文案库素材")
+              if not prompts:
+                  raise ValueError("当前检索条件没有找到提示词库素材")
+              if not images:
+                  raise ValueError("车型库没有找到该品牌/车型的辅助图；工作流不会换成别的车型")
+
+              account_parts = [
+                  part for part in re.split(r"[-_/|｜\\s]+", _norm(account_name))
+                  if len(part) >= 2
+              ]
+              terms = [_norm(brand), _norm(vehicle_model),
+                       _norm(copy_keyword), _norm(prompt_keyword)] + account_parts[-2:]
+              terms = [t.lower() for t in terms if t]
+              policy = _norm(policy_text)
+              policy_markers = [
+                  "试驾", "到店", "品鉴", "活动", "截止", "时间", "门店",
+                  "政策", "权益", "补贴", "置换", "金融", "购车", "锁单", "交付"
+              ]
+              active_policy_markers = [marker for marker in policy_markers if marker in policy]
+              policy_marker_weights = {
+                  "试驾": 8, "品鉴": 8, "到店": 5, "截止": 4, "时间": 3,
+                  "门店": 3, "活动": 2, "政策": 2, "权益": 2, "补贴": 3,
+                  "置换": 4, "金融": 4, "购车": 2, "锁单": 3, "交付": 3,
+              }
+              required_topic_groups = []
+              if "试驾" in policy or "品鉴" in policy:
+                  required_topic_groups.append(("试驾", "品鉴"))
+              if "到店" in policy or "门店" in policy:
+                  required_topic_groups.append(("到店", "进店", "门店"))
+              if "活动" in policy:
+                  required_topic_groups.append(("活动",))
+              if "截止" in policy or "时间" in policy:
+                  required_topic_groups.append(("截止", "截至", "时间", "期限"))
+              feature_markers = [
+                  "续航", "智驾", "智能驾驶", "座椅", "底盘", "动力", "加速",
+                  "空间", "车机", "配置", "悬架", "电池", "内饰", "外观", "操控"
+              ]
+              automotive_markers = [
+                  "汽车", "车型", "新车", "看车", "试驾", "购车", "提车", "用车",
+                  "车主", "门店", "SUV", "轿车", "新能源", "纯电", "增程"
+              ]
+              hard_banned_markers = [
+                  "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
+                  "白嫖", "白送", "送你", "免费", "发你", "评论区", "评论",
+                  "国旗", "国家", "薅", "崩", "秒发", "底价", "全网最低",
+                  "最便宜", "抄底", "闭眼冲", "直降", "下调", "大跳水", "割韭菜"
+                  ,"夯爆", "太香", "香爆", "神车"
+              ]
+              aggressive_markers = [
+                  "内部", "隐藏福利", "冲", "错过", "收回", "优惠拉满", "省下一笔",
+                  "报价单", "纯净落地", "全盘托出", "信息差", "套路"
+              ]
+              cta_markers = [
+                  "留言", "咨询", "点击", "一对一", "地区+车型", "地区 + 车型",
+                  "城市+车型", "城市 + 车型", "预约", "领取", "解锁", "进群",
+                  "加好友", "联系方式", "报车型", "溜【", "回复", "获取"
+              ]
+              commercial_markers = [
+                  "价格", "报价", "好价", "优惠", "福利", "权益", "补贴", "金融", "首付",
+                  "月供", "免息", "利息", "锁单", "下定", "提车价", "落地价", "价表",
+                  "指导价", "万元", "元"
+              ]
+              tangential_markers = [
+                  "轮胎", "车胎", "机油", "洗车", "养车", "车险", "保险", "维修",
+                  "保养", "二手车", "事故车", "改装件", "行车记录仪", "非机动车",
+                  "电动车", "摩托车", "交通法规", "管理条例", "梗图", "鼠标",
+                  "magic mouse", "手机", "电脑", "甲醛", "异味", "炭包", "臭氧",
+                  "光触媒", "香薰", "果皮", "公路", "道路", "路面", "轴承重",
+                  "重型大货车", "车轴", "压坏"
+              ]
+              detailed_title_markers = [
+                  "按键", "功能", "配置", "续航", "空间", "智驾", "智能驾驶", "性能",
+                  "动力", "底盘", "座椅", "电池", "落地", "价格", "报价", "权益", "补贴"
+              ]
+              news_markers = [
+                  "据悉", "据报道", "记者", "警方", "消防", "事故", "案件", "伤亡",
+                  "发布会", "销量", "交付量", "同比", "环比", "通报", "热搜", "网友说"
+              ]
+              policy_has_commercial_fact = any(marker in policy for marker in commercial_markers)
+              policy_has_amount = bool(re.search(r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)", policy))
+              seed = sum(ord(ch) for ch in str(run_id or ""))
+
+              target_count = max(1, min(5, int(post_count or 1)))
+              # 一次多准备不同母版候选，硬校验从中选满目标数量，避免挡掉一篇就少一篇。
+              # 单篇也准备 3 个不同母版候选：一个结构损坏或触发硬禁词时，
+              # 工作流仍能在本次运行内自动选择其余候选，不依赖人工重跑。
+              count = min(8, max(target_count * 2, target_count + 2, 3))
+              history_data = _payload(history_body, "近期生产历史") or {}
+              recent_primary_ids = set()
+              recent_content_hashes = set()
+              for task in list(history_data.get("items") or []):
+                  request_id = _norm(task.get("client_request_id"))
+                  match = re.match(r"xhs-p(\d+)-c([0-9a-f]{12})-", request_id)
+                  if match:
+                      recent_primary_ids.add(match.group(1))
+                      recent_content_hashes.add(match.group(2))
+              copy_pool = []
+              seen_exact = set()
+              for idx, item in enumerate(copies):
+                  title = _norm(item.get("title"))
+                  content = _norm(item.get("content"))
+                  haystack = (title + "\n" + content + "\n" + _norm(item.get("category"))).lower()
+                  if "a01" in haystack:
+                      continue
+                  if len(content) < 30:
+                      continue
+                  exact_key = re.sub(r"\s+", "", title + content).lower()
+                  if exact_key in seen_exact:
+                      continue
+                  seen_exact.add(exact_key)
+                  record = {
+                      "id": item.get("id"),
+                      "title": title,
+                      "content": content[:1600],
+                      "tags": item.get("tags") or [],
+                      "category": item.get("category") or ""
+                  }
+                  topical = sum(1 for term in terms if term in haystack)
+                  quality = min(len(content), 900) / 900
+                  line_count = len([line for line in content.splitlines() if line.strip()])
+                  policy_hits = sum(
+                      policy_marker_weights.get(marker, 1)
+                      for marker in active_policy_markers if marker in content
+                  )
+                  topic_group_hits = sum(
+                      1 for group in required_topic_groups
+                      if any(keyword in content for keyword in group)
+                  )
+                  mandatory_trial_match = not any(x in policy for x in ("试驾", "品鉴")) or any(
+                      x in content for x in ("试驾", "品鉴")
+                  )
+                  feature_hits = sum(1 for marker in feature_markers if marker in content and marker not in policy)
+                  body_without_topic_tags = "\n".join(
+                      line for line in content.splitlines() if not line.lstrip().startswith("#")
+                  ).lower()
+                  # 话题标签中的“汽车”不能把梗图、法规或电子产品内容伪装成可用汽车母版。
+                  automotive_hits = sum(1 for marker in automotive_markers if marker.lower() in body_without_topic_tags)
+                  news_hits = sum(1 for marker in news_markers if marker in content)
+                  hard_banned_hits = sum(1 for marker in hard_banned_markers if marker in content)
+                  aggressive_hits = sum(1 for marker in aggressive_markers if marker in content)
+                  semantic_banned_hits = 1 if POLICY_OUTPUT_SEMANTIC.search(content) else 0
+                  title_hard_banned_hits = sum(
+                      1 for marker in hard_banned_markers + aggressive_markers + cta_markers
+                      if marker in title
+                  )
+                  title_commercial_hits = sum(1 for marker in commercial_markers if marker in title)
+                  tangential_hits = sum(1 for marker in tangential_markers if marker in haystack)
+                  detail_title_hits = sum(1 for marker in detailed_title_markers if marker in title)
+                  title_date_tokens = re.findall(
+                      r"20\d{2}年|\d{1,2}月|\d{1,2}日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月",
+                      title,
+                  )
+                  title_amount_tokens = re.findall(r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)", title)
+                  title_policy_conflict = any(token not in policy for token in title_date_tokens + title_amount_tokens)
+                  title_policy_terms = [
+                      marker for marker in [
+                          "新政", "福利", "权益", "补贴", "金融", "价格", "报价", "好价",
+                          "落地价", "月供", "免息", "零首付", "上线", "已确认", "上市"
+                      ] if marker in title
+                  ]
+                  if any(marker not in policy for marker in title_policy_terms):
+                      title_policy_conflict = True
+                  if UNSUPPORTED_STATE_LINE.search(title) and UNSUPPORTED_STATE_LINE.search(title).group(0) not in policy:
+                      title_policy_conflict = True
+                  numeric_tokens = len(re.findall(r"\d+(?:\.\d+)?", content))
+                  numeric_mismatch = numeric_tokens if not re.search(r"\d", policy) else max(0, numeric_tokens - 4)
+                  structure_units = len(re.findall(
+                      r"(?:^|\n|\s)(?:\d{1,2}[.、]|[一二三四五六七八九十]+[、.])",
+                      content,
+                  ))
+                  nonempty_lines = [line for line in content.splitlines() if line.strip()]
+                  body_line_count = sum(
+                      1 for line in nonempty_lines
+                      if not line.lstrip().startswith("#")
+                  )
+                  unsafe_lines = 0
+                  for line in nonempty_lines:
+                      unsafe = (
+                          any(marker in line for marker in hard_banned_markers)
+                          or any(marker in line for marker in aggressive_markers)
+                          or any(marker in line for marker in cta_markers)
+                          or any(marker in line for marker in feature_markers if marker not in policy)
+                          or (not policy_has_commercial_fact and any(marker in line for marker in commercial_markers))
+                      )
+                      if unsafe:
+                          unsafe_lines += 1
+                  retention_ratio = 1 - unsafe_lines / max(1, len(nonempty_lines))
+                  length_penalty = (
+                      max(0, line_count - 10) * 1.0
+                      + max(0, structure_units - 8) * 1.5
+                  )
+                  adaptability = (
+                      policy_hits * 2.4
+                      - feature_hits * 1.1
+                      - hard_banned_hits * 12
+                      - aggressive_hits * 3
+                      - semantic_banned_hits * 18
+                      - numeric_mismatch * 0.35
+                      - length_penalty
+                      + retention_ratio * 15
+                  )
+                  line_plan = _line_plan(title, content, vehicle_model, policy)
+                  plan_score = (
+                      line_plan["editable_ratio"] * 30
+                      + (18 if line_plan["same_model_source"] else 0)
+                      + min(topic_group_hits, 3) * 2
+                      - news_hits * 15
+                      - max(0, body_line_count - 14) * 2
+                      - (28 if POLICY_FACT_LINE.search(title) and not POLICY_FACT_LINE.search(policy) else 0)
+                  )
+                  copy_pool.append({
+                      "record": record,
+                      "profile": _style_profile(content),
+                      "quality": quality,
+                      "topical": topical,
+                      "preference_hit": bool(
+                          _norm(copy_keyword)
+                          and _norm(copy_keyword).lower() in haystack
+                      ),
+                      "policy_hits": policy_hits,
+                      "topic_group_hits": topic_group_hits,
+                      "mandatory_trial_match": mandatory_trial_match,
+                      "automotive_hits": automotive_hits,
+                      "news_hits": news_hits,
+                      "feature_hits": feature_hits,
+                      "numeric_tokens": numeric_tokens,
+                      "hard_banned_hits": hard_banned_hits,
+                      "title_hard_banned_hits": title_hard_banned_hits,
+                      "aggressive_hits": aggressive_hits,
+                      "semantic_banned_hits": semantic_banned_hits,
+                      "title_commercial_hits": title_commercial_hits,
+                      "tangential_hits": tangential_hits,
+                      "detail_title_hits": detail_title_hits,
+                      "title_policy_conflict": title_policy_conflict,
+                      "retention_ratio": retention_ratio,
+                      "adaptability": adaptability,
+                      "body_line_count": body_line_count,
+                      "structure_units": structure_units,
+                      "line_plan": line_plan,
+                      "plan_score": plan_score,
+                      "jitter": _stable_jitter(run_id, item.get("id", idx)),
+                  })
+              if len(copy_pool) < count * 4:
+                  raise ValueError("可用文案不足 %s 条，无法为每篇分配 4 条不重复原文" % (count * 4))
+
+              # 先按逐行执行计划筛选母版，而不是要求原文主题与政策完全相同。
+              # 同车型原文可保留其产品事实；跨车型原文只保留安全的结构、语气和通用句。
+              primary_pool = [
+                  row for row in copy_pool
+                  if row["news_hits"] == 0
+                  and row["hard_banned_hits"] == 0
+                  and row["aggressive_hits"] == 0
+                  and row["semantic_banned_hits"] == 0
+                  and row["tangential_hits"] == 0
+                  and row["automotive_hits"] >= 1
+                  and not row["title_policy_conflict"]
+                  and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
+                  and (row["line_plan"]["same_model_source"] or row["detail_title_hits"] == 0)
+                  and row["retention_ratio"] >= 0.68
+                  and 2 <= row["body_line_count"] <= 16
+                  and row["structure_units"] <= 12
+                  and row["line_plan"]["expected_output_line_count"] >= 4
+                  and bool(row["line_plan"]["safe_emoji_sequence"])
+                  and row["line_plan"]["editable_ratio"] >= 0.58
+              ]
+              if len(primary_pool) < count:
+                  primary_pool = [
+                      row for row in copy_pool
+                      if row["news_hits"] == 0
+                      and row["hard_banned_hits"] == 0
+                      and row["semantic_banned_hits"] == 0
+                      and row["tangential_hits"] == 0
+                      and row["automotive_hits"] >= 1
+                      and not row["title_policy_conflict"]
+                      and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
+                      and (row["line_plan"]["same_model_source"] or row["detail_title_hits"] == 0)
+                      and row["retention_ratio"] >= 0.52
+                      and 2 <= row["body_line_count"] <= 18
+                      and row["line_plan"]["expected_output_line_count"] >= 4
+                      and bool(row["line_plan"]["safe_emoji_sequence"])
+                      and row["line_plan"]["editable_ratio"] >= 0.48
+                  ]
+              same_model_primary_pool = [
+                  row for row in primary_pool if row["line_plan"]["same_model_source"]
+              ]
+              if len(same_model_primary_pool) < count:
+                  same_model_primary_pool = [
+                      row for row in copy_pool
+                      if row["line_plan"]["same_model_source"]
+                      and row["news_hits"] == 0
+                      and row["tangential_hits"] == 0
+                      and row["automotive_hits"] >= 1
+                      and row["title_hard_banned_hits"] == 0
+                      and row["semantic_banned_hits"] == 0
+                      and not row["title_policy_conflict"]
+                      and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
+                      and 2 <= row["body_line_count"] <= 18
+                      and row["line_plan"]["expected_output_line_count"] >= 4
+                      and bool(row["line_plan"]["safe_emoji_sequence"])
+                      and row["line_plan"]["editable_ratio"] >= 0.42
+                      and row["retention_ratio"] >= 0.35
+                  ]
+              # 同车型标题安全、正文能逐行净化时，优先使用该池；旧政策和互动句在
+              # line_plan 中删除或替换。全车型文案仍作为 3 条辅参考提供少量话术。
+              if len(same_model_primary_pool) >= max(count * 4, 8):
+                  primary_pool = same_model_primary_pool
+              elif len(primary_pool) < count:
+                  raise ValueError("文案库中可逐行安全复刻的不同母版不足 %s 条" % count)
+              if _norm(copy_keyword):
+                  preference_primary_pool = [
+                      row for row in primary_pool if row["preference_hit"]
+                  ]
+                  if len(preference_primary_pool) >= count:
+                      primary_pool = preference_primary_pool
+              primary_pool = sorted(
+                  primary_pool,
+                  key=lambda row: -(
+                      row["plan_score"] * 2.2
+                      + row["quality"]
+                      + min(row["topical"], 3) * 4.0
+                      + row["jitter"] * 0.15
+                  ),
+              )[:min(260, len(primary_pool))]
+              fresh_primary_pool = [
+                  row for row in primary_pool
+                  if str(row["record"].get("id")) not in recent_primary_ids
+              ]
+              history_fallback_count = 0
+              if len(fresh_primary_pool) >= count:
+                  primary_pool = fresh_primary_pool
+              else:
+                  history_fallback_count = count - len(fresh_primary_pool)
+                  primary_pool = fresh_primary_pool + [
+                      row for row in primary_pool
+                      if str(row["record"].get("id")) in recent_primary_ids
+                  ]
+              primaries = []
+              # 首篇按运行 ID 与调用方差异共同轮换；并发请求只要输入略有变化，
+              # 就会主动分流到不同母版，而不是只靠运行 ID 碰运气。
+              first_window = primary_pool[:min(len(primary_pool), 90)]
+              rotation_key = "|".join([
+                  str(run_id or "fallback"),
+                  _norm(account_name),
+                  _norm(copy_keyword),
+                  _norm(prompt_keyword),
+                  _norm(reference_description),
+              ])
+              rotation_hash = int(
+                  hashlib.sha256(rotation_key.encode("utf-8")).hexdigest()[:12], 16
+              )
+              rotation_offset = rotation_hash % len(first_window)
+              first = first_window[rotation_offset]
+              primaries.append(first)
+              while len(primaries) < count:
+                  remaining = [row for row in primary_pool if row not in primaries]
+                  chosen = max(
+                      remaining,
+                      key=lambda row: (
+                          min(_style_distance(row["profile"], picked["profile"]) for picked in primaries) * 5
+                          + row["plan_score"] * 1.6
+                          + row["quality"] * 0.6
+                          + row["jitter"] * 0.1
+                      ),
+                  )
+                  primaries.append(chosen)
+
+              # 每篇再配 3 条全批次不重复的辅参考；主参考始终位于本组第 1 条。
+              used_ids = {str(row["record"].get("id")) for row in primaries}
+              assignments = []
+              selected_copies = []
+              for slot, primary in enumerate(primaries, start=1):
+                  support_pool = [
+                      row for row in copy_pool
+                      if str(row["record"].get("id")) not in used_ids and row["hard_banned_hits"] == 0
+                  ]
+                  if len(support_pool) < 3:
+                      support_pool = [
+                          row for row in copy_pool
+                          if str(row["record"].get("id")) not in used_ids
+                      ]
+                  supports = sorted(
+                      support_pool,
+                      key=lambda row: -(
+                          _style_distance(primary["profile"], row["profile"]) * 2
+                          + row["quality"]
+                          + row["jitter"] * 0.2
+                      ),
+                  )[:3]
+                  for row in supports:
+                      used_ids.add(str(row["record"].get("id")))
+                  group = [primary["record"]] + [row["record"] for row in supports]
+                  selected_copies.extend(group)
+                  expression_index = (rotation_hash + slot - 1) % 5
+                  styled_line_plan = _line_plan_with_policy_style(
+                      primary["line_plan"], policy, vehicle_model, expression_index
+                  )
+                  assignments.append(json.dumps({
+                      "slot": slot,
+                      "locked_primary": group[0],
+                      "line_plan": styled_line_plan,
+                      "policy_expression_mode": styled_line_plan["policy_expression_mode"],
+                      "locked_line_count": styled_line_plan["expected_output_line_count"],
+                      "locked_emoji_sequence": styled_line_plan["safe_emoji_sequence"],
+                      "support_references": group[1:],
+                      "source_copy_ids": [item.get("id") for item in group],
+                      "instruction": "严格执行 line_plan：MIN_EDIT/KEEP_SOURCE_FACT 保持原行，POLICY_REPLACE 使用本帖指定的等义表达，SAFE_POLICY_CLOSE 保留母版收尾句式、问句结构和emoji但使用replacement替换禁用互动含义，DELETE 不输出，REWRITE_TAGS 仅换安全话题；政策事实不变，但本批各帖表达方式不得相同；不得自行增行",
+                  }, ensure_ascii=False))
+
+              visual_terms = [
+                  "湖", "湖畔", "静水", "倒影", "镜面", "远山", "薄雾", "公路",
+                  "城市", "建筑", "草地", "山林", "海边", "天空", "晚霞", "黄昏",
+                  "粉蓝", "蜜桃粉", "渐变", "黑色", "白色", "纯侧面", "侧面",
+                  "正面", "斜前", "居中", "左对齐", "右对齐", "大标题", "副标题",
+                  "小字", "三层", "三行", "留白", "极简", "轻奢", "黑金"
+              ]
+              reference_text = _norm(reference_description).lower()
+              active_visual_terms = [term for term in visual_terms if term.lower() in reference_text]
+
+              ranked_prompts = []
+              for idx, item in enumerate(prompts):
+                  chinese = _norm(item.get("chinese"))
+                  english = _norm(item.get("english"))
+                  title = _norm(item.get("title") or item.get("name"))
+                  haystack = (title + "\n" + chinese + "\n" + english + "\n" + _norm(item.get("category"))).lower()
+                  score = sum(4 for term in terms if term in haystack)
+                  score += 2 if _norm(item.get("image_url")) else 0
+                  # 参考图说明中的构图、场景、色彩和文字层级优先于泛化的“汽车”关键词。
+                  score += sum(9 for term in active_visual_terms if term.lower() in haystack)
+                  prompt_price_hits = len(re.findall(
+                      r"原价|现价|指导价|裸车价|落地价|优惠|补贴|权益|金额|价表|价格表|"
+                      r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)",
+                      chinese + "\n" + title,
+                  ))
+                  if not policy_has_amount:
+                      score -= min(120, prompt_price_hits * 18)
+                  score += ((idx + seed) % 19) / 100
+                  ranked_prompts.append((score, idx, {
+                      "id": item.get("id"),
+                      "title": title,
+                      "chinese": chinese[:1400],
+                      "english": english[:1400],
+                      "image_url": _norm(item.get("image_url")),
+                      "category": item.get("category") or "",
+                      "param_type": item.get("param_type") or ""
+                  }))
+              ranked_prompts.sort(key=lambda row: (-row[0], (row[1] + seed) % 101))
+              # 视觉分析只需要高相关候选；限制为 15 条，避免无参考图时把大段提示词
+              # 全量送入模型造成响应过慢，同时仍保留足够的版式选择空间。
+              selected_prompts = [row[2] for row in ranked_prompts[:10]]
+
+              clean_images = []
+              for image in images:
+                  url = _norm(image.get("url"))
+                  if url:
+                      clean_images.append({
+                          "label": _norm(image.get("label")),
+                          "url": url,
+                          "model": _norm(image.get("model")) or _norm(vehicle_model)
+                      })
+              if not clean_images:
+                  raise ValueError("车型库记录存在，但没有可用图片 URL")
+
+              trace = {
+                  "copy_pages": [page.get("page") for page in copy_pages],
+                  "copy_total": max([int(page.get("total") or 0) for page in copy_pages] or [0]),
+                  "copy_loaded": len(copies),
+                  "copy_candidate_ids": [item.get("id") for item in selected_copies],
+                  "locked_primary_ids": [row["record"].get("id") for row in primaries],
+                  "copy_selection_strategy": "preference-enforced-relevance-gated-v8.5",
+                  "target_count": target_count,
+                  "candidate_count": count,
+                  "recent_primary_ids_excluded": sorted(recent_primary_ids),
+                  "recent_content_hashes_loaded": len(recent_content_hashes),
+                  "history_fallback_count": history_fallback_count,
+                  "primary_rotation_window": len(first_window),
+                  "primary_rotation_offset": rotation_offset,
+                  "prompt_page": prompt_data.get("page"),
+                  "prompt_total": prompt_data.get("total"),
+                  "prompt_candidate_ids": [item.get("id") for item in selected_prompts],
+                  "vehicle_image_count": len(clean_images)
+              }
+              return {
+                  "copy_assignments": assignments,
+                  "copy_candidates_json": json.dumps(selected_copies, ensure_ascii=False),
+                  "prompt_candidates_json": json.dumps(selected_prompts, ensure_ascii=False),
+                  "vehicle_images_json": json.dumps(clean_images, ensure_ascii=False),
+                  "library_trace_json": json.dumps(trace, ensure_ascii=False)
+              }
+        code_language: python3
+        desc: 从全库按版式指纹做最大距离抽样；为每篇预锁定不同主参考和 3 条不重复辅参考。
+        outputs:
+          copy_assignments:
+            children: null
+            type: array[string]
+          copy_candidates_json:
+            children: null
+            type: string
+          library_trace_json:
+            children: null
+            type: string
+          prompt_candidates_json:
+            children: null
+            type: string
+          vehicle_images_json:
+            children: null
+            type: string
+        selected: false
+        title: 整理候选素材
+        type: code
+        variables:
+        - value_selector:
+          - fetch_copy_library
+          - body
+          variable: copy_body
+        - value_selector:
+          - fetch_copy_library_2
+          - body
+          variable: copy_body_2
+        - value_selector:
+          - fetch_copy_library_3
+          - body
+          variable: copy_body_3
+        - value_selector:
+          - fetch_prompt_library
+          - body
+          variable: prompt_body
+        - value_selector:
+          - fetch_car_images
+          - body
+          variable: car_body
+        - value_selector:
+          - fetch_generation_history
+          - body
+          variable: history_body
+        - value_selector:
+          - start
+          - account_name
+          variable: account_name
+        - value_selector:
+          - start
+          - brand
+          variable: brand
+        - value_selector:
+          - start
+          - vehicle_model
+          variable: vehicle_model
+        - value_selector:
+          - start
+          - policy_text
+          variable: policy_text
+        - value_selector:
+          - start
+          - copy_keyword
+          variable: copy_keyword
+        - value_selector:
+          - start
+          - prompt_keyword
+          variable: prompt_keyword
+        - value_selector:
+          - start
+          - reference_description
+          variable: reference_description
+        - value_selector:
+          - sys
+          - workflow_run_id
+          variable: run_id
+        - value_selector:
+          - start
+          - post_count
+          variable: post_count
+      height: 98
+      id: prepare_materials
+      position:
+        x: 1710
+        y: 300
+      positionAbsolute:
+        x: 1710
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 看参考图的构图、文字、版式和场景，再从提示词库中找最相近的原提示词。
+        model:
+          completion_params:
+            max_tokens: 2600
+            temperature: 0.2
+          mode: chat
+          name: gpt-5.4
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 77ea2b13-0cd3-4a76-b74c-0b1ea74c0001
+          role: system
+          text: |-
+            你是汽车营销图片的视觉分析师。请分析用户上传的参考图；若未上传，则只依据补充说明。
+
+            目标不是重新发明画面，而是：
+            1. 识别参考图的画幅、主体位置、镜头、背景场景、光线、色调、文字区块、字体气质、字号层级、对齐方式和留白。
+            2. 在给定提示词库候选中，按“构图与文字排版相似度”优先，选出最相近的 5 条。
+            3. 后续只允许轻改：保留原提示词的整体结构和文字排版，只轻微变化场景；车辆必须由车型库辅助图约束。
+            4. 画面必须有清晰可读的中文文字，不要输出纯净无字海报。
+            5. 画面不得出现旗帜、联系方式、二维码、引流、导流、留资、获客、线索转化、夸张价格符号或被禁止的营销表达。
+
+            仅返回一个 JSON 对象，不要 Markdown：
+            {
+              "has_reference_image": true或false,
+              "reference_summary": "视觉摘要",
+              "layout": "版式和文字排版",
+              "scene": "场景与可轻改部分",
+              "text_style": "文字层级与样式",
+              "ranked_prompt_ids": [提示词ID...],
+              "selection_reason": "选择理由",
+              "change_boundary": "允许改什么、必须保留什么"
+            }
+        - id: 77ea2b13-0cd3-4a76-b74c-0b1ea74c0002
+          role: user
+          text: |-
+            品牌：{{#start.brand#}}
+            车型：{{#start.vehicle_model#}}
+            参考图补充说明：{{#start.reference_description#}}
+
+            提示词库候选：
+            {{#prepare_materials.prompt_candidates_json#}}
+        selected: false
+        title: 分析参考图并匹配提示词
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+            variable_selector:
+            - start
+            - reference_image
+          enabled: true
+      height: 126
+      id: analyze_reference
+      position:
+        x: 2070
+        y: 300
+      positionAbsolute:
+        x: 2070
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 310
+    - data:
+        desc: 先完成全部文案草稿；每个槽位强制使用不同的 3-4 条来源。
+        error_handle_mode: terminated
+        height: 260
+        is_parallel: false
+        iterator_input_type: array[string]
+        iterator_selector:
+        - prepare_materials
+        - copy_assignments
+        output_selector:
+        - copy_draft
+        - text
+        output_type: array[string]
+        parallel_nums: 1
+        selected: false
+        start_node_id: copy_iteration_start
+        title: 逐篇高保真复刻文案
+        type: iteration
+        width: 410
+      height: 260
+      id: copy_iteration
+      position:
+        x: 2440
+        y: 300
+      positionAbsolute:
+        x: 2440
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 410
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: copy_iteration_start
+      parentId: copy_iteration
+      position:
+        x: 24
+        y: 90
+      positionAbsolute:
+        x: 2464
+        y: 390
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 一篇一篇地做，不套统一模板，不自行改车型或政策。
+        isInIteration: true
+        iteration_id: copy_iteration
+        model:
+          completion_params:
+            max_tokens: 5000
+            temperature: 0.2
+          mode: chat
+          name: gpt-5.4
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 985302d3-990c-4a15-9424-c1d92bc70001
+          role: system
+          text: |-
+            你是高水平的小红书汽车文案复刻编辑。你的工作是“贴着素材改”，不是重新创作。
+
+            严格按输入里的 line_plan 逐行执行，不允许自行决定重写整篇：
+            - MIN_EDIT：保留该行句式、语序、标点、emoji 和换行，只把原品牌/车型换成用户指定车型，最多改 20% 字词。
+            - KEEP_SOURCE_FACT：主参考本身明确属于当前车型，可保留这一行的车型产品事实；仍不得新增原行没有的事实。
+            - POLICY_REPLACE：在原行位置使用 replacement 给出的本帖专属等义表达。保留原行开头的 emoji、序号或小标题；不得改回政策原句，也不得自行再次改写 replacement。
+            - SAFE_POLICY_CLOSE：这是母版原来的咨询/互动收尾行。必须保留它的“想知道…？”、“想体验…、了解…”等句式骨架、问句节奏、所在位置和结尾 emoji，但逐字使用 replacement，把禁用互动含义替换成安全政策信息；不能删除这一行。
+            - DELETE：该行完全不输出，也不补新句，不补 emoji。
+            - REWRITE_TAGS：只输出当前车型、品牌、试驾/看车相关的安全话题标签。
+
+            逐行执行后的正文非空行数必须等于 line_plan.expected_output_line_count；顺序必须与 line_plan 一致。不得合并两行，不得拆成新行，不得补“总结、提醒、先看、记住、安排起来”等填充句。
+
+            事实边界：
+            - 价格、权益、期限、日期、活动状态、金融和库存只允许来自飞书政策原文。
+            - 政策事实与 policy_source 一致，但每帖的 policy_expression_mode 不同；必须使用当前 line_plan 的 replacement，让同一批文案分别呈现直述、提醒、信息说明等不同说法。
+            - 跨车型主参考只保留结构和通用话术；KEEP_SOURCE_FACT 只会出现在当前车型原文中。
+            - 每条政策事实在正文最多出现一次。政策只有两句话时，正文可以很短，不能换同义词重复。
+            - 禁止写政策未确认的“已开启、已上线、已落地、进行中、已经安排”等状态。
+            - 禁止点名平台入口、联系方式、站外导流、传播召集、强催促和用户给出的全部禁用词；但必须保留母版中不含禁词的站内软承接问句，让读者产生进一步了解意愿。line_plan 标成 DELETE 的内容绝不能换一种说法补回。
+
+            来源边界：
+            - primary_copy_id 必须等于 locked_primary.id；source_copy_ids 必须原样复制。
+            - 辅参考每条最多贡献一个不含新事实的短语，并在 source_use_notes 中精确说明；不能用辅参考重建段落。
+            - slot 必须逐字复制输入中的 slot。
+
+            配图规则：
+            - 有参考图时，以实际参考图的构图、文字层级和场景为第一依据；补充说明只补足看不清的信息，二者冲突时服从实际参考图。先采用“参考图分析”中最相似的提示词库条目。
+            - 必须从参考图分析给出的 ranked_prompt_ids 中按顺序优先选择；只有该 ID 不在候选中才可选下一条。保留原提示词总体结构、构图、文字区块数量、区块位置、字号层级和对齐方式；文字内容只做必要替换，不得重排版。背景场景、时间或局部道具必须且只能轻微改变 1 处，prompt_change_note 要明确写出这一处变化，不能写“保持不变”。
+            - 不能同时修改场景、车辆角度、车身颜色和排版。若原提示词与参考图在车辆角度或文字区块数量上差异明显，说明提示词选错了，必须改选更接近的提示词，不得靠大改补救。
+            - 原提示词中的价格、原价、现价、划线价、金额、补贴、权益数字、政策月份和政策条件如果没有出现在本次政策原文中，必须从最终 image_prompt 和 image_text_blocks 中删除。可保留原区块的位置和样式，但只能替换为本篇正文中已经出现的安全短句；不得留下“原价划掉、现价突出、价格表”等排版指令。
+            - 图片必须有文字。文字只从本篇安全标题/正文中提炼，短、清楚、无政策编造、无禁用表达。
+            - image_text_blocks 的数量必须与原提示词的文字层级数量一致。原来的政策数字不能使用时，只替换为政策原文已有的安全短句，不能直接删掉该层文字或改变原排版层级。
+            - selected_prompt_original 仅用于溯源；若原提示词含“引流、导流、留资、获客、线索转化、咨询联系方式”等营销属性或指令，最终 image_prompt 必须完整删除这些内容，不能照搬。
+            - 生图辅助图只能使用工作流随后分配的车型库图片；提示词里明确要求车辆外形、颜色、车标和比例跟随辅助图。
+
+            只返回一个 JSON 对象，不要 Markdown，不要解释：
+            {
+              "slot": 1,
+              "title": "标题",
+              "content": "保留换行和emoji的正文",
+              "primary_copy_id": 真实数字ID,
+              "source_copy_ids": [3到4个真实数字ID],
+              "source_use_notes": ["逐条写明对应原文哪一行；主参考需写明保留的行序和版式"],
+              "policy_evidence": ["逐字摘自政策原文的事实片段"],
+              "policy_expression": "本篇采用的表达策略",
+              "selected_prompt_id": "提示词ID",
+              "selected_prompt_original": "提示词库原提示词原文",
+              "image_text_blocks": ["画面主标题", "画面副标题"],
+              "image_prompt": "基于原提示词轻改后的完整生图提示词",
+              "prompt_change_note": "只说明轻微改了哪个场景元素"
+            }
+        - id: 985302d3-990c-4a15-9424-c1d92bc70002
+          role: user
+          text: |-
+            本帖预分配素材（locked_primary 是唯一结构母版）：
+            {{#copy_iteration.item#}}
+            账号：{{#start.account_name#}}
+            品牌：{{#start.brand#}}
+            用户指定车型：{{#start.vehicle_model#}}
+            政策表达策略：{{#start.policy_style#}}
+
+            飞书政策原文（唯一事实源）：
+            {{#start.policy_text#}}
+
+            参考图分析与相似提示词排序：
+            {{#analyze_reference.text#}}
+
+            提示词库候选：
+            {{#prepare_materials.prompt_candidates_json#}}
+        selected: false
+        title: 生成单篇文案与轻改提示词
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 126
+      id: copy_draft
+      parentId: copy_iteration
+      position:
+        x: 110
+        y: 70
+      positionAbsolute:
+        x: 2550
+        y: 370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 260
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(body: str, content_item_json: str, backend_base_url: str) -> dict:
+              payload = json.loads(body or "{}")
+              data = payload.get("data", payload) if isinstance(payload, dict) else {}
+              urls = data.get("image_urls") or [] if isinstance(data, dict) else []
+              if data.get("status") != "completed" or not urls:
+                  raise ValueError("线上生图未成功完成：" + str(data.get("error") or data.get("status") or payload)[:300])
+              image_url = str(urls[0])
+              if image_url.startswith("/"):
+                  root = str(backend_base_url).split("/api/")[0].rstrip("/")
+                  image_url = root + image_url
+              return {
+                  "image_url": image_url,
+                  "result_json": json.dumps(payload, ensure_ascii=False),
+                  "content_item_json": content_item_json,
+              }
+        code_language: python3
+        desc: 从完成任务中取得第一张成图，供 GPT 视觉质检。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          content_item_json: {children: null, type: string}
+          image_url: {children: null, type: string}
+          result_json: {children: null, type: string}
+        selected: false
+        title: 提取成图地址
+        type: code
+        variables:
+        - {value_selector: [wait_image_task, body], variable: body}
+        - {value_selector: [parse_submitted_task, content_item_json], variable: content_item_json}
+        - {value_selector: [env, BACKEND_BASE_URL], variable: backend_base_url}
+      height: 126
+      id: parse_completed_image
+      parentId: image_iteration
+      position: {x: 1200, y: 60}
+      positionAbsolute: {x: 5180, y: 360}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+      zIndex: 1002
+    - data:
+        authorization: {config: null, type: no-auth}
+        body: {data: '', type: none}
+        desc: 下载真实成图为 Dify 文件变量，交给 GPT 视觉模型检查。
+        headers: ''
+        isInIteration: true
+        iteration_id: image_iteration
+        method: get
+        params: ''
+        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 1000}
+        selected: false
+        timeout: {max_connect_timeout: 20, max_read_timeout: 120, max_write_timeout: 20}
+        title: 下载成图用于质检
+        type: http-request
+        url: '{{#parse_completed_image.image_url#}}'
+        variables: []
+      height: 166
+      id: download_completed_image
+      parentId: image_iteration
+      position: {x: 1470, y: 50}
+      positionAbsolute: {x: 5450, y: 350}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        context: {enabled: false, variable_selector: []}
+        desc: 检查有字、文字可读、车型外观、画面结构和禁用视觉元素。
+        isInIteration: true
+        iteration_id: image_iteration
+        model:
+          completion_params: {max_tokens: 1200, temperature: 0}
+          mode: chat
+          name: gpt-5.4
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 62c13535-b9de-4b95-9cf1-07ac8a030001
+          role: system
+          text: |-
+            你是汽车营销成图质检员。严格看图，只返回一行 JSON：{"pass":true或false,"reasons":["原因"]}。
+            必须全部满足才 pass：画面不是空白；有且只有一辆主体汽车；车辆结构、车标、轮毂和比例无明显畸变；能看见清晰中文文字且不是无字图；content_item_json 的 image_text_blocks 中各文字区块大意均出现，没有明显乱码或大面积错别字；没有二维码、联系方式、旗帜、明确的极限价格词和禁用引流元素；排版完整，无文字严重裁切遮挡。
+            只把 image_text_blocks 当作必须出现的文字；image_prompt 中其他引号文字可能只是布局示例，不要求逐字出现。政策事实正确性已由上游校验，你不要自行判断某个指导价、补贴或金额“未提供”。普通指导价、政策金额、补贴金额本身允许出现；只有图片实际出现“全网最低、最便宜、抄底、底价、闭眼冲、直降”等明确极限词时，才按极限价格宣传判失败。不要因为场景轻微变化判失败。
+        - id: 62c13535-b9de-4b95-9cf1-07ac8a030002
+          role: user
+          text: |-
+            这是本张图对应的生产要求，请结合图片核对：
+            {{#parse_completed_image.content_item_json#}}
+        selected: false
+        title: GPT 成图质检
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+            variable_selector: [download_completed_image, files]
+          enabled: true
+      height: 126
+      id: image_quality_review
+      parentId: image_iteration
+      position: {x: 1730, y: 50}
+      positionAbsolute: {x: 5710, y: 350}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 250
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+          import re
+
+          def main(text: str) -> dict:
+              raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", str(text or "").strip(), flags=re.I)
+              try:
+                  review = json.loads(raw)
+              except Exception:
+                  review = {"pass": False, "reasons": ["质检模型没有返回有效 JSON"]}
+              ok = review.get("pass") is True
+              return {"quality_ok": ok, "review_json": json.dumps(review, ensure_ascii=False)}
+        code_language: python3
+        desc: 将视觉质检结果转为稳定布尔值。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          quality_ok: {children: null, type: boolean}
+          review_json: {children: null, type: string}
+        selected: false
+        title: 解析质检结论
+        type: code
+        variables:
+        - {value_selector: [image_quality_review, text], variable: text}
+      height: 126
+      id: parse_image_quality
+      parentId: image_iteration
+      position: {x: 2010, y: 50}
+      positionAbsolute: {x: 5990, y: 350}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: 24a73c84-b57b-419f-a22e-a13269030001
+            value: true
+            varType: boolean
+            variable_selector: [parse_image_quality, quality_ok]
+          id: 'true'
+          logical_operator: and
+        isInIteration: true
+        iteration_id: image_iteration
+        selected: false
+        title: 成图是否合格
+        type: if-else
+      height: 126
+      id: image_quality_gate
+      parentId: image_iteration
+      position: {x: 2270, y: 50}
+      positionAbsolute: {x: 6250, y: 350}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(result_json: str, review_json: str) -> dict:
+              payload = json.loads(result_json or "{}")
+              payload["quality_review"] = json.loads(review_json or "{}")
+              payload["quality_pass"] = True
+              payload["regenerated"] = False
+              return {"result": json.dumps(payload, ensure_ascii=False)}
+        code_language: python3
+        desc: 首张合格，直接作为最终成图。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          result: {children: null, type: string}
+        selected: false
+        title: 接受首张成图
+        type: code
+        variables:
+        - {value_selector: [parse_completed_image, result_json], variable: result_json}
+        - {value_selector: [parse_image_quality, review_json], variable: review_json}
+      height: 126
+      id: finalize_passed_image
+      parentId: image_iteration
+      position: {x: 2540, y: -70}
+      positionAbsolute: {x: 6520, y: 230}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(request_json: str, review_json: str) -> dict:
+              body = json.loads(request_json or "{}")
+              review = json.loads(review_json or "{}")
+              reasons = "；".join(str(x) for x in (review.get("reasons") or []))[:500]
+              body["prompt"] = str(body.get("prompt") or "") + (
+                  "\n\n本次为质检后重生，只修正以下问题，不改变原场景、构图、车辆角度和文字层级：" + reasons +
+                  "。所有要求文字必须清晰、完整、无乱码；车辆结构和车型特征必须准确。"
+              )
+              request_id = str(body.get("client_request_id") or "")
+              body["client_request_id"] = request_id[:61] + "-q2"
+              return {"request_json": json.dumps(body, ensure_ascii=False)}
+        code_language: python3
+        desc: 仅针对 GPT 指出的成图问题重生一次，不改原提示词版式思路。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          request_json: {children: null, type: string}
+        selected: false
+        title: 组装质检重生请求
+        type: code
+        variables:
+        - {value_selector: [parse_image_item, request_json], variable: request_json}
+        - {value_selector: [parse_image_quality, review_json], variable: review_json}
+      height: 126
+      id: build_image_retry
+      parentId: image_iteration
+      position: {x: 2540, y: 140}
+      positionAbsolute: {x: 6520, y: 440}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 250
+      zIndex: 1002
+    - data:
+        authorization: {config: null, type: no-auth}
+        body: {data: '{{#build_image_retry.request_json#}}', type: json}
+        desc: 首张未过视觉质检时，调用用户线上接口重生一次。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        isInIteration: true
+        iteration_id: image_iteration
+        method: post
+        params: ''
+        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 1000}
+        selected: false
+        timeout: {max_connect_timeout: 20, max_read_timeout: 120, max_write_timeout: 30}
+        title: 提交一次质检重生
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/ai-image/generate'
+        variables: []
+      height: 182
+      id: submit_image_retry
+      parentId: image_iteration
+      position: {x: 2820, y: 130}
+      positionAbsolute: {x: 6800, y: 430}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(body: str) -> dict:
+              payload = json.loads(body or "{}")
+              data = payload.get("data", payload) if isinstance(payload, dict) else {}
+              task_id = str(data.get("task_id") or "")
+              if not task_id.isdigit():
+                  raise ValueError("质检重生提交失败：" + str(payload)[:300])
+              return {"task_id": task_id}
+        code_language: python3
+        desc: 提取重生任务 ID。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          task_id: {children: null, type: string}
+        selected: false
+        title: 提取重生任务
+        type: code
+        variables:
+        - {value_selector: [submit_image_retry, body], variable: body}
+      height: 126
+      id: parse_retry_task
+      parentId: image_iteration
+      position: {x: 3090, y: 140}
+      positionAbsolute: {x: 7070, y: 440}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 220
+      zIndex: 1002
+    - data:
+        authorization: {config: null, type: no-auth}
+        body: {data: '', type: none}
+        desc: 等待重生图完成。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        isInIteration: true
+        iteration_id: image_iteration
+        method: get
+        params: ''
+        retry_config: {max_retries: 25, retry_enabled: true, retry_interval: 500}
+        selected: false
+        timeout: {max_connect_timeout: 20, max_read_timeout: 600, max_write_timeout: 20}
+        title: 等待重生图完成
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/ai-image/tasks/{{#parse_retry_task.task_id#}}/wait?model={{#start.image_model#}}&timeout_seconds=20&poll_seconds=2'
+        variables: []
+      height: 190
+      id: wait_image_retry
+      parentId: image_iteration
+      position: {x: 3340, y: 130}
+      positionAbsolute: {x: 7320, y: 430}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 250
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(body: str, backend_base_url: str) -> dict:
+              payload = json.loads(body or "{}")
+              data = payload.get("data", payload) if isinstance(payload, dict) else {}
+              urls = data.get("image_urls") or [] if isinstance(data, dict) else []
+              if data.get("status") != "completed" or not urls:
+                  raise ValueError("质检重生没有成功完成：" + str(data.get("error") or data.get("status"))[:300])
+              image_url = str(urls[0])
+              if image_url.startswith("/"):
+                  image_url = str(backend_base_url).split("/api/")[0].rstrip("/") + image_url
+              return {"image_url": image_url, "result_json": json.dumps(payload, ensure_ascii=False)}
+        code_language: python3
+        desc: 提取重生图地址。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          image_url: {children: null, type: string}
+          result_json: {children: null, type: string}
+        selected: false
+        title: 提取重生图地址
+        type: code
+        variables:
+        - {value_selector: [wait_image_retry, body], variable: body}
+        - {value_selector: [env, BACKEND_BASE_URL], variable: backend_base_url}
+      height: 126
+      id: parse_retry_completed
+      parentId: image_iteration
+      position: {x: 3620, y: 140}
+      positionAbsolute: {x: 7600, y: 440}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        authorization: {config: null, type: no-auth}
+        body: {data: '', type: none}
+        desc: 下载重生图供第二次 GPT 质检。
+        headers: ''
+        isInIteration: true
+        iteration_id: image_iteration
+        method: get
+        params: ''
+        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 1000}
+        selected: false
+        timeout: {max_connect_timeout: 20, max_read_timeout: 120, max_write_timeout: 20}
+        title: 下载重生图
+        type: http-request
+        url: '{{#parse_retry_completed.image_url#}}'
+        variables: []
+      height: 166
+      id: download_retry_image
+      parentId: image_iteration
+      position: {x: 3880, y: 130}
+      positionAbsolute: {x: 7860, y: 430}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 220
+      zIndex: 1002
+    - data:
+        context: {enabled: false, variable_selector: []}
+        desc: 对重生图按相同规则复检，不再进行第三次生图。
+        isInIteration: true
+        iteration_id: image_iteration
+        model:
+          completion_params: {max_tokens: 1200, temperature: 0}
+          mode: chat
+          name: gpt-5.4
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 81986888-3ee0-4c54-a62a-f37107f40001
+          role: system
+          text: |-
+            你是汽车营销成图质检员。严格看图，只返回一行 JSON：{"pass":true或false,"reasons":["原因"]}。必须有清晰中文文字，且 content_item_json 的 image_text_blocks 中各文字区块大意均出现；只有一辆正确汽车，车辆无明显畸变；没有乱码、严重裁切、二维码、联系方式、旗帜、禁用引流或明确极限价格词。只把 image_text_blocks 当作必须出现的文字，image_prompt 中其他引号文字只是布局示例。不要自行判断政策事实是否提供；普通指导价、政策金额和补贴金额允许出现，只有图片实际出现“全网最低、最便宜、抄底、底价、闭眼冲、直降”等词时才按极限价格判失败。全部满足才 pass。
+        - id: 81986888-3ee0-4c54-a62a-f37107f40002
+          role: user
+          text: '生产要求：{{#parse_completed_image.content_item_json#}}'
+        selected: false
+        title: GPT 重生图复检
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+            variable_selector: [download_retry_image, files]
+          enabled: true
+      height: 126
+      id: retry_quality_review
+      parentId: image_iteration
+      position: {x: 4130, y: 130}
+      positionAbsolute: {x: 8110, y: 430}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+          import re
+
+          def main(result_json: str, review_text: str) -> dict:
+              payload = json.loads(result_json or "{}")
+              raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", str(review_text or "").strip(), flags=re.I)
+              try:
+                  review = json.loads(raw)
+              except Exception:
+                  review = {"pass": False, "reasons": ["复检模型没有返回有效 JSON"]}
+              payload["quality_review"] = review
+              payload["quality_pass"] = review.get("pass") is True
+              payload["regenerated"] = True
+              return {"result": json.dumps(payload, ensure_ascii=False)}
+        code_language: python3
+        desc: 交付一次重生后的最终图，并保留复检结论供运营查看。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          result: {children: null, type: string}
+        selected: false
+        title: 汇总重生图结果
+        type: code
+        variables:
+        - {value_selector: [parse_retry_completed, result_json], variable: result_json}
+        - {value_selector: [retry_quality_review, text], variable: review_text}
+      height: 126
+      id: finalize_retry_image
+      parentId: image_iteration
+      position: {x: 4400, y: 130}
+      positionAbsolute: {x: 8380, y: 430}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        iteration_id: image_iteration
+        output_type: string
+        selected: false
+        title: 汇合最终成图
+        type: variable-aggregator
+        variables:
+        - [finalize_passed_image, result]
+        - [finalize_retry_image, result]
+      height: 126
+      id: final_image_result
+      parentId: image_iteration
+      position: {x: 4690, y: 30}
+      positionAbsolute: {x: 8670, y: 330}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 240
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+          import re
+
+          def _repair_json_text(raw):
+              """Repair common LLM JSON slips without changing the actual copy."""
+              out = []
+              in_string = False
+              escaped = False
+              size = len(raw)
+              for index, char in enumerate(raw):
+                  if not in_string:
+                      out.append(char)
+                      if char == '"':
+                          in_string = True
+                      continue
+                  if escaped:
+                      out.append(char)
+                      escaped = False
+                      continue
+                  if char == "\\":
+                      out.append(char)
+                      escaped = True
+                      continue
+                  if char in "\r\n":
+                      out.append("\\n")
+                      continue
+                  if char == '"':
+                      lookahead = index + 1
+                      while lookahead < size and raw[lookahead].isspace():
+                          lookahead += 1
+                      next_char = raw[lookahead] if lookahead < size else ""
+                      if not next_char or next_char in ":,}]":
+                          out.append(char)
+                          in_string = False
+                      else:
+                          out.append('\\"')
+                      continue
+                  out.append(char)
+              return "".join(out)
+
+          def _parse(value):
+              if isinstance(value, dict):
+                  return value
+              raw = str(value or "").strip()
+              raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.I)
+              raw = re.sub(r"\s*```$", "", raw)
+              try:
+                  parsed = json.loads(raw)
+              except json.JSONDecodeError:
+                  match = re.search(r"\{.*\}", raw, flags=re.S)
+                  candidate = match.group(0) if match else raw
+                  try:
+                      parsed = json.loads(_repair_json_text(candidate))
+                  except Exception as exc:
+                      return {
+                          "slot": 0,
+                          "title": "",
+                          "content": "",
+                          "primary_copy_id": None,
+                          "source_copy_ids": [],
+                          "source_use_notes": ["模型 JSON 格式异常，已阻断本篇：" + str(exc)[:120]],
+                          "policy_evidence": [],
+                          "policy_expression": "",
+                          "selected_prompt_id": "",
+                          "selected_prompt_original": "",
+                          "image_text_blocks": [],
+                          "image_prompt": "",
+                          "prompt_change_note": ""
+                      }
+              if not isinstance(parsed, dict):
+                  raise ValueError("单篇草稿必须是 JSON 对象")
+              return parsed
+
+          def main(drafts) -> dict:
+              values = list(drafts or [])
+              normalized = []
+              for index, value in enumerate(values, start=1):
+                  item = _parse(value)
+                  item["slot"] = index
+                  normalized.append(item)
+              return {"drafts_json": json.dumps(normalized, ensure_ascii=False)}
+        code_language: python3
+        desc: 解析每篇 JSON 并由代码强制写入正确槽位，避免模型把多篇都标成 slot 1。
+        outputs:
+          drafts_json:
+            children: null
+            type: string
+        selected: false
+        title: 汇总文案草稿
+        type: code
+        variables:
+        - value_selector:
+          - copy_iteration
+          - output
+          variable: drafts
+      height: 98
+      id: drafts_to_json
+      position:
+        x: 2910
+        y: 300
+      positionAbsolute:
+        x: 2910
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 270
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 对整批文案做政策、禁用语、车型、来源和图片文字复核；只做必要修正。
+        model:
+          completion_params:
+            max_tokens: 24000
+            temperature: 0.1
+          mode: chat
+          name: gpt-5.4
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 093c968e-69bb-4988-8b3b-06fcf58d0001
+          role: system
+          text: |-
+            你是“只删不重写”的终审。必须原顺序返回全部对象；不得统一润色、重排段落、补标题、补句子、补 emoji 或改写成同一种模板。
+
+            唯一允许的修改：
+            1. 删除命中禁用词、明确的平台互动指令、联系方式、强催促、传播召集的分句；不能换一种说法补回。不含禁词、不指定入口的购车咨询问句属于正常软承接，必须保留。
+            2. 删除政策原文未提供的价格、权益、日期、条件和活动状态；不能改成模糊的新事实。
+            3. 删除跨车型带来的配置、续航、功能和体验事实。当前车型原文中的产品事实可保留，不能扩写。
+            4. 同一政策事实正文只保留第一次，后续同义复述直接删除。
+            5. image_prompt 只删除违规营销或无依据金额；不得改变原构图、车辆角度、文字区块数量和版式，只允许保留一处场景轻改。
+            6. 特别注意：飞书政策原文本身也可能含“免费、最低、0元”等禁用词或同义含义。该条政策事实只允许逐字留在 policy_evidence 供审计，必须从 title、content、policy_expression、image_text_blocks、image_prompt 中整句删除；不得换成“无成本、无需费用、不要钱”等变体。每篇从其余不含禁用含义的政策事实中任选 1-3 条承载，不要求把整张政策表全部写进一篇。
+
+            绝对禁止：
+            - 不得新增任何原草稿没有的句子、卖点、总结、提醒或话题结构。
+            - 不得修改 slot、primary_copy_id、source_copy_ids、selected_prompt_id。selected_prompt_original 统一返回空字符串，后续代码会按 selected_prompt_id 从提示词库恢复原文，避免重复输出超长字段导致 JSON 截断。
+            - 不得为了补行数恢复已删除内容；删除后文章变短是正确结果。
+            - 不得把不同文章改成相同开头、相同小标题或相同 emoji 顺序。
+
+            全文、标题、图片文字和提示词继续执行用户给出的全部绝对禁用词及同义表达。允许在正文保留“想知道本地方案怎么核算”“城市、版本、预算一起比较”等不点名入口的软承接，但图片文字与图片提示词不得出现获客指令。policy_evidence 必须逐字来自政策原文。输入有几篇就必须输出几篇。
+
+            只返回 JSON 数组，不要 Markdown，不要解释。数组中每个对象保留这些字段：
+            slot,title,content,primary_copy_id,source_copy_ids,source_use_notes,policy_evidence,policy_expression,selected_prompt_id,selected_prompt_original,image_text_blocks,image_prompt,prompt_change_note
+        - id: 093c968e-69bb-4988-8b3b-06fcf58d0002
+          role: user
+          text: |-
+            账号：{{#start.account_name#}}
+            品牌：{{#start.brand#}}
+            指定车型：{{#start.vehicle_model#}}
+            政策表达策略：{{#start.policy_style#}}
+
+            飞书政策原文：
+            {{#start.policy_text#}}
+
+            参考图分析：
+            {{#analyze_reference.text#}}
+
+            本批文案库候选原文（必须逐行对照，不得只看草稿的来源说明）：
+            {{#prepare_materials.copy_candidates_json#}}
+
+            待审草稿：
+            {{#drafts_to_json.drafts_json#}}
+        selected: false
+        title: 整批合规与政策终审
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+        retry_config:
+          max_retries: 1
+          retry_enabled: true
+          retry_interval: 1000
+      height: 126
+      id: compliance_audit
+      position:
+        x: 3240
+        y: 300
+      positionAbsolute:
+        x: 3240
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 310
+    - data:
+        code: |-
+          import hashlib
+          import json
+          import re
+          from difflib import SequenceMatcher
+
+          BANNED = [
+              "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
+              "白嫖", "白送", "送你", "免费", "发你", "评论区",
+              "国旗", "国家", "薅", "崩", "秒发", "底价",
+              "全网最低", "最便宜", "抄底", "闭眼冲", "直降", "下调",
+              "非节假日不用冲量", "崩了", "降价", "大跳水", "被割韭菜",
+              "一键三连", "点赞", "收藏", "关注我", "点个赞",
+              "转发", "分享给", "发给身边", "留言", "回复", "评论",
+              "蹲一个", "蹲蹲", "扣数字", "打在公屏", "告诉我", "说说看",
+              "来聊", "找我", "问我", "戳我", "敲我", "滴我", "艾特",
+              "内部", "隐藏福利", "行情曝光", "618", "双11", "双12", "链接"
+          ]
+          SEMANTIC_PATTERNS = [
+              (r"微\s*信|V\s*信|VX", "疑似联系方式变体"),
+              (r"1[3-9]\d{9}", "疑似手机号码"),
+              (r"联系我|找我|留(?:下)?联系方式|主页(?:找|联系)|转到站外|引流|导流|留资|获客|线索转化", "疑似引导联系、导流或留资获客"),
+              (r"零元|(?<!\d)0元|不要钱|不花钱", "疑似无成本获取表述"),
+              (r"历史低价|史低|地板价|亏本价|赔本价|最低价", "疑似极限价格表述"),
+              (r"价格(?:跳水|腰斩|下探|下来了)|清仓甩卖|冲量", "疑似夸张价格或冲量表述")
+              ,(r"不容错过|千万别拖|别再犹豫|立即预约|机会来了|快来体验|错过.{0,8}(?:等|后悔)|手慢无", "疑似强催促或错过焦虑表述")
+              ,(r"(?:转给|转一下|转起来|分享一下|分享出去|分享身边|发给.{0,10}(?:朋友|车友|家人|同事|身边))", "疑似要求传播或转发表达")
+              ,(r"(?:懂的|想看的|想了解的|想知道的|需要的|感兴趣的).{0,8}(?:来|集合|报到|举手|找|问|聊|留言|回复|说)", "疑似互动召集或咨询引导")
+              ,(r"(?:来|一起).{0,4}(?:聊聊|聊一聊|交流|讨论)|(?:有问题|有疑问).{0,8}(?:找|问|聊|留言|回复)", "疑似交流或咨询引导")
+              ,(r"(?:下方|下面|文末|主页).{0,8}(?:留言|回复|评论|找|联系|看)|(?:留言|回复|评论).{0,8}(?:告诉|说|交流|讨论)", "疑似平台互动引导")
+              ,(r"(?:扣|打|敲).{0,3}(?:1|数字|公屏)|(?:蹲|报到|举手|集合)(?:一下|一个|一波|等)?", "疑似互动口令或召集")
+              ,(r"(?:戳|敲|滴|call).{0,3}(?:我|一下)|@\S+|艾特.{0,8}(?:朋友|车友|家人|同事)", "疑似变体联系或艾特传播")
+              ,(r"(?:点|求).{0,3}(?:赞|关注|收藏)|关注.{0,6}(?:我|账号|主页)|收藏.{0,5}(?:备用|起来|一下)", "疑似点赞关注收藏引导")
+              ,(r"(?:一个一个|一个个|逐个|挨个|统一|都给).{0,3}回", "疑似承诺逐一回复")
+              ,(r"月薪.{0,8}(?:轻松|也能).{0,8}(?:拥有|入手)|人人都能.{0,6}(?:拥有|入手)|轻松(?:拥有|入手)", "疑似无依据的购车负担承诺")
+              ,(r"被问.{0,8}链接|要链接|求链接", "疑似链接或站外引导")
+              ,(r"最高标准|辨识度拉满|实力拉满|操作丝滑|顶级(?:配置|体验|享受)|完美(?:适配|解决)", "疑似绝对化或夸张体验表述")
+              ,(r"终身.{0,8}(?:流量|质保)", "疑似无成本权益的变体表述")
+          ]
+          UNSUPPORTED_FEATURES = re.compile(
+              r"L\s*\d\s*级|自动泊车|座椅.{0,12}(?:加热|通风|腰托)|大五座|"
+              r"车机.{0,12}(?:流畅|核心亮点)|底盘调校|加速.{0,10}刹车.{0,10}转向|"
+              r"全国.{0,6}门店|各地.{0,6}门店|试驾礼|礼品|礼遇|领取.{0,8}(?:礼|权益)|"
+              r"智能驾驶|智驾|驾控|操控|未来出行|生活方式"
+          )
+          UNSUPPORTED_STATUS = re.compile(
+              r"活动.{0,8}(?:(?:已经|已|正在)(?:开始|开启|上线|落地|启动|开展|安排|确认)|进行中|正在进行)|"
+              r"(?:(?:已经|已|正在)(?:开始|开启|上线|落地|启动|开展|安排|确认)|进行中|正在进行).{0,8}活动|"
+              r"今日正式上市|今日上市|刚刚上市|正式上市|如约而至|(?:权益|政策|活动)信息已同步更新|同步更新|"
+              r"月底行情|月末行情|行情.{0,4}(?:大调整|调整)|大调整|真实落地价|第[一二三四]季度购车新规"
+          )
+          UNSUPPORTED_COPY_CLAIMS = re.compile(
+              r"安全感|更安心|安全座驾|贴心代步|代步车|开起来.{0,8}顺不顺手|"
+              r"家用\s*SUV|关注度.{0,6}(?:高|很高)|体验.{0,8}(?:一下|不错|很好)|"
+              r"白跑一趟|跑冤枉路|跑空|更方便.{0,8}行程|更从容"
+          )
+          UNSUPPORTED_PRICE_LAYOUT = re.compile(
+              r"原价|现价|划线价|价格表|价格突出|裸车价|落地价|报价|优惠价|指导价|补贴价|\d+(?:\.\d+)?\s*(?:元|万元|万)|\d+(?:\.\d+)?\s*%"
+          )
+          NO_AMOUNT_POLICY = re.compile(
+              r"(?:没有|未|不曾)(?:提供|给出|明确).{0,18}(?:价格|金额|补贴|权益|首付|利率|月供|数字|数值)|不得新增.{0,18}(?:价格|金额|补贴|权益|数字|数值)"
+          )
+          NO_SCENE_CHANGE = re.compile(r"保持不变|背景不变|场景不变|没有变化|无需变化|未做变化")
+          META_MARKETING_CLAUSE = re.compile(
+              r"[^，,；;。\n]{0,40}(?:引流|导流|留资|获客|线索转化|联系方式)[^，,；;。\n]{0,40}[，,；;。]?"
+          )
+          INTERACTION_TRIGGER = re.compile(
+              r"转发|分享给|分享出去|分享一下|发给.{0,10}(?:朋友|车友|家人|同事|身边)|"
+              r"留言|回复|评论|蹲一个|蹲蹲|扣数字|打在公屏|告诉我|说说看|"
+              r"(?:懂的|想看的|想了解的|想知道的|需要的|感兴趣的).{0,8}(?:来|集合|报到|举手|找|问|聊|留言|回复|说)|"
+              r"(?:来|一起).{0,4}(?:聊聊|聊一聊|交流|讨论)|(?:有问题|有疑问).{0,8}(?:找|问|聊|留言|回复)|"
+              r"(?:戳|敲|滴|call).{0,3}(?:我|一下)|艾特.{0,8}(?:朋友|车友|家人|同事)|@\S+|"
+              r"(?:点|求).{0,3}(?:赞|关注|收藏)|关注.{0,6}(?:我|账号|主页)|收藏.{0,5}(?:备用|起来|一下)|"
+              r"一键三连|点赞|点个赞|找我|问我|来聊|敲我|滴我",
+              flags=re.I,
+          )
+
+          # “一个一个回”不含“回复”二字，但语义完全相同，也必须删除。
+          INTERACTION_TRIGGER = re.compile(
+              INTERACTION_TRIGGER.pattern + r"|(?:一个一个|一个个|逐个|挨个|统一|都给).{0,3}回",
+              flags=re.I,
+          )
+
+          def _strip_interaction_clauses(value):
+              """终审偶发漏删时，只删除互动分句，不重写其余内容。"""
+              cleaned_lines = []
+              for raw_line in str(value or "").splitlines():
+                  line = raw_line.strip()
+                  if not line:
+                      cleaned_lines.append("")
+                      continue
+                  parts = re.split(r"([。！？!?；;])", line)
+                  kept = []
+                  for idx in range(0, len(parts), 2):
+                      clause = parts[idx].strip()
+                      punctuation = parts[idx + 1] if idx + 1 < len(parts) else ""
+                      if not clause or INTERACTION_TRIGGER.search(clause):
+                          continue
+                      kept.append(clause + punctuation)
+                  merged = "".join(kept).strip()
+                  if merged:
+                      cleaned_lines.append(merged)
+              return "\n".join(cleaned_lines).strip()
+
+          def _strip_banned_copy_clauses(value):
+              """正文按分句删除绝对禁用词，避免只删词后留下病句。"""
+              cleaned_lines = []
+              for raw_line in str(value or "").splitlines():
+                  parts = re.split(r"([。！？!?；;])", raw_line.strip())
+                  kept = []
+                  for idx in range(0, len(parts), 2):
+                      clause = parts[idx].strip()
+                      punctuation = parts[idx + 1] if idx + 1 < len(parts) else ""
+                      if not clause or any(word in clause for word in BANNED):
+                          continue
+                      kept.append(clause + punctuation)
+                  merged = "".join(kept).strip()
+                  if merged:
+                      cleaned_lines.append(merged)
+              return "\n".join(cleaned_lines).strip()
+
+          def _strip_unsupported_copy_clauses(value, policy):
+              cleaned_lines = []
+              for raw_line in str(value or "").splitlines():
+                  parts = re.split(r"([。！？!?；;])", raw_line.strip())
+                  kept = []
+                  for idx in range(0, len(parts), 2):
+                      clause = parts[idx].strip()
+                      punctuation = parts[idx + 1] if idx + 1 < len(parts) else ""
+                      match = UNSUPPORTED_COPY_CLAIMS.search(clause)
+                      if not clause or (match and match.group(0) not in str(policy or "")):
+                          continue
+                      kept.append(clause + punctuation)
+                  merged = "".join(kept).strip()
+                  if merged:
+                      cleaned_lines.append(merged)
+              return "\n".join(cleaned_lines).strip()
+
+          def _remove_banned_tokens(value):
+              """标题和长生图提示词不宜整句删除，只移除确定禁用 token。"""
+              text = str(value or "")
+              for word in sorted(BANNED, key=len, reverse=True):
+                  text = text.replace(word, "")
+              return re.sub(r"[，,；;。]{2,}", "；", text).strip(" ，,；;。")
+
+          def _normalize_repeat_unit(text):
+              value = str(text or "").strip()
+              value = re.sub(r"#[^#\n]+(?:\[话题\])?#", "", value)
+              value = re.sub(r"20\d{2}年\d{1,2}月\d{1,2}日|\d+(?:\.\d+)?", "数字", value)
+              value = re.sub(r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️♻️💳—\-\s，。！？、,.!~～：:；;（）()]", "", value)
+              return value
+
+          def _internal_repetition_reasons(content, policy):
+              reasons = []
+              lines = [line.strip() for line in str(content or "").splitlines() if line.strip()]
+              body_lines = [line for line in lines if not line.startswith("#")]
+              normalized = [_normalize_repeat_unit(line) for line in body_lines]
+              normalized = [line for line in normalized if len(line) >= 6]
+              counts = {}
+              for line in normalized:
+                  counts[line] = counts.get(line, 0) + 1
+              duplicates = [line for line, count in counts.items() if count >= 2]
+              if duplicates:
+                  reasons.append("单篇内部存在重复或仅改标点的句子")
+
+              # 政策事实可以出现于标题/正文各一次，但不得把同一句政策当作
+              # 多个段落的填充内容反复复述。
+              policy_parts = [
+                  _normalize_repeat_unit(part)
+                  for part in re.split(r"[。；;\n]+", str(policy or ""))
+                  if len(_normalize_repeat_unit(part)) >= 8
+              ]
+              for part in policy_parts:
+                  hits = sum(1 for line in normalized if part in line or line in part)
+                  if hits > 1:
+                      reasons.append("同一政策事实在正文中重复超过 1 次")
+                      break
+
+              raw_policy_parts = [
+                  part.strip(" ，,。；;：:")
+                  for part in re.split(r"[。；;\n]+", str(policy or ""))
+                  if len(part.strip(" ，,。；;：:")) >= 8
+              ]
+              if any(str(content or "").count(part) > 1 for part in raw_policy_parts):
+                  if "同一政策事实在正文中重复超过 1 次" not in reasons:
+                      reasons.append("同一政策事实在正文中重复超过 1 次")
+
+              if len(normalized) >= 5:
+                  unique_ratio = len(set(normalized)) / len(normalized)
+                  if unique_ratio < 0.78:
+                      reasons.append("单篇有效句去重率过低")
+              return reasons
+
+          def _dedupe_content(content, policy):
+              """删除模型偶发重复行，以及第三次起重复出现的完整政策事实。"""
+              policy_units = [
+                  _normalize_repeat_unit(part)
+                  for part in re.split(r"[。；;\n]+", str(policy or ""))
+                  if len(_normalize_repeat_unit(part)) >= 8
+              ]
+              policy_hits = {unit: 0 for unit in policy_units}
+              date_tokens = list(dict.fromkeys(re.findall(
+                  r"20\d{2}年\d{1,2}月\d{1,2}日|20\d{2}年|\d{1,2}月\d{1,2}日",
+                  str(policy or ""),
+              )))
+              date_hits = {token: 0 for token in date_tokens}
+              gate_seen = False
+              policy_markers = ("试驾", "到店", "门店", "活动", "截止", "时间", "安排", "公布", "核验")
+              seen = set()
+              seen_policy_lines = []
+              kept = []
+              for raw_line in str(content or "").splitlines():
+                  line = raw_line.strip()
+                  if not line:
+                      kept.append("")
+                      continue
+                  normalized = _normalize_repeat_unit(line)
+                  if len(normalized) >= 6 and normalized in seen:
+                      continue
+                  repeated_exact_fact = False
+                  for token in date_tokens:
+                      if token in line:
+                          date_hits[token] += 1
+                          if date_hits[token] > 1:
+                              repeated_exact_fact = True
+                              break
+                  has_gate_fact = "门店公布" in line and "现场核验" in line
+                  if has_gate_fact and gate_seen:
+                      repeated_exact_fact = True
+                  elif has_gate_fact:
+                      gate_seen = True
+                  if repeated_exact_fact:
+                      continue
+                  marker_hits = sum(1 for marker in policy_markers if marker in line)
+                  if marker_hits >= 2:
+                      if any(SequenceMatcher(None, normalized, previous).ratio() >= 0.68 for previous in seen_policy_lines):
+                          continue
+                      seen_policy_lines.append(normalized)
+                  repeats_policy = False
+                  for unit in policy_units:
+                      if unit in normalized or normalized in unit:
+                          policy_hits[unit] += 1
+                          if policy_hits[unit] > 1:
+                              repeats_policy = True
+                              break
+                  if repeats_policy:
+                      continue
+                  if len(normalized) >= 6:
+                      seen.add(normalized)
+                  kept.append(line)
+              return "\n".join(kept).strip()
+
+          def _restore_emoji_positions(content, original_content):
+              """按主参考行号补回终审误删的 emoji，不改句子或排版骨架。"""
+              emoji_pattern = r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️]"
+              original_lines = [line for line in str(original_content or "").splitlines() if line.strip()]
+              draft_lines = [line for line in str(content or "").splitlines() if line.strip()]
+              for index in range(min(len(original_lines), len(draft_lines))):
+                  expected = re.findall(emoji_pattern, original_lines[index])
+                  current = re.findall(emoji_pattern, draft_lines[index])
+                  missing = list(expected)
+                  for emoji in current:
+                      if emoji in missing:
+                          missing.remove(emoji)
+                  if missing:
+                      draft_lines[index] = draft_lines[index].rstrip() + "".join(missing)
+              expected_all = re.findall(emoji_pattern, str(original_content or ""))
+              current_all = re.findall(emoji_pattern, "\n".join(draft_lines))
+              remaining = list(expected_all)
+              for emoji in current_all:
+                  if emoji in remaining:
+                      remaining.remove(emoji)
+              if draft_lines and remaining:
+                  # 行数发生合规删减时，按原文相对位置补回漏掉的 emoji。
+                  for emoji in remaining:
+                      original_index = next(
+                          (idx for idx, line in enumerate(original_lines) if emoji in line),
+                          len(original_lines) - 1,
+                      )
+                      target_index = min(
+                          len(draft_lines) - 1,
+                          round(original_index * max(1, len(draft_lines) - 1) / max(1, len(original_lines) - 1)),
+                      )
+                      draft_lines[target_index] = draft_lines[target_index].rstrip() + emoji
+              return "\n".join(draft_lines).strip()
+
+          def _parse_json(text):
+              raw = str(text or "").strip()
+              raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.I)
+              raw = re.sub(r"\s*```$", "", raw)
+              return json.loads(raw)
+
+          def _text(value):
+              if isinstance(value, (dict, list)):
+                  return json.dumps(value, ensure_ascii=False)
+              return str(value or "")
+
+          SOURCE_PRODUCT_FACT = re.compile(
+              r"续航|智驾|智能驾驶|座椅|底盘|动力|加速|空间|车机|配置|悬架|"
+              r"电池|内饰|外观|操控|车漆|轮毂|芯片|雷达|快充|油耗|功率|扭矩|"
+              r"安全气囊|后备箱|轴距|车长|纯电|增程|混动|版本"
+          )
+          SOURCE_POLICY_FACT = re.compile(
+              r"20\d{2}年|\d{1,2}月|\d{1,2}日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月|\d+(?:\.\d+)?\s*(?:元|万|万元|%|折)|"
+              r"价格|报价|优惠|福利|权益|补贴|金融|首付|月供|免息|利息|锁单|"
+              r"下定|提车价|指导价|库存|名额|限时|截止|截至|政策|新政|活动"
+          )
+
+          def _compact_source(value):
+              return re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]", "", str(value or "")).lower()
+
+          def _source_is_current_model(title, content, vehicle_model):
+              model = _compact_source(vehicle_model)
+              core = re.sub(r"^(?:零跑汽车|零跑|leapmotor)", "", model)
+              title_text = _compact_source(title)
+              target_code = re.sub(r"\s+", "", core)
+              title_codes = {
+                  re.sub(r"\s+", "", value.lower())
+                  for value in re.findall(r"(?i)[a-z]{1,5}\s*\d{1,3}", str(title or ""))
+              }
+              return bool(
+                  ((model and model in title_text) or (len(core) >= 2 and core in title_text))
+                  and (not title_codes or title_codes == {target_code})
+              )
+
+          def _planned_source_expectations(title, content, vehicle_model, policy):
+              same_model = _source_is_current_model(title, content, vehicle_model)
+              facts = [x.strip() for x in re.split(r"(?<=[。！？!?；;])|\n+", str(policy or "")) if x.strip()]
+              fact_index = 0
+              kept_lines = []
+              for raw in str(content or "").splitlines():
+                  line = raw.strip()
+                  if not line:
+                      continue
+                  if line.startswith("#"):
+                      kept_lines.append(line)
+                      continue
+                  if INTERACTION_TRIGGER.search(line):
+                      continue
+                  if SOURCE_POLICY_FACT.search(line) or UNSUPPORTED_STATUS.search(line):
+                      if fact_index < len(facts):
+                          kept_lines.append(line)
+                          fact_index += 1
+                      continue
+                  if any(word in line for word in BANNED):
+                      continue
+                  if SOURCE_PRODUCT_FACT.search(line) and not same_model:
+                      continue
+                  kept_lines.append(line)
+              return {
+                  "same_model": same_model,
+                  "line_count": len(kept_lines),
+                  "emoji": re.findall(r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️]", "\n".join(kept_lines)),
+              }
+
+          def _style_opening(text, vehicle_model, brand):
+              lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+              opening = "".join(lines[:2])
+              for token in [str(vehicle_model or ""), str(brand or "")]:
+                  if token:
+                      opening = opening.replace(token, "车型")
+              opening = re.sub(r"20\d{2}年\d{1,2}月\d{1,2}日|\d+", "数字", opening)
+              opening = re.sub(r"[#\[\]话题\s，。！？、,.!~～—\-]", "", opening)
+              return opening[:80]
+
+          def _style_full(text, vehicle_model, brand):
+              value = str(text or "")
+              for token in [str(vehicle_model or ""), str(brand or "")]:
+                  if token:
+                      value = value.replace(token, "车型")
+              value = re.sub(r"20\d{2}年\d{1,2}月\d{1,2}日|\d+(?:\.\d+)?", "数字", value)
+              value = re.sub(r"#[^#\n]+(?:\[话题\])?#", "", value)
+              value = re.sub(r"\s+", "", value)
+              return value[:1200]
+
+          def _section_signature(text):
+              labels = []
+              for line in str(text or "").splitlines():
+                  clean = line.strip()
+                  if not clean or len(clean) > 18:
+                      continue
+                  if re.match(r"^[✅🔹▫️📢🔥💡🚗📝📍]|^(?:一|二|三|四|五|六|七|八|九|十|\d+)[、.]", clean):
+                      clean = re.sub(r"20\d{2}年\d{1,2}月\d{1,2}日|\d+", "数字", clean)
+                      labels.append(clean)
+              return labels
+
+          def _policy_style_lines(policy, slot):
+              """同一政策按槽位换说法；所有车型、日期和核验口径保持不变。"""
+              raw_facts = [
+                  part.strip() for part in re.split(r"(?<=[。！？!?；;])|\n+", str(policy or ""))
+                  if part.strip()
+              ]
+              # 政策原文是唯一事实源，但原文中的禁用权益表述只能保留在
+              # policy_evidence 审计字段，绝不能重新注入正文或图片文字。
+              facts = [
+                  fact for fact in raw_facts
+                  if not any(word in fact for word in BANNED)
+                  and not any(re.search(pattern, fact, flags=re.I) for pattern, _ in SEMANTIC_PATTERNS)
+              ]
+              if not facts:
+                  return []
+              deadline_fact = next((fact for fact in facts if re.search(r"截止|截至", fact)), "")
+              gate_fact = next((fact for fact in facts if "门店公布" in fact and "现场核验" in fact), "")
+              deadline = re.match(
+                  r"^(.+?)(?:截止|截至)(20\d{2}年\d{1,2}月\d{1,2}日)[。！？!?；;]*$",
+                  deadline_fact,
+              )
+              if not deadline or not gate_fact:
+                  # 没有标准“截止+核验”句式时，也不能把整张政策表逐项照抄成
+                  # 每篇相同的清单。按槽位轮换 2-3 条安全事实，既保真又去同质。
+                  safe_non_model = [
+                      fact for fact in facts
+                      if not re.search(r"^车型[：:]", fact)
+                  ] or facts
+                  mode = (int(slot or 1) - 1) % 5
+                  take = min(3, len(safe_non_model))
+                  selected = [
+                      safe_non_model[(mode * 2 + offset) % len(safe_non_model)]
+                      for offset in range(take)
+                  ]
+                  return list(dict.fromkeys(selected))
+              subject, date_text = deadline.groups()
+              subject = subject.strip()
+              mode = (int(slot or 1) - 1) % 5
+              deadline_variants = [
+                  f"准备参加{subject.replace('活动', '')}，可以先记下{date_text}这个时间点。",
+                  f"{subject}的时间节点为{date_text}。",
+                  f"准备看车的，可留意{subject}截至{date_text}。",
+                  f"{subject.replace('活动', '')}的截止时间是{date_text}。",
+                  f"计划到店看车时，{subject}可关注到{date_text}。",
+              ]
+              gate_variants = [
+                  "具体时间与到店细节，可参考门店公布信息，并结合现场核验结果。",
+                  "到店前可先查看门店公布内容，具体安排还需现场核验。",
+                  "确认具体安排时，可参考门店公布信息和现场核验结果。",
+                  "具体活动怎么安排，可结合门店公布信息与现场核验情况确认。",
+                  "门店公布信息与现场核验情况，可作为确认具体安排的参考。",
+              ]
+              return [deadline_variants[mode], gate_variants[mode]]
+
+          def _template_policy_close_hard(original_content, policy, vehicle_model, slot):
+              facts = [
+                  part.strip() for part in re.split(r"(?<=[。！？!?；;])|\n+", str(policy or ""))
+                  if part.strip()
+              ]
+              cta_pattern = re.compile(
+                  r"想预约|想体验|想知道|想了解|想看|想算|预约|咨询|滴滴|私信|"
+                  r"留【|扣【|城市\s*\+|城市】|找我|发你|帮你"
+              )
+              source_lines = [
+                  line.strip() for line in str(original_content or "").splitlines()
+                  if line.strip() and not line.strip().startswith("#")
+              ]
+              source = next((line for line in reversed(source_lines) if cta_pattern.search(line)), "")
+              if not source:
+                  return ""
+              model = str(vehicle_model or "").strip()
+              deadline_fact = next((fact for fact in facts if re.search(r"截止|截至", fact)), "")
+              deadline = re.search(r"20\d{2}年\d{1,2}月\d{1,2}日", deadline_fact)
+              gate_ok = any("门店公布" in fact and "现场核验" in fact for fact in facts)
+              ending_emoji = "".join(re.findall(
+                  r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩]", source
+              )[-2:])
+              if not deadline or not gate_ok:
+                  lead_variants = [
+                      f"想知道{model}这次权益怎么搭配更合适？车型版本、购车方式和预算一起看会更清楚{ending_emoji}",
+                      f"想核算{model}的购车方案？先把城市、版本和预算整理好，比较起来更清楚{ending_emoji}",
+                      f"想了解{model}哪套金融方案更适合？把用车需求、车型版本和预算放在一起看{ending_emoji}",
+                      f"想体验{model}实车、再核算本地方案？城市、版本和预算这三项先准备好{ending_emoji}",
+                      f"想看{model}不同购车方式怎么选？按车型版本、预算和用车需求逐项比较更直观{ending_emoji}",
+                  ]
+                  variant_seed = int(hashlib.sha256(
+                      (str(original_content or "") + "|" + model).encode("utf-8")
+                  ).hexdigest()[:8], 16)
+                  return lead_variants[variant_seed % len(lead_variants)]
+              date_text = deadline.group(0)
+              if "想知道" in source or "想算" in source or "？" in source or "?" in source:
+                  return f"想知道{model}本地到店试驾怎么安排？活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想预约" in source or "预约" in source:
+                  return f"想预约{model}实车体验、了解这次到店试驾安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想体验" in source:
+                  return f"想体验{model}、了解这次到店试驾安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想看" in source:
+                  return f"想看{model}实车、了解试驾细节和到店安排，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              if "想了解" in source:
+                  return f"想了解{model}到店试驾信息，活动时间可留意至{date_text}，具体结合门店公布信息和现场核验情况确认{ending_emoji}"
+              return ""
+
+          def _apply_policy_style(content, image_prompt, image_blocks, original_content,
+                                  policy, vehicle_model, slot):
+              template_close = _template_policy_close_hard(
+                  original_content, policy, vehicle_model, slot
+              )
+              policy_lines = _policy_style_lines(policy, slot)
+              styled = policy_lines + ([template_close] if template_close else [])
+              if not styled:
+                  return content, image_prompt, image_blocks
+              date_tokens = re.findall(r"20\d{2}年\d{1,2}月\d{1,2}日", str(policy or ""))
+              kept = []
+              tag_lines = []
+              for raw in str(content or "").splitlines():
+                  line = raw.strip()
+                  if not line:
+                      continue
+                  if line.startswith("#"):
+                      tag_lines.append(line)
+                      continue
+                  if re.match(
+                      r"^想(?:知道.+这次权益怎么搭配|核算.+的购车方案|了解.+哪套金融方案|体验.+实车、再核算本地方案|看.+不同购车方式怎么选)",
+                      line,
+                  ):
+                      continue
+                  looks_policy = (
+                      any(token in line for token in date_tokens)
+                      or ("门店" in line and ("核验" in line or "公布" in line))
+                      or ("到店" in line and "试驾" in line and any(
+                          marker in line for marker in ("活动", "截止", "时间", "留意", "安排")
+                      ))
+                  )
+                  if not looks_policy:
+                      kept.append(line)
+              content = "\n".join(kept + styled + tag_lines).strip()
+
+              facts = [
+                  part.strip() for part in re.split(r"(?<=[。！？!?；;])|\n+", str(policy or ""))
+                  if part.strip()
+              ]
+              if template_close:
+                  for fact in facts:
+                      image_prompt = str(image_prompt or "").replace(fact, "")
+                      image_prompt = image_prompt.replace(fact.rstrip("。！？!?；;"), "")
+                  image_prompt = re.sub(r"[；;。]{2,}", "；", str(image_prompt or ""))
+                  image_prompt = image_prompt.rstrip(" ，,；;。")
+              else:
+                  for index, fact in enumerate(facts[:len(styled)]):
+                      replacement = styled[index]
+                      image_prompt = str(image_prompt or "").replace(fact, replacement)
+                      image_prompt = image_prompt.replace(fact.rstrip("。！？!?；;"), replacement.rstrip("。"))
+              updated_blocks = []
+              for block in image_blocks or []:
+                  text = str(block or "").strip()
+                  if any(token in text for token in date_tokens) or ("门店" in text and "核验" in text):
+                      text = styled[0]
+                  if text and text not in updated_blocks:
+                      updated_blocks.append(text)
+              return content, image_prompt, updated_blocks
+
+          def main(audited_text: str, policy_text: str, vehicle_model: str,
+                   brand: str, account_name: str, vehicle_images_json: str,
+                   prompt_candidates_json: str, copy_candidates_json: str,
+                   history_body: str, post_count: str) -> dict:
+              try:
+                  items = _parse_json(audited_text)
+              except Exception as exc:
+                  raise ValueError("终审模型未返回有效 JSON 数组") from exc
+              if not isinstance(items, list):
+                  raise ValueError("终审结果必须是 JSON 数组")
+              expected_count = max(1, min(5, int(post_count or 1)))
+              if len(items) < expected_count:
+                  raise ValueError("终审返回候选不足：至少需要 %s 篇，实际为 %s 篇" % (expected_count, len(items)))
+
+              recent_content_hashes = set()
+              try:
+                  history_raw = json.loads(history_body or "{}")
+                  history_data = history_raw.get("data", history_raw) if isinstance(history_raw, dict) else {}
+                  for task in list(history_data.get("items") or []):
+                      request_id = str(task.get("client_request_id") or "")
+                      match = re.match(r"xhs-p\d+-c([0-9a-f]{12})-", request_id)
+                      if match:
+                          recent_content_hashes.add(match.group(1))
+              except Exception:
+                  recent_content_hashes = set()
+
+              vehicle_images = json.loads(vehicle_images_json or "[]")
+              if not vehicle_images:
+                  raise ValueError("没有可分配的车型辅助图")
+
+              prompt_candidates = json.loads(prompt_candidates_json or "[]")
+              prompt_by_id = {str(x.get("id")): x for x in prompt_candidates if isinstance(x, dict)}
+              copy_candidates = json.loads(copy_candidates_json or "[]")
+              copy_by_id = {str(x.get("id")): x for x in copy_candidates if isinstance(x, dict)}
+
+              policy = str(policy_text or "")
+              policy_markers = [
+                  "试驾", "到店", "品鉴", "活动", "截止", "时间", "门店",
+                  "政策", "权益", "补贴", "置换", "金融", "购车", "锁单", "交付"
+              ]
+              active_policy_markers = [marker for marker in policy_markers if marker in policy]
+              safe_items = []
+              blocked = []
+              seen_primary = set()
+              seen_styles = []
+
+              for pos, item in enumerate(items):
+                  if len(safe_items) >= expected_count:
+                      break
+                  reasons = []
+                  if not isinstance(item, dict):
+                      blocked.append({"slot": pos + 1, "reasons": ["结果不是对象"]})
+                      continue
+                  slot = pos + 1
+                  selected_prompt_id = str(item.get("selected_prompt_id") or "")
+                  if not item.get("selected_prompt_original") and selected_prompt_id in prompt_by_id:
+                      item["selected_prompt_original"] = _text(
+                          prompt_by_id[selected_prompt_id].get("chinese")
+                      ).strip()
+                  source_ids = [str(x) for x in (item.get("source_copy_ids") or [])]
+                  source_ids = list(dict.fromkeys(source_ids))
+                  primary_id = str(item.get("primary_copy_id") or "")
+                  primary_original = copy_by_id.get(primary_id) or {}
+                  original_title = _text(primary_original.get("title")).strip()
+                  original_content = _text(primary_original.get("content")).strip()
+                  source_expectations = _planned_source_expectations(
+                      original_title, original_content, vehicle_model, policy
+                  )
+                  title = _remove_banned_tokens(_strip_interaction_clauses(_text(item.get("title"))))
+                  # 对少量高风险夸张口语做局部降调，不因此挡掉整篇，也不重写母版标题。
+                  title = re.sub(r"(?:杀疯了?|夯爆了?)", "值得看看", title)
+                  title = re.sub(r"实锤了?", "整理好了", title)
+                  title = re.sub(r"比打车还便宜", "通勤也实用", title)
+                  content = _strip_banned_copy_clauses(_strip_interaction_clauses(_text(item.get("content"))))
+                  content = content.replace("[庆祝R]", "🎉")
+                  content = re.sub(r"打算冲(?=\s|零跑|全新)", "打算看", content)
+                  content = "\n".join(
+                      line for line in content.splitlines()
+                      if not re.search(
+                          r"对接了.{0,14}(?:渠道|资源)|全国.{0,14}(?:行情|报价).{0,8}(?:同步|更新)|"
+                          r"真实成交参照|高关注地区|各地执行略有出入|^懂的$",
+                          line,
+                      )
+                  ).strip()
+                  content = re.sub(
+                      r"说不定直接省出一笔[‘’“”\"']?改装基金[‘’“”\"']?",
+                      "购车方式和版本信息也要重新核对",
+                      content,
+                  )
+                  raw_unsupported_status = [
+                      phrase for phrase in UNSUPPORTED_STATUS.findall(title + "\n" + content)
+                      if phrase and phrase not in policy
+                  ]
+                  title = re.sub(r"[*_]{2,}", "", title)
+                  content = re.sub(r"[*_]{2,}", "", content)
+                  if not source_expectations["same_model"]:
+                      title = UNSUPPORTED_COPY_CLAIMS.sub("", title).strip(" -—丨|，,；;。")
+                      content = _strip_unsupported_copy_clauses(content, policy)
+                  image_prompt = _remove_banned_tokens(_strip_interaction_clauses(_text(item.get("image_prompt"))))
+                  if not UNSUPPORTED_STATUS.search(policy):
+                      title = UNSUPPORTED_STATUS.sub("活动信息", title)
+                      content = UNSUPPORTED_STATUS.sub("活动信息", content)
+                      image_prompt = UNSUPPORTED_STATUS.sub("活动信息", image_prompt)
+                  image_prompt = META_MARKETING_CLAUSE.sub("", image_prompt).strip(" ，,；;。")
+                  image_blocks = [
+                      _remove_banned_tokens(_strip_interaction_clauses(str(x)))
+                      for x in (item.get("image_text_blocks") or [])
+                      if _remove_banned_tokens(_strip_interaction_clauses(str(x)))
+                  ]
+                  content = _dedupe_content(content, policy)
+                  content = "\n".join(
+                      line for line in content.splitlines()
+                      if line.strip() and not re.fullmatch(r"[-—_•·|丨]+", line.strip())
+                  ).strip()
+                  content, image_prompt, image_blocks = _apply_policy_style(
+                      content, image_prompt, image_blocks, original_content,
+                      policy, vehicle_model, slot
+                  )
+                  # _apply_policy_style 会从政策原文选择安全事实；这里仍做第二次
+                  # 确定性清洗，防止模型提示词或政策替换把禁用表达重新带回来。
+                  content = _strip_banned_copy_clauses(
+                      _strip_interaction_clauses(content)
+                  )
+                  content = _dedupe_content(content, policy)
+                  image_prompt = _remove_banned_tokens(
+                      _strip_interaction_clauses(image_prompt)
+                  )
+                  image_blocks = [
+                      cleaned for cleaned in (
+                          _remove_banned_tokens(_strip_interaction_clauses(str(block)))
+                          for block in image_blocks
+                      ) if cleaned
+                  ]
+                  # 终审清洗可能连同互动句删掉母版 emoji；若其余内容仍有效，
+                  # 从锁定主参考的安全 emoji 序列恢复一个，保持母版语气而不新增事实。
+                  emoji_pattern = r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩✨🌸]"
+                  if not re.search(emoji_pattern, title + content):
+                      source_emojis = re.findall(emoji_pattern, original_title + "\n" + original_content)
+                      if source_emojis:
+                          content_lines = [line for line in content.splitlines() if line.strip()]
+                          if content_lines:
+                              content_lines[0] = content_lines[0].rstrip() + source_emojis[0]
+                              content = "\n".join(content_lines)
+                          elif title:
+                              title = title.rstrip() + source_emojis[0]
+                  policy_evidence = [str(x).strip() for x in (item.get("policy_evidence") or []) if str(x).strip()]
+                  change_note = _text(item.get("prompt_change_note")).strip()
+                  if not change_note or NO_SCENE_CHANGE.search(change_note):
+                      change_note = "仅将背景环境轻微调整为同风格浅灰展厅。"
+                      image_prompt = image_prompt.rstrip(" ，,；;。") + "；背景环境仅轻微调整为同风格浅灰展厅。"
+                      item["prompt_change_note"] = change_note
+                  item["title"] = title
+                  item["content"] = content
+                  item["image_prompt"] = image_prompt
+                  item["image_text_blocks"] = image_blocks
+
+                  scan_text = "\n".join([title, content, image_prompt, "\n".join(image_blocks)])
+                  unsupported_dates = sorted(set(
+                      token for token in re.findall(r"20\d{2}年|\d{1,2}月|\d{1,2}日", title + "\n" + content)
+                      if token not in policy
+                  ))
+                  chinese_months = re.findall(
+                      r"(?<![一二三四五六七八九十])(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月",
+                      title + "\n" + content,
+                  )
+                  unsupported_dates.extend(token for token in chinese_months if token not in policy)
+                  quarter_tokens = re.findall(
+                      r"(?:Q[1-4]|第[一二三四]季度|[一二三四]季度)",
+                      title + "\n" + content,
+                      flags=re.I,
+                  )
+                  unsupported_dates.extend(token for token in quarter_tokens if token not in policy)
+                  unsupported_dates = sorted(set(unsupported_dates))
+                  if unsupported_dates:
+                      reasons.append("出现政策原文未提供的日期：" + "、".join(unsupported_dates))
+                  claimed_counts = [int(x) for x in re.findall(r"(?<!\d)(\d{1,2})\s*(?:条|项|个|种)", title + "\n" + content)]
+                  numbered_items = [int(x) for x in re.findall(r"(?m)^\s*(\d{1,2})[.、]", content)]
+                  if claimed_counts and numbered_items and max(claimed_counts) != len(set(numbered_items)):
+                      reasons.append("文案声称的条目数量与实际编号数量不一致")
+                  hits = [word for word in BANNED if word in scan_text]
+                  if hits:
+                      reasons.append("命中禁用表达：" + "、".join(sorted(set(hits))))
+                  semantic_hits = [label for pattern, label in SEMANTIC_PATTERNS if re.search(pattern, scan_text, flags=re.I)]
+                  if semantic_hits:
+                      reasons.append("命中禁用含义：" + "、".join(sorted(set(semantic_hits))))
+                  # 配置/性能只审正文，不把提示词库原有的画面描述误判成文案事实。
+                  # 同车型主参考中的既有产品事实允许高保真保留；跨车型主参考继续强拦截。
+                  unsupported = UNSUPPORTED_FEATURES.findall(title + "\n" + content)
+                  if source_expectations["same_model"]:
+                      unsupported = []
+                  else:
+                      unsupported = [x for x in unsupported if x and x not in policy]
+                  if unsupported:
+                      reasons.append("出现政策原文未提供的配置或性能细节")
+                  unsupported_status = UNSUPPORTED_STATUS.findall(title + "\n" + content)
+                  unsupported_status = [phrase for phrase in unsupported_status if phrase and phrase not in policy]
+                  unsupported_status.extend(raw_unsupported_status)
+                  unsupported_status = sorted(set(unsupported_status))
+                  if unsupported_status:
+                      reasons.append("出现政策原文未确认的活动状态")
+                  unsupported_copy_claims = UNSUPPORTED_COPY_CLAIMS.findall(title + "\n" + content)
+                  if source_expectations["same_model"]:
+                      unsupported_copy_claims = []
+                  else:
+                      unsupported_copy_claims = [phrase for phrase in unsupported_copy_claims if phrase and phrase not in policy]
+                  if unsupported_copy_claims:
+                      reasons.append("出现政策原文未提供的体验或产品判断")
+                  policy_has_amount = bool(re.search(r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)", policy))
+                  prompt_for_price_scan = re.sub(
+                      r"[^；;。\n]*(?:删除|去除|不使用|不得|避免)[^；;。\n]*(?:价格|金额|原价|现价|报价|补贴)[^；;。\n]*[；;。]?",
+                      "",
+                      image_prompt,
+                  )
+                  amount_scan = title + "\n" + content + "\n" + "\n".join(image_blocks) + "\n" + prompt_for_price_scan
+                  claimed_amounts = sorted(set(re.findall(
+                      r"\d[\d,]*(?:\.\d+)?\s*(?:元|万元|万|%)",
+                      amount_scan,
+                  )))
+                  unsupported_amounts = [
+                      amount for amount in claimed_amounts
+                      if amount.replace(" ", "").replace(",", "")
+                      not in policy.replace(" ", "").replace(",", "")
+                  ]
+                  if unsupported_amounts:
+                      reasons.append("出现政策原文未提供的金额：" + "、".join(unsupported_amounts))
+                  price_scan = title + "\n" + content + "\n" + "\n".join(image_blocks) + "\n" + prompt_for_price_scan
+                  if (NO_AMOUNT_POLICY.search(policy) or not policy_has_amount) and UNSUPPORTED_PRICE_LAYOUT.search(price_scan):
+                      reasons.append("政策未提供对应金额，但文案或图片提示词仍含价格/金额表达")
+                  if not title or not content:
+                      reasons.append("标题或正文为空")
+                  effective_lines = [line.strip() for line in content.splitlines() if line.strip()]
+                  effective_chars = len(re.sub(r"[\s#，。！？、,.!~～—\-]", "", content))
+                  if len(effective_lines) < 4 or effective_chars < 80:
+                      reasons.append("正文过短或结构不完整：至少 4 个有效行且 80 个有效字符")
+                  if len(policy_evidence) < 2:
+                      reasons.append("政策依据不足 2 条，内容承载过少")
+                  if not re.search(r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩✨🌸]", title + content):
+                      reasons.append("标题或正文缺少原模板风格 emoji")
+                  copy_text = title + "\n" + content
+                  content_fingerprint = hashlib.sha256(
+                      re.sub(r"[\s#，。！？、,.!~～—\-]", "", copy_text).lower().encode("utf-8")
+                  ).hexdigest()[:12]
+                  if content_fingerprint in recent_content_hashes:
+                      reasons.append("与近期已提交文案完全重复")
+                  if str(vehicle_model or "").strip() not in copy_text:
+                      reasons.append("标题或正文没有明确保留用户指定车型")
+                  if not policy_evidence:
+                      reasons.append("缺少政策依据，正文可能没有承载用户政策")
+                  # 政策可明说、模糊表达或仅作为本批审核依据，不强制每篇套同一个政策主题。
+                  reasons.extend(_internal_repetition_reasons(content, policy))
+                  if len(source_ids) not in (3, 4):
+                      reasons.append("文案来源必须是 3-4 个不同 ID")
+                  if any(not re.fullmatch(r"\d+", source_id) for source_id in source_ids):
+                      reasons.append("文案来源 ID 必须是文案库中的真实数字 ID，禁止 UUID 或虚构 ID")
+                  missing_source_ids = [source_id for source_id in source_ids if source_id not in copy_by_id]
+                  if missing_source_ids:
+                      reasons.append("文案来源 ID 不在本次真实候选中：" + "、".join(missing_source_ids))
+                  expected_ids = [
+                      str(x.get("id")) for x in copy_candidates[(slot - 1) * 4: slot * 4]
+                      if isinstance(x, dict) and x.get("id") is not None
+                  ]
+                  if expected_ids and set(source_ids) != set(expected_ids):
+                      reasons.append("没有使用当前槽位预分配的 4 条不同文案原文")
+                  if not primary_id or primary_id not in source_ids:
+                      reasons.append("主参考 ID 不在来源列表中")
+                  if expected_ids and primary_id != expected_ids[0]:
+                      reasons.append("没有使用本帖预锁定的第 1 条原文作为主参考")
+                  if primary_id in seen_primary:
+                      reasons.append("与本批其他文案重复使用主参考")
+                  if not item.get("selected_prompt_id"):
+                      reasons.append("缺少提示词库来源 ID")
+                  elif str(item.get("selected_prompt_id")) not in prompt_by_id:
+                      reasons.append("提示词来源 ID 不在本次真实候选中")
+                  if not item.get("selected_prompt_original"):
+                      reasons.append("缺少原提示词，无法证明是轻改")
+                  elif str(item.get("selected_prompt_id")) in prompt_by_id:
+                      original = _text(prompt_by_id[str(item.get("selected_prompt_id"))].get("chinese")).strip()
+                      if original and original != _text(item.get("selected_prompt_original")).strip():
+                          item["selected_prompt_original"] = original
+                      numbered_levels = [int(x) for x in re.findall(r"(?:^|[；;。\s])([1-3])[\.、]", original)]
+                      expected_blocks = max(numbered_levels) if numbered_levels else 0
+                      if expected_blocks:
+                          image_blocks = image_blocks[:expected_blocks]
+                          if len(image_blocks) < expected_blocks:
+                              brand_label = str(brand or "").strip()
+                              if re.search(r"1[\.、].{0,40}(?:LOGO|品牌)", original, flags=re.I) and brand_label:
+                                  if brand_label not in image_blocks:
+                                      image_blocks.insert(0, brand_label)
+                                      image_blocks = image_blocks[:expected_blocks]
+                              policy_fillers = [
+                                  part.strip(" ，,。；;：:")
+                                  for part in re.split(r"[。；;\n]+", policy)
+                                  if part.strip(" ，,。；;：:")
+                              ]
+                              safe_fillers = [brand_label, str(vehicle_model or "").strip(), title] + policy_fillers
+                              added_levels = []
+                              for filler in safe_fillers:
+                                  if len(image_blocks) >= expected_blocks:
+                                      break
+                                  if filler and filler not in image_blocks:
+                                      image_blocks.append(filler)
+                                      added_levels.append((len(image_blocks), filler))
+                              for level, filler in added_levels:
+                                  if filler not in image_prompt:
+                                      image_prompt += f"；{level}. 保持原提示词第{level}层文字的原位置、字号和对齐方式，文字替换为「{filler}」"
+                          if len(image_blocks) != expected_blocks:
+                              reasons.append(f"图片文字层级数量应保留为 {expected_blocks} 层，当前为 {len(image_blocks)} 层")
+                  effective_change_note = re.sub(
+                      r"(?:保留|保持|沿用|不改|不变)[^。；;]{0,40}(?:排版|角度|视角|颜色|车身|文字区块)",
+                      "",
+                      change_note,
+                  )
+                  changed_dimensions = sum(
+                      1 for term in ["场景", "背景", "角度", "视角", "颜色", "车身", "排版", "文字区块"]
+                      if term in effective_change_note
+                  )
+                  if changed_dimensions > 2 or (("角度" in effective_change_note or "视角" in effective_change_note or "颜色" in effective_change_note) and ("场景" in effective_change_note or "背景" in effective_change_note)):
+                      reasons.append("提示词同时改动多个视觉维度，不属于轻微场景变化")
+                  if not image_blocks:
+                      reasons.append("图片必须包含文字区块")
+                  for evidence in policy_evidence:
+                      if evidence not in policy:
+                          reasons.append("政策依据不在政策原文中：" + evidence[:30])
+
+                  if original_content:
+                      draft_lines = [line for line in content.splitlines() if line.strip()]
+                      expected_line_count = source_expectations["line_count"]
+                      # 合规删除含禁用词的整行后，行数允许有小幅收缩；只有明显
+                      # 脱离母版（不足 2 行或膨胀到约两倍）才阻断。
+                      if len(draft_lines) > max(expected_line_count + 8, expected_line_count * 2) or len(draft_lines) < 2:
+                          reasons.append("成稿行数未按逐行执行计划输出")
+
+                  opening = _style_opening(content, vehicle_model, brand)
+                  full_style = _style_full(content, vehicle_model, brand)
+                  labels = _section_signature(content)
+                  for previous in seen_styles:
+                      opening_ratio = SequenceMatcher(None, opening, previous["opening"]).ratio() if opening and previous["opening"] else 0
+                      full_ratio = SequenceMatcher(None, full_style, previous["full"]).ratio() if full_style and previous["full"] else 0
+                      common_labels = set(labels) & set(previous["labels"])
+                      label_ratio = len(common_labels) / max(1, min(len(set(labels)), len(set(previous["labels"]))))
+                      if (
+                          full_ratio >= 0.66
+                          or (opening_ratio >= 0.82 and label_ratio >= 0.50)
+                          or (len(labels) >= 3 and len(previous["labels"]) >= 3 and label_ratio >= 0.85)
+                      ):
+                          reasons.append("与本批其他文案的开头或分段骨架过于相似")
+                          break
+
+                  if reasons:
+                      blocked.append({
+                          "slot": slot,
+                          "title": title,
+                          "reasons": reasons,
+                          "source_copy_ids": source_ids,
+                          "selected_prompt_id": item.get("selected_prompt_id")
+                      })
+                      continue
+
+                  seen_primary.add(primary_id)
+                  seen_styles.append({"opening": opening, "full": full_style, "labels": labels})
+                  angle_text = (image_prompt + "\n" + _text(item.get("selected_prompt_original"))).lower()
+                  preferred_label = ""
+                  if re.search(r"纯侧面|正侧面|侧面平视|side profile", angle_text):
+                      preferred_label = "侧面"
+                  elif re.search(r"斜前|侧前|左前|右前|45[°度]|30[°度]", angle_text):
+                      preferred_label = "斜前"
+                  elif re.search(r"正前|前脸正视|front view", angle_text):
+                      preferred_label = "正前"
+                  elif re.search(r"斜后|侧后|左后|右后", angle_text):
+                      preferred_label = "斜后"
+                  elif re.search(r"正后|车尾正视|rear view", angle_text):
+                      preferred_label = "正后"
+                  vehicle_image = next(
+                      (img for img in vehicle_images if preferred_label and preferred_label in str(img.get("label", ""))),
+                      vehicle_images[(slot - 1) % len(vehicle_images)]
+                  )
+                  item["candidate_slot"] = slot
+                  item["slot"] = len(safe_items) + 1
+                  item["content_fingerprint"] = content_fingerprint
+                  item["title"] = title
+                  item["content"] = content
+                  item["image_prompt"] = image_prompt
+                  item["source_copy_ids"] = source_ids
+                  item["primary_copy_id"] = primary_id
+                  item["image_text_blocks"] = image_blocks[:3]
+                  item["brand"] = str(brand or "").strip()
+                  item["vehicle_model"] = str(vehicle_model or "").strip()
+                  item["account_name"] = str(account_name or "").strip()
+                  item["vehicle_image"] = vehicle_image
+                  safe_items.append(json.dumps(item, ensure_ascii=False))
+
+              if len(safe_items) < expected_count:
+                  reason_summary = "；".join(
+                      "候选%s:%s" % (row.get("slot"), "、".join(row.get("reasons") or [])[:180])
+                      for row in blocked[:8]
+                  )
+                  raise ValueError(
+                      "自动候选池仍未补满：目标 %s 篇，通过 %s 篇。%s"
+                      % (expected_count, len(safe_items), reason_summary)
+                  )
+
+              return {
+                  "safe_items": safe_items,
+                  "blocked_json": json.dumps(blocked, ensure_ascii=False),
+                  "safe_count": len(safe_items),
+                  "blocked_count": len(blocked)
+              }
+        code_language: python3
+        desc: 确切词扫描、来源数量、政策证据、车型和有字配图的最终闸门；不合格项不送生图。
+        outputs:
+          blocked_count:
+            children: null
+            type: number
+          blocked_json:
+            children: null
+            type: string
+          safe_count:
+            children: null
+            type: number
+          safe_items:
+            children: null
+            type: array[string]
+        selected: false
+        title: 硬规则校验与阻断
+        type: code
+        variables:
+        - value_selector:
+          - compliance_audit
+          - text
+          variable: audited_text
+        - value_selector:
+          - start
+          - policy_text
+          variable: policy_text
+        - value_selector:
+          - start
+          - vehicle_model
+          variable: vehicle_model
+        - value_selector:
+          - start
+          - brand
+          variable: brand
+        - value_selector:
+          - start
+          - account_name
+          variable: account_name
+        - value_selector:
+          - prepare_materials
+          - vehicle_images_json
+          variable: vehicle_images_json
+        - value_selector:
+          - prepare_materials
+          - prompt_candidates_json
+          variable: prompt_candidates_json
+        - value_selector:
+          - prepare_materials
+          - copy_candidates_json
+          variable: copy_candidates_json
+        - value_selector:
+          - fetch_generation_history
+          - body
+          variable: history_body
+        - value_selector:
+          - start
+          - post_count
+          variable: post_count
+      height: 126
+      id: hard_validate
+      position:
+        x: 3610
+        y: 300
+      positionAbsolute:
+        x: 3610
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 310
+    - data:
+        desc: 文案全部生成并完成终审后，最多 5 路并发生图提交。
+        error_handle_mode: continue-on-error
+        height: 520
+        is_parallel: true
+        iterator_input_type: array[string]
+        iterator_selector:
+        - hard_validate
+        - safe_items
+        output_selector:
+        - final_image_result
+        - output
+        output_type: array[string]
+        parallel_nums: 5
+        selected: false
+        start_node_id: image_iteration_start
+        title: 并发提交线上生图
+        type: iteration
+        width: 5000
+      height: 520
+      id: image_iteration
+      position:
+        x: 3980
+        y: 300
+      positionAbsolute:
+        x: 3980
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 5000
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: image_iteration_start
+      parentId: image_iteration
+      position:
+        x: 24
+        y: 112
+      positionAbsolute:
+        x: 4004
+        y: 412
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        code: |-
+          import hashlib
+          import json
+          import re
+
+          NEGATIVE = (
+              "无文字，文字模糊，错别字，乱码，联系方式，二维码，导流信息，旗帜，"
+              "极限价格宣传，夸张促销语，错误车型，车身结构改变，车标错误，多余车辆"
+          )
+
+          def main(item_json: str, run_id: str, image_model: str,
+                   image_width: str, image_height: str) -> dict:
+              item = json.loads(item_json)
+              slot = int(item.get("slot") or 1)
+              vehicle = item.get("vehicle_image") or {}
+              vehicle_url = str(vehicle.get("url") or "").strip()
+              if not vehicle_url:
+                  raise ValueError("车型辅助图 URL 为空")
+              prompt = str(item.get("image_prompt") or "").strip()
+              blocks = [str(x).strip() for x in (item.get("image_text_blocks") or []) if str(x).strip()]
+              model_name = str(item.get("vehicle_model") or "").strip()
+              prompt += (
+                  "\n\n强制执行：只做轻微场景变化，保留选中原提示词的整体构图、镜头和文字排版。"
+                  "画面必须清晰呈现这些中文文字区块：" + "｜".join(blocks) + "。"
+                  "车辆必须是" + model_name + "，外形、颜色、车标、轮毂、车身比例严格跟随输入的车型库辅助图；"
+                  "辅助图只约束车辆，不照搬辅助图背景。不得出现联系方式、二维码、旗帜或夸张营销元素。"
+              )
+              primary_id = str(item.get("primary_copy_id") or "0")
+              content_hash = str(item.get("content_fingerprint") or "").strip()
+              if not re.fullmatch(r"[0-9a-f]{12}", content_hash):
+                  normalized_copy = re.sub(
+                      r"[\s#，。！？、,.!~～—\-]", "",
+                      (str(item.get("title") or "") + str(item.get("content") or "")).lower(),
+                  )
+                  content_hash = hashlib.sha256(normalized_copy.encode("utf-8")).hexdigest()[:12]
+              run_fragment = re.sub(r"[^0-9A-Za-z]", "", str(run_id or ""))[:18] or "run"
+              request_id = (f"xhs-p{primary_id}-c{content_hash}-r{run_fragment}-s{slot}")[:64]
+              body = {
+                  "prompt": prompt,
+                  "client_request_id": request_id,
+                  "negative_prompt": NEGATIVE,
+                  "model": str(image_model or "gptimage2"),
+                  "width": int(image_width or 2048),
+                  "height": int(image_height or 2048),
+                  "quality": "high",
+                  "count": 1,
+                  "images_data": [vehicle_url]
+              }
+              return {
+                  "request_json": json.dumps(body, ensure_ascii=False),
+                  "slot": slot,
+                  "request_id": request_id,
+                  "vehicle_image_url": vehicle_url,
+                  "content_item_json": json.dumps(item, ensure_ascii=False)
+              }
+        code_language: python3
+        desc: 最终请求只携带轻改提示词和当前车型库对应辅助图。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          content_item_json:
+            children: null
+            type: string
+          request_id:
+            children: null
+            type: string
+          request_json:
+            children: null
+            type: string
+          slot:
+            children: null
+            type: number
+          vehicle_image_url:
+            children: null
+            type: string
+        selected: false
+        title: 组装单张生图请求
+        type: code
+        variables:
+        - value_selector:
+          - image_iteration
+          - item
+          variable: item_json
+        - value_selector:
+          - sys
+          - workflow_run_id
+          variable: run_id
+        - value_selector:
+          - start
+          - image_model
+          variable: image_model
+        - value_selector:
+          - start
+          - image_width
+          variable: image_width
+        - value_selector:
+          - start
+          - image_height
+          variable: image_height
+      height: 126
+      id: parse_image_item
+      parentId: image_iteration
+      position:
+        x: 100
+        y: 90
+      positionAbsolute:
+        x: 4080
+        y: 390
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 260
+      zIndex: 1002
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: '{{#parse_image_item.request_json#}}'
+          type: json
+        desc: 调用用户自己的线上接口，不调用 Dify 或其他内置生图工具。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        isInIteration: true
+        iteration_id: image_iteration
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 120
+          max_write_timeout: 30
+        title: 调用线上生图接口
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/ai-image/generate'
+        variables: []
+      height: 182
+      id: submit_image
+      parentId: image_iteration
+      position:
+        x: 390
+        y: 70
+      positionAbsolute:
+        x: 4370
+        y: 370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def main(body: str, content_item_json: str) -> dict:
+              try:
+                  payload = json.loads(body or "{}")
+              except Exception as exc:
+                  raise ValueError("生图提交接口没有返回 JSON") from exc
+              data = payload.get("data", payload) if isinstance(payload, dict) else {}
+              task_id = str(data.get("task_id") or "") if isinstance(data, dict) else ""
+              if not task_id.isdigit():
+                  raise ValueError("生图提交失败或缺少 task_id：" + str(payload)[:300])
+              return {
+                  "task_id": task_id,
+                  "content_item_json": content_item_json,
+              }
+        code_language: python3
+        desc: 提取任务 ID，继续等待本次线上异步生图真正完成。
+        isInIteration: true
+        iteration_id: image_iteration
+        outputs:
+          content_item_json:
+            children: null
+            type: string
+          task_id:
+            children: null
+            type: string
+        selected: false
+        title: 提取生图任务
+        type: code
+        variables:
+        - value_selector:
+          - submit_image
+          - body
+          variable: body
+        - value_selector:
+          - parse_image_item
+          - content_item_json
+          variable: content_item_json
+      height: 126
+      id: parse_submitted_task
+      parentId: image_iteration
+      position:
+        x: 650
+        y: 70
+      positionAbsolute:
+        x: 4630
+        y: 370
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 230
+      zIndex: 1002
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        desc: 最长等待 9 分钟，拿到真实成图 URL 后工作流才继续交付。
+        headers: |-
+          Authorization:Bearer {{#extract_token.token#}}
+          Content-Type:application/json
+        isInIteration: true
+        iteration_id: image_iteration
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 25
+          retry_enabled: true
+          retry_interval: 1000
+        selected: false
+        timeout:
+          max_connect_timeout: 20
+          max_read_timeout: 600
+          max_write_timeout: 20
+        title: 等待线上成图完成
+        type: http-request
+        url: '{{#env.BACKEND_BASE_URL#}}/ai-image/tasks/{{#parse_submitted_task.task_id#}}/wait?model={{#start.image_model#}}&timeout_seconds=20&poll_seconds=2'
+        variables: []
+      height: 190
+      id: wait_image_task
+      parentId: image_iteration
+      position:
+        x: 910
+        y: 60
+      positionAbsolute:
+        x: 4890
+        y: 360
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 260
+      zIndex: 1002
+    - data:
+        code: |-
+          import json
+
+          def _load(value):
+              try:
+                  return json.loads(value or "{}")
+              except Exception:
+                  return {"raw": str(value or "")}
+
+          def main(safe_items, image_responses, blocked_json: str,
+                   library_trace_json: str, backend_base_url: str,
+                   image_model: str) -> dict:
+              safe = []
+              for value in list(safe_items or []):
+                  try:
+                      safe.append(json.loads(value))
+                  except Exception:
+                      safe.append({"raw": value})
+              responses = list(image_responses or [])
+              delivered = []
+              task_summaries = []
+
+              for idx, item in enumerate(safe):
+                  response = _load(responses[idx] if idx < len(responses) else "")
+                  data = response.get("data", response) if isinstance(response, dict) else {}
+                  task_id = str(data.get("task_id") or "") if isinstance(data, dict) else ""
+                  status = str(data.get("status") or "submit_failed") if isinstance(data, dict) else "submit_failed"
+                  quality_review = response.get("quality_review", {}) if isinstance(response, dict) else {}
+                  quality_pass = response.get("quality_pass") if isinstance(response, dict) else None
+                  regenerated = bool(response.get("regenerated")) if isinstance(response, dict) else False
+                  if status == "completed" and quality_pass is False:
+                      status = "completed_quality_rejected_after_retry"
+                  image_urls = data.get("image_urls", []) if isinstance(data, dict) else []
+                  if status != "completed" or quality_pass is not True or not image_urls:
+                      raise ValueError(
+                          "成图最终质检未通过，停止交付：slot=%s, task_id=%s, status=%s, regenerated=%s"
+                          % (item.get("slot"), task_id or "-", status, regenerated)
+                      )
+                  poll_url = ""
+                  if task_id:
+                      poll_url = str(backend_base_url).rstrip("/") + "/ai-image/tasks/" + task_id + "?model=" + str(image_model)
+                  result = {
+                      "slot": item.get("slot"),
+                      "account_name": item.get("account_name"),
+                      "brand": item.get("brand"),
+                      "vehicle_model": item.get("vehicle_model"),
+                      "title": item.get("title"),
+                      "content": item.get("content"),
+                      "primary_copy_id": item.get("primary_copy_id"),
+                      "source_copy_ids": item.get("source_copy_ids"),
+                      "source_use_notes": item.get("source_use_notes"),
+                      "policy_evidence": item.get("policy_evidence"),
+                      "selected_prompt_id": item.get("selected_prompt_id"),
+                      "selected_prompt_original": item.get("selected_prompt_original"),
+                      "image_prompt": item.get("image_prompt"),
+                      "prompt_change_note": item.get("prompt_change_note"),
+                      "image_text_blocks": item.get("image_text_blocks"),
+                      "vehicle_image": item.get("vehicle_image"),
+                      "image_task_id": task_id,
+                      "image_task_status": status,
+                      "image_urls": image_urls,
+                      "image_quality_pass": quality_pass,
+                      "image_quality_review": quality_review,
+                      "image_regenerated": regenerated,
+                      "poll_url": poll_url,
+                      "submit_response": response
+                  }
+                  delivered.append(result)
+                  task_summaries.append({
+                      "slot": item.get("slot"),
+                      "task_id": task_id,
+                      "status": status,
+                      "poll_url": poll_url
+                  })
+
+              blocked = _load(blocked_json)
+              trace = _load(library_trace_json)
+              lines = ["本批已完成文案终审，并提交合规项的线上生图任务。"]
+              for item in delivered:
+                  lines.extend([
+                      "",
+                      "【第%s篇｜%s】" % (item.get("slot"), item.get("vehicle_model")),
+                      "标题：" + str(item.get("title") or ""),
+                      "正文：\n" + str(item.get("content") or ""),
+                      "文案来源：" + "、".join(str(x) for x in (item.get("source_copy_ids") or [])),
+                      "主参考：" + str(item.get("primary_copy_id") or ""),
+                      "提示词来源：" + str(item.get("selected_prompt_id") or ""),
+                      "提示词轻改说明：" + str(item.get("prompt_change_note") or ""),
+                      "车型辅助图：" + str((item.get("vehicle_image") or {}).get("url") or ""),
+                      "生图任务：%s（%s）" % (item.get("image_task_id") or "未提交", item.get("image_task_status") or "未知")
+                      ,"成图质检：%s%s" % (
+                          "通过" if item.get("image_quality_pass") else "未通过",
+                          "（已自动重生一次）" if item.get("image_regenerated") else ""
+                      )
+                  ])
+              if blocked:
+                  lines.extend(["", "有 %s 篇未通过硬校验，未提交生图；详见 blocked_items。" % len(blocked)])
+              return {
+                  "delivery_text": "\n".join(lines),
+                  "delivery_json": json.dumps(delivered, ensure_ascii=False),
+                  "blocked_items": json.dumps(blocked, ensure_ascii=False),
+                  "image_tasks_json": json.dumps(task_summaries, ensure_ascii=False),
+                  "library_trace_json": json.dumps(trace, ensure_ascii=False)
+              }
+        code_language: python3
+        desc: 将文案、参考来源、提示词、车型辅助图和线上生图任务一一配对交付。
+        outputs:
+          blocked_items:
+            children: null
+            type: string
+          delivery_json:
+            children: null
+            type: string
+          delivery_text:
+            children: null
+            type: string
+          image_tasks_json:
+            children: null
+            type: string
+          library_trace_json:
+            children: null
+            type: string
+        selected: false
+        title: 组装完整交付
+        type: code
+        variables:
+        - value_selector:
+          - hard_validate
+          - safe_items
+          variable: safe_items
+        - value_selector:
+          - image_iteration
+          - output
+          variable: image_responses
+        - value_selector:
+          - hard_validate
+          - blocked_json
+          variable: blocked_json
+        - value_selector:
+          - prepare_materials
+          - library_trace_json
+          variable: library_trace_json
+        - value_selector:
+          - env
+          - BACKEND_BASE_URL
+          variable: backend_base_url
+        - value_selector:
+          - start
+          - image_model
+          variable: image_model
+      height: 126
+      id: assemble_delivery
+      position:
+        x: 4690
+        y: 300
+      positionAbsolute:
+        x: 4690
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 310
+    - data:
+        desc: >-
+          delivery_json 是文案和图片任务的一一对应交付；image_tasks_json 可由调用方轮询，任务完成后 image_urls 会出现在查询响应中。
+        outputs:
+        - value_selector:
+          - assemble_delivery
+          - delivery_text
+          variable: delivery_text
+        - value_selector:
+          - assemble_delivery
+          - delivery_json
+          variable: delivery_json
+        - value_selector:
+          - assemble_delivery
+          - blocked_items
+          variable: blocked_items
+        - value_selector:
+          - assemble_delivery
+          - image_tasks_json
+          variable: image_tasks_json
+        - value_selector:
+          - assemble_delivery
+          - library_trace_json
+          variable: library_trace_json
+        selected: false
+        title: 输出完整交付
+        type: end
+      height: 190
+      id: end
+      position:
+        x: 5060
+        y: 300
+      positionAbsolute:
+        x: 5060
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 290
+    viewport:
+      x: 30
+      y: 30
+      zoom: 0.35

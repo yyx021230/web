@@ -7,6 +7,7 @@ import asyncio
 import logging
 import hashlib
 import math
+import weakref
 from datetime import datetime, timezone, timedelta
 from pathlib import PurePosixPath, Path
 
@@ -24,11 +25,47 @@ from app.services.request_queue import image_generation_queue
 from app.services.ai_image_provider_service import AIImageProviderService
 from app.services.ai_image_shadow import mirror_ai_image_shadow_safely
 from app.services.ai_task_queue import ai_image_task_queue
+from app.services.ai_task_payload import compact_terminal_task_params
 
 logger = logging.getLogger("app")
 
 MAX_USER_ACTIVE_IMAGE_TASKS = 6
 _DIMENSION_PROMPT_MARKER = "画幅约束："
+_WATERMARK_SEMAPHORES = weakref.WeakKeyDictionary()
+
+
+class WatermarkRemovalError(RuntimeError):
+    """Raised when a generated image cannot pass the required cleanup stage."""
+
+
+def _watermark_endpoint(api_url: str) -> str:
+    normalized = api_url.strip().rstrip("/")
+    if normalized.endswith("/remove-watermark"):
+        return normalized
+    return f"{normalized}/remove-watermark"
+
+
+def _image_content_type(image_bytes: bytes, fallback: str = "image/png") -> str:
+    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if image_bytes.startswith(b"\xff\xd8"):
+        return "image/jpeg"
+    if image_bytes.startswith((b"RIFF", b"Riff")) and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes.startswith(b"GIF8"):
+        return "image/gif"
+    normalized = fallback.split(";", 1)[0].strip().lower()
+    return normalized if normalized.startswith("image/") else "image/png"
+
+
+def _watermark_semaphore() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    limit = max(1, int(getattr(settings, "remove_ai_watermarks_max_concurrent", 4) or 4))
+    existing = _WATERMARK_SEMAPHORES.get(loop)
+    if existing is None or existing[0] != limit:
+        existing = (limit, asyncio.Semaphore(limit))
+        _WATERMARK_SEMAPHORES[loop] = existing
+    return existing[1]
 
 
 async def _complete_critical_write_before_cancellation(coro) -> None:
@@ -244,6 +281,11 @@ class AIImageService:
     ) -> bool:
         result = await session.execute(select(AITask).where(AITask.id == task_id))
         task = result.scalar_one_or_none()
+        if task is not None:
+            # Provider callbacks persist accepted upstream IDs in a separate session.
+            # Refresh before finalizing so this session cannot overwrite that evidence
+            # with an older identity-map copy of params.
+            await session.refresh(task)
         if not task or task.status not in ("queued", "processing"):
             return False
 
@@ -257,6 +299,7 @@ class AIImageService:
         task.error = error
         task.elapsed_seconds = elapsed_seconds
         task.finished_at = self._now_naive_utc()
+        task.params = compact_terminal_task_params(task.params)
         await session.commit()
         await mirror_ai_image_shadow_safely(
             task_id,
@@ -385,6 +428,7 @@ class AIImageService:
                 else None
             )
             task.finished_at = now
+            task.params = compact_terminal_task_params(task.params)
             recovered += 1
             recovered_task_ids.append(int(task.id))
         await self.db.commit()
@@ -482,12 +526,16 @@ class AIImageService:
             return stored_urls
 
         api_url = getattr(settings, "remove_ai_watermarks_api_url", "") or ""
+        strict = bool(getattr(settings, "remove_ai_watermarks_strict", True))
         if not api_url:
-            logger.warning("remove_ai_watermarks_api_url 未配置，跳过水印移除")
+            message = "去水印接口未配置，无法返回未经处理的生成图片"
+            if strict:
+                raise WatermarkRemovalError(message)
+            logger.warning("%s，已按非严格模式返回原图", message)
             return stored_urls
 
-        api_url = api_url.rstrip("/")
-        timeout = int(getattr(settings, "remove_ai_watermarks_timeout", 120) or 120)
+        endpoint = _watermark_endpoint(api_url)
+        timeout = int(getattr(settings, "remove_ai_watermarks_timeout", 240) or 240)
 
         storage_root = Path(settings.storage_path).resolve()
 
@@ -495,80 +543,110 @@ class AIImageService:
         for url in stored_urls:
             try:
                 cleaned_url = await self._remove_watermark_single(
-                    url, api_url, timeout, storage_root
+                    url, endpoint, timeout, storage_root
                 )
                 cleaned_urls.append(cleaned_url)
-            except Exception:
-                logger.exception("水印移除失败，使用原图: %s", url)
+            except Exception as exc:
+                if strict:
+                    logger.exception("水印移除失败，严格模式禁止返回原图: %s", url)
+                    raise WatermarkRemovalError(
+                        "图片已生成，但去水印处理失败，请稍后重试"
+                    ) from exc
+                logger.exception("水印移除失败，已按非严格模式使用原图: %s", url)
                 cleaned_urls.append(url)
         return cleaned_urls
 
     async def _remove_watermark_single(
-        self, url: str, api_url: str, timeout: int, storage_root: Path
+        self, url: str, endpoint: str, timeout: int, storage_root: Path
     ) -> str:
         """通过 HTTP API 对单张图片去水印，返回清理后的本地 URL"""
-        # 非本地 URL 跳过
         if not url.startswith("/uploads/"):
-            return url
+            raise WatermarkRemovalError(f"生成图片尚未持久化，无法去水印: {url[:80]}")
 
-        # 读取本地图片文件
         rel = url[len("/uploads/"):]
         local_path = (storage_root / rel).resolve()
         if str(local_path) != str(storage_root) and not str(local_path).startswith(str(storage_root) + "/"):
-            logger.warning("非法路径，跳过: %s", url)
-            return url
+            raise WatermarkRemovalError(f"非法生成图片路径: {url}")
         if not local_path.exists():
-            logger.warning("文件不存在，跳过: %s", local_path)
-            return url
+            raise WatermarkRemovalError(f"生成图片文件不存在: {local_path}")
 
         image_bytes = local_path.read_bytes()
+        input_content_type = _image_content_type(image_bytes)
+        input_ext = _CONTENT_TYPE_EXT.get(input_content_type, ".png")
         logger.info("发送去水印请求: %s (%dKB)", url, len(image_bytes) // 1024)
         start = time.time()
 
-        retries = 3
-        last_error = None
+        retries = max(1, int(getattr(settings, "remove_ai_watermarks_retries", 5) or 5))
+        retry_delay = max(
+            0.0,
+            float(getattr(settings, "remove_ai_watermarks_retry_delay_seconds", 5.0) or 5.0),
+        )
+        last_error: str | None = None
         for attempt in range(retries):
             try:
-                async with httpx.AsyncClient(timeout=float(timeout)) as client:
-                    resp = await client.post(
-                        f"{api_url}/remove-watermark",
-                        files={"image": ("image.png", image_bytes, "image/png")},
-                    )
+                async with _watermark_semaphore():
+                    async with httpx.AsyncClient(timeout=float(timeout)) as client:
+                        resp = await client.post(
+                            endpoint,
+                            files={
+                                "image": (
+                                    f"image{input_ext}",
+                                    image_bytes,
+                                    input_content_type,
+                                )
+                            },
+                        )
                 if resp.status_code == 200:
                     cleaned_bytes = resp.content
+                    if not cleaned_bytes:
+                        raise WatermarkRemovalError("去水印接口返回了空图片")
+                    response_content_type = _image_content_type(
+                        cleaned_bytes,
+                        resp.headers.get("content-type", "image/png"),
+                    )
                     elapsed = time.time() - start
 
                     storage = get_storage()
                     name_hash = hashlib.md5(cleaned_bytes[:1024]).hexdigest()[:12]
-                    ext = local_path.suffix or ".png"
+                    ext = _CONTENT_TYPE_EXT.get(response_content_type, ".png")
                     filename = f"ai_clean_{name_hash}{ext}"
-                    content_type = f"image/{ext.lstrip('.')}" if ext != ".jpg" else "image/jpeg"
-                    new_url = await storage.save(cleaned_bytes, filename, content_type, subdir="ai-images")
+                    new_url = await storage.save(
+                        cleaned_bytes,
+                        filename,
+                        response_content_type,
+                        subdir="ai-images",
+                    )
 
                     logger.info("去水印完成 (%.1fs): %s -> %s", elapsed, url, new_url)
                     return new_url
 
-                if resp.status_code == 503:
-                    # 所有 GPU 忙，等一会重试
-                    logger.warning("去水印 API 繁忙 (503)，%d/%d 次重试", attempt + 1, retries)
-                    last_error = "API busy (503)"
-                    await asyncio.sleep(5 * (attempt + 1))
+                if resp.status_code in {429, 502, 503, 504}:
+                    logger.warning(
+                        "去水印 API 暂不可用 (HTTP %s)，%d/%d 次重试",
+                        resp.status_code,
+                        attempt + 1,
+                        retries,
+                    )
+                    last_error = f"HTTP {resp.status_code}"
+                    if attempt < retries - 1:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
                     continue
 
                 err_text = resp.text[:300]
                 logger.warning("去水印 API 失败 (HTTP %s): %s", resp.status_code, err_text)
                 last_error = f"HTTP {resp.status_code}: {err_text}"
-                return url  # 非 503 的错误不重试，直接返回原图
+                break
 
-            except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+            except WatermarkRemovalError:
+                raise
+            except httpx.HTTPError as e:
                 logger.warning("去水印 API 连接失败 (%d/%d): %s", attempt + 1, retries, e)
                 last_error = str(e)
                 if attempt < retries - 1:
-                    await asyncio.sleep(3 * (attempt + 1))
+                    await asyncio.sleep(retry_delay * (attempt + 1))
                 continue
 
-        logger.error("去水印重试耗尽: %s", last_error)
-        return url
+        raise WatermarkRemovalError(f"去水印接口处理失败: {last_error or '未知错误'}")
 
     async def _run_generation_pipeline(
         self,
@@ -1039,6 +1117,7 @@ class AIImageService:
                         else None
                     )
                     task.finished_at = self._now_naive_utc()
+                    task.params = compact_terminal_task_params(task.params)
                     await self.db.commit()
                     await mirror_ai_image_shadow_safely(
                         task.id,

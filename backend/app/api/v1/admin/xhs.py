@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -45,6 +45,7 @@ class UpdateProfileUrlRequest(BaseModel):
     sync_cloud_api_key: str | None = None
     sync_cloud_update_config: str | None = None
     sync_browser_start_config: str | None = None
+    xhs_account_id: str | None = Field(default=None, max_length=100)
     login_phone_number: str | None = None
     department: str | None = None
 
@@ -239,6 +240,8 @@ async def update_environment_profile_url(
     env.sync_cloud_api_key = (req.sync_cloud_api_key or "").strip() or None
     env.sync_cloud_update_config = normalized_sync_cloud_update_config
     env.sync_browser_start_config = normalized_sync_browser_config
+    if "xhs_account_id" in req.model_fields_set:
+        env.xhs_account_id = (req.xhs_account_id or "").strip() or None
     env.login_phone_number = (req.login_phone_number or "").strip() or None
     if req.department is not None:
         department = req.department.strip().lower()
@@ -255,6 +258,7 @@ async def update_environment_profile_url(
             "sync_cloud_api_key": env.sync_cloud_api_key,
             "sync_cloud_update_config": env.sync_cloud_update_config,
             "sync_browser_start_config": env.sync_browser_start_config,
+            "xhs_account_id": env.xhs_account_id,
             "login_phone_number": env.login_phone_number,
             "department": env.department,
         },

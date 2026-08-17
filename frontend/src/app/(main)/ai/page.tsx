@@ -272,6 +272,17 @@ function getUserScopedKey(base: string): string {
   return `${base}:guest`;
 }
 
+function currentUserCanViewGlobalQueue(): boolean {
+  try {
+    const raw = localStorage.getItem('app_current_user');
+    if (!raw) return false;
+    const user = JSON.parse(raw) as { role?: string; roles?: string[] };
+    return user.role === 'admin' || Boolean(user.roles?.includes('admin'));
+  } catch {
+    return false;
+  }
+}
+
 function createClientRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID().slice(0, 64);
@@ -363,6 +374,7 @@ export default function AIPage() {
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [activeTasks, setActiveTasks] = useState<ActiveImageTasksResponse | null>(null);
   const [runtimeConfig, setRuntimeConfig] = useState<AIImageRuntimeConfig | null>(null);
+  const [canViewGlobalQueue, setCanViewGlobalQueue] = useState(false);
   const [selectedModel, setSelectedModel] = useState('seedream');
   const [selectedRatio, setSelectedRatio] = useState<AspectRatioId>(initialPreset.ratio);
   const [selectedResolutionTier, setSelectedResolutionTier] = useState<ResolutionTierId>(initialPreset.tier);
@@ -893,7 +905,11 @@ export default function AIPage() {
     persistMessages(messages);
   }, [messages, loaded, persistMessages, scopedKeys]);
 
-  // 轮询队列和当前用户 active 状态（每 2 秒）
+  useEffect(() => {
+    setCanViewGlobalQueue(currentUserCanViewGlobalQueue());
+  }, []);
+
+  // 管理员轮询全局队列；所有用户只轮询自己的 active 状态。
   useEffect(() => {
     const fetchRuntimeConfig = async () => {
       try {
@@ -902,17 +918,21 @@ export default function AIPage() {
       } catch { /* ignore */ }
     };
     const fetchQueue = async () => {
-      try {
-        const res = await aiApi.getQueueStatus();
-        setQueueStatus(res.data as QueueStatus);
-      } catch { /* ignore */ }
+      if (canViewGlobalQueue) {
+        try {
+          const res = await aiApi.getQueueStatus();
+          setQueueStatus(res.data as QueueStatus);
+        } catch { /* ignore */ }
+      } else {
+        setQueueStatus(null);
+      }
       void refreshActiveTasks();
     };
     void fetchRuntimeConfig();
     fetchQueue();
     const timer = setInterval(fetchQueue, 2000);
     return () => clearInterval(timer);
-  }, [refreshActiveTasks]);
+  }, [canViewGlobalQueue, refreshActiveTasks]);
 
   /** 轮询任务状态直到完成（向后兼容） */
   const pollTask = useCallback(async (taskId: string, model: string, resultMsgId: string, width: number, height: number, clientRequestId?: string) => {

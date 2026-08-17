@@ -17,6 +17,7 @@ from app.models.prompt import PromptCategory, PromptExample
 from app.models.prompt_moderation import PromptReport, PromptAuditLog
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
 from app.models.xhs_account_note_browse_event import XHSAccountNoteBrowseEvent
 from app.models.xhs_post import XHSPost
 from app.models.xhs_schedule_setting import XHSScheduleSetting

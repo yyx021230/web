@@ -21,6 +21,7 @@ from app.adapters.storage import get_storage
 from app.config import settings
 from app.models.ai_task import AITask
 from app.models.ai_image_provider import AIImageProvider
+from app.services.ai_task_payload import compact_terminal_task_params
 
 
 _CONTENT_TYPE_EXT = {
@@ -1091,6 +1092,7 @@ class AIImageProviderService:
             task.params = {**(task.params or {}), "upstream_debug": result.get("upstream_debug")}
         task.elapsed_seconds = result.get("elapsed_seconds")
         task.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        task.params = compact_terminal_task_params(task.params)
         await self.db.commit()
         return await self.get_provider_test_status(task_id)
 

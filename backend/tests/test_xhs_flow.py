@@ -16,6 +16,7 @@ from app.db.session import async_session
 from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_post import XHSPost
 from app.models.xhs_report import XHSReportDaily
@@ -1112,7 +1113,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
         api_base: str | None = None,
         env: XHSEnvironment | None = None,
     ):
-        if api_base == "http://localhost:19123":
+        if env is not None and int(env.id) == 811:
             return [{
                 "note_id": "feed_813",
                 "title": "帖子813",
@@ -1122,7 +1123,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
                 "collect_count": 1,
                 "share_count": 0,
             }]
-        if api_base == "http://localhost:19124":
+        if env is not None and int(env.id) == 812:
             return [{
                 "note_id": "feed_814",
                 "title": "帖子814",
@@ -1154,7 +1155,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     assert result["synced_accounts"] == 2
     assert result["metric_synced_notes"] == 2
     assert result["total_notes"] == 2
-    assert started_env_ids == [811, 812]
+    assert sorted(started_env_ids) == [811, 812]
     assert stopped_shop_ids == []
 
     async with async_session() as db:
@@ -1167,6 +1168,245 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     assert note_814 is not None
     assert note_814.view_count == 99
     assert note_814.share_count == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_account_note_engagements_respects_requested_concurrency(client, monkeypatch):
+    await _seed_users_and_envs()
+    environment_ids = list(range(821, 829))
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(
+                id=environment_id,
+                shop_id=f"shop_publish_{environment_id}",
+                account_name=f"发布账号{environment_id}",
+                status="active",
+            )
+            for environment_id in environment_ids
+        ])
+        await db.commit()
+
+    running = 0
+    peak = 0
+    guard = asyncio.Lock()
+
+    async def fake_sync_environment(self: XHSService, environment_id: int, **kwargs):
+        nonlocal running, peak
+        async with guard:
+            running += 1
+            peak = max(peak, running)
+        await asyncio.sleep(0.02)
+        async with guard:
+            running -= 1
+        return {
+            "synced_accounts": 1,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 1,
+            "ambiguous_notes": 0,
+        }
+
+    monkeypatch.setattr(XHSService, "sync_account_note_engagement_environment", fake_sync_environment)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        user = await db.get(User, 1)
+        assert user is not None
+        result = await service.sync_account_note_engagements(
+            user=user,
+            target_environment_ids=environment_ids,
+            concurrency=3,
+        )
+
+    assert peak == 3
+    assert result["synced_accounts"] == len(environment_ids)
+    assert result["metric_synced_notes"] == len(environment_ids)
+
+
+@pytest.mark.asyncio
+async def test_creator_center_import_creates_primary_note_and_preserves_missing_metrics(client):
+    async with async_session() as db:
+        db.add(XHSEnvironment(id=821, shop_id="shop_821", account_name="创作者主账号", status="active"))
+        await db.commit()
+
+    first_row = {
+        "source_row_index": 2,
+        "title": "创作者中心先发现的帖子",
+        "published_at": datetime(2026, 8, 14, 10, 30),
+        "published_at_raw": "2026-08-14 10:30",
+        "like_count": 9,
+        "comment_count": 7,
+        "collect_count": 3,
+        "share_count": 1,
+        "view_count": 88,
+        "exposure_count": 120,
+        "cover_click_rate": 12.5,
+    }
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 821)
+        assert env is not None
+        result = await service._import_creator_note_stats_rows(env, [first_row])
+        await db.commit()
+
+    assert result["created_notes"] == 1
+    async with async_session() as db:
+        note = (await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 821)
+        )).scalar_one()
+        assert note.feed_id is None
+        assert note.identity_status == "creator_only"
+        assert note.published_at == datetime(2026, 8, 14, 2, 30)
+        assert note.liked_count == 9
+        assert note.comment_count == 7
+        assert note.creator_synced_at is not None
+        assert (await db.execute(select(XHSCreatorSyncRow))).scalars().one().matched_note_id == note.id
+
+    second_row = {
+        **first_row,
+        "like_count": 0,
+        "comment_count": None,
+        "collect_count": None,
+        "share_count": None,
+    }
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 821)
+        assert env is not None
+        result = await service._import_creator_note_stats_rows(env, [second_row])
+        await db.commit()
+
+    assert result["updated_notes"] == 1
+    async with async_session() as db:
+        note = (await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 821)
+        )).scalar_one()
+        assert note.liked_count == 0
+        assert note.comment_count == 7
+        assert note.collected_count == 3
+        assert note.share_count == 1
+
+
+@pytest.mark.asyncio
+async def test_homepage_sync_resolves_creator_note_without_duplicate_or_metric_regression(client, monkeypatch):
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(
+                id=831,
+                shop_id="shop_831",
+                account_name="发布账号831",
+                status="active",
+                profile_url="https://www.xiaohongshu.com/user/profile/user831",
+            ),
+            XHSEnvironment(id=832, shop_id="shop_832", account_name="测试4", status="active", is_sync_runner=True),
+        ])
+        await db.commit()
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 831)
+        assert env is not None
+        await service._import_creator_note_stats_rows(env, [{
+            "source_row_index": 2,
+            "title": "同一条帖子",
+            "published_at": datetime(2026, 8, 14, 10, 30),
+            "published_at_raw": "2026-08-14 10:30",
+            "like_count": 50,
+            "comment_count": 8,
+            "collect_count": 6,
+            "share_count": 2,
+            "view_count": 500,
+            "exposure_count": 800,
+        }])
+        await db.commit()
+
+    async def fake_fetch_profile_account_notes(self, profile_url, api_base, limit=60, **kwargs):
+        return {
+            "profile_nickname": "发布账号831",
+            "red_id": "red831",
+            "feeds": [{
+                "feed_id": "feed_831",
+                "xsec_token": "token831",
+                "title": "同一条帖子",
+                "published_at": datetime(2026, 8, 14, 2, 30),
+                "cover_image_url": None,
+                "liked_count": 3,
+                "comment_count": 1,
+                "collected_count": 1,
+                "share_count": 0,
+                "sort_index": 0,
+            }],
+        }
+
+    async def fake_sleep(self, persona=None):
+        return None
+
+    async def fake_localize(self, pending):
+        return None
+
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", fake_fetch_profile_account_notes)
+    monkeypatch.setattr(XHSService, "_sleep_sync_profile_prep", fake_sleep)
+    monkeypatch.setattr(XHSService, "_apply_pending_account_note_cover_localizations", fake_localize)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 831)
+        runner = await db.get(XHSEnvironment, 832)
+        assert env is not None and runner is not None
+        result = await service._sync_account_notes_with_api(
+            env,
+            api_base="http://localhost:18061",
+            runner_envs=[runner],
+            assigned_runner_env=runner,
+        )
+
+    assert result["created_notes"] == 0
+    assert result["updated_notes"] == 1
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 831)
+        )).scalars().all())
+    assert len(notes) == 1
+    assert notes[0].feed_id == "feed_831"
+    assert notes[0].identity_status == "resolved"
+    assert notes[0].identity_match_method == "homepage_title_time"
+    assert notes[0].liked_count == 50
+    assert notes[0].comment_count == 8
+    assert notes[0].homepage_synced_at is not None
+
+
+@pytest.mark.asyncio
+async def test_duplicate_creator_rows_are_kept_as_ambiguous_instead_of_reused(client):
+    async with async_session() as db:
+        db.add(XHSEnvironment(id=841, shop_id="shop_841", account_name="重复标题账号", status="active"))
+        await db.commit()
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 841)
+        assert env is not None
+        duplicate_rows = [
+            {
+                "source_row_index": index,
+                "title": "完全相同标题",
+                "published_at": datetime(2026, 8, 14, 10, 30),
+                "published_at_raw": "2026-08-14 10:30",
+                "view_count": 100 + index,
+            }
+            for index in (2, 3)
+        ]
+        result = await service._import_creator_note_stats_rows(env, duplicate_rows)
+        await db.commit()
+
+    assert result["created_notes"] == 2
+    assert result["ambiguous_notes"] == 1
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote)
+            .where(XHSAccountNote.environment_id == 841)
+            .order_by(XHSAccountNote.id.asc())
+        )).scalars().all())
+    assert len(notes) == 2
+    assert notes[0].identity_status == "creator_only"
+    assert notes[1].identity_status == "ambiguous"
+    assert notes[0].creator_identity_key != notes[1].creator_identity_key
 
 
 def test_open_sms_api_headers_follow_documented_hmac_format(monkeypatch):
@@ -1235,6 +1475,198 @@ async def test_create_open_sms_code_request_uses_signed_open_api_payload(monkeyp
 
 
 @pytest.mark.asyncio
+async def test_same_device_sms_fallback_accepts_xhs_code_from_other_sim(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {
+                "messages": [
+                    {
+                        "messageId": "bank-new",
+                        "deviceId": "device-1",
+                        "platform": "招商银行",
+                        "body": "账户5481发生变动",
+                        "code": "5481",
+                        "messageAt": "2026-08-14T10:00:06Z",
+                        "slotIndex": 0,
+                        "subscriptionId": 1,
+                    },
+                    {
+                        "messageId": "xhs-other-sim",
+                        "deviceId": "device-1",
+                        "platform": "小红书",
+                        "body": "【小红书】验证码 246810，请勿泄露",
+                        "code": "246810",
+                        "messageAt": "2026-08-14T10:00:05Z",
+                        "slotIndex": 1,
+                        "subscriptionId": 2,
+                    },
+                    {
+                        "messageId": "xhs-old",
+                        "deviceId": "device-1",
+                        "platform": "小红书",
+                        "body": "【小红书】验证码 111111",
+                        "code": "111111",
+                        "messageAt": "2026-08-14T09:59:00Z",
+                        "slotIndex": 0,
+                        "subscriptionId": 1,
+                    },
+                ]
+            }
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, **kwargs):
+            assert url == "https://sms.example.test/api/v1/sms-library"
+            assert kwargs["params"]["deviceId"] == "device-1"
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._find_same_device_xhs_sms(
+        {
+            "requestId": "request-1",
+            "deviceId": "device-1",
+            "startedAt": "2026-08-14T10:00:00Z",
+            "expiresAt": "2026-08-14T10:05:00Z",
+        },
+        "admin-token",
+    )
+
+    assert result is not None
+    assert result["code"] == "246810"
+    assert result["slotIndex"] == 1
+    assert result["matchSource"] == "same_device_all_sims"
+
+
+@pytest.mark.asyncio
+async def test_same_device_sms_fallback_rejects_two_different_xhs_codes(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {
+                "messages": [
+                    {
+                        "deviceId": "device-1",
+                        "platform": "小红书",
+                        "body": "【小红书】验证码 123456",
+                        "code": "123456",
+                        "messageAt": "2026-08-14T10:00:05Z",
+                        "slotIndex": 0,
+                    },
+                    {
+                        "deviceId": "device-1",
+                        "platform": "小红书",
+                        "body": "【小红书】验证码 654321",
+                        "code": "654321",
+                        "messageAt": "2026-08-14T10:00:06Z",
+                        "slotIndex": 1,
+                    },
+                ]
+            }
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, **kwargs):
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._find_same_device_xhs_sms(
+        {
+            "requestId": "request-1",
+            "deviceId": "device-1",
+            "startedAt": "2026-08-14T10:00:00Z",
+            "expiresAt": "2026-08-14T10:05:00Z",
+        },
+        "admin-token",
+    )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_wait_sms_ignores_bank_message_matched_by_exact_order(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    cancelled: list[str] = []
+
+    async def fake_admin_token(self: XHSService):
+        return "admin-token"
+
+    async def fake_exact(self: XHSService, request_id: str):
+        return {
+            "requestId": request_id,
+            "status": "received",
+            "code": "5481",
+            "sender": "10693495555",
+            "body": "【招商银行】您账户5481发生变动",
+        }
+
+    async def fake_fallback(self: XHSService, request_context: dict, admin_token: str):
+        return {
+            "requestId": request_context["requestId"],
+            "status": "received",
+            "code": "246810",
+            "sender": "10690000",
+            "body": "【小红书】验证码 246810",
+            "deviceId": request_context["deviceId"],
+            "slotIndex": 1,
+            "subscriptionId": 2,
+            "matchSource": "same_device_all_sims",
+        }
+
+    async def fake_cancel(self: XHSService, request_id: str):
+        cancelled.append(request_id)
+
+    monkeypatch.setattr(XHSService, "_get_phone_cloud_admin_token", fake_admin_token)
+    monkeypatch.setattr(XHSService, "_get_open_sms_code_request", fake_exact)
+    monkeypatch.setattr(XHSService, "_find_same_device_xhs_sms", fake_fallback)
+    monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
+
+    result = await service._wait_open_sms_code_request(
+        "request-2",
+        initial_request={
+            "requestId": "request-2",
+            "status": "waiting",
+            "deviceId": "device-1",
+            "startedAt": "2026-08-14T10:00:00Z",
+            "expiresAt": "2026-08-14T10:05:00Z",
+        },
+    )
+
+    assert result["code"] == "246810"
+    assert result["matchSource"] == "same_device_all_sims"
+    assert cancelled == ["request-2"]
+
+
+@pytest.mark.asyncio
 async def test_create_xhs_qr_task_uses_existing_phone_cloud_admin_route(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     calls: list[dict[str, object]] = []
@@ -1279,10 +1711,8 @@ async def test_create_xhs_qr_task_uses_existing_phone_cloud_admin_route(monkeypa
     monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
 
     result = await service._create_phone_cloud_xhs_qr_task(
-        "17570049665",
         "小迪买车情报站",
         "data:image/png;base64,cXItYnl0ZXM=",
-        device_id="adb:test-device",
         xhs_app_slot="app2",
     )
 
@@ -1302,6 +1732,127 @@ async def test_create_xhs_qr_task_uses_existing_phone_cloud_admin_route(monkeypa
         "xhsAppSlot": "app2",
         },
     }
+
+
+@pytest.mark.asyncio
+async def test_create_xhs_qr_task_can_use_device_without_login_sim(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    posted: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        content = b"ok"
+
+        def __init__(self, payload: dict, status_code: int = 200):
+            self._payload = payload
+            self.status_code = status_code
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, headers: dict[str, str]):
+            return _FakeResponse({
+                "devices": [
+                    {
+                        "deviceId": "sms-device",
+                        "sims": [{"phoneNumber": "17570049665", "enabled": True}],
+                        "xhsAccounts": [],
+                    },
+                    {
+                        "deviceId": "scan-device",
+                        "sims": [],
+                        "xhsAccounts": [
+                            {"appSlot": "app2", "accountName": "小迪买车情报站", "enabled": True}
+                        ],
+                    },
+                ]
+            })
+
+        async def post(self, url: str, *, headers: dict[str, str], json: dict):
+            posted.append(json)
+            return _FakeResponse({"task": {"taskId": "qr-task-2", "status": "queued"}}, 201)
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_ADMIN_API_TOKEN", "phone-cloud-admin-token")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    await service._create_phone_cloud_xhs_qr_task(
+        "小迪买车情报站",
+        "data:image/png;base64,cXItYnl0ZXM=",
+        xhs_app_slot="app2",
+    )
+
+    assert posted == [{
+        "deviceId": "scan-device",
+        "xhsAppSlot": "app2",
+        "qrImageDataUrl": "data:image/png;base64,cXItYnl0ZXM=",
+    }]
+
+
+@pytest.mark.asyncio
+async def test_resolve_phone_cloud_qr_target_prefers_xhs_account_id(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        def json(self):
+            return {
+                "devices": [
+                    {
+                        "deviceId": "stale-name-device",
+                        "xhsAccounts": [{
+                            "appSlot": "app1",
+                            "accountName": "目标账号",
+                            "xhsAccountId": "old-id",
+                            "enabled": True,
+                        }],
+                    },
+                    {
+                        "deviceId": "correct-id-device",
+                        "xhsAccounts": [{
+                            "appSlot": "app2",
+                            "accountName": "已经改名",
+                            "xhsAccountId": "26819980796",
+                            "enabled": True,
+                        }],
+                    },
+                ]
+            }
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, headers: dict[str, str]):
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "https://sms.example.test")
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    target = await service._resolve_phone_cloud_xhs_target(
+        "目标账号",
+        "phone-cloud-admin-token",
+        xhs_account_id="26819980796",
+    )
+
+    assert target == {"deviceId": "correct-id-device", "xhsAppSlot": "app2"}
 
 
 @pytest.mark.asyncio
@@ -1359,8 +1910,9 @@ async def test_creator_auto_login_uses_signed_open_sms_request(monkeypatch):
         assert client_request_id.startswith("xhs-login-901-")
         return {"requestId": "request-901", "status": "waiting", "deviceId": "device-901"}
 
-    async def fake_wait_request(self: XHSService, request_id: str):
+    async def fake_wait_request(self: XHSService, request_id: str, **kwargs):
         events.append(("wait-request", request_id))
+        assert kwargs["initial_request"]["deviceId"] == "device-901"
         return {"requestId": request_id, "status": "received", "code": "246810", "deviceId": "device-901"}
 
     class _FakeResponse:
@@ -1403,8 +1955,8 @@ async def test_creator_auto_login_uses_signed_open_sms_request(monkeypatch):
     assert events == [
         ("login-status", "http://mcp.test"),
         ("create-request", "17570049665"),
-        ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/request-code", "json": {"phone_number": "17570049665"}}),
         ("wait-request", "request-901"),
+        ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/request-code", "json": {"phone_number": "17570049665"}}),
         ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/submit-code", "json": {"phone_number": "17570049665", "code": "246810"}}),
     ]
 
@@ -1414,6 +1966,7 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     events: list[tuple[str, object]] = []
     env = XHSEnvironment(id=902, shop_id="shop_902", account_name="测试账号", login_phone_number="17570049665")
+    listener_started = asyncio.Event()
 
     async def fake_qrcode(self: XHSService, api_base: str):
         events.append(("get-qr", api_base))
@@ -1426,16 +1979,22 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
 
     async def fake_create_qr_task(
         self: XHSService,
-        phone_number: str,
         xhs_account: str,
         qr_image_data_url: str,
         **kwargs,
     ):
-        events.append(("dispatch-qr", phone_number))
+        await listener_started.wait()
+        events.append(("dispatch-qr", xhs_account))
         assert xhs_account == "测试账号"
         assert qr_image_data_url.startswith("data:image/png;base64,")
-        assert kwargs["device_id"] == "device-902"
+        assert kwargs["xhs_account_id"] is None
         return {"taskId": "qr-902", "_adminToken": "admin-token"}
+
+    async def fake_wait_sms(self: XHSService, request_id: str, **kwargs):
+        events.append(("listen-both-sims", request_id))
+        assert kwargs["initial_request"]["status"] == "waiting"
+        listener_started.set()
+        await asyncio.Event().wait()
 
     async def fake_wait_qr(self: XHSService, task_id: str, admin_token: str):
         events.append(("qr-succeeded", task_id))
@@ -1456,6 +2015,7 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
 
     monkeypatch.setattr(XHSService, "_get_mcp_login_qrcode", fake_qrcode)
     monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_sms)
     monkeypatch.setattr(XHSService, "_create_phone_cloud_xhs_qr_task", fake_create_qr_task)
     monkeypatch.setattr(XHSService, "_wait_phone_cloud_xhs_qr_task", fake_wait_qr)
     monkeypatch.setattr(XHSService, "_complete_xhs_post_qr_verification", fake_finish_secondary)
@@ -1471,7 +2031,8 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
     assert events == [
         ("get-qr", "http://mcp.test"),
         ("arm-sms", "17570049665"),
-        ("dispatch-qr", "17570049665"),
+        ("listen-both-sims", "secondary-902"),
+        ("dispatch-qr", "测试账号"),
         ("qr-succeeded", "qr-902"),
         ("check-secondary", "secondary-902"),
         ("cancel-unused", "secondary-902"),

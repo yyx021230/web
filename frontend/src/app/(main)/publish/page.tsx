@@ -662,6 +662,20 @@ function getAccountNoteContentStatusLabel(note: XHSAccountNote): string {
   return '未同步详情';
 }
 
+function getAccountNoteSourceLabel(note: XHSAccountNote): string {
+  if (note.identity_status === 'ambiguous') return '身份待确认';
+  if (!note.feed_id) return '待主页补 ID';
+  if (note.creator_synced_at && note.homepage_synced_at) return '创作中心 + 主页';
+  if (note.creator_synced_at) return '创作中心已同步';
+  return '主页已同步';
+}
+
+function getAccountNoteSourceTone(note: XHSAccountNote): string {
+  if (note.identity_status === 'ambiguous') return 'border-rose-200 bg-rose-50 text-rose-700';
+  if (!note.feed_id) return 'border-amber-200 bg-amber-50 text-amber-700';
+  return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+}
+
 function getAccountNoteGalleryUrls(note: XHSAccountNote): string[] {
   const rawUrls = note.cover_image_url
     ? [note.cover_image_url]
@@ -896,11 +910,11 @@ function AccountNoteDetailModal({ note, onClose, onPreview }: AccountNoteDetailM
                   <button
                     type="button"
                     className="group relative grid h-full w-full place-items-center overflow-hidden bg-white"
-                    onClick={() => onPreview({ url: activeImageUrl, title: note.title || note.feed_id })}
+                    onClick={() => onPreview({ url: activeImageUrl, title: note.title || note.feed_id || '待补帖子 ID' })}
                   >
                     <img
                       src={activeImageUrl}
-                      alt={note.title || note.feed_id}
+                      alt={note.title || note.feed_id || '待补帖子 ID'}
                       className="relative z-[1] block h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
                       loading="lazy"
                       referrerPolicy="no-referrer"
@@ -1022,6 +1036,9 @@ function AccountNoteDetailModal({ note, onClose, onPreview }: AccountNoteDetailM
               <section className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50/90 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">同步记录</div>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                  <span className={`rounded-full border px-2.5 py-1 font-semibold ${getAccountNoteSourceTone(note)}`}>
+                    {getAccountNoteSourceLabel(note)}
+                  </span>
                   <span className={`rounded-full border px-2.5 py-1 font-semibold ${getAccountNoteDetailStatusTone(note)}`}>
                     {note.detail_synced_at ? `详情同步于 ${formatAccountNotePublishedAt(note.detail_synced_at)}` : '未同步详情'}
                   </span>
@@ -2215,6 +2232,10 @@ export default function XHSPublishManagePage() {
   }, []);
 
   const openAccountNoteSyncDialog = useCallback((note: XHSAccountNote) => {
+    if (!note.feed_id) {
+      toast.error('该帖子尚未由主页同步补齐帖子 ID');
+      return;
+    }
     if (accountSyncRunnerOptions.length === 0) {
       toast.error('请先配置至少一个测试账号');
       return;
@@ -2226,7 +2247,7 @@ export default function XHSPublishManagePage() {
       ?? null;
     setAccountNoteSyncDialog({
       noteId: note.id,
-      noteTitle: note.title || note.feed_id,
+      noteTitle: note.title || note.feed_id || '待补帖子 ID',
       runnerId: preferredRunnerId,
     });
   }, [accountSyncRunnerOptions, accountSyncScrapeEnvId]);
@@ -3836,8 +3857,8 @@ export default function XHSPublishManagePage() {
                                     {note.cover_image_url ? (
                                       <AccountNoteCoverThumb
                                         src={note.cover_image_url}
-                                        title={note.title || note.feed_id}
-                                        onPreview={() => setAccountNotePreview({ url: normalizeAccountNoteCoverUrl(note.cover_image_url), title: note.title || note.feed_id })}
+                                        title={note.title || note.feed_id || '待补帖子 ID'}
+                                        onPreview={() => setAccountNotePreview({ url: normalizeAccountNoteCoverUrl(note.cover_image_url), title: note.title || note.feed_id || '待补帖子 ID' })}
                                       />
                                     ) : (
                                       <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_rgba(148,163,184,0.08)_55%,_rgba(255,255,255,0.95))] text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -3863,6 +3884,9 @@ export default function XHSPublishManagePage() {
                                       {getAccountNoteContentPreview(note)}
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                      <span className={`rounded-full border px-2 py-0.5 font-semibold ${getAccountNoteSourceTone(note)}`}>
+                                        {getAccountNoteSourceLabel(note)}
+                                      </span>
                                       <span className={`rounded-full border px-2 py-0.5 font-semibold ${getAccountNoteDetailStatusTone(note)}`}>
                                         {note.detail_synced_at ? `详情同步 ${formatAccountNotePublishedAt(note.detail_synced_at)}` : '未同步详情'}
                                       </span>
@@ -3975,8 +3999,8 @@ export default function XHSPublishManagePage() {
                                     <button
                                       className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-45"
                                       onClick={() => openAccountNoteSyncDialog(note)}
-                                      disabled={accountNoteSyncingId === note.id}
-                                      title="先选测试账号，再打开该笔记详情，同步这条帖子的点赞/评论/收藏/转发与正文图片"
+                                      disabled={accountNoteSyncingId === note.id || !note.feed_id}
+                                      title={note.feed_id ? '先选测试账号，再打开该笔记详情，同步这条帖子的点赞/评论/收藏/转发与正文图片' : '等待主页同步补齐帖子 ID 后可用'}
                                     >
                                       {accountNoteSyncingId === note.id ? '同步中' : '选账号同步'}
                                     </button>

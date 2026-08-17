@@ -21,8 +21,9 @@ function Resolve-UploadsPath([string]$Root) {
 
     $backendContainer = "$(docker compose ps --all -q backend | Select-Object -Last 1)".Trim()
     if ($backendContainer) {
-        $mountedPath = "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/app/uploads"}}{{.Source}}{{end}}{{end}}' $backendContainer | Select-Object -Last 1)".Trim()
-        if ($LASTEXITCODE -eq 0 -and $mountedPath) { return $mountedPath }
+        $inspection = @(docker inspect $backendContainer | ConvertFrom-Json)[0]
+        $mount = @($inspection.Mounts | Where-Object { $_.Destination -eq "/app/uploads" } | Select-Object -First 1)
+        if ($mount.Count -gt 0 -and $mount[0].Source) { return "$($mount[0].Source)".Trim() }
     }
 
     $rootEnv = Join-Path $Root ".env"

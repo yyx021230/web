@@ -86,4 +86,12 @@ pnpm-debug.log*
 *.swp
 *.swo
 .DS_Store
+._*
 Thumbs.db
+
+# Codex/local audit artifacts and generated Dify verification images
+.codex-tmp/
+dify/test-output/
+dify/recent-deliveries/
+dify/generated/
+dify/*.png

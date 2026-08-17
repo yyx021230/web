@@ -15,6 +15,7 @@ class EnvironmentOut(BaseModel):
     sync_cloud_api_key: Optional[str] = None
     sync_cloud_update_config: Optional[str] = None
     sync_browser_start_config: Optional[str] = None
+    xhs_account_id: Optional[str] = None
     login_phone_number: Optional[str] = None
     is_sync_runner: bool = False
     notes: Optional[str] = None
@@ -200,7 +201,17 @@ class AccountNoteOut(BaseModel):
     account_name: str
     profile_nickname: Optional[str] = None
     red_id: Optional[str] = None
-    feed_id: str
+    feed_id: Optional[str] = None
+    identity_status: str = "resolved"
+    creator_identity_key: Optional[str] = None
+    identity_match_method: Optional[str] = None
+    identity_match_confidence: Optional[float] = None
+    creator_published_at_raw: Optional[str] = None
+    creator_first_seen_at: Optional[datetime] = None
+    creator_last_seen_at: Optional[datetime] = None
+    creator_synced_at: Optional[datetime] = None
+    homepage_synced_at: Optional[datetime] = None
+    source_post_id: Optional[int] = None
     xsec_token: Optional[str] = None
     post_url: Optional[str] = None
     cover_image_url: Optional[str] = None
@@ -244,6 +255,10 @@ class AccountNoteOut(BaseModel):
     @field_serializer(
         "promoted_first_seen_at",
         "promoted_last_seen_at",
+        "creator_first_seen_at",
+        "creator_last_seen_at",
+        "creator_synced_at",
+        "homepage_synced_at",
         "published_at",
         "detail_synced_at",
         "assignment_updated_at",

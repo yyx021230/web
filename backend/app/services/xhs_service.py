@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
 from app.models.xhs_account_note_browse_event import XHSAccountNoteBrowseEvent
 from app.models.xhs_post import XHSPost
 from app.models.user_xhs_env import UserXHSEnvironment
@@ -61,6 +62,7 @@ from app.core.roles import (
 from app.services.copywriting_service import CopywritingService
 from app.services.request_queue import xhs_publish_queue
 from app.services.vehicle_catalog_service import VehicleCatalogService
+from app.services.yundeng_sync_coordinator import yundeng_sync_coordinator, yundeng_sync_guard
 from app.db.session import async_session
 from app.utils.timezone import (
     aware_or_cst_naive_to_utc_naive,
@@ -107,6 +109,7 @@ _worker_api_base = getattr(settings, "xhs_worker_api_base_url", "") or ""
 XHS_WORKER_API_BASE = _worker_api_base.strip().rstrip("/")
 XHS_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_worker_internal_token", "") or ""
 XHS_ACCOUNT_SCRAPE_ENVIRONMENT_ID = int(getattr(settings, "xhs_account_scrape_environment_id", 0) or 0)
+XHS_YUNDENG_SYNC_CONCURRENCY = max(1, min(int(getattr(settings, "xhs_yundeng_sync_concurrency", 5) or 5), 5))
 _report_worker_api_base = getattr(settings, "xhs_report_worker_api_base_url", "") or ""
 XHS_REPORT_WORKER_API_BASE = _report_worker_api_base.strip().rstrip("/")
 XHS_REPORT_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_report_worker_internal_token", "") or ""
@@ -353,6 +356,9 @@ class XHSService:
     _env_publish_locks_guard = threading.Lock()
     _browser_status_cache: dict[int, dict[str, Any]] = {}
     _browser_status_cache_guard = threading.Lock()
+    _mcp_port_guard = threading.Lock()
+    _reserved_mcp_ports: dict[int, float] = {}
+    _mcp_ports_by_pid: dict[int, int] = {}
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -643,6 +649,18 @@ class XHSService:
         return min(normalized, 200)
 
     @staticmethod
+    def _normalize_yundeng_sync_concurrency(value: int | None) -> int:
+        if value is None:
+            return XHS_YUNDENG_SYNC_CONCURRENCY
+        try:
+            normalized = int(value)
+        except Exception as exc:
+            raise ValueError("云登同步并发数必须是整数") from exc
+        if normalized <= 0:
+            raise ValueError("云登同步并发数必须大于 0")
+        return min(normalized, XHS_YUNDENG_SYNC_CONCURRENCY, 5)
+
+    @staticmethod
     def _normalize_account_note_sync_runner_assignments(
         value: str | dict[int | str, list[int] | tuple[int, ...] | set[int] | list[str] | tuple[str, ...]] | None
     ) -> dict[int, list[int]]:
@@ -874,12 +892,59 @@ class XHSService:
         )
         return payload.get("data") or {}
 
+    @classmethod
+    async def trigger_worker_sync_account_note_engagements(
+        cls,
+        environment_id: int,
+        sync_run_id: int | None = None,
+    ) -> dict:
+        params: dict[str, int] = {"environment_id": int(environment_id)}
+        if sync_run_id:
+            params["sync_run_id"] = int(sync_run_id)
+        payload = await cls._call_worker_api(
+            "POST",
+            "/api/v1/xhs/internal/account-notes/sync-engagement",
+            params=params,
+            timeout=900.0,
+        )
+        return payload.get("data") or {}
+
+    async def _delegate_account_note_engagement_sync(
+        self,
+        *,
+        envs: list[XHSEnvironment],
+        concurrency: int,
+        sync_run_id: int | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+    ) -> dict:
+        semaphore = asyncio.Semaphore(
+            max(1, min(int(concurrency or 1), len(envs) or 1, XHS_YUNDENG_SYNC_CONCURRENCY, 5))
+        )
+
+        async def run_environment(env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
+            await self._raise_if_sync_cancelled(cancel_check)
+            async with semaphore:
+                result = await self.trigger_worker_sync_account_note_engagements(int(env.id), sync_run_id)
+                return env, result
+
+        raw_results = await asyncio.gather(
+            *(run_environment(env) for env in envs),
+            return_exceptions=True,
+        )
+        return await self._aggregate_parallel_engagement_results(
+            envs=envs,
+            raw_results=raw_results,
+            progress_callback=progress_callback,
+        )
+
     async def _delegate_account_note_sync_by_runner(
         self,
         *,
         envs: list[XHSEnvironment],
         runner_ids: list[int],
         runner_assignments: dict[int, list[int]],
+        concurrency: int = 5,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
@@ -923,8 +988,14 @@ class XHSService:
             )
             return runner_id, environment_ids, result
 
+        semaphore = asyncio.Semaphore(max(1, min(int(concurrency or 1), XHS_YUNDENG_SYNC_CONCURRENCY, 5)))
+
+        async def run_bucket_bounded(runner_id: int, environment_ids: list[int]) -> tuple[int, list[int], dict]:
+            async with semaphore:
+                return await run_bucket(runner_id, environment_ids)
+
         raw_results = await asyncio.gather(
-            *(run_bucket(runner_id, environment_ids) for runner_id, environment_ids in buckets),
+            *(run_bucket_bounded(runner_id, environment_ids) for runner_id, environment_ids in buckets),
             return_exceptions=True,
         )
 
@@ -989,6 +1060,7 @@ class XHSService:
         pause_seconds_min: float | None,
         pause_seconds_max: float | None,
         max_post_age_days: int | None,
+        concurrency: int = 5,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
@@ -1026,8 +1098,14 @@ class XHSService:
             )
             return runner_id, note_ids, result
 
+        semaphore = asyncio.Semaphore(max(1, min(int(concurrency or 1), XHS_YUNDENG_SYNC_CONCURRENCY, 5)))
+
+        async def run_bucket_bounded(runner_id: int, note_ids: list[int]) -> tuple[int, list[int], dict]:
+            async with semaphore:
+                return await run_bucket(runner_id, note_ids)
+
         raw_results = await asyncio.gather(
-            *(run_bucket(runner_id, note_ids) for runner_id, note_ids in buckets.items()),
+            *(run_bucket_bounded(runner_id, note_ids) for runner_id, note_ids in buckets.items()),
             return_exceptions=True,
         )
 
@@ -1922,6 +2000,7 @@ class XHSService:
 
         updated_accounts = 0
         updated_rows = 0
+        changed_rows = 0
         errors: list[str] = []
         start_d = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_d = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -1975,17 +2054,6 @@ class XHSService:
             tk.token_status = "成功"
             tk.token_message = None
 
-            await self.db.execute(
-                delete(XHSReportDaily).where(
-                    and_(
-                        XHSReportDaily.report_type == report_type,
-                        XHSReportDaily.account_id == tk.account_id,
-                        XHSReportDaily.report_date >= start_d,
-                        XHSReportDaily.report_date <= end_d,
-                    )
-                )
-            )
-
             insert_rows: list[dict] = []
             seen_cache_keys: set[tuple[date, str]] = set()
             for row in rows:
@@ -2021,16 +2089,61 @@ class XHSService:
                     }
                 )
 
-            if insert_rows:
-                await self.db.execute(insert(XHSReportDaily), insert_rows)
-                updated_rows += len(insert_rows)
+            existing_rows = list(
+                (
+                    await self.db.execute(
+                        select(XHSReportDaily).where(
+                            and_(
+                                XHSReportDaily.report_type == report_type,
+                                XHSReportDaily.account_id == tk.account_id,
+                                XHSReportDaily.report_date >= start_d,
+                                XHSReportDaily.report_date <= end_d,
+                            )
+                        )
+                    )
+                ).scalars().all()
+            )
+            existing_by_key = {
+                (row.report_date, row.campaign_id): row
+                for row in existing_rows
+            }
+            incoming_by_key = {
+                (row["report_date"], row["campaign_id"]): row
+                for row in insert_rows
+            }
+
+            stale_ids = [
+                row.id
+                for key, row in existing_by_key.items()
+                if key not in incoming_by_key
+            ]
+            if stale_ids:
+                await self.db.execute(
+                    delete(XHSReportDaily).where(XHSReportDaily.id.in_(stale_ids))
+                )
+                changed_rows += len(stale_ids)
+
+            new_rows: list[dict] = []
+            for key, incoming in incoming_by_key.items():
+                existing = existing_by_key.get(key)
+                if existing is None:
+                    new_rows.append(incoming)
+                    continue
+                if existing.account_name != incoming["account_name"] or existing.payload != incoming["payload"]:
+                    existing.account_name = incoming["account_name"]
+                    existing.payload = incoming["payload"]
+                    changed_rows += 1
+            if new_rows:
+                await self.db.execute(insert(XHSReportDaily), new_rows)
+                changed_rows += len(new_rows)
+            updated_rows += len(insert_rows)
             updated_accounts += 1
         await self.db.commit()
-        if updated_rows and report_type in {"creative", "simple", "simple_note", "standard_note"}:
+        if changed_rows and report_type in {"creative", "simple", "simple_note", "standard_note"}:
             await self.backfill_promoted_flags_from_reports(start_date=start_d, end_date=end_d)
         aggregate_result: dict[str, int] | None = None
         aggregate_error: str | None = None
-        if updated_rows:
+        if changed_rows:
             try:
                 aggregate_result = await self.refresh_xhs_ad_aggregates(
                     report_type=report_type,
@@ -2060,6 +2173,7 @@ class XHSService:
             "account_id": account_id,
             "updated_accounts": updated_accounts,
             "updated_rows": updated_rows,
+            "changed_rows": changed_rows,
             "aggregate_result": aggregate_result,
             "aggregate_error": aggregate_error,
             "errors": errors,
@@ -3951,6 +4065,7 @@ class XHSService:
         scrape_environment_ids: str | list[int] | tuple[int, ...] | None = None,
         sync_account_limit: int | None = None,
         runner_account_assignments: str | dict[int | str, list[int] | tuple[int, ...] | set[int] | list[str] | tuple[str, ...]] | None = None,
+        concurrency: int | None = None,
         limit_per_env: int = 60,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
@@ -3959,6 +4074,7 @@ class XHSService:
         normalized_runner_ids = self._normalize_account_note_sync_runner_ids(scrape_environment_ids)
         normalized_account_limit = self._normalize_account_note_sync_account_limit(sync_account_limit)
         normalized_runner_assignments = self._normalize_account_note_sync_runner_assignments(runner_account_assignments)
+        normalized_concurrency = self._normalize_yundeng_sync_concurrency(concurrency)
         if normalized_runner_assignments:
             normalized_runner_ids = list(normalized_runner_assignments.keys())
         await self._raise_if_sync_cancelled(cancel_check)
@@ -3999,6 +4115,7 @@ class XHSService:
                     envs=envs,
                     runner_ids=normalized_runner_ids,
                     runner_assignments=normalized_runner_assignments,
+                    concurrency=normalized_concurrency,
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
                 )
@@ -4110,6 +4227,7 @@ class XHSService:
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
                     runner_buckets=runner_buckets,
+                    concurrency=normalized_concurrency,
                 )
             elif len(scrape_envs) == 1:
                 env_lock = await self._get_env_publish_lock(scrape_envs[0].id)
@@ -4136,6 +4254,7 @@ class XHSService:
                     persona=persona,
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
+                    concurrency=normalized_concurrency,
                 )
             synced_accounts += int(batch_result.get("synced_accounts") or 0)
             created_notes += int(batch_result.get("created_notes") or 0)
@@ -4189,6 +4308,7 @@ class XHSService:
                 runner_envs=runner_envs,
             )
 
+    @yundeng_sync_guard("scrape_env", "homepage_posts")
     async def _sync_account_notes_batch_locked(
         self,
         envs: list[XHSEnvironment],
@@ -4217,7 +4337,9 @@ class XHSService:
 
         try:
             self._active_mcp_api = mcp_api
-            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(scrape_env.id))
+            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                int(scrape_env.id), allow_fallback=False
+            )
             if active_scrape_env is not None:
                 scrape_env = active_scrape_env
             if not ws_url:
@@ -4315,6 +4437,7 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
         runner_buckets: list[tuple[XHSEnvironment, list[XHSEnvironment]]] | None = None,
+        concurrency: int = 1,
     ) -> dict:
         if not envs:
             return {
@@ -4330,12 +4453,7 @@ class XHSService:
             for index, env in enumerate(envs):
                 effective_runner_buckets[index % len(effective_runner_buckets)][1].append(env)
 
-        synced_accounts = 0
-        created_notes = 0
-        updated_notes = 0
-        total_notes = 0
         overall_total_accounts = len(envs)
-        processed_account_offset = 0
 
         await self._emit_progress(
             progress_callback,
@@ -4352,40 +4470,91 @@ class XHSService:
             },
         )
 
+        active_buckets: list[tuple[int, list[int], int]] = []
+        processed_offset = 0
         for runner_env, assigned_envs in effective_runner_buckets:
-            if not assigned_envs:
-                continue
-            await self._raise_if_sync_cancelled(cancel_check)
-            env_lock = await self._get_env_publish_lock(runner_env.id)
-            async with env_lock:
-                batch_result = await self._sync_account_notes_batch_locked(
-                    assigned_envs,
-                    scrape_env=runner_env,
-                    limit=limit,
-                    persona=persona,
-                    progress_callback=progress_callback,
-                    cancel_check=cancel_check,
-                    runner_envs=scrape_envs,
-                    processed_offset=processed_account_offset,
-                    total_accounts=overall_total_accounts,
-                    base_synced_accounts=synced_accounts,
-                    base_created_notes=created_notes,
-                    base_updated_notes=updated_notes,
-                )
-            processed_account_offset += len(assigned_envs)
-            synced_accounts += int(batch_result.get("synced_accounts") or 0)
-            created_notes += int(batch_result.get("created_notes") or 0)
-            updated_notes += int(batch_result.get("updated_notes") or 0)
-            total_notes += int(batch_result.get("total_notes") or 0)
+            if assigned_envs:
+                active_buckets.append((int(runner_env.id), [int(env.id) for env in assigned_envs], processed_offset))
+                processed_offset += len(assigned_envs)
 
-        return {
+        semaphore = asyncio.Semaphore(max(1, min(concurrency, len(active_buckets) or 1)))
+
+        async def run_bucket(runner_id: int, environment_ids: list[int], offset: int) -> dict:
+            await self._raise_if_sync_cancelled(cancel_check)
+            async with semaphore:
+                async with async_session() as session:
+                    service = XHSService(session)
+                    rows = list(
+                        (
+                            await session.execute(
+                                select(XHSEnvironment).where(
+                                    XHSEnvironment.id.in_([runner_id, *environment_ids])
+                                )
+                            )
+                        ).scalars().all()
+                    )
+                    rows_by_id = {int(row.id): row for row in rows}
+                    runner = rows_by_id.get(runner_id)
+                    if runner is None:
+                        raise RuntimeError(f"同步环境 {runner_id} 不存在")
+                    assigned = [rows_by_id[env_id] for env_id in environment_ids if env_id in rows_by_id]
+                    if len(assigned) != len(environment_ids):
+                        raise RuntimeError(f"同步环境 {runner_id} 的部分发布账号不存在")
+                    env_lock = await service._get_env_publish_lock(runner_id)
+                    async with env_lock:
+                        return await service._sync_account_notes_batch_locked(
+                            assigned,
+                            scrape_env=runner,
+                            limit=limit,
+                            persona=persona,
+                            progress_callback=progress_callback,
+                            cancel_check=cancel_check,
+                            runner_envs=[runner],
+                            processed_offset=offset,
+                            total_accounts=overall_total_accounts,
+                            base_synced_accounts=0,
+                            base_created_notes=0,
+                            base_updated_notes=0,
+                        )
+
+        raw_results = await asyncio.gather(
+            *(run_bucket(runner_id, environment_ids, offset) for runner_id, environment_ids, offset in active_buckets),
+            return_exceptions=True,
+        )
+        synced_accounts = 0
+        created_notes = 0
+        updated_notes = 0
+        total_notes = 0
+        failed_runners: list[dict[str, Any]] = []
+        for (runner_id, environment_ids, _), raw_result in zip(active_buckets, raw_results):
+            if isinstance(raw_result, Exception):
+                logger.warning(
+                    "并行同步主页帖子失败: runner_id=%s targets=%s error=%s",
+                    runner_id,
+                    environment_ids,
+                    raw_result,
+                )
+                failed_runners.append(
+                    {"runner_id": runner_id, "environment_ids": environment_ids, "error": str(raw_result)}
+                )
+                continue
+            synced_accounts += int(raw_result.get("synced_accounts") or 0)
+            created_notes += int(raw_result.get("created_notes") or 0)
+            updated_notes += int(raw_result.get("updated_notes") or 0)
+            total_notes += int(raw_result.get("total_notes") or 0)
+
+        result = {
             "synced_accounts": synced_accounts,
             "created_notes": created_notes,
             "updated_notes": updated_notes,
             "metric_synced_notes": 0,
             "total_notes": total_notes,
         }
+        if failed_runners:
+            result["failed_runners"] = failed_runners
+        return result
 
+    @yundeng_sync_guard("scrape_env", "homepage_posts")
     async def _sync_account_notes_for_environment_locked(
         self,
         env: XHSEnvironment,
@@ -4411,7 +4580,9 @@ class XHSService:
 
         try:
             self._active_mcp_api = mcp_api
-            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(scrape_env.id))
+            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                int(scrape_env.id), allow_fallback=False
+            )
             if active_scrape_env is not None:
                 scrape_env = active_scrape_env
             if not ws_url:
@@ -4451,6 +4622,41 @@ class XHSService:
             self._active_mcp_api = previous_mcp_api
             if mcp_pid is not None:
                 await self._stop_mcp(mcp_pid)
+
+    @classmethod
+    def _match_homepage_item_to_note(
+        cls,
+        item: dict[str, Any],
+        notes: list[XHSAccountNote],
+    ) -> tuple[XHSAccountNote | None, str | None, float | None]:
+        feed_id = str(item.get("feed_id") or "").strip()
+        if feed_id:
+            feed_matches = [note for note in notes if str(note.feed_id or "").strip() == feed_id]
+            if len(feed_matches) == 1:
+                return feed_matches[0], "feed_id", 1.0
+
+        title_key = cls._normalize_creator_identity_title(item.get("title"))
+        if not title_key:
+            return None, None, None
+        unresolved = [
+            note for note in notes
+            if not str(note.feed_id or "").strip()
+            and cls._normalize_creator_identity_title(note.title) == title_key
+        ]
+        published_at = item.get("published_at")
+        if isinstance(published_at, datetime):
+            timed = [
+                note for note in unresolved
+                if isinstance(note.published_at, datetime)
+                and abs((note.published_at.replace(tzinfo=None) - published_at.replace(tzinfo=None)).total_seconds()) <= 180
+            ]
+            if len(timed) == 1:
+                return timed[0], "homepage_title_time", 0.96
+            if len(timed) > 1:
+                return None, None, None
+        if len(unresolved) == 1:
+            return unresolved[0], "homepage_title_unique", 0.72
+        return None, None, None
 
     async def _sync_account_notes_with_api(
         self,
@@ -4562,6 +4768,14 @@ class XHSService:
         applied_feed_id_set: set[str] = set()
         touched_notes: list[XHSAccountNote] = []
         pending_cover_localizations: list[tuple[int, str, str | None, str]] = []
+        source_posts = list((await self.db.execute(
+            select(XHSPost).where(XHSPost.environment_id == env.id)
+        )).scalars().all())
+        source_posts_by_feed = {
+            str(post.feed_id or "").strip(): post
+            for post in source_posts
+            if str(post.feed_id or "").strip()
+        }
 
         async def finalize_partial_sync() -> None:
             if touched_notes:
@@ -4601,27 +4815,32 @@ class XHSService:
                 applied_feed_ids.append(feed_id)
                 applied_feed_id_set.add(feed_id)
 
-            result = await self.db.execute(
-                select(XHSAccountNote).where(
-                    and_(
-                        XHSAccountNote.environment_id == env.id,
-                        XHSAccountNote.feed_id == feed_id,
-                    )
-                )
-            )
-            note = result.scalar_one_or_none()
+            note, match_method, match_confidence = self._match_homepage_item_to_note(item, existing_notes)
             if note is None:
                 note = XHSAccountNote(
                     environment_id=env.id,
                     feed_id=feed_id,
                     ai_origin_type="",
                     status="active",
+                    identity_status="homepage_only",
+                    identity_match_method="homepage_new",
+                    identity_match_confidence=0.6,
                     first_synced_at=now,
                 )
                 self.db.add(note)
+                existing_notes.append(note)
                 created_notes += 1
             else:
                 updated_notes += 1
+
+            has_creator_metrics = note.creator_synced_at is not None
+            note.feed_id = feed_id
+            note.identity_status = "resolved"
+            note.identity_match_method = match_method or note.identity_match_method or "feed_id"
+            note.identity_match_confidence = (
+                match_confidence if match_confidence is not None else note.identity_match_confidence
+            )
+            note.homepage_synced_at = now
 
             note.account_name = env.account_name or ""
             note.profile_nickname = payload.get("profile_nickname") or env.account_name or ""
@@ -4639,19 +4858,24 @@ class XHSService:
                     note.cover_image_url,
                     pending_cover_url,
                 ))
-            note.title = item.get("title") or ""
-            note.published_at = item.get("published_at") or note.published_at
+            if not has_creator_metrics or not note.title:
+                note.title = item.get("title") or note.title or ""
+            if not has_creator_metrics or note.published_at is None:
+                note.published_at = item.get("published_at") or note.published_at
             note.status = "active"
-            if item.get("liked_count") is not None:
+            if not has_creator_metrics and item.get("liked_count") is not None:
                 note.liked_count = self._merge_metric_count(note.liked_count, item.get("liked_count"))
-            if item.get("comment_count") is not None:
+            if not has_creator_metrics and item.get("comment_count") is not None:
                 note.comment_count = self._merge_metric_count(note.comment_count, item.get("comment_count"))
-            if item.get("collected_count") is not None:
+            if not has_creator_metrics and item.get("collected_count") is not None:
                 note.collected_count = self._merge_metric_count(note.collected_count, item.get("collected_count"))
-            if item.get("share_count") is not None:
+            if not has_creator_metrics and item.get("share_count") is not None:
                 note.share_count = self._merge_metric_count(note.share_count, item.get("share_count"))
             note.sort_index = int(item.get("sort_index") or 0)
             note.last_seen_at = now
+            source_post = source_posts_by_feed.get(feed_id)
+            if source_post is not None:
+                note.source_post_id = int(source_post.id)
             touched_notes.append(note)
             await self._emit_progress(
                 progress_callback,
@@ -4681,7 +4905,10 @@ class XHSService:
         stale_notes = list((await self.db.execute(stale_stmt)).scalars().all())
         next_sort_index = len(applied_feed_ids)
         for stale_note in stale_notes:
-            if stale_note.feed_id in applied_feed_id_set:
+            stale_feed_id = str(stale_note.feed_id or "").strip()
+            if not stale_feed_id or stale_note.creator_synced_at is not None:
+                continue
+            if stale_feed_id in applied_feed_id_set:
                 continue
             stale_note.status = "offline"
             stale_note.sort_index = next_sort_index
@@ -4805,11 +5032,15 @@ class XHSService:
         note = (await self.db.execute(stmt)).scalar_one_or_none()
         if note is None:
             raise ValueError("账号帖子不存在")
+        if not str(note.feed_id or "").strip():
+            raise ValueError("该帖子尚未由主页同步补齐帖子 ID，暂不能同步详情")
 
         if self._should_skip_old_account_note_detail_sync(note):
             return note, False, True
 
         scrape_env = await self._resolve_account_scrape_environment(scrape_environment_id)
+        lease_context = yundeng_sync_coordinator.lease(int(scrape_env.id), "single_note_detail")
+        await lease_context.__aenter__()
         mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
         mcp_port = None if use_external_mcp else await self._allocate_free_port()
@@ -4818,7 +5049,9 @@ class XHSService:
 
         try:
             self._active_mcp_api = mcp_api
-            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(scrape_env.id))
+            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                int(scrape_env.id), allow_fallback=False
+            )
             if active_scrape_env is not None:
                 scrape_env = active_scrape_env
             if not ws_url:
@@ -4857,6 +5090,7 @@ class XHSService:
             self._active_mcp_api = previous_mcp_api
             if mcp_pid is not None:
                 await self._stop_mcp(mcp_pid)
+            await lease_context.__aexit__(None, None, None)
 
     async def sync_account_note_engagement_stats(
         self,
@@ -4876,6 +5110,8 @@ class XHSService:
         if publish_env is None:
             raise RuntimeError("帖子对应的发布账号环境不存在")
 
+        lease_context = yundeng_sync_coordinator.lease(int(publish_env.id), "single_note_engagement")
+        await lease_context.__aenter__()
         mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
         mcp_port = None if use_external_mcp else await self._allocate_free_port()
@@ -4884,7 +5120,9 @@ class XHSService:
 
         try:
             self._active_mcp_api = mcp_api
-            active_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(publish_env.id))
+            active_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                int(publish_env.id), allow_fallback=False
+            )
             if active_env is not None:
                 publish_env = active_env
             if not ws_url:
@@ -4908,6 +5146,84 @@ class XHSService:
             self._active_mcp_api = previous_mcp_api
             if mcp_pid is not None:
                 await self._stop_mcp(mcp_pid)
+            await lease_context.__aexit__(None, None, None)
+
+    async def _aggregate_parallel_engagement_results(
+        self,
+        *,
+        envs: list[XHSEnvironment],
+        raw_results: list[Any],
+        progress_callback: ProgressCallback | None = None,
+    ) -> dict:
+        totals: dict[str, Any] = {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 0,
+            "total_notes": 0,
+            "ambiguous_notes": 0,
+        }
+        failed_accounts: list[dict[str, Any]] = []
+        for env, raw_result in zip(envs, raw_results):
+            if isinstance(raw_result, Exception):
+                logger.warning(
+                    "并行同步创作者中心互动失败: env_id=%s account=%s error=%s",
+                    env.id,
+                    env.account_name,
+                    raw_result,
+                )
+                failed_accounts.append(
+                    {"environment_id": int(env.id), "account_name": env.account_name, "error": str(raw_result)}
+                )
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "account_engagement_failed",
+                        "detail": f"{env.account_name} 的互动数据同步失败",
+                        "account_name": env.account_name,
+                        "error": str(raw_result),
+                    },
+                )
+                continue
+            _, result = raw_result
+            for key in (
+                "synced_accounts",
+                "created_notes",
+                "updated_notes",
+                "metric_synced_notes",
+                "total_notes",
+                "ambiguous_notes",
+            ):
+                totals[key] += int(result.get(key) or 0)
+        if failed_accounts:
+            totals["failed_accounts"] = failed_accounts
+        return totals
+
+    async def sync_account_note_engagement_environment(
+        self,
+        environment_id: int,
+        *,
+        sync_run_id: int | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+        current_account_index: int = 1,
+        total_accounts: int = 1,
+    ) -> dict:
+        env = await self.get_environment(int(environment_id))
+        if env is None or env.status != "active":
+            raise RuntimeError(f"发布账号环境 {environment_id} 不存在或未启用")
+        env_lock = await self._get_env_publish_lock(int(env.id))
+        async with env_lock:
+            return await self._sync_account_note_engagements_for_environment_locked(
+                env,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check,
+                current_account_index=current_account_index,
+                total_accounts=total_accounts,
+                aggregate_synced_accounts=0,
+                aggregate_metric_synced_notes=0,
+                sync_run_id=sync_run_id,
+            )
 
     async def sync_account_note_engagements(
         self,
@@ -4917,12 +5233,15 @@ class XHSService:
         target_environment_ids: str | list[int] | tuple[int, ...] | None = None,
         sync_account_limit: int | None = None,
         runner_account_assignments: str | dict[int | str, list[int] | tuple[int, ...] | set[int] | list[str] | tuple[str, ...]] | None = None,
+        concurrency: int | None = None,
+        sync_run_id: int | None = None,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
         normalized_target_env_ids = self._normalize_account_note_sync_runner_ids(target_environment_ids)
         normalized_account_limit = self._normalize_account_note_sync_account_limit(sync_account_limit)
         normalized_runner_assignments = self._normalize_account_note_sync_runner_assignments(runner_account_assignments)
+        normalized_concurrency = self._normalize_yundeng_sync_concurrency(concurrency)
 
         envs = await self.list_environments(user)
         if environment_id is not None:
@@ -4959,6 +5278,18 @@ class XHSService:
                 "total_notes": 0,
             }
 
+        if self._should_delegate_browser_ops():
+            if len(envs) > 1:
+                return await self._delegate_account_note_engagement_sync(
+                    envs=envs,
+                    concurrency=normalized_concurrency,
+                    sync_run_id=sync_run_id,
+                    progress_callback=progress_callback,
+                    cancel_check=cancel_check,
+                )
+            result = await self.trigger_worker_sync_account_note_engagements(int(envs[0].id), sync_run_id)
+            return result
+
         await self._emit_progress(
             progress_callback,
             {
@@ -4972,34 +5303,42 @@ class XHSService:
             },
         )
 
-        synced_accounts = 0
-        metric_synced_notes = 0
-        total_notes = 0
-        for index, env in enumerate(envs, start=1):
+        if len(envs) == 1:
+            return await self.sync_account_note_engagement_environment(
+                int(envs[0].id),
+                sync_run_id=sync_run_id,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check,
+            )
+
+        semaphore = asyncio.Semaphore(max(1, min(normalized_concurrency, len(envs))))
+
+        async def run_environment(index: int, env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
             await self._raise_if_sync_cancelled(cancel_check)
-            env_lock = await self._get_env_publish_lock(int(env.id))
-            async with env_lock:
-                result = await self._sync_account_note_engagements_for_environment_locked(
-                    env,
-                    progress_callback=progress_callback,
-                    cancel_check=cancel_check,
-                    current_account_index=index,
-                    total_accounts=len(envs),
-                    aggregate_synced_accounts=synced_accounts,
-                    aggregate_metric_synced_notes=metric_synced_notes,
-                )
-            synced_accounts += int(result.get("synced_accounts") or 0)
-            metric_synced_notes += int(result.get("metric_synced_notes") or 0)
-            total_notes += int(result.get("total_notes") or 0)
+            async with semaphore:
+                async with async_session() as session:
+                    service = XHSService(session)
+                    result = await service.sync_account_note_engagement_environment(
+                        int(env.id),
+                        sync_run_id=sync_run_id,
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
+                        current_account_index=index,
+                        total_accounts=len(envs),
+                    )
+                    return env, result
 
-        return {
-            "synced_accounts": synced_accounts,
-            "created_notes": 0,
-            "updated_notes": 0,
-            "metric_synced_notes": metric_synced_notes,
-            "total_notes": total_notes,
-        }
+        raw_results = await asyncio.gather(
+            *(run_environment(index, env) for index, env in enumerate(envs, start=1)),
+            return_exceptions=True,
+        )
+        return await self._aggregate_parallel_engagement_results(
+            envs=envs,
+            raw_results=raw_results,
+            progress_callback=progress_callback,
+        )
 
+    @yundeng_sync_guard("env", "creator_engagement")
     async def _sync_account_note_engagements_for_environment_locked(
         self,
         env: XHSEnvironment,
@@ -5010,41 +5349,8 @@ class XHSService:
         total_accounts: int,
         aggregate_synced_accounts: int,
         aggregate_metric_synced_notes: int,
+        sync_run_id: int | None = None,
     ) -> dict:
-        note_stmt = (
-            select(XHSAccountNote)
-            .where(
-                and_(
-                    XHSAccountNote.environment_id == env.id,
-                    or_(XHSAccountNote.status == "active", XHSAccountNote.status.is_(None)),
-                )
-            )
-            .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
-        )
-        notes = list((await self.db.execute(note_stmt)).scalars().all())
-        total_notes = len(notes)
-        if total_notes == 0:
-            await self._emit_progress(
-                progress_callback,
-                {
-                    "phase": "account_engagement_skipped",
-                    "detail": f"{env.account_name} 暂无可同步互动的帖子",
-                    "account_name": env.account_name,
-                    "account_index": current_account_index,
-                    "account_total": total_accounts,
-                    "current": aggregate_synced_accounts + 1,
-                    "total": total_accounts,
-                    "percent": int(((aggregate_synced_accounts + 1) / total_accounts) * 100) if total_accounts > 0 else 100,
-                    "synced_accounts": aggregate_synced_accounts + 1,
-                    "metric_synced_notes": aggregate_metric_synced_notes,
-                },
-            )
-            return {
-                "synced_accounts": 1,
-                "metric_synced_notes": 0,
-                "total_notes": 0,
-            }
-
         mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
         mcp_port = None if use_external_mcp else await self._allocate_free_port()
@@ -5085,56 +5391,15 @@ class XHSService:
             )
 
             stats_rows = await self._fetch_creator_note_stats(api_base=mcp_api, env=env)
-            metric_updates = 0
-            unmatched_notes = 0
-            duplicate_title_skips = 0
-            now = utc_now_naive()
-            for note_index, note in enumerate(notes, start=1):
-                await self._raise_if_sync_cancelled(cancel_check)
-                matched = self._match_creator_note_stats(note, stats_rows)
-                if matched:
-                    note.liked_count = self._merge_metric_count(note.liked_count, matched.get("like_count"))
-                    note.comment_count = self._merge_metric_count(note.comment_count, matched.get("comment_count"))
-                    note.collected_count = self._merge_metric_count(note.collected_count, matched.get("collect_count"))
-                    note.share_count = self._merge_metric_count(note.share_count, matched.get("share_count"))
-                    note.view_count = self._merge_metric_count(note.view_count, matched.get("view_count"))
-                    note.exposure_count = self._merge_metric_count(note.exposure_count, matched.get("exposure_count"))
-                    if matched.get("cover_click_rate") is not None:
-                        note.cover_click_rate = float(matched.get("cover_click_rate") or 0.0)
-                    note.last_seen_at = now
-                    metric_updates += 1
-                else:
-                    unmatched_notes += 1
-                    target_title = (self._normalize_note_text(note.title) or "").strip()
-                    if target_title:
-                        title_count = sum(
-                            1
-                            for row in stats_rows
-                            if (self._normalize_note_text(row.get("title")) or "").strip() == target_title
-                        )
-                        if title_count > 1:
-                            duplicate_title_skips += 1
-
-                await self._emit_progress(
-                    progress_callback,
-                    {
-                        "phase": "syncing_account_engagements",
-                        "detail": f"正在同步 {env.account_name} 的互动数据 {note_index}/{total_notes}",
-                        "account_name": env.account_name,
-                        "account_index": current_account_index,
-                        "account_total": total_accounts,
-                        "current": aggregate_synced_accounts,
-                        "total": total_accounts,
-                        "percent": int(((aggregate_synced_accounts + (note_index / total_notes)) / total_accounts) * 100) if total_accounts > 0 else 100,
-                        "synced_accounts": aggregate_synced_accounts,
-                        "metric_synced_notes": aggregate_metric_synced_notes + metric_updates,
-                        "unmatched_notes": unmatched_notes,
-                        "duplicate_title_skips": duplicate_title_skips,
-                        "exported_rows": len(stats_rows),
-                    },
-                )
-
+            await self._raise_if_sync_cancelled(cancel_check)
+            import_result = await self._import_creator_note_stats_rows(
+                env,
+                stats_rows,
+                sync_run_id=sync_run_id,
+            )
             await self.db.commit()
+            metric_updates = int(import_result.get("metric_synced_notes") or 0)
+            total_notes = int(import_result.get("total_notes") or 0)
             await self._emit_progress(
                 progress_callback,
                 {
@@ -5148,17 +5413,19 @@ class XHSService:
                     "percent": int(((aggregate_synced_accounts + 1) / total_accounts) * 100) if total_accounts > 0 else 100,
                     "synced_accounts": aggregate_synced_accounts + 1,
                     "metric_synced_notes": aggregate_metric_synced_notes + metric_updates,
-                    "unmatched_notes": unmatched_notes,
-                    "duplicate_title_skips": duplicate_title_skips,
+                    "created_notes": int(import_result.get("created_notes") or 0),
+                    "updated_notes": int(import_result.get("updated_notes") or 0),
+                    "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
                     "exported_rows": len(stats_rows),
                 },
             )
             return {
                 "synced_accounts": 1,
+                "created_notes": int(import_result.get("created_notes") or 0),
+                "updated_notes": int(import_result.get("updated_notes") or 0),
                 "metric_synced_notes": metric_updates,
                 "total_notes": total_notes,
-                "unmatched_notes": unmatched_notes,
-                "duplicate_title_skips": duplicate_title_skips,
+                "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
                 "exported_rows": len(stats_rows),
             }
         finally:
@@ -5179,6 +5446,7 @@ class XHSService:
         pause_seconds_min: float | None = None,
         pause_seconds_max: float | None = None,
         max_post_age_days: int | None = None,
+        concurrency: int | None = None,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
@@ -5190,6 +5458,7 @@ class XHSService:
         normalized_pause_min = self._normalize_account_note_sync_pause_seconds(pause_seconds_min, field_name="最小暂停秒数")
         normalized_pause_max = self._normalize_account_note_sync_pause_seconds(pause_seconds_max, field_name="最大暂停秒数")
         normalized_max_post_age_days = self._normalize_account_note_max_age_days(max_post_age_days)
+        normalized_concurrency = self._normalize_yundeng_sync_concurrency(concurrency)
         if normalized_pause_min is not None and normalized_pause_max is not None and normalized_pause_max < normalized_pause_min:
             normalized_pause_min, normalized_pause_max = normalized_pause_max, normalized_pause_min
         if self._should_delegate_browser_ops() and len(normalized_runner_ids) > 1:
@@ -5225,6 +5494,7 @@ class XHSService:
                 max_post_age_days=normalized_max_post_age_days,
                 progress_callback=progress_callback,
                 cancel_check=cancel_check,
+                concurrency=normalized_concurrency,
             )
         if self._should_delegate_browser_ops():
             return await self.trigger_worker_sync_account_note_details(
@@ -5318,6 +5588,7 @@ class XHSService:
                 pause_seconds_max=normalized_pause_max,
                 progress_callback=progress_callback,
                 cancel_check=cancel_check,
+                concurrency=normalized_concurrency,
             )
         result["matched_notes"] = matched_notes
         result["skipped_notes"] = skipped_notes
@@ -5342,6 +5613,10 @@ class XHSService:
             XHSAccountNote.id.asc(),
         )
         stmt = stmt.where(or_(XHSAccountNote.status == "active", XHSAccountNote.status.is_(None)))
+        stmt = stmt.where(
+            XHSAccountNote.feed_id.is_not(None),
+            func.trim(XHSAccountNote.feed_id) != "",
+        )
         if environment_id is not None:
             stmt = stmt.where(XHSAccountNote.environment_id == environment_id)
         if target_note_ids:
@@ -5371,6 +5646,7 @@ class XHSService:
             active_notes = active_notes[:sync_limit]
         return active_notes, matched_notes, skipped_notes
 
+    @yundeng_sync_guard("scrape_env", "note_details")
     async def _sync_existing_account_note_stats_chunk_locked(
         self,
         *,
@@ -5402,7 +5678,9 @@ class XHSService:
 
         try:
             self._active_mcp_api = mcp_api
-            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(scrape_env.id))
+            active_scrape_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                int(scrape_env.id), allow_fallback=False
+            )
             if active_scrape_env is not None:
                 scrape_env = active_scrape_env
             if not ws_url:
@@ -5529,6 +5807,7 @@ class XHSService:
         pause_seconds_max: float | None = None,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
+        concurrency: int = 1,
     ) -> dict:
         if not active_notes:
             return {"total_notes": 0, "synced_notes": 0, "failed_notes": 0}
@@ -5550,19 +5829,29 @@ class XHSService:
         while any(queue_by_runner.get(int(env.id)) for env in scrape_envs):
             await self._raise_if_sync_cancelled(cancel_check)
             strategy_rounds += 1
+            round_chunks: list[tuple[int, str, list[int], int, int]] = []
+            round_offset = processed_notes
             for index, scrape_env in enumerate(scrape_envs):
                 runner_queue = queue_by_runner.get(int(scrape_env.id)) or []
                 if not runner_queue:
                     continue
-                await self._raise_if_sync_cancelled(cancel_check)
                 current_chunk = runner_queue[:chunk_size]
                 queue_by_runner[int(scrape_env.id)] = runner_queue[chunk_size:]
-                env_lock = await self._get_env_publish_lock(scrape_env.id)
+                round_chunks.append(
+                    (
+                        int(scrape_env.id),
+                        scrape_env.account_name,
+                        [int(note.id) for note in current_chunk],
+                        index + 1,
+                        round_offset,
+                    )
+                )
+                round_offset += len(current_chunk)
                 await self._emit_progress(
                     progress_callback,
                     {
                         "phase": "runner_switch",
-                        "detail": f"第 {strategy_rounds} 轮切到 {scrape_env.account_name}，准备处理 {len(current_chunk)} 条",
+                        "detail": f"第 {strategy_rounds} 轮 {scrape_env.account_name} 准备处理 {len(current_chunk)} 条",
                         "runner_id": int(scrape_env.id),
                         "runner_name": scrape_env.account_name,
                         "round": strategy_rounds,
@@ -5575,46 +5864,87 @@ class XHSService:
                         "failed_notes": total_failed,
                     },
                 )
-                try:
-                    async with env_lock:
-                        result = await self._sync_existing_account_note_stats_chunk_locked(
-                            scrape_env=scrape_env,
-                            active_notes=current_chunk,
-                            persona=persona,
-                            progress_callback=progress_callback,
-                            cancel_check=cancel_check,
-                            processed_offset=processed_notes,
-                            total_notes=len(active_notes),
-                            base_synced=total_synced,
-                            base_failed=total_failed,
-                            round_index=strategy_rounds,
-                            runner_index=index + 1,
-                            runner_count=len(scrape_envs),
+
+            semaphore = asyncio.Semaphore(max(1, min(concurrency, len(round_chunks) or 1)))
+
+            async def run_chunk(
+                runner_id: int,
+                note_ids: list[int],
+                runner_index: int,
+                offset: int,
+            ) -> dict:
+                await self._raise_if_sync_cancelled(cancel_check)
+                async with semaphore:
+                    async with async_session() as session:
+                        service = XHSService(session)
+                        runner = await session.get(XHSEnvironment, runner_id)
+                        if runner is None:
+                            raise RuntimeError(f"同步环境 {runner_id} 不存在")
+                        notes = list(
+                            (
+                                await session.execute(
+                                    select(XHSAccountNote).where(XHSAccountNote.id.in_(note_ids))
+                                )
+                            ).scalars().all()
                         )
+                        notes_by_id = {int(note.id): note for note in notes}
+                        ordered_notes = [notes_by_id[note_id] for note_id in note_ids if note_id in notes_by_id]
+                        if len(ordered_notes) != len(note_ids):
+                            raise RuntimeError(f"同步环境 {runner_id} 的部分帖子已不存在")
+                        env_lock = await service._get_env_publish_lock(runner_id)
+                        async with env_lock:
+                            return await service._sync_existing_account_note_stats_chunk_locked(
+                                scrape_env=runner,
+                                active_notes=ordered_notes,
+                                persona=persona,
+                                progress_callback=progress_callback,
+                                cancel_check=cancel_check,
+                                processed_offset=offset,
+                                total_notes=len(active_notes),
+                                base_synced=total_synced,
+                                base_failed=total_failed,
+                                round_index=strategy_rounds,
+                                runner_index=runner_index,
+                                runner_count=len(scrape_envs),
+                            )
+
+            raw_results = await asyncio.gather(
+                *(
+                    run_chunk(runner_id, note_ids, runner_index, offset)
+                    for runner_id, _, note_ids, runner_index, offset in round_chunks
+                ),
+                return_exceptions=True,
+            )
+
+            for (runner_id, runner_name, note_ids, runner_index, _), raw_result in zip(round_chunks, raw_results):
+                try:
+                    if isinstance(raw_result, Exception):
+                        raise raw_result
+                    result = raw_result
                     total_synced += int(result.get("synced_notes") or 0)
                     total_failed += int(result.get("failed_notes") or 0)
                     synced_note_ids.extend(int(item) for item in result.get("synced_note_ids") or [])
                     failed_note_ids.extend(int(item) for item in result.get("failed_note_ids") or [])
-                    processed_notes += len(current_chunk)
+                    processed_notes += len(note_ids)
                 except Exception as exc:
-                    total_failed += len(current_chunk)
-                    failed_note_ids.extend(int(note.id) for note in current_chunk)
-                    processed_notes += len(current_chunk)
+                    total_failed += len(note_ids)
+                    failed_note_ids.extend(note_ids)
+                    processed_notes += len(note_ids)
                     logger.warning(
                         "按策略同步账号帖子互动数据失败: scrape_env=%s chunk=%s error=%s",
-                        scrape_env.account_name,
-                        len(current_chunk),
+                        runner_name,
+                        len(note_ids),
                         exc,
                     )
                     await self._emit_progress(
                         progress_callback,
                         {
                             "phase": "runner_failed",
-                            "detail": f"{scrape_env.account_name} 本轮执行失败，已跳过这批任务",
-                            "runner_id": int(scrape_env.id),
-                            "runner_name": scrape_env.account_name,
+                            "detail": f"{runner_name} 本轮执行失败，已跳过这批任务",
+                            "runner_id": runner_id,
+                            "runner_name": runner_name,
                             "round": strategy_rounds,
-                            "runner_index": index + 1,
+                            "runner_index": runner_index,
                             "runner_count": len(scrape_envs),
                             "current": processed_notes,
                             "total": len(active_notes),
@@ -5623,27 +5953,25 @@ class XHSService:
                             "failed_notes": total_failed,
                         },
                     )
-                has_remaining = any(queue_by_runner.get(int(env.id)) for env in scrape_envs)
-                if has_remaining and (pause_min > 0 or pause_max > 0) and (index < len(scrape_envs) - 1 or has_remaining):
-                    await self._raise_if_sync_cancelled(cancel_check)
-                    await self._emit_progress(
-                        progress_callback,
-                        {
-                            "phase": "runner_pausing",
-                            "detail": f"{scrape_env.account_name} 已完成本轮，暂停后切换下一个账号",
-                            "runner_id": int(scrape_env.id),
-                            "runner_name": scrape_env.account_name,
-                            "round": strategy_rounds,
-                            "runner_index": index + 1,
-                            "runner_count": len(scrape_envs),
-                            "current": processed_notes,
-                            "total": len(active_notes),
-                            "percent": int((processed_notes / len(active_notes)) * 100) if active_notes else 100,
-                            "synced_notes": total_synced,
-                            "failed_notes": total_failed,
-                        },
-                    )
-                    await self._sleep_humanized(pause_min, pause_max)
+
+            has_remaining = any(queue_by_runner.get(int(env.id)) for env in scrape_envs)
+            if has_remaining and (pause_min > 0 or pause_max > 0):
+                await self._raise_if_sync_cancelled(cancel_check)
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "runner_pausing",
+                        "detail": f"第 {strategy_rounds} 轮已完成，暂停后继续下一轮",
+                        "round": strategy_rounds,
+                        "runner_count": len(scrape_envs),
+                        "current": processed_notes,
+                        "total": len(active_notes),
+                        "percent": int((processed_notes / len(active_notes)) * 100) if active_notes else 100,
+                        "synced_notes": total_synced,
+                        "failed_notes": total_failed,
+                    },
+                )
+                await self._sleep_humanized(pause_min, pause_max)
 
         return {
             "total_notes": len(active_notes),
@@ -6334,16 +6662,278 @@ class XHSService:
         if not matched:
             return False
 
-        note.liked_count = self._merge_metric_count(note.liked_count, matched.get("like_count"))
-        note.comment_count = self._merge_metric_count(note.comment_count, matched.get("comment_count"))
-        note.collected_count = self._merge_metric_count(note.collected_count, matched.get("collect_count"))
-        note.share_count = self._merge_metric_count(note.share_count, matched.get("share_count"))
-        note.view_count = self._merge_metric_count(note.view_count, matched.get("view_count"))
-        note.exposure_count = self._merge_metric_count(note.exposure_count, matched.get("exposure_count"))
-        if matched.get("cover_click_rate") is not None:
-            note.cover_click_rate = float(matched.get("cover_click_rate") or 0.0)
-        note.last_seen_at = utc_now_naive()
+        self._apply_creator_metrics(note, matched)
+        now = utc_now_naive()
+        note.creator_first_seen_at = note.creator_first_seen_at or now
+        note.creator_last_seen_at = now
+        note.creator_synced_at = now
         return True
+
+    @classmethod
+    def _normalize_creator_identity_title(cls, value: Any) -> str:
+        title = cls._normalize_note_text(value) or ""
+        return re.sub(r"\s+", " ", title).strip().casefold()
+
+    @staticmethod
+    def _creator_published_at_utc(value: Any) -> datetime | None:
+        if not isinstance(value, datetime):
+            return None
+        return aware_or_cst_naive_to_utc_naive(value)
+
+    @classmethod
+    def _prepare_creator_stats_rows(cls, stats_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        occurrences: dict[str, int] = {}
+        prepared: list[dict[str, Any]] = []
+        for fallback_index, row in enumerate(stats_rows, start=1):
+            payload = dict(row or {})
+            payload["source_row_index"] = int(payload.get("source_row_index") or fallback_index)
+            normalized_title = cls._normalize_creator_identity_title(payload.get("title"))
+            published_at_utc = cls._creator_published_at_utc(payload.get("published_at"))
+            published_part = (
+                published_at_utc.isoformat(timespec="seconds")
+                if published_at_utc
+                else str(payload.get("published_at_raw") or "").strip()
+            )
+            base = f"{normalized_title}|{published_part}"
+            occurrence = occurrences.get(base, 0) + 1
+            occurrences[base] = occurrence
+            payload["normalized_title"] = normalized_title
+            payload["published_at_utc"] = published_at_utc
+            payload["source_key"] = hashlib.sha256(f"{base}|{occurrence}".encode("utf-8")).hexdigest()
+            prepared.append(payload)
+        return prepared
+
+    @classmethod
+    def _match_creator_row_to_note(
+        cls,
+        row: dict[str, Any],
+        notes: list[XHSAccountNote],
+        *,
+        used_note_ids: set[int] | None = None,
+    ) -> tuple[XHSAccountNote | None, str | None, float | None, bool]:
+        used_note_ids = used_note_ids or set()
+        available = [note for note in notes if not note.id or int(note.id) not in used_note_ids]
+        note_id = str(row.get("note_id") or "").strip()
+        if note_id:
+            direct = [note for note in available if str(note.feed_id or "").strip() == note_id]
+            if len(direct) == 1:
+                return direct[0], "feed_id", 1.0, False
+            if len(direct) > 1:
+                return None, None, None, True
+
+        source_key = str(row.get("source_key") or "").strip()
+        if source_key:
+            keyed = [note for note in available if str(note.creator_identity_key or "").strip() == source_key]
+            if len(keyed) == 1:
+                return keyed[0], "creator_key", 1.0, False
+            if len(keyed) > 1:
+                return None, None, None, True
+
+        normalized_title = str(row.get("normalized_title") or "").strip()
+        if not normalized_title:
+            return None, None, None, False
+        title_matches = [
+            note for note in available
+            if cls._normalize_creator_identity_title(note.title) == normalized_title
+        ]
+        all_title_matches = [
+            note for note in notes
+            if cls._normalize_creator_identity_title(note.title) == normalized_title
+        ]
+        published_at_utc = row.get("published_at_utc")
+        if isinstance(published_at_utc, datetime):
+            timed_matches = [
+                note for note in title_matches
+                if isinstance(note.published_at, datetime)
+                and abs((note.published_at.replace(tzinfo=None) - published_at_utc).total_seconds()) <= 180
+            ]
+            if len(timed_matches) == 1:
+                return timed_matches[0], "title_time", 0.96, False
+            if len(timed_matches) > 1:
+                return None, None, None, True
+
+        if len(title_matches) == 1:
+            return title_matches[0], "title_unique", 0.72, False
+        if len(title_matches) > 1:
+            return None, None, None, True
+        if all_title_matches:
+            return None, None, None, True
+        return None, None, None, False
+
+    @staticmethod
+    def _apply_creator_metrics(note: XHSAccountNote, row: dict[str, Any]) -> None:
+        metric_fields = {
+            "like_count": "liked_count",
+            "comment_count": "comment_count",
+            "collect_count": "collected_count",
+            "share_count": "share_count",
+            "view_count": "view_count",
+            "exposure_count": "exposure_count",
+        }
+        for source, target in metric_fields.items():
+            value = row.get(source)
+            if value is not None:
+                setattr(note, target, max(0, int(value)))
+        if row.get("cover_click_rate") is not None:
+            note.cover_click_rate = max(0.0, float(row["cover_click_rate"]))
+
+    async def _import_creator_note_stats_rows(
+        self,
+        env: XHSEnvironment,
+        stats_rows: list[dict[str, Any]],
+        *,
+        sync_run_id: int | None = None,
+    ) -> dict[str, int]:
+        prepared_rows = self._prepare_creator_stats_rows(stats_rows)
+        if sync_run_id is not None:
+            await self.db.execute(
+                delete(XHSCreatorSyncRow).where(
+                    and_(
+                        XHSCreatorSyncRow.sync_run_id == sync_run_id,
+                        XHSCreatorSyncRow.environment_id == env.id,
+                    )
+                )
+            )
+
+        notes = list((await self.db.execute(
+            select(XHSAccountNote)
+            .where(XHSAccountNote.environment_id == env.id)
+            .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
+        )).scalars().all())
+        posts = list((await self.db.execute(
+            select(XHSPost).where(XHSPost.environment_id == env.id)
+        )).scalars().all())
+        posts_by_feed = {
+            str(post.feed_id or "").strip(): post
+            for post in posts
+            if str(post.feed_id or "").strip()
+        }
+        posts_by_title: dict[str, list[XHSPost]] = {}
+        for post in posts:
+            title_key = self._normalize_creator_identity_title(post.title)
+            if title_key:
+                posts_by_title.setdefault(title_key, []).append(post)
+
+        now = utc_now_naive()
+        used_note_ids: set[int] = set()
+        created_notes = 0
+        updated_notes = 0
+        ambiguous_notes = 0
+        metric_synced_notes = 0
+        next_sort_index = max((int(note.sort_index or 0) for note in notes), default=-1) + 1
+
+        for row in prepared_rows:
+            note, match_method, confidence, is_ambiguous = self._match_creator_row_to_note(
+                row,
+                notes,
+                used_note_ids=used_note_ids,
+            )
+            was_created = note is None
+            if note is None:
+                feed_id = str(row.get("note_id") or "").strip() or None
+                note = XHSAccountNote(
+                    environment_id=env.id,
+                    account_name=env.account_name or "",
+                    profile_nickname=env.account_name or "",
+                    feed_id=feed_id,
+                    title=str(row.get("title") or ""),
+                    ai_origin_type="",
+                    status="active",
+                    identity_status="ambiguous" if is_ambiguous else ("resolved" if feed_id else "creator_only"),
+                    identity_match_method="creator_ambiguous" if is_ambiguous else ("feed_id" if feed_id else "creator_new"),
+                    identity_match_confidence=0.0 if is_ambiguous else (1.0 if feed_id else 0.6),
+                    sort_index=next_sort_index,
+                    first_synced_at=now,
+                )
+                next_sort_index += 1
+                self.db.add(note)
+                notes.append(note)
+                created_notes += 1
+                if is_ambiguous:
+                    ambiguous_notes += 1
+            else:
+                updated_notes += 1
+                if row.get("note_id") and not str(note.feed_id or "").strip():
+                    note.feed_id = str(row["note_id"]).strip()
+                if str(note.feed_id or "").strip():
+                    note.identity_status = "resolved"
+                elif note.identity_status != "ambiguous":
+                    note.identity_status = "creator_only"
+                note.identity_match_method = match_method or note.identity_match_method
+                note.identity_match_confidence = confidence if confidence is not None else note.identity_match_confidence
+
+            if not note.creator_identity_key:
+                note.creator_identity_key = str(row.get("source_key") or "") or None
+            note.account_name = env.account_name or note.account_name or ""
+            note.profile_nickname = note.profile_nickname or env.account_name or ""
+            note.title = str(row.get("title") or note.title or "")
+            published_at_utc = row.get("published_at_utc")
+            if isinstance(published_at_utc, datetime):
+                note.published_at = published_at_utc
+            note.creator_published_at_raw = str(row.get("published_at_raw") or "") or None
+            note.creator_first_seen_at = note.creator_first_seen_at or now
+            note.creator_last_seen_at = now
+            note.creator_synced_at = now
+            note.status = "active"
+            self._apply_creator_metrics(note, row)
+            metric_synced_notes += 1
+
+            source_post = posts_by_feed.get(str(note.feed_id or "").strip())
+            if source_post is None:
+                title_posts = posts_by_title.get(self._normalize_creator_identity_title(note.title), [])
+                if (
+                    len(title_posts) == 1
+                    and isinstance(note.published_at, datetime)
+                    and isinstance(title_posts[0].published_at, datetime)
+                    and abs((title_posts[0].published_at.replace(tzinfo=None) - note.published_at.replace(tzinfo=None)).total_seconds()) <= 180
+                ):
+                    source_post = title_posts[0]
+            if source_post is not None:
+                note.source_post_id = int(source_post.id)
+
+            await self.db.flush()
+            if note.id:
+                used_note_ids.add(int(note.id))
+            metrics = {
+                key: row.get(key)
+                for key in (
+                    "exposure_count",
+                    "view_count",
+                    "cover_click_rate",
+                    "like_count",
+                    "comment_count",
+                    "collect_count",
+                    "share_count",
+                )
+            }
+            self.db.add(XHSCreatorSyncRow(
+                sync_run_id=sync_run_id,
+                environment_id=env.id,
+                matched_note_id=note.id,
+                source_row_index=int(row.get("source_row_index") or 0),
+                source_key=str(row.get("source_key") or ""),
+                title=str(row.get("title") or ""),
+                published_at=row.get("published_at_utc"),
+                published_at_raw=str(row.get("published_at_raw") or "") or None,
+                metrics=metrics,
+                raw_payload=dict(row.get("raw_payload") or {}),
+                match_status="ambiguous" if is_ambiguous else ("created" if was_created else "matched"),
+                match_method=note.identity_match_method,
+                match_confidence=note.identity_match_confidence,
+                message="存在同标题候选，已保留为待补 ID 帖子" if is_ambiguous else None,
+            ))
+
+        await self.db.flush()
+        total_notes = int((await self.db.execute(
+            select(func.count(XHSAccountNote.id)).where(XHSAccountNote.environment_id == env.id)
+        )).scalar_one() or 0)
+        return {
+            "created_notes": created_notes,
+            "updated_notes": updated_notes,
+            "ambiguous_notes": ambiguous_notes,
+            "metric_synced_notes": metric_synced_notes,
+            "total_notes": total_notes,
+        }
 
     async def _fetch_creator_note_stats(
         self,
@@ -6417,26 +7007,35 @@ class XHSService:
             if request_status == "received":
                 received_request = sms_request
             elif request_status == "waiting":
-                async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=60.0)) as client:
-                    resp = await client.post(
-                        f"{api_base}/api/v1/login/phone/request-code",
-                        json={"phone_number": phone_number},
-                    )
-                payload = resp.json() if resp.content else {}
-                if resp.status_code != 200:
-                    raise RuntimeError(
-                        f"触发小红书发送验证码失败: HTTP {resp.status_code} "
-                        f"{self._mcp_error_detail(payload)}"
-                    )
-                if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-                    raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
-                logger.info(
-                    "小红书第一条验证码已触发发送: env_id=%s request_id=%s elapsed_ms=%s",
-                    getattr(env, "id", None),
-                    request_id,
-                    round((time.monotonic() - flow_started_at) * 1000),
+                # Start both the exact-SIM order poll and the same-device SMS
+                # library fallback before asking Xiaohongshu to send the code.
+                sms_wait_task = asyncio.create_task(
+                    self._wait_open_sms_code_request(request_id, initial_request=sms_request)
                 )
-                received_request = await self._wait_open_sms_code_request(request_id)
+                try:
+                    await asyncio.sleep(0)
+                    async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=60.0)) as client:
+                        resp = await client.post(
+                            f"{api_base}/api/v1/login/phone/request-code",
+                            json={"phone_number": phone_number},
+                        )
+                    payload = resp.json() if resp.content else {}
+                    if resp.status_code != 200:
+                        raise RuntimeError(
+                            f"触发小红书发送验证码失败: HTTP {resp.status_code} "
+                            f"{self._mcp_error_detail(payload)}"
+                        )
+                    if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+                        raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
+                    logger.info(
+                        "小红书第一条验证码已触发发送: env_id=%s request_id=%s elapsed_ms=%s",
+                        getattr(env, "id", None),
+                        request_id,
+                        round((time.monotonic() - flow_started_at) * 1000),
+                    )
+                    received_request = await sms_wait_task
+                finally:
+                    await self._stop_background_task(sms_wait_task)
             else:
                 raise RuntimeError(f"验证码请求创建后状态异常: {request_status or 'unknown'}")
 
@@ -6570,21 +7169,168 @@ class XHSService:
             raise RuntimeError("验证码中台查询响应结构异常")
         return sms_request
 
-    async def _wait_open_sms_code_request(self, request_id: str) -> dict[str, Any]:
+    async def _wait_open_sms_code_request(
+        self,
+        request_id: str,
+        *,
+        initial_request: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+        request_context = dict(initial_request or {})
+        admin_token = ""
+        fallback_enabled = bool(str(request_context.get("deviceId") or "").strip())
+        if fallback_enabled:
+            try:
+                admin_token = await self._get_phone_cloud_admin_token()
+            except Exception as exc:
+                fallback_enabled = False
+                logger.warning(
+                    "同设备双卡验证码监听未启用，继续使用精确卡槽订单: request_id=%s error=%s",
+                    request_id,
+                    exc,
+                )
+        ignored_non_xhs_exact_message = False
         while True:
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 raise RuntimeError("等待小红书验证码超时")
-            sms_request = await self._get_open_sms_code_request(request_id)
+            if fallback_enabled:
+                exact_result, fallback_result = await asyncio.gather(
+                    self._get_open_sms_code_request(request_id),
+                    self._find_same_device_xhs_sms(request_context, admin_token),
+                    return_exceptions=True,
+                )
+                if isinstance(exact_result, BaseException):
+                    raise exact_result
+                sms_request = exact_result
+                if isinstance(fallback_result, BaseException):
+                    logger.warning(
+                        "查询同设备双卡短信失败，继续等待精确卡槽订单: request_id=%s error=%s",
+                        request_id,
+                        fallback_result,
+                    )
+                    fallback_result = None
+            else:
+                sms_request = await self._get_open_sms_code_request(request_id)
+                fallback_result = None
             status = str(sms_request.get("status") or "").strip()
             if status == "received":
-                return sms_request
+                if self._is_xhs_code_message(sms_request):
+                    return sms_request
+                if not ignored_non_xhs_exact_message:
+                    logger.warning(
+                        "精确卡槽订单先命中非小红书短信，改由同设备双卡监听继续等待: request_id=%s sender=%s",
+                        request_id,
+                        sms_request.get("sender"),
+                    )
+                    ignored_non_xhs_exact_message = True
+            if isinstance(fallback_result, dict):
+                await self._cancel_open_sms_code_request(request_id)
+                logger.info(
+                    "小红书验证码由同设备双卡监听命中: request_id=%s device_id=%s slot_index=%s subscription_id=%s",
+                    request_id,
+                    fallback_result.get("deviceId"),
+                    fallback_result.get("slotIndex"),
+                    fallback_result.get("subscriptionId"),
+                )
+                return fallback_result
             if status in {"expired", "cancelled", "failed"}:
                 raise RuntimeError(f"验证码请求未收到验证码: {status}")
-            if status != "waiting":
+            if status not in {"waiting", "received"}:
                 raise RuntimeError(f"验证码请求状态异常: {status or 'unknown'}")
             await asyncio.sleep(min(SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS, remaining))
+
+    async def _find_same_device_xhs_sms(
+        self,
+        request_context: dict[str, Any],
+        admin_token: str,
+    ) -> dict[str, Any] | None:
+        """Find one unambiguous XHS code on either SIM after the order started."""
+        device_id = str(request_context.get("deviceId") or "").strip()
+        started_at = self._iso_time_seconds(request_context.get("startedAt") or request_context.get("createdAt"))
+        expires_at = self._iso_time_seconds(request_context.get("expiresAt"))
+        if not device_id or started_at is None:
+            return None
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(
+                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/sms-library",
+                headers={"Authorization": f"Bearer {admin_token}"},
+                params={"deviceId": device_id, "box": "inbox", "limit": 100},
+            )
+        data = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code} {str(data)[:200]}")
+        messages = data.get("messages") if isinstance(data, dict) else None
+        if not isinstance(messages, list):
+            return None
+
+        candidates: list[tuple[float, dict[str, Any]]] = []
+        for message in messages:
+            if not isinstance(message, dict) or str(message.get("deviceId") or "") != device_id:
+                continue
+            message_time = self._iso_time_seconds(
+                message.get("messageAt") or message.get("receivedAt") or message.get("createdAt")
+            )
+            if message_time is None or message_time < started_at - 1.0:
+                continue
+            if expires_at is not None and message_time > expires_at:
+                continue
+            if not self._is_xhs_code_message(message):
+                continue
+            candidates.append((message_time, message))
+
+        if not candidates:
+            return None
+        codes = {str(message.get("code") or "").strip() for _, message in candidates}
+        if len(codes) != 1:
+            # Two different XHS codes on the same dual-SIM phone cannot be
+            # safely attributed without the slot mapping.
+            return None
+
+        _, message = max(candidates, key=lambda item: item[0])
+        return {
+            "requestId": str(request_context.get("requestId") or request_context.get("request_id") or ""),
+            "status": "received",
+            "code": str(message.get("code") or "").strip(),
+            "sender": str(message.get("address") or message.get("sender") or ""),
+            "body": str(message.get("body") or ""),
+            "platform": "小红书",
+            "deviceId": device_id,
+            "slotIndex": message.get("slotIndex"),
+            "subscriptionId": message.get("subscriptionId"),
+            "matchedAt": message.get("messageAt") or message.get("receivedAt") or "",
+            "matchSource": "same_device_all_sims",
+        }
+
+    @staticmethod
+    def _iso_time_seconds(value: Any) -> float | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _is_xhs_code_message(message: dict[str, Any]) -> bool:
+        code = str(message.get("code") or "").strip()
+        if not re.fullmatch(r"\d{4,8}", code):
+            return False
+        body = str(message.get("body") or "")
+        sender = str(message.get("address") or message.get("sender") or "")
+        return "小红书" in f"{body} {sender}"
+
+    @staticmethod
+    async def _stop_background_task(task: asyncio.Task[Any] | None) -> None:
+        if task is None or task.done():
+            return
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
     async def _cancel_open_sms_code_request(self, request_id: str) -> None:
         path = f"/api/v1/open/sms-code-requests/{request_id}/cancel"
@@ -6620,12 +7366,14 @@ class XHSService:
         xhs_account = str(getattr(env, "account_name", "") or "").strip()
         if not xhs_account:
             raise RuntimeError("验证码已提交但未登录，当前环境未配置小红书账号名，无法下发二维码扫码任务")
+        xhs_account_id = str(getattr(env, "xhs_account_id", "") or "").strip()
 
         # The post-scan verification SMS is sent automatically as soon as the
         # phone confirms the QR login. Arm the receiver before dispatching the
         # phone task so a fast device cannot click before an activation exists.
         secondary_request_id = ""
         secondary_code_consumed = False
+        secondary_sms_wait_task: asyncio.Task[dict[str, Any]] | None = None
         try:
             secondary_request = await self._create_open_sms_code_request(
                 phone_number,
@@ -6647,12 +7395,20 @@ class XHSService:
                 round((time.monotonic() - qr_started_at) * 1000),
             )
 
+            # Start listening to both SIMs before the phone opens the QR image.
+            secondary_sms_wait_task = asyncio.create_task(
+                self._wait_open_sms_code_request(
+                    secondary_request_id,
+                    initial_request=secondary_request,
+                )
+            )
+            await asyncio.sleep(0)
+
             xhs_app_slot = self._infer_xhs_app_slot(env)
             task = await self._create_phone_cloud_xhs_qr_task(
-                phone_number,
                 xhs_account,
                 qr_image,
-                device_id=self._extract_sms_activation_device_id(activation) or None,
+                xhs_account_id=xhs_account_id or None,
                 xhs_app_slot=xhs_app_slot,
             )
             task_id = str(task.get("taskId") or task.get("task_id") or "").strip()
@@ -6679,6 +7435,7 @@ class XHSService:
                 phone_number,
                 secondary_request_id,
                 initial_request=secondary_request,
+                sms_wait_task=secondary_sms_wait_task,
             )
             logger.info(
                 "小红书二维码登录后置验证完成: env_id=%s request_id=%s task_id=%s secondary_code_used=%s elapsed_ms=%s",
@@ -6689,6 +7446,7 @@ class XHSService:
                 round((time.monotonic() - qr_started_at) * 1000),
             )
         finally:
+            await self._stop_background_task(secondary_sms_wait_task)
             if secondary_request_id and not secondary_code_consumed:
                 await self._cancel_open_sms_code_request(secondary_request_id)
 
@@ -6699,6 +7457,7 @@ class XHSService:
         request_id: str,
         *,
         initial_request: dict[str, Any] | None = None,
+        sms_wait_task: asyncio.Task[dict[str, Any]] | None = None,
     ) -> bool:
         """Finish either direct QR login or the automatically sent second SMS."""
         deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
@@ -6708,6 +7467,24 @@ class XHSService:
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 raise RuntimeError("扫码后等待登录成功或二次验证码超时")
+
+            if sms_wait_task is not None and not sms_wait_task.done():
+                try:
+                    login_status = await self._get_mcp_login_status(api_base)
+                except Exception as exc:
+                    logger.warning(
+                        "扫码后二次验证登录态查询失败，双卡监听继续运行: request_id=%s error=%s",
+                        request_id,
+                        exc,
+                    )
+                    login_status = {}
+                if bool(login_status.get("is_logged_in")):
+                    logger.info("小红书扫码后直接登录成功，无需二次验证码: request_id=%s", request_id)
+                    return False
+                await asyncio.sleep(min(SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS, remaining))
+                continue
+            if sms_wait_task is not None:
+                sms_request = sms_wait_task.result()
 
             current_status = str((sms_request or {}).get("status") or "").strip()
             if sms_request is None or current_status == "waiting":
@@ -6796,19 +7573,17 @@ class XHSService:
 
     async def _create_phone_cloud_xhs_qr_task(
         self,
-        phone_number: str,
         xhs_account: str,
         qr_image_data_url: str,
         *,
-        device_id: str | None = None,
+        xhs_account_id: str | None = None,
         xhs_app_slot: str | None = None,
     ) -> dict[str, Any]:
         admin_token = await self._get_phone_cloud_admin_token()
         target = await self._resolve_phone_cloud_xhs_target(
-            phone_number,
             xhs_account,
             admin_token,
-            device_id=device_id,
+            xhs_account_id=xhs_account_id,
             xhs_app_slot=xhs_app_slot,
         )
         payload = {
@@ -6917,11 +7692,10 @@ class XHSService:
 
     async def _resolve_phone_cloud_xhs_target(
         self,
-        phone_number: str,
         xhs_account: str,
         admin_token: str,
         *,
-        device_id: str | None = None,
+        xhs_account_id: str | None = None,
         xhs_app_slot: str | None = None,
     ) -> dict[str, str]:
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -6936,21 +7710,15 @@ class XHSService:
         if not isinstance(devices, list):
             raise RuntimeError("手机云控设备列表响应结构异常")
 
-        normalized_phone = self._normalize_cn_phone_number(phone_number)
-        candidates = []
+        normalized_account_id = str(xhs_account_id or "").strip()
+        id_candidates: list[dict[str, str]] = []
+        name_candidates: list[dict[str, str]] = []
+        name_candidates_without_id: list[dict[str, str]] = []
         for device in devices:
             if not isinstance(device, dict):
                 continue
             current_id = str(device.get("deviceId") or "").strip()
-            if device_id and current_id != device_id:
-                continue
-            sims = device.get("sims") if isinstance(device.get("sims"), list) else []
-            if not any(
-                isinstance(sim, dict)
-                and sim.get("enabled") is not False
-                and self._normalize_cn_phone_number(str(sim.get("phoneNumber") or "")) == normalized_phone
-                for sim in sims
-            ):
+            if not current_id:
                 continue
             accounts = device.get("xhsAccounts") if isinstance(device.get("xhsAccounts"), list) else []
             for account in accounts:
@@ -6958,17 +7726,45 @@ class XHSService:
                     continue
                 slot = str(account.get("appSlot") or "").strip()
                 account_name = str(account.get("accountName") or "").strip()
-                if account_name != xhs_account:
-                    continue
+                account_id = str(
+                    account.get("xhsAccountId")
+                    or account.get("accountId")
+                    or account.get("xhs_account_id")
+                    or ""
+                ).strip()
                 if xhs_app_slot in {"app1", "app2"} and slot != xhs_app_slot:
                     continue
-                candidates.append({"deviceId": current_id, "xhsAppSlot": slot})
+                candidate = {"deviceId": current_id, "xhsAppSlot": slot}
+                if normalized_account_id and account_id == normalized_account_id:
+                    id_candidates.append(candidate)
+                if account_name == xhs_account:
+                    name_candidates.append(candidate)
+                    if not account_id:
+                        name_candidates_without_id.append(candidate)
+
+        if normalized_account_id and id_candidates:
+            candidates = id_candidates
+            match_field = "小红书ID"
+            match_value = normalized_account_id
+        elif normalized_account_id:
+            # Older phone-cloud records do not expose account IDs yet. Allow an
+            # exact-name fallback only for those legacy records; never fall back
+            # to a record carrying a different explicit ID.
+            candidates = name_candidates_without_id
+            match_field = "小红书账号名"
+            match_value = xhs_account
+        else:
+            candidates = name_candidates
+            match_field = "小红书账号名"
+            match_value = xhs_account
 
         if not candidates:
-            suffix = "指定设备" if device_id else "手机号对应设备"
-            raise RuntimeError(f"{suffix}未配置小红书账号“{xhs_account}”对应的应用槽位，请先在手机云控配置 app1/app2 账号映射")
+            raise RuntimeError(
+                f"所有扫码设备中均未配置{match_field}“{match_value}”对应的应用槽位，"
+                "请先在手机云控配置 app1/app2 账号映射"
+            )
         if len(candidates) > 1:
-            raise RuntimeError(f"手机号 {phone_number} 对应多个同名小红书账号槽位，无法安全选择扫码手机")
+            raise RuntimeError(f"{match_field}“{match_value}”对应多个应用槽位，无法安全选择扫码手机")
         return candidates[0]
 
     @staticmethod
@@ -6991,6 +7787,16 @@ class XHSService:
                     return value
         return ""
 
+    @staticmethod
+    def _find_sms_command(payload: dict[str, Any] | None, command_id: str) -> dict[str, Any] | None:
+        items = payload.get("items") if isinstance(payload, dict) else None
+        if not isinstance(items, list):
+            return None
+        target_id = str(command_id or "").strip()
+        for item in items:
+            if isinstance(item, dict) and str(item.get("command_id") or item.get("commandId") or "").strip() == target_id:
+                return item
+        return None
 
     def _parse_creator_stats_excel(self, content: bytes) -> list[dict[str, Any]]:
         try:
@@ -7024,24 +7830,39 @@ class XHSService:
             return None
 
         normalized: list[dict[str, Any]] = []
-        for raw_row in rows[header_index + 1:]:
+        for source_row_index, raw_row in enumerate(rows[header_index + 1:], start=header_index + 2):
             title = self._normalize_note_text(pick(raw_row, "笔记标题", "标题")) or ""
             if not title:
                 continue
             published_at_value = pick(raw_row, "首次发布时间", "发布时间")
+            note_id_value = self._normalize_note_text(
+                pick(raw_row, "笔记ID", "笔记 ID", "笔记id", "笔记Id", "笔记链接", "笔记地址")
+            ) or ""
+            note_id_match = re.search(r"/explore/([a-zA-Z0-9_-]+)", note_id_value)
+            note_id = note_id_match.group(1) if note_id_match else note_id_value
+            metrics = {
+                "exposure_count": self._safe_optional_int(pick(raw_row, "曝光", "曝光量")),
+                "view_count": self._safe_optional_int(pick(raw_row, "观看", "观看量", "浏览", "浏览量")),
+                "cover_click_rate": self._safe_optional_rate(pick(raw_row, "封面点击率")),
+                "like_count": self._safe_optional_int(pick(raw_row, "点赞", "点赞量")),
+                "comment_count": self._safe_optional_int(pick(raw_row, "评论", "评论量")),
+                "collect_count": self._safe_optional_int(pick(raw_row, "收藏", "收藏量")),
+                "share_count": self._safe_optional_int(pick(raw_row, "分享", "转发", "分享量", "转发量")),
+            }
             normalized.append(
                 {
-                    "note_id": "",
+                    "source_row_index": source_row_index,
+                    "note_id": note_id,
                     "title": title,
                     "published_at_raw": self._normalize_note_text(published_at_value) or "",
                     "published_at": self._parse_creator_stats_published_at(published_at_value),
-                    "exposure_count": self._safe_int(pick(raw_row, "曝光", "曝光量")),
-                    "view_count": self._safe_int(pick(raw_row, "观看", "观看量", "浏览", "浏览量")),
-                    "cover_click_rate": self._safe_rate(pick(raw_row, "封面点击率")),
-                    "like_count": self._safe_int(pick(raw_row, "点赞", "点赞量")),
-                    "comment_count": self._safe_int(pick(raw_row, "评论", "评论量")),
-                    "collect_count": self._safe_int(pick(raw_row, "收藏", "收藏量")),
-                    "share_count": self._safe_int(pick(raw_row, "分享", "转发", "分享量", "转发量")),
+                    **metrics,
+                    "raw_payload": {
+                        "note_id": note_id,
+                        "title": title,
+                        "published_at_raw": self._normalize_note_text(published_at_value) or "",
+                        **metrics,
+                    },
                 }
             )
         return normalized
@@ -7091,6 +7912,36 @@ class XHSService:
             numeric = float(raw)
         except ValueError:
             return 0.0
+        if not is_percent and 0 < numeric <= 1:
+            numeric *= 100.0
+        return round(numeric, 4)
+
+    @classmethod
+    def _safe_optional_int(cls, value: Any) -> int | None:
+        if value is None or str(value).strip() in {"", "-", "--"}:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int, float)):
+            return int(round(float(value)))
+        raw = str(value).replace(",", "").strip()
+        try:
+            return int(round(float(raw)))
+        except ValueError:
+            return None
+
+    @classmethod
+    def _safe_optional_rate(cls, value: Any) -> float | None:
+        if value is None or str(value).strip() in {"", "-", "--"}:
+            return None
+        raw = str(value).strip().replace(",", "")
+        is_percent = raw.endswith("%")
+        if is_percent:
+            raw = raw[:-1].strip()
+        try:
+            numeric = float(raw)
+        except ValueError:
+            return None
         if not is_percent and 0 < numeric <= 1:
             numeric *= 100.0
         return round(numeric, 4)
@@ -8274,9 +9125,27 @@ class XHSService:
             return False
 
     async def _allocate_free_port(self) -> int:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            return int(s.getsockname()[1])
+        for _ in range(50):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", 0))
+                port = int(s.getsockname()[1])
+            with self._mcp_port_guard:
+                stale_before = time.monotonic() - 600
+                for stale_port, reserved_at in list(self._reserved_mcp_ports.items()):
+                    if reserved_at < stale_before:
+                        self._reserved_mcp_ports.pop(stale_port, None)
+                if port in self._reserved_mcp_ports:
+                    continue
+                self._reserved_mcp_ports[port] = time.monotonic()
+                return port
+        raise RuntimeError("无法为小红书 MCP 分配独立端口")
+
+    @classmethod
+    def _release_reserved_mcp_port(cls, port: int | None) -> None:
+        if not port:
+            return
+        with cls._mcp_port_guard:
+            cls._reserved_mcp_ports.pop(int(port), None)
 
     async def _start_mcp(self, ws_url: str, port: int) -> Optional[int]:
         """启动 xhs-mcp 进程"""
@@ -8298,11 +9167,15 @@ class XHSService:
                 "-port", f":{port}",
                 env=env,
             )
+            with self._mcp_port_guard:
+                self._mcp_ports_by_pid[int(proc.pid)] = int(port)
             return proc.pid
         except FileNotFoundError:
+            self._release_reserved_mcp_port(port)
             logger.error(f"启动 xhs-mcp 失败: 未找到可执行文件 {XHS_MCP_BIN}，请配置 XHS_MCP_BIN_PATH")
             return None
         except Exception as e:
+            self._release_reserved_mcp_port(port)
             logger.error(f"启动 xhs-mcp 失败: {e}")
             return None
 
@@ -8318,6 +9191,10 @@ class XHSService:
             os.kill(pid, signal.SIGTERM)
         except Exception as e:
             logger.warning(f"停止 xhs-mcp 失败: {e}")
+        finally:
+            with self._mcp_port_guard:
+                port = self._mcp_ports_by_pid.pop(int(pid), None)
+            self._release_reserved_mcp_port(port)
 
     async def _call_publish_api(
         self, title, content, images, tags, is_original, visibility, api_base: str | None = None

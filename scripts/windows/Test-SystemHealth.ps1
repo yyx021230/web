@@ -25,6 +25,8 @@ try {
         if ($drive -and (($drive.Used + $drive.Free) -gt 0)) {
             $usedPercent = [math]::Round(100 * $drive.Used / ($drive.Used + $drive.Free), 1)
             $status = if ($usedPercent -ge $DiskCriticalPercent) { "critical" } elseif ($usedPercent -ge $DiskWarningPercent) { "warning" } else { "ok" }
+            if ($driveName -eq "C" -and $drive.Free -lt 20GB) { $status = "critical" }
+            elseif ($driveName -eq "C" -and $drive.Free -lt 35GB -and $status -eq "ok") { $status = "warning" }
             Add-Check "disk_$driveName" $status $usedPercent "Disk ${driveName}: ${usedPercent}% used"
         }
     }
@@ -44,13 +46,42 @@ try {
     }
 
     try {
-        $connectionsRaw = docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM pg_stat_activity;"'
+        $postgresContainer = "$(docker compose ps -q postgres | Select-Object -Last 1)".Trim()
+        if (-not $postgresContainer) { throw "PostgreSQL container is not running" }
+        $databaseUser = "$(docker exec $postgresContainer printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
+        $databaseName = "$(docker exec $postgresContainer printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
+        if (-not $databaseUser -or -not $databaseName) { throw "Unable to resolve PostgreSQL health-check credentials" }
+        $connectionsRaw = docker exec $postgresContainer psql -U $databaseUser -d $databaseName -Atc "SELECT count(*) FROM pg_stat_activity;"
         if ($LASTEXITCODE -ne 0) { throw "PostgreSQL connection query failed" }
         $connections = [int]($connectionsRaw | Select-Object -Last 1)
         $status = if ($connections -ge $DatabaseConnectionWarning) { "warning" } else { "ok" }
         Add-Check "database_connections" $status $connections "PostgreSQL active connections"
     } catch {
         Add-Check "database_connections" "critical" $null $_.Exception.Message
+    }
+
+    try {
+        $activeTasksRaw = docker exec $postgresContainer psql -U $databaseUser -d $databaseName -Atc "SELECT count(*) FROM ai_tasks WHERE status IN ('queued','processing');"
+        if ($LASTEXITCODE -ne 0) { throw "AI active-task query failed" }
+        $activeTasks = [int]($activeTasksRaw | Select-Object -Last 1)
+        Add-Check "ai_active_tasks" "ok" $activeTasks "Database queued/processing AI tasks"
+    } catch {
+        Add-Check "ai_active_tasks" "critical" $null $_.Exception.Message
+    }
+
+    try {
+        $otherTasksSql = @"
+SELECT
+  (SELECT count(*) FROM dify_tasks WHERE status IN ('pending','running'))
+  + (SELECT count(*) FROM xhs_account_sync_runs WHERE status IN ('queued','running','cancelling'))
+  + (SELECT count(*) FROM xhs_schedule_run_logs WHERE status = 'running' AND started_at >= now() - interval '12 hours');
+"@
+        $otherTasksRaw = docker exec $postgresContainer psql -U $databaseUser -d $databaseName -Atc $otherTasksSql
+        if ($LASTEXITCODE -ne 0) { throw "Dify/XHS active-task query failed" }
+        $otherTasks = [int]($otherTasksRaw | Select-Object -Last 1)
+        Add-Check "dify_xhs_active_tasks" "ok" $otherTasks "Database queued/running Dify and XHS tasks"
+    } catch {
+        Add-Check "dify_xhs_active_tasks" "critical" $null $_.Exception.Message
     }
 
     foreach ($queue in @("ai:image:tasks:pending", "ai:image:tasks:processing")) {
@@ -70,7 +101,7 @@ try {
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if (-not $latestBackup) {
-        Add-Check "backup_age" "warning" $null "No valid backup directory found"
+        Add-Check "backup_age" "critical" $null "No valid backup directory found"
     } else {
         $backupAgeHours = [math]::Round(((Get-Date) - $latestBackup.LastWriteTime).TotalHours, 1)
         $manifestExists = Test-Path (Join-Path $latestBackup.FullName "manifest.json")

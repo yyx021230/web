@@ -738,6 +738,7 @@ def _new_job(
     scrape_environment_ids: str | None = None,
     sync_account_limit: int | None = None,
     runner_account_assignments: str | None = None,
+    concurrency: int | None = None,
     sync_mode: str | None = None,
     sync_limit: int | None = None,
     sync_limit_per_runner: int | None = None,
@@ -762,6 +763,7 @@ def _new_job(
         "scrape_environment_ids": scrape_environment_ids,
         "sync_account_limit": sync_account_limit,
         "runner_account_assignments": runner_account_assignments,
+        "concurrency": concurrency,
         "sync_mode": sync_mode,
         "sync_limit": sync_limit,
         "sync_limit_per_runner": sync_limit_per_runner,
@@ -854,6 +856,7 @@ async def _run_account_note_sync_job(
     sync_account_limit: int | None = None,
     runner_account_assignments: str | None = None,
     details: bool,
+    concurrency: int | None = None,
     sync_mode: str = "all",
     sync_limit: int | None = None,
     sync_limit_per_runner: int | None = None,
@@ -913,6 +916,8 @@ async def _run_account_note_sync_job(
                     target_environment_ids=target_environment_ids,
                     sync_account_limit=sync_account_limit,
                     runner_account_assignments=runner_account_assignments,
+                    concurrency=concurrency,
+                    sync_run_id=history_run_id,
                     progress_callback=report_progress,
                     cancel_check=lambda: bool(XHS_BACKGROUND_JOBS.get(job_id, {}).get("cancel_requested")),
                 )
@@ -928,6 +933,7 @@ async def _run_account_note_sync_job(
                     pause_seconds_min=pause_seconds_min,
                     pause_seconds_max=pause_seconds_max,
                     max_post_age_days=max_post_age_days,
+                    concurrency=concurrency,
                     progress_callback=report_progress,
                     cancel_check=lambda: bool(XHS_BACKGROUND_JOBS.get(job_id, {}).get("cancel_requested")),
                 )
@@ -939,6 +945,7 @@ async def _run_account_note_sync_job(
                     scrape_environment_ids=scrape_environment_ids,
                     sync_account_limit=sync_account_limit,
                     runner_account_assignments=runner_account_assignments,
+                    concurrency=concurrency,
                     limit_per_env=60,
                     progress_callback=report_progress,
                     cancel_check=lambda: bool(XHS_BACKGROUND_JOBS.get(job_id, {}).get("cancel_requested")),
@@ -1872,6 +1879,7 @@ async def sync_account_notes(
     scrape_environment_ids: str | None = Query(default=None),
     sync_account_limit: int | None = Query(default=None, ge=1, le=1000),
     runner_account_assignments: str | None = Query(default=None),
+    concurrency: int = Query(default=5, ge=1, le=5),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -1882,6 +1890,7 @@ async def sync_account_notes(
         scrape_environment_ids=scrape_environment_ids,
         sync_account_limit=sync_account_limit,
         runner_account_assignments=runner_account_assignments,
+        concurrency=concurrency,
     )
     history_run = await _create_sync_history_run(
         db,
@@ -1895,6 +1904,7 @@ async def sync_account_notes(
             "scrape_environment_ids": scrape_environment_ids,
             "sync_account_limit": sync_account_limit,
             "runner_account_assignments": runner_account_assignments,
+            "concurrency": concurrency,
         },
         targets=await _resolve_sync_history_targets(
             db,
@@ -1913,6 +1923,7 @@ async def sync_account_notes(
             sync_account_limit=sync_account_limit,
             runner_account_assignments=runner_account_assignments,
             details=False,
+            concurrency=concurrency,
             history_run_id=history_run.id,
         )
     )
@@ -1926,6 +1937,7 @@ async def sync_account_note_engagements(
     target_environment_ids: str | None = Query(default=None),
     sync_account_limit: int | None = Query(default=None, ge=1, le=1000),
     runner_account_assignments: str | None = Query(default=None),
+    concurrency: int = Query(default=5, ge=1, le=5),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -1935,6 +1947,7 @@ async def sync_account_note_engagements(
         target_environment_ids=target_environment_ids,
         sync_account_limit=sync_account_limit,
         runner_account_assignments=runner_account_assignments,
+        concurrency=concurrency,
     )
     history_run = await _create_sync_history_run(
         db,
@@ -1947,6 +1960,7 @@ async def sync_account_note_engagements(
             "target_environment_ids": target_environment_ids,
             "sync_account_limit": sync_account_limit,
             "runner_account_assignments": runner_account_assignments,
+            "concurrency": concurrency,
         },
         targets=await _resolve_sync_history_targets(
             db,
@@ -1967,6 +1981,7 @@ async def sync_account_note_engagements(
             sync_account_limit=sync_account_limit,
             runner_account_assignments=runner_account_assignments,
             details=False,
+            concurrency=concurrency,
             engagement_only=True,
             history_run_id=history_run.id,
         )
@@ -1987,6 +2002,7 @@ async def sync_account_note_details(
     pause_seconds_min: float | None = Query(default=None, ge=0, le=900),
     pause_seconds_max: float | None = Query(default=None, ge=0, le=900),
     max_post_age_days: int | None = Query(default=None, ge=0, le=3650),
+    concurrency: int = Query(default=5, ge=1, le=5),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -2001,6 +2017,7 @@ async def sync_account_note_details(
         pause_seconds_min=pause_seconds_min,
         pause_seconds_max=pause_seconds_max,
         max_post_age_days=max_post_age_days,
+        concurrency=concurrency,
     )
     job["target_note_ids"] = target_note_ids
     history_run = await _create_sync_history_run(
@@ -2020,6 +2037,7 @@ async def sync_account_note_details(
             "pause_seconds_min": pause_seconds_min,
             "pause_seconds_max": pause_seconds_max,
             "max_post_age_days": max_post_age_days,
+            "concurrency": concurrency,
         },
         targets=await _resolve_sync_history_targets(
             db,
@@ -2035,6 +2053,7 @@ async def sync_account_note_details(
             scrape_environment_id=scrape_environment_id,
             scrape_environment_ids=scrape_environment_ids,
             details=True,
+            concurrency=concurrency,
             sync_mode=sync_mode,
             sync_limit=sync_limit,
             sync_limit_per_runner=sync_limit_per_runner,
@@ -2152,6 +2171,7 @@ async def retry_failed_account_note_sync_history(
             pause_seconds_min=config.get("pause_seconds_min"),
             pause_seconds_max=config.get("pause_seconds_max"),
             max_post_age_days=None,
+            concurrency=config.get("concurrency", 5),
         )
         job["target_note_ids"] = target_note_ids
         retry_config = {
@@ -2180,6 +2200,7 @@ async def retry_failed_account_note_sync_history(
                 scrape_environment_id=retry_config.get("scrape_environment_id"),
                 scrape_environment_ids=retry_config.get("scrape_environment_ids"),
                 details=True,
+                concurrency=retry_config.get("concurrency"),
                 sync_mode="all",
                 sync_limit=len(failed_note_ids),
                 sync_limit_per_runner=retry_config.get("sync_limit_per_runner"),
@@ -2207,6 +2228,7 @@ async def retry_failed_account_note_sync_history(
             scrape_environment_ids=config.get("scrape_environment_ids"),
             sync_account_limit=len(failed_environment_ids),
             runner_account_assignments=filtered_assignments,
+            concurrency=config.get("concurrency", 5),
         )
         retry_config = {
             "environment_id": None,
@@ -2214,6 +2236,7 @@ async def retry_failed_account_note_sync_history(
             "scrape_environment_ids": config.get("scrape_environment_ids"),
             "sync_account_limit": len(failed_environment_ids),
             "runner_account_assignments": filtered_assignments,
+            "concurrency": config.get("concurrency", 5),
         }
         history_run = await _create_sync_history_run(
             db,
@@ -2240,6 +2263,7 @@ async def retry_failed_account_note_sync_history(
                 sync_account_limit=len(failed_environment_ids),
                 runner_account_assignments=filtered_assignments,
                 details=False,
+                concurrency=retry_config.get("concurrency"),
                 history_run_id=history_run.id,
             )
         )
@@ -2250,12 +2274,14 @@ async def retry_failed_account_note_sync_history(
             environment_id=None,
             target_environment_ids=target_environment_ids,
             sync_account_limit=len(failed_environment_ids),
+            concurrency=config.get("concurrency", 5),
         )
         retry_config = {
             "environment_id": None,
             "target_environment_ids": target_environment_ids,
             "sync_account_limit": len(failed_environment_ids),
             "runner_account_assignments": None,
+            "concurrency": config.get("concurrency", 5),
         }
         history_run = await _create_sync_history_run(
             db,
@@ -2283,6 +2309,7 @@ async def retry_failed_account_note_sync_history(
                 sync_account_limit=len(failed_environment_ids),
                 runner_account_assignments=None,
                 details=False,
+                concurrency=retry_config.get("concurrency"),
                 engagement_only=True,
                 history_run_id=history_run.id,
             )
@@ -2942,6 +2969,21 @@ async def worker_sync_account_notes(
         limit_per_env=60,
     )
     return ApiResponse(data=result, message="账号帖子同步完成")
+
+
+@router.post("/internal/account-notes/sync-engagement")
+async def worker_sync_account_note_engagements(
+    environment_id: int = Query(..., ge=1),
+    sync_run_id: int | None = Query(default=None, ge=1),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_xhs_worker_token),
+):
+    service = XHSService(db)
+    result = await service.sync_account_note_engagement_environment(
+        environment_id,
+        sync_run_id=sync_run_id,
+    )
+    return ApiResponse(data=result, message="账号互动同步完成")
 
 
 @router.post("/internal/account-notes/sync-details")

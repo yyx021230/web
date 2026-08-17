@@ -11,14 +11,17 @@ $backupDir = Join-Path $BackupRoot $timestamp
 $databaseDump = Join-Path $backupDir "postgres.dump"
 $uploadsArchive = Join-Path $backupDir "uploads.tar.gz"
 $manifestPath = Join-Path $backupDir "manifest.json"
+$postgresContainer = $null
+$temporaryDumpCreated = $false
 
 function Resolve-UploadsPath([string]$Root) {
     if ($env:UPLOADS_HOST_PATH) { return $env:UPLOADS_HOST_PATH }
 
     $backendContainer = "$(docker compose ps --all -q backend | Select-Object -Last 1)".Trim()
     if ($backendContainer) {
-        $mountedPath = "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/app/uploads"}}{{.Source}}{{end}}{{end}}' $backendContainer | Select-Object -Last 1)".Trim()
-        if ($LASTEXITCODE -eq 0 -and $mountedPath) { return $mountedPath }
+        $inspection = @(docker inspect $backendContainer | ConvertFrom-Json)[0]
+        $mount = @($inspection.Mounts | Where-Object { $_.Destination -eq "/app/uploads" } | Select-Object -First 1)
+        if ($mount.Count -gt 0 -and $mount[0].Source) { return "$($mount[0].Source)".Trim() }
     }
 
     $rootEnv = Join-Path $Root ".env"
@@ -40,14 +43,21 @@ try {
     if (-not $postgresContainer) {
         throw "PostgreSQL container is not running"
     }
+    $databaseUser = "$(docker exec $postgresContainer printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
+    $databaseName = "$(docker exec $postgresContainer printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
+    if (-not $databaseUser -or -not $databaseName) {
+        throw "Unable to resolve PostgreSQL backup credentials from the container"
+    }
 
-    docker compose exec -T postgres sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f /tmp/ztqc-release.dump'
+    docker exec $postgresContainer pg_dump -U $databaseUser -d $databaseName -Fc -f /tmp/ztqc-release.dump
     if ($LASTEXITCODE -ne 0) { throw "pg_dump failed" }
+    $temporaryDumpCreated = $true
     docker cp "${postgresContainer}:/tmp/ztqc-release.dump" $databaseDump
     if ($LASTEXITCODE -ne 0) { throw "docker cp database dump failed" }
     docker compose exec -T postgres pg_restore -l /tmp/ztqc-release.dump | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "pg_restore validation failed" }
     docker compose exec -T postgres rm -f /tmp/ztqc-release.dump
+    $temporaryDumpCreated = $false
 
     $uploadsPath = Resolve-UploadsPath $ProjectRoot
     if (-not [System.IO.Path]::IsPathRooted($uploadsPath)) {
@@ -89,5 +99,8 @@ try {
     Write-Output $backupDir
 }
 finally {
+    if ($temporaryDumpCreated -and $postgresContainer) {
+        docker exec $postgresContainer rm -f /tmp/ztqc-release.dump | Out-Null
+    }
     Pop-Location
 }

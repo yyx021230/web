@@ -3073,7 +3073,7 @@ function InsightPostDetailModal({ note, onClose }: { note: XHSAccountNote; onClo
           {activeImageUrl ? (
             <img
               src={activeImageUrl}
-              alt={note.title || note.feed_id}
+              alt={note.title || note.feed_id || '待补帖子 ID'}
               className="h-full max-h-[82vh] min-h-[360px] w-full object-contain"
               loading="lazy"
               referrerPolicy="no-referrer"
