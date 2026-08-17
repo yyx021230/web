@@ -11,8 +11,6 @@ $backupDir = Join-Path $BackupRoot $timestamp
 $databaseDump = Join-Path $backupDir "postgres.dump"
 $uploadsArchive = Join-Path $backupDir "uploads.tar.gz"
 $manifestPath = Join-Path $backupDir "manifest.json"
-$postgresContainer = $null
-$temporaryDumpCreated = $false
 
 function Resolve-UploadsPath([string]$Root) {
     if ($env:UPLOADS_HOST_PATH) { return $env:UPLOADS_HOST_PATH }
@@ -45,19 +43,26 @@ try {
     }
     $databaseUser = "$(docker exec $postgresContainer printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
     $databaseName = "$(docker exec $postgresContainer printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
-    if (-not $databaseUser -or -not $databaseName) {
+    $databasePassword = "$(docker exec $postgresContainer printenv POSTGRES_PASSWORD | Select-Object -Last 1)".Trim()
+    $postgresImage = "$(docker inspect --format '{{.Config.Image}}' $postgresContainer)".Trim()
+    if (-not $databaseUser -or -not $databaseName -or -not $databasePassword -or -not $postgresImage) {
         throw "Unable to resolve PostgreSQL backup credentials from the container"
     }
 
-    docker exec $postgresContainer pg_dump -U $databaseUser -d $databaseName -Fc -f /tmp/ztqc-release.dump
+    # Write the dump directly to the D-drive backup directory. Keeping a full
+    # temporary dump in the PostgreSQL container would consume Docker's C drive.
+    docker run --rm `
+        --network "container:$postgresContainer" `
+        --mount "type=bind,source=$backupDir,target=/backup" `
+        -e "PGPASSWORD=$databasePassword" `
+        $postgresImage `
+        pg_dump -h 127.0.0.1 -U $databaseUser -d $databaseName -Fc -f /backup/postgres.dump
     if ($LASTEXITCODE -ne 0) { throw "pg_dump failed" }
-    $temporaryDumpCreated = $true
-    docker cp "${postgresContainer}:/tmp/ztqc-release.dump" $databaseDump
-    if ($LASTEXITCODE -ne 0) { throw "docker cp database dump failed" }
-    docker compose exec -T postgres pg_restore -l /tmp/ztqc-release.dump | Out-Null
+    docker run --rm `
+        --mount "type=bind,source=$backupDir,target=/backup,readonly" `
+        $postgresImage `
+        pg_restore -l /backup/postgres.dump | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "pg_restore validation failed" }
-    docker compose exec -T postgres rm -f /tmp/ztqc-release.dump
-    $temporaryDumpCreated = $false
 
     $uploadsPath = Resolve-UploadsPath $ProjectRoot
     if (-not [System.IO.Path]::IsPathRooted($uploadsPath)) {
@@ -99,8 +104,5 @@ try {
     Write-Output $backupDir
 }
 finally {
-    if ($temporaryDumpCreated -and $postgresContainer) {
-        docker exec $postgresContainer rm -f /tmp/ztqc-release.dump | Out-Null
-    }
     Pop-Location
 }
