@@ -845,6 +845,22 @@ def _finish_sync_job(job: dict, *, status: str, message: str, details: bool, err
     _update_job_progress(job, phase=status, detail=message)
 
 
+def _sync_result_failure_detail(result: dict | None) -> str | None:
+    if not isinstance(result, dict):
+        return None
+    parts: list[str] = []
+    failed_accounts = result.get("failed_accounts") or []
+    failed_runners = result.get("failed_runners") or []
+    failed_notes = int(result.get("failed_notes") or 0)
+    if failed_accounts:
+        parts.append(f"{len(failed_accounts)} 个账号失败")
+    if failed_runners:
+        parts.append(f"{len(failed_runners)} 个执行器失败")
+    if failed_notes:
+        parts.append(f"{failed_notes} 条帖子失败")
+    return "，".join(parts) or None
+
+
 async def _run_account_note_sync_job(
     job_id: str,
     *,
@@ -950,11 +966,17 @@ async def _run_account_note_sync_job(
                     progress_callback=report_progress,
                     cancel_check=lambda: bool(XHS_BACKGROUND_JOBS.get(job_id, {}).get("cancel_requested")),
                 )
-        job["status"] = "succeeded"
+        failure_detail = _sync_result_failure_detail(result if isinstance(result, dict) else None)
+        final_status = "failed" if failure_detail else "succeeded"
         if engagement_only:
-            job["message"] = "账号互动同步完成"
+            success_message = "账号互动同步完成"
+            failure_message = "账号互动同步失败"
         else:
-            job["message"] = "账号帖子数据同步完成" if details else "账号帖子同步完成"
+            success_message = "账号帖子数据同步完成" if details else "账号帖子同步完成"
+            failure_message = "账号帖子数据同步存在失败" if details else "账号帖子同步存在失败"
+        job["status"] = final_status
+        job["message"] = failure_message if failure_detail else success_message
+        job["error"] = failure_detail
         job["result"] = result
         job["updated_at"] = _now_iso()
         job["finished_at"] = _now_iso()
@@ -962,7 +984,7 @@ async def _run_account_note_sync_job(
             await _apply_detail_history_result(history_run_id, result if isinstance(result, dict) else None)
         _update_job_progress(
             job,
-            phase="succeeded",
+            phase=final_status,
             detail=job["message"],
             current=int(result.get("total_notes") or result.get("synced_accounts") or 0) if isinstance(result, dict) else 0,
             total=int(result.get("total_notes") or result.get("synced_accounts") or 0) if isinstance(result, dict) else 0,
@@ -974,7 +996,12 @@ async def _run_account_note_sync_job(
             synced_accounts=int(result.get("synced_accounts") or 0) if isinstance(result, dict) else 0,
             metric_synced_notes=int(result.get("metric_synced_notes") or 0) if isinstance(result, dict) else 0,
         )
-        await _finish_sync_history_run(history_run_id, status="succeeded", message=job["message"])
+        await _finish_sync_history_run(
+            history_run_id,
+            status=final_status,
+            message=job["message"],
+            error=failure_detail,
+        )
         await _mirror_account_sync_shadow_safely(history_run_id, legacy_job=job)
     except SyncJobCancelled as exc:
         _finish_sync_job(job, status="cancelled", message=str(exc), details=details)

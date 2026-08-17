@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import mimetypes
 import os
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -23,6 +24,12 @@ from app.core.exceptions import (
     general_exception_handler,
 )
 from app.utils.timezone import CST
+
+# Minimal Linux images do not always ship a complete mime.types database.
+# Register browser-facing image formats before StaticFiles starts serving uploads.
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 # 启动时配置校验
 missing_optional_settings = validate_settings()

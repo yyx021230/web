@@ -751,3 +751,89 @@ async def test_legacy_executor_runs_once_and_shadow_matches_final_result(
             "metric_synced_notes": 3,
         }
         assert (await db.execute(select(func.count(JobAttempt.id)))).scalar_one() == 0
+
+
+@pytest.mark.asyncio
+async def test_legacy_executor_marks_parent_and_history_failed_when_account_failed(
+    client, monkeypatch
+):
+    async with async_session() as db:
+        environments = await _seed_identity(db, environment_count=1)
+        job = xhs_api._new_job(
+            "account_notes_sync",
+            environment_id=None,
+            scrape_environment_id=None,
+            scrape_environment_ids=None,
+            sync_account_limit=1,
+            runner_account_assignments='{"runner": [101]}',
+        )
+        history = await xhs_api._create_sync_history_run(
+            db,
+            job=job,
+            sync_kind="posts",
+            source="manual",
+            requested_by_user_id=1,
+            request_config={"runner_account_assignments": '{"runner": [101]}'},
+            targets=environments,
+        )
+        history_run_id = int(history.id)
+
+    async def fake_sync_account_notes(
+        self: XHSService,
+        *,
+        progress_callback,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        await progress_callback(
+            {
+                "phase": "account_posts_failed",
+                "account_name": "账号1",
+                "detail": "账号1 的账号帖子同步失败",
+                "error": "获取账号主页超时",
+            }
+        )
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "total_notes": 0,
+            "failed_accounts": [
+                {
+                    "environment_id": 101,
+                    "account_name": "账号1",
+                    "error": "获取账号主页超时",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(XHSService, "sync_account_notes", fake_sync_account_notes)
+
+    await xhs_api._run_account_note_sync_job(
+        job["job_id"],
+        user_id=1,
+        environment_id=None,
+        scrape_environment_id=None,
+        scrape_environment_ids=None,
+        sync_account_limit=1,
+        runner_account_assignments='{"runner": [101]}',
+        details=False,
+        history_run_id=history_run_id,
+    )
+
+    assert job["status"] == "failed"
+    assert job["error"] == "1 个账号失败"
+    assert job["result"]["failed_accounts"][0]["environment_id"] == 101
+
+    async with async_session() as db:
+        run = await db.get(XHSAccountSyncRun, history_run_id)
+        item = (
+            await db.execute(
+                select(XHSAccountSyncRunItem).where(
+                    XHSAccountSyncRunItem.run_id == history_run_id
+                )
+            )
+        ).scalar_one()
+        assert run is not None and run.status == "failed"
+        assert run.error == "1 个账号失败"
+        assert item.status == "failed"
+        assert item.error == "获取账号主页超时"

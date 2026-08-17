@@ -2862,6 +2862,7 @@ async def test_fetch_profile_account_notes_allows_profile_url_without_xsec_token
     async with async_session() as db:
         service = XHSService(db)
         calls: list[tuple[str, dict | None]] = []
+        client_kwargs: list[dict] = []
 
         class _FakeResponse:
             def __init__(self, status_code: int, payload: dict):
@@ -2874,7 +2875,7 @@ async def test_fetch_profile_account_notes_allows_profile_url_without_xsec_token
 
         class _FakeClient:
             def __init__(self, *args, **kwargs):
-                pass
+                client_kwargs.append(kwargs)
 
             async def __aenter__(self):
                 return self
@@ -2923,6 +2924,7 @@ async def test_fetch_profile_account_notes_allows_profile_url_without_xsec_token
             {"user_id": "69afd25c000000003303a2bd"},
         )
     ]
+    assert client_kwargs[0]["timeout"] == xhs_service_module.XHS_PROFILE_FETCH_TIMEOUT_SECONDS
     assert payload["profile_nickname"] == "云辉安懂车学长"
     assert payload["red_id"] == "red_001"
     assert payload["feeds"][0]["feed_id"] == "feed_001"
@@ -2931,6 +2933,46 @@ async def test_fetch_profile_account_notes_allows_profile_url_without_xsec_token
     assert payload["feeds"][0]["comment_count"] == 2
     assert payload["feeds"][0]["collected_count"] == 1
     assert payload["feeds"][0]["share_count"] == 4
+
+
+@pytest.mark.asyncio
+async def test_fetch_profile_account_notes_includes_mcp_error_detail(monkeypatch):
+    async with async_session() as db:
+        service = XHSService(db)
+
+        class _FakeResponse:
+            status_code = 500
+            content = b"error"
+            text = ""
+
+            @staticmethod
+            def json():
+                return {
+                    "message": "获取用户主页失败",
+                    "error": {"details": "browser context canceled"},
+                }
+
+        class _FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url: str, json: dict | None = None):
+                return _FakeResponse()
+
+        monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+        with pytest.raises(RuntimeError, match="获取用户主页失败.*browser context canceled"):
+            await service._fetch_profile_account_notes(
+                "https://www.xiaohongshu.com/user/profile/69afd25c000000003303a2bd",
+                api_base="http://mcp.test",
+                limit=5,
+            )
 
 
 @pytest.mark.asyncio

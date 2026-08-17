@@ -48,6 +48,49 @@ async def test_account_note_runners_are_dispatched_concurrently(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_account_note_runners_propagate_worker_account_failures(monkeypatch):
+    service = XHSService(db=None)
+
+    async def fake_worker_request(cls, *args, **kwargs):
+        runner_id = int(kwargs["scrape_environment_id"])
+        assignment = json.loads(kwargs["runner_account_assignments"])
+        account_ids = assignment[str(runner_id)]
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "failed_accounts": [
+                {
+                    "environment_id": account_ids[0],
+                    "account_name": "失败账号",
+                    "error": "获取账号主页超时",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        XHSService,
+        "trigger_worker_sync_account_notes",
+        classmethod(fake_worker_request),
+    )
+
+    result = await service._delegate_account_note_sync_by_runner(
+        envs=[SimpleNamespace(id=101)],
+        runner_ids=[44],
+        runner_assignments={44: [101]},
+    )
+
+    assert result["synced_accounts"] == 0
+    assert result["failed_accounts"] == [
+        {
+            "environment_id": 101,
+            "account_name": "失败账号",
+            "error": "获取账号主页超时",
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_note_detail_runners_split_notes_without_overlap(monkeypatch):
     service = XHSService(db=None)
     both_requests_started = asyncio.Event()

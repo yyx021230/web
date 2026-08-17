@@ -110,6 +110,10 @@ XHS_WORKER_API_BASE = _worker_api_base.strip().rstrip("/")
 XHS_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_worker_internal_token", "") or ""
 XHS_ACCOUNT_SCRAPE_ENVIRONMENT_ID = int(getattr(settings, "xhs_account_scrape_environment_id", 0) or 0)
 XHS_YUNDENG_SYNC_CONCURRENCY = max(1, min(int(getattr(settings, "xhs_yundeng_sync_concurrency", 5) or 5), 5))
+XHS_PROFILE_FETCH_TIMEOUT_SECONDS = max(
+    90.0,
+    float(getattr(settings, "xhs_profile_fetch_timeout_seconds", 300.0) or 300.0),
+)
 _report_worker_api_base = getattr(settings, "xhs_report_worker_api_base_url", "") or ""
 XHS_REPORT_WORKER_API_BASE = _report_worker_api_base.strip().rstrip("/")
 XHS_REPORT_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_report_worker_internal_token", "") or ""
@@ -496,6 +500,43 @@ class XHSService:
         if not isinstance(parsed, dict):
             raise RuntimeError(f"{error_prefix} 必须是 JSON 对象")
         return XHSService._materialize_sync_browser_start_config(parsed)
+
+    @staticmethod
+    def _sync_exception_message(exc: BaseException) -> str:
+        message = str(exc).strip()
+        if message:
+            return message
+        if isinstance(exc, httpx.TimeoutException):
+            return f"小红书接口等待超时（{type(exc).__name__}）"
+        return type(exc).__name__
+
+    @staticmethod
+    def _http_error_detail(response: httpx.Response) -> str:
+        try:
+            payload = response.json()
+        except Exception:
+            payload = None
+        candidates: list[Any] = []
+        if isinstance(payload, dict):
+            candidates.extend((payload.get("message"), payload.get("msg"), payload.get("detail")))
+            error = payload.get("error")
+            if isinstance(error, dict):
+                candidates.extend((error.get("message"), error.get("detail"), error.get("details")))
+            else:
+                candidates.append(error)
+        details: list[str] = []
+        for candidate in candidates:
+            if candidate is None:
+                continue
+            if isinstance(candidate, (dict, list)):
+                normalized = json.dumps(candidate, ensure_ascii=False)
+            else:
+                normalized = str(candidate).strip()
+            if normalized and normalized not in details:
+                details.append(normalized)
+        if details:
+            return "；".join(details)[:1600]
+        return str(getattr(response, "text", "") or "").strip()[:1600]
 
     @staticmethod
     def _shuffle_in_windows(items: list, *, min_window: int, max_window: int) -> list:
@@ -1007,20 +1048,22 @@ class XHSService:
             "total_notes": 0,
         }
         failed_runners: list[dict[str, Any]] = []
+        failed_accounts: list[dict[str, Any]] = []
         completed_targets = 0
         for bucket, raw_result in zip(buckets, raw_results):
             runner_id, environment_ids = bucket
             if isinstance(raw_result, Exception):
+                error_message = self._sync_exception_message(raw_result)
                 logger.warning(
                     "测试账号并行同步失败: runner_id=%s targets=%s error=%s",
                     runner_id,
                     environment_ids,
-                    raw_result,
+                    error_message,
                 )
                 failed_runners.append({
                     "runner_id": runner_id,
                     "environment_ids": environment_ids,
-                    "error": str(raw_result),
+                    "error": error_message,
                 })
                 continue
 
@@ -1031,6 +1074,8 @@ class XHSService:
             completed_targets += len(environment_ids)
             for key in totals:
                 totals[key] += int(result.get(key) or 0)
+            failed_accounts.extend(result.get("failed_accounts") or [])
+            failed_runners.extend(result.get("failed_runners") or [])
 
         await self._emit_progress(
             progress_callback,
@@ -1047,6 +1092,8 @@ class XHSService:
         )
         if failed_runners:
             totals["failed_runners"] = failed_runners
+        if failed_accounts:
+            totals["failed_accounts"] = failed_accounts
         return totals
 
     async def _delegate_account_note_detail_sync_by_runner(
@@ -4133,6 +4180,8 @@ class XHSService:
             updated_notes = 0
             metric_synced_notes = 0
             total_notes = 0
+            failed_accounts: list[dict[str, Any]] = []
+            failed_runners: list[dict[str, Any]] = []
             for env in envs:
                 await self._raise_if_sync_cancelled(cancel_check)
                 result = await self.trigger_worker_sync_account_notes(
@@ -4147,13 +4196,20 @@ class XHSService:
                 updated_notes += int(result.get("updated_notes") or 0)
                 metric_synced_notes += int(result.get("metric_synced_notes") or 0)
                 total_notes += int(result.get("total_notes") or 0)
-            return {
+                failed_accounts.extend(result.get("failed_accounts") or [])
+                failed_runners.extend(result.get("failed_runners") or [])
+            result = {
                 "synced_accounts": synced_accounts,
                 "created_notes": created_notes,
                 "updated_notes": updated_notes,
                 "metric_synced_notes": metric_synced_notes,
                 "total_notes": total_notes,
             }
+            if failed_accounts:
+                result["failed_accounts"] = failed_accounts
+            if failed_runners:
+                result["failed_runners"] = failed_runners
+            return result
 
         self._require_local_browser_ops("同步账号帖子")
         synced_accounts = 0
@@ -4161,6 +4217,8 @@ class XHSService:
         updated_notes = 0
         metric_synced_notes = 0
         total_notes = 0
+        failed_accounts: list[dict[str, Any]] = []
+        failed_runners: list[dict[str, Any]] = []
 
         if not envs:
             return {
@@ -4200,7 +4258,15 @@ class XHSService:
                 metric_synced_notes += int(result.get("metric_synced_notes") or 0)
                 total_notes += int(result.get("total_notes") or 0)
             except Exception as e:
-                logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", envs[0].id, envs[0].account_name, e)
+                error_message = self._sync_exception_message(e)
+                logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", envs[0].id, envs[0].account_name, error_message)
+                failed_accounts.append(
+                    {
+                        "environment_id": int(envs[0].id),
+                        "account_name": envs[0].account_name,
+                        "error": error_message,
+                    }
+                )
                 await self._emit_progress(
                     progress_callback,
                     {
@@ -4209,7 +4275,7 @@ class XHSService:
                         "account_name": envs[0].account_name,
                         "account_index": 1,
                         "account_total": 1,
-                        "error": str(e),
+                        "error": error_message,
                     },
                 )
         else:
@@ -4261,14 +4327,21 @@ class XHSService:
             updated_notes += int(batch_result.get("updated_notes") or 0)
             metric_synced_notes += int(batch_result.get("metric_synced_notes") or 0)
             total_notes += int(batch_result.get("total_notes") or 0)
+            failed_accounts.extend(batch_result.get("failed_accounts") or [])
+            failed_runners.extend(batch_result.get("failed_runners") or [])
 
-        return {
+        result = {
             "synced_accounts": synced_accounts,
             "created_notes": created_notes,
             "updated_notes": updated_notes,
             "metric_synced_notes": metric_synced_notes,
             "total_notes": total_notes,
         }
+        if failed_accounts:
+            result["failed_accounts"] = failed_accounts
+        if failed_runners:
+            result["failed_runners"] = failed_runners
+        return result
 
     async def _sync_account_notes_for_environment(
         self,
@@ -4334,6 +4407,7 @@ class XHSService:
         created_notes = 0
         updated_notes = 0
         total_notes = 0
+        failed_accounts: list[dict[str, Any]] = []
 
         try:
             self._active_mcp_api = mcp_api
@@ -4400,7 +4474,15 @@ class XHSService:
                     updated_notes += int(result.get("updated_notes") or 0)
                     total_notes += int(result.get("total_notes") or 0)
                 except Exception as e:
-                    logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", env.id, env.account_name, e)
+                    error_message = self._sync_exception_message(e)
+                    logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", env.id, env.account_name, error_message)
+                    failed_accounts.append(
+                        {
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "error": error_message,
+                        }
+                    )
                     await self._emit_progress(
                         progress_callback,
                         {
@@ -4409,19 +4491,22 @@ class XHSService:
                             "account_name": env.account_name,
                             "account_index": account_position,
                             "account_total": overall_total_accounts,
-                            "error": str(e),
+                            "error": error_message,
                         },
                     )
                 if index < len(envs) - 1:
                     await self._raise_if_sync_cancelled(cancel_check)
                     await self._sleep_between_account_note_accounts(persona)
-            return {
+            result = {
                 "synced_accounts": synced_accounts,
                 "created_notes": created_notes,
                 "updated_notes": updated_notes,
                 "metric_synced_notes": 0,
                 "total_notes": total_notes,
             }
+            if failed_accounts:
+                result["failed_accounts"] = failed_accounts
+            return result
         finally:
             self._active_mcp_api = previous_mcp_api
             if mcp_pid is not None:
@@ -4526,22 +4611,26 @@ class XHSService:
         updated_notes = 0
         total_notes = 0
         failed_runners: list[dict[str, Any]] = []
+        failed_accounts: list[dict[str, Any]] = []
         for (runner_id, environment_ids, _), raw_result in zip(active_buckets, raw_results):
             if isinstance(raw_result, Exception):
+                error_message = self._sync_exception_message(raw_result)
                 logger.warning(
                     "并行同步主页帖子失败: runner_id=%s targets=%s error=%s",
                     runner_id,
                     environment_ids,
-                    raw_result,
+                    error_message,
                 )
                 failed_runners.append(
-                    {"runner_id": runner_id, "environment_ids": environment_ids, "error": str(raw_result)}
+                    {"runner_id": runner_id, "environment_ids": environment_ids, "error": error_message}
                 )
                 continue
             synced_accounts += int(raw_result.get("synced_accounts") or 0)
             created_notes += int(raw_result.get("created_notes") or 0)
             updated_notes += int(raw_result.get("updated_notes") or 0)
             total_notes += int(raw_result.get("total_notes") or 0)
+            failed_accounts.extend(raw_result.get("failed_accounts") or [])
+            failed_runners.extend(raw_result.get("failed_runners") or [])
 
         result = {
             "synced_accounts": synced_accounts,
@@ -4552,6 +4641,8 @@ class XHSService:
         }
         if failed_runners:
             result["failed_runners"] = failed_runners
+        if failed_accounts:
+            result["failed_accounts"] = failed_accounts
         return result
 
     @yundeng_sync_guard("scrape_env", "homepage_posts")
@@ -6248,15 +6339,24 @@ class XHSService:
             payload["max_scroll_rounds"] = int(max_scroll_rounds)
         if max_stagnant_rounds and max_stagnant_rounds > 0:
             payload["max_stagnant_rounds"] = int(max_stagnant_rounds)
-        # The MCP page operation can legitimately take up to one minute when
-        # loading a profile and scrolling; do not cancel it sooner.
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
-            resp = await client.post(
-                f"{api_base}/api/v1/user/profile",
-                json=payload,
-            )
+        # A full profile scroll can take several minutes on a slow YunLogin
+        # browser. Keep the client timeout above the MCP/browser operation.
+        try:
+            async with httpx.AsyncClient(
+                **self._httpx_client_kwargs(api_base, timeout=XHS_PROFILE_FETCH_TIMEOUT_SECONDS)
+            ) as client:
+                resp = await client.post(
+                    f"{api_base}/api/v1/user/profile",
+                    json=payload,
+                )
+        except httpx.TimeoutException as exc:
+            raise RuntimeError(
+                f"获取账号主页超时（已等待 {int(XHS_PROFILE_FETCH_TIMEOUT_SECONDS)} 秒）"
+            ) from exc
         if resp.status_code != 200:
-            raise RuntimeError(f"获取账号主页失败: HTTP {resp.status_code}")
+            detail = self._http_error_detail(resp)
+            suffix = f"，{detail}" if detail else ""
+            raise RuntimeError(f"获取账号主页失败: HTTP {resp.status_code}{suffix}")
 
         payload = resp.json() if resp.content else {}
         if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
