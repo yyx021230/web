@@ -5,6 +5,7 @@ param(
     [string]$BuildTime = "unknown",
     [string]$ProjectRoot = "C:\projects\web",
     [string]$BackupRoot = "D:\ztqc-backups\web",
+    [string]$ExistingBackupDir = "",
     [string]$ComposeProjectName = ""
 )
 
@@ -15,6 +16,7 @@ $packageRoot = Join-Path $releaseRoot "packages"
 $historyPath = Join-Path $releaseRoot "history.ndjson"
 $currentPath = Join-Path $releaseRoot "current.json"
 $sourceSnapshot = Join-Path $releaseRoot "predeploy-source.tar.gz"
+$rollbackRestoreScript = Join-Path $releaseRoot "rollback-Restore-Backup.ps1"
 $previousRelease = $null
 $backupDir = $null
 $servicesStopped = $false
@@ -22,6 +24,10 @@ $originalBackendImageId = ""
 $originalFrontendImageId = ""
 $candidateBackendImage = ""
 $candidateFrontendImage = ""
+$migrationAttempted = $false
+$originalAppVersion = ""
+$originalGitCommit = ""
+$originalBuildTime = ""
 
 function Resolve-ComposeProjectName([string]$RequestedName) {
     if ($RequestedName) { return $RequestedName }
@@ -45,6 +51,47 @@ function Resolve-MountSource([string]$ContainerId, [string]$Destination) {
     $mount = @($inspection.Mounts | Where-Object { $_.Destination -eq $Destination } | Select-Object -First 1)
     if ($mount.Count -eq 0) { return "" }
     return "$($mount[0].Source)".Trim()
+}
+
+function Resolve-ContainerImage([string]$ContainerId) {
+    if (-not $ContainerId) { return "" }
+    $inspection = @(docker inspect $ContainerId | ConvertFrom-Json)[0]
+    return "$($inspection.Config.Image)".Trim()
+}
+
+function Read-ContainerEnvValue([string]$ContainerId, [string]$Name, [string]$DefaultValue) {
+    if (-not $ContainerId) { return $DefaultValue }
+    $inspection = @(docker inspect $ContainerId | ConvertFrom-Json)[0]
+    $prefix = "${Name}="
+    $entry = @($inspection.Config.Env | Where-Object { $_.StartsWith($prefix) } | Select-Object -Last 1)
+    if ($entry.Count -eq 0) { return $DefaultValue }
+    return "$($entry[0].Substring($prefix.Length))".Trim()
+}
+
+function Assert-ExistingBackup([string]$Path, [string]$PostgresImage) {
+    if (-not (Test-Path $Path -PathType Container)) {
+        throw "Existing backup directory does not exist: $Path"
+    }
+    $manifestPath = Join-Path $Path "manifest.json"
+    $databaseDump = Join-Path $Path "postgres.dump"
+    if (-not (Test-Path $manifestPath -PathType Leaf) -or -not (Test-Path $databaseDump -PathType Leaf)) {
+        throw "Existing backup is missing manifest.json or postgres.dump: $Path"
+    }
+    $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+    if ([int64]$manifest.databaseBytes -ne (Get-Item $databaseDump).Length) {
+        throw "Existing backup database size does not match its manifest"
+    }
+    if ($manifest.uploadsArchive) {
+        $uploadsArchive = Join-Path $Path "$($manifest.uploadsArchive)"
+        if (-not (Test-Path $uploadsArchive -PathType Leaf) -or [int64]$manifest.uploadsBytes -ne (Get-Item $uploadsArchive).Length) {
+            throw "Existing backup uploads archive does not match its manifest"
+        }
+    }
+    docker run --rm `
+        --mount "type=bind,source=$Path,target=/backup,readonly" `
+        $PostgresImage `
+        pg_restore -l /backup/postgres.dump | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Existing backup pg_restore validation failed" }
 }
 
 function Read-EnvValue([string]$Path, [string]$Name, [string]$DefaultValue) {
@@ -87,6 +134,7 @@ if (Test-Path $currentPath) {
 }
 
 New-Item -ItemType Directory -Force -Path $stagingRoot, $packageRoot | Out-Null
+Copy-Item -Force (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") $rollbackRestoreScript
 Copy-Item -Force $PackagePath (Join-Path $packageRoot "$Version-$Commit.tar.gz")
 tar -xzf $PackagePath -C $stagingRoot
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract release package" }
@@ -110,7 +158,9 @@ try {
     $rootComposePath = Join-Path $ProjectRoot "docker-compose.yml"
     $currentPostgresId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q postgres)".Trim()
     $currentBackendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q backend)".Trim()
-    if (-not $currentPostgresId -or -not $currentBackendId) {
+    $currentRedisId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q redis)".Trim()
+    $currentMinioId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q minio)".Trim()
+    if (-not $currentPostgresId -or -not $currentBackendId -or -not $currentRedisId -or -not $currentMinioId) {
         throw "Unable to resolve the existing production containers for Compose project '$ComposeProjectName'"
     }
     $originalPgMount = Resolve-MountSource $currentPostgresId "/var/lib/postgresql/data"
@@ -124,13 +174,25 @@ try {
     if (-not $originalBackendImageId -or -not $originalFrontendImageId) {
         throw "Unable to preserve current backend/frontend image IDs for automatic rollback"
     }
+    $originalAppVersion = Read-ContainerEnvValue $currentBackendId "APP_VERSION" "unknown"
+    $originalGitCommit = Read-ContainerEnvValue $currentBackendId "GIT_COMMIT" "unknown"
+    $originalBuildTime = Read-ContainerEnvValue $currentBackendId "BUILD_TIME" "unknown"
+
+    # Application-only releases must not upgrade, pull, or recreate stateful
+    # infrastructure. Preserve the exact image references already in service.
+    $env:POSTGRES_IMAGE = Resolve-ContainerImage $currentPostgresId
+    $env:REDIS_IMAGE = Resolve-ContainerImage $currentRedisId
+    $env:MINIO_IMAGE = Resolve-ContainerImage $currentMinioId
+    if (-not $env:POSTGRES_IMAGE -or -not $env:REDIS_IMAGE -or -not $env:MINIO_IMAGE) {
+        throw "Unable to preserve current PostgreSQL/Redis/MinIO image references"
+    }
 
     $databaseUser = "$(docker exec $currentPostgresId printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
     $databaseName = "$(docker exec $currentPostgresId printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
     if (-not $databaseUser -or -not $databaseName) {
         throw "Unable to resolve PostgreSQL credentials from the production container"
     }
-    $redisId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q redis)".Trim()
+    $redisId = $currentRedisId
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "initial preflight"
 
     $pythonImage = Read-EnvValue $rootEnvPath "PYTHON_IMAGE" "python:3.11.13-slim-bookworm"
@@ -198,8 +260,13 @@ try {
     docker compose stop backend ai-worker | Out-Null
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"
 
-    $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
-    $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+    if ($ExistingBackupDir) {
+        Assert-ExistingBackup $ExistingBackupDir $env:POSTGRES_IMAGE
+        $backupDir = $ExistingBackupDir
+    } else {
+        $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
+        $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+    }
     if (-not $backupDir) { throw "Backup did not return a path" }
 
     Get-ChildItem $ProjectRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
@@ -207,9 +274,10 @@ try {
     tar -xzf $PackagePath -C $ProjectRoot
     if ($LASTEXITCODE -ne 0) { throw "Release extraction failed" }
 
-    docker compose run --rm backend alembic upgrade head
+    $migrationAttempted = $true
+    docker compose run --rm --no-deps backend alembic upgrade head
     if ($LASTEXITCODE -ne 0) { throw "Database migration failed" }
-    docker compose up -d backend ai-worker frontend
+    docker compose up -d --no-deps backend ai-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
     $deadline = (Get-Date).AddMinutes(3)
@@ -251,29 +319,52 @@ try {
     Write-Host "Release $Version ($Commit) deployed successfully"
 }
 catch {
-    Write-Error "Deployment failed: $($_.Exception.Message)"
+    $deploymentError = $_.Exception.Message
+    $rollbackErrors = [System.Collections.Generic.List[string]]::new()
+    Write-Warning "Deployment failed: $deploymentError"
     if ($servicesStopped) {
         Write-Warning "Restoring previous source, images, and database state..."
         if (Test-Path $sourceSnapshot) {
-            tar -xzf $sourceSnapshot -C $ProjectRoot
+            try {
+                tar -xzf $sourceSnapshot -C $ProjectRoot
+                if ($LASTEXITCODE -ne 0) { throw "source snapshot extraction failed" }
+            } catch {
+                $rollbackErrors.Add("source: $($_.Exception.Message)")
+            }
         }
         if ($previousRelease) {
             $env:APP_VERSION = $previousRelease.version
             $env:GIT_COMMIT = $previousRelease.commit
             $env:BUILD_TIME = $previousRelease.buildTime
+        } else {
+            $env:APP_VERSION = $originalAppVersion
+            $env:GIT_COMMIT = $originalGitCommit
+            $env:BUILD_TIME = $originalBuildTime
         }
-        if ($backupDir) {
-            & (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
+        if ($backupDir -and $migrationAttempted) {
+            try {
+                & $rollbackRestoreScript -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
+            } catch {
+                $rollbackErrors.Add("database: $($_.Exception.Message)")
+            }
         }
-        if ($originalBackendImageId -and $candidateBackendImage) {
-            docker tag $originalBackendImageId $candidateBackendImage
+        try {
+            if ($originalBackendImageId -and $candidateBackendImage) {
+                docker tag $originalBackendImageId $candidateBackendImage
+            }
+            if ($originalFrontendImageId -and $candidateFrontendImage) {
+                docker tag $originalFrontendImageId $candidateFrontendImage
+            }
+            docker compose up -d --no-build --no-deps backend ai-worker frontend
+            if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
+        } catch {
+            $rollbackErrors.Add("application: $($_.Exception.Message)")
         }
-        if ($originalFrontendImageId -and $candidateFrontendImage) {
-            docker tag $originalFrontendImageId $candidateFrontendImage
-        }
-        docker compose up -d --no-build backend ai-worker frontend
     }
-    throw
+    if ($rollbackErrors.Count -gt 0) {
+        throw "Deployment failed: $deploymentError. Rollback issues: $($rollbackErrors -join '; ')"
+    }
+    throw "Deployment failed: $deploymentError. Previous release restored."
 }
 finally {
     Pop-Location

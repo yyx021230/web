@@ -41,28 +41,32 @@ function Resolve-UploadsPath([string]$Root) {
 Push-Location $ProjectRoot
 try {
     docker compose stop frontend backend ai-worker | Out-Null
-    docker compose up -d postgres | Out-Null
-    $postgresContainer = (docker compose ps -q postgres).Trim()
+    $postgresContainer = "$(docker compose ps --all -q postgres | Select-Object -Last 1)".Trim()
     if (-not $postgresContainer) { throw "PostgreSQL container is unavailable" }
+    $postgresState = "$(docker inspect --format '{{.State.Running}}' $postgresContainer)".Trim()
+    if ($postgresState -ne "true") {
+        docker start $postgresContainer | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "PostgreSQL container could not be started" }
+    }
 
     docker cp $databaseDump "${postgresContainer}:/tmp/ztqc-restore.dump"
     if ($LASTEXITCODE -ne 0) { throw "docker cp restore dump failed" }
-    $databaseUser = (docker compose exec -T postgres printenv POSTGRES_USER | Select-Object -Last 1).Trim()
-    $databaseName = (docker compose exec -T postgres printenv POSTGRES_DB | Select-Object -Last 1).Trim()
+    $databaseUser = "$(docker exec $postgresContainer printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
+    $databaseName = "$(docker exec $postgresContainer printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
     if (-not $databaseUser -or -not $databaseName) {
         throw "Unable to resolve PostgreSQL restore credentials from the container"
     }
 
     $terminateSql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$databaseName' AND pid <> pg_backend_pid();"
-    docker compose exec -T postgres psql -U $databaseUser -d postgres -v ON_ERROR_STOP=1 -c $terminateSql | Out-Null
+    docker exec $postgresContainer psql -U $databaseUser -d postgres -v ON_ERROR_STOP=1 -c $terminateSql | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "failed to terminate active database sessions" }
-    docker compose exec -T postgres dropdb -U $databaseUser --if-exists $databaseName
+    docker exec $postgresContainer dropdb -U $databaseUser --if-exists $databaseName
     if ($LASTEXITCODE -ne 0) { throw "failed to drop the target database" }
-    docker compose exec -T postgres createdb -U $databaseUser $databaseName
+    docker exec $postgresContainer createdb -U $databaseUser $databaseName
     if ($LASTEXITCODE -ne 0) { throw "failed to recreate the target database" }
-    docker compose exec -T postgres pg_restore -U $databaseUser -d $databaseName --no-owner --no-acl /tmp/ztqc-restore.dump
+    docker exec $postgresContainer pg_restore -U $databaseUser -d $databaseName --no-owner --no-acl /tmp/ztqc-restore.dump
     if ($LASTEXITCODE -ne 0) { throw "database restore failed" }
-    docker compose exec -T postgres rm -f /tmp/ztqc-restore.dump
+    docker exec $postgresContainer rm -f /tmp/ztqc-restore.dump
 
     if ($RestoreUploads) {
         $uploadsArchive = Join-Path $BackupDir "uploads.tar.gz"
@@ -80,7 +84,7 @@ try {
     }
 
     if ($StartServices) {
-        docker compose up -d backend ai-worker frontend | Out-Null
+        docker compose up -d --no-deps backend ai-worker frontend | Out-Null
     }
 }
 finally {
