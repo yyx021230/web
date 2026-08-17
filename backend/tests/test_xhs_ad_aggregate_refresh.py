@@ -15,7 +15,7 @@ from app.models.xhs_report import (
     XHSReportDaily,
 )
 from app.services import xhs_service as module
-from app.services.xhs_service import XHSService
+from app.services.xhs_service import XHSService, _ad_brand
 
 
 class _Catalog:
@@ -24,6 +24,11 @@ class _Catalog:
 
     async def brands(self):
         return ["零跑汽车", "比亚迪"]
+
+
+def test_aggregate_brand_does_not_match_single_character_inside_account_name():
+    assert _ad_brand({"campaign_name": "上海炎创-云特曼懂车老油条-2"}, ("曼",)) == "未知"
+    assert _ad_brand({"brand": "曼"}, ("曼",)) == "曼"
 
 
 @pytest.mark.asyncio

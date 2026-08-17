@@ -105,6 +105,8 @@ def test_dashboard_normalizers_cover_dirty_external_values():
     assert _brand({"campaign_name": "🔴5.28零跑汽车#复投"}, catalog) == (
         "零跑汽车"
     )
+    assert _brand({"campaign_name": "上海炎创-云特曼懂车老油条-2"}, ("曼",)) == "未知"
+    assert _brand({"brand": "曼"}, ("曼",)) == "曼"
     assert _brand({}, catalog) == "未知"
     assert _creative_tag({"ai_origin_type": "image_ai"}) == "图生图"
     assert _creative_tag({"creativity_name": "车型测评#话题"}) == "车型测评"

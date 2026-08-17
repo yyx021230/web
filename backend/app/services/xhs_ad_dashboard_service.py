@@ -179,7 +179,9 @@ def _normalize_brand_candidate(value: object, brand_catalog: tuple[str, ...]) ->
             if alias in cleaned:
                 return brand
         for brand in brand_catalog:
-            if brand and brand in cleaned:
+            # Single-character catalog entries (for example the truck brand
+            # "曼") must not match arbitrary account names such as "云特曼".
+            if brand and (cleaned == brand or (len(brand) > 1 and brand in cleaned)):
                 return brand
     return ""
 

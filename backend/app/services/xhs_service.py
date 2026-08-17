@@ -337,7 +337,9 @@ def _ad_normalize_brand_candidate(value: object, brand_catalog: tuple[str, ...])
             if alias in cleaned:
                 return brand
         for brand in brand_catalog:
-            if brand and brand in cleaned:
+            # Avoid treating a one-character brand as a substring of an
+            # operator/account name. Exact values remain valid brand fields.
+            if brand and (cleaned == brand or (len(brand) > 1 and brand in cleaned)):
                 return brand
     return ""
 

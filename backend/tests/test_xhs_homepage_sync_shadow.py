@@ -837,3 +837,68 @@ async def test_legacy_executor_marks_parent_and_history_failed_when_account_fail
         assert run.error == "1 个账号失败"
         assert item.status == "failed"
         assert item.error == "获取账号主页超时"
+
+
+@pytest.mark.asyncio
+async def test_running_cancel_wins_over_failure_returned_by_remote_sync(
+    client, monkeypatch
+):
+    monkeypatch.setattr(settings, "xhs_homepage_sync_shadow_enabled", True)
+    async with async_session() as db:
+        environments = await _seed_identity(db, environment_count=1)
+        job = xhs_api._new_job(
+            "account_notes_sync",
+            environment_id=None,
+            scrape_environment_id=None,
+            scrape_environment_ids=None,
+            sync_account_limit=1,
+            runner_account_assignments='{"runner": [101]}',
+        )
+        history = await xhs_api._create_sync_history_run(
+            db,
+            job=job,
+            sync_kind="posts",
+            source="manual",
+            requested_by_user_id=1,
+            request_config={"runner_account_assignments": '{"runner": [101]}'},
+            targets=environments,
+        )
+        history_run_id = int(history.id)
+
+    async def fake_sync_account_notes(self: XHSService, **kwargs: Any) -> dict[str, Any]:
+        job["cancel_requested"] = True
+        return {
+            "synced_accounts": 0,
+            "failed_accounts": [
+                {
+                    "environment_id": 101,
+                    "account_name": "账号1",
+                    "error": "远端调用在取消后返回",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(XHSService, "sync_account_notes", fake_sync_account_notes)
+
+    await xhs_api._run_account_note_sync_job(
+        job["job_id"],
+        user_id=1,
+        environment_id=None,
+        scrape_environment_id=None,
+        scrape_environment_ids=None,
+        sync_account_limit=1,
+        runner_account_assignments='{"runner": [101]}',
+        details=False,
+        history_run_id=history_run_id,
+    )
+
+    assert job["status"] == "cancelled"
+    assert job["error"] is None
+    assert job["message"] == "任务已中止，已完成的数据已保留"
+
+    async with async_session() as db:
+        run = await db.get(XHSAccountSyncRun, history_run_id)
+        shadow = await _load_shadow_job(db, history_run_id)
+        assert run is not None and run.status == "cancelled"
+        assert shadow.status == JobStatus.CANCELLED.value
+        assert shadow.result_summary["parity"]["status"] == "matched"

@@ -966,6 +966,11 @@ async def _run_account_note_sync_job(
                     progress_callback=report_progress,
                     cancel_check=lambda: bool(XHS_BACKGROUND_JOBS.get(job_id, {}).get("cancel_requested")),
                 )
+        # A remote browser/MCP call can only observe cancellation after it
+        # returns. Cancellation must win over any partial failure it reports,
+        # otherwise a user-cancelled run is incorrectly finalized as failed.
+        if job.get("cancel_requested"):
+            raise SyncJobCancelled("任务已中止，已完成的数据已保留")
         failure_detail = _sync_result_failure_detail(result if isinstance(result, dict) else None)
         final_status = "failed" if failure_detail else "succeeded"
         if engagement_only:
