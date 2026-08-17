@@ -27,6 +27,8 @@ COPY app /app/app
 COPY alembic.ini /app/alembic.ini
 COPY bin /app/bin
 
+ENV PYTHONPATH=/app
+
 RUN if [ -f /app/bin/xiaohongshu-mcp ]; then chmod +x /app/bin/xiaohongshu-mcp; fi
 
 EXPOSE 8000
