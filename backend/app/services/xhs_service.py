@@ -4156,6 +4156,10 @@ class XHSService:
             if normalized_account_limit is not None:
                 envs = envs[:normalized_account_limit]
 
+        # Environment discovery is read-only. Release that transaction before
+        # delegating to a worker, which can wait on YunDeng for several minutes.
+        await self.db.commit()
+
         if self._should_delegate_browser_ops():
             if len(normalized_runner_ids) > 1 and len(envs) > 1:
                 return await self._delegate_account_note_sync_by_runner(
@@ -4663,6 +4667,11 @@ class XHSService:
     ) -> dict:
         if not (env.profile_url or "").strip():
             raise RuntimeError(f"环境 {env.account_name} 未配置个人主页链接")
+
+        # Runner/environment objects were loaded by the caller. Do not keep the
+        # corresponding read transaction open while starting and warming MCP.
+        await self.db.commit()
+
         mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
         mcp_port = None if use_external_mcp else await self._allocate_free_port()
@@ -4791,6 +4800,10 @@ class XHSService:
             known_note_count=len(existing_feed_ids),
             limit=limit,
         )
+
+        # The remote profile request may legitimately take minutes. The loaded
+        # ORM objects remain usable because sessions use expire_on_commit=False.
+        await self.db.commit()
 
         await self._sleep_sync_profile_prep(persona)
         await self._emit_progress(

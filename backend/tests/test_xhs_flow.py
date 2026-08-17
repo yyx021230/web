@@ -4138,3 +4138,83 @@ async def test_two_publish_jobs_can_enter_browser_start_concurrently_when_queue_
     assert {r1.status, r2.status} == {"success"}
     assert set(entered) == {"shop_101", "shop_102"}
     assert max_active == 2
+
+
+@pytest.mark.asyncio
+async def test_homepage_profile_fetch_does_not_hold_database_transaction(client, monkeypatch):
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(
+                id=991,
+                shop_id="shop_publish_991",
+                account_name="事务边界账号",
+                status="active",
+                profile_url="https://example.com/profile/991",
+            ),
+            XHSEnvironment(
+                id=992,
+                shop_id="shop_runner_992",
+                account_name="测试事务执行器",
+                status="active",
+                is_sync_runner=True,
+            ),
+            XHSAccountNote(
+                id=993,
+                environment_id=991,
+                account_name="事务边界账号",
+                feed_id="feed_991",
+                title="已有帖子",
+                ai_origin_type="manual",
+                sort_index=0,
+            ),
+        ])
+        await db.commit()
+
+    transaction_states: list[bool] = []
+
+    async def fake_fetch_profile_account_notes(
+        self: XHSService,
+        profile_url: str,
+        api_base: str,
+        limit: int = 60,
+        **kwargs,
+    ):
+        transaction_states.append(self.db.in_transaction())
+        return {
+            "profile_nickname": "事务边界账号",
+            "red_id": "red_991",
+            "feeds": [{
+                "feed_id": "feed_991",
+                "xsec_token": "T" * 46,
+                "title": "已有帖子",
+                "cover_image_url": None,
+                "liked_count": 1,
+                "comment_count": 0,
+                "collected_count": 0,
+                "share_count": 0,
+                "sort_index": 0,
+            }],
+        }
+
+    async def fake_sleep_sync_profile_prep(self: XHSService, persona=None):
+        return None
+
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", fake_fetch_profile_account_notes)
+    monkeypatch.setattr(XHSService, "_sleep_sync_profile_prep", fake_sleep_sync_profile_prep)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        publish_env = await db.get(XHSEnvironment, 991)
+        runner_env = await db.get(XHSEnvironment, 992)
+        assert publish_env is not None
+        assert runner_env is not None
+
+        result = await service._sync_account_notes_with_api(
+            publish_env,
+            api_base="http://localhost:18061",
+            runner_envs=[runner_env],
+            assigned_runner_env=runner_env,
+        )
+
+    assert result["updated_notes"] == 1
+    assert transaction_states == [False]
