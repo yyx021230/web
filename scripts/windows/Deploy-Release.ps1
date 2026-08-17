@@ -139,6 +139,8 @@ Copy-Item -Force (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") $
 Copy-Item -Force $PackagePath (Join-Path $packageRoot "$Version-$Commit.tar.gz")
 tar -xzf $PackagePath -C $stagingRoot
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract release package" }
+Get-ChildItem $stagingRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
+    Remove-Item -Force -ErrorAction Stop
 
 $rootEnvPath = Join-Path $ProjectRoot ".env"
 $backendEnvPath = Join-Path $ProjectRoot "backend\.env"
@@ -231,6 +233,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Compose validation failed" }
     docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build backend frontend
     if ($LASTEXITCODE -ne 0) { throw "Release image build failed" }
+    docker run --rm --entrypoint python $candidateBackendImage -m compileall -q -f /app/app
+    if ($LASTEXITCODE -ne 0) {
+        throw "Candidate backend image contains invalid Python source"
+    }
 
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "post-build preflight"
 
@@ -274,23 +280,33 @@ try {
     }
     if (-not $backupDir) { throw "Backup did not return a path" }
 
-    Get-ChildItem $ProjectRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
+    Get-ChildItem $ProjectRoot -Force -Filter '._*' -ErrorAction SilentlyContinue |
         Remove-Item -Force -ErrorAction SilentlyContinue
+    @("backend", "frontend", "scripts") | ForEach-Object {
+        Get-ChildItem (Join-Path $ProjectRoot $_) -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
     tar -xzf $PackagePath -C $ProjectRoot
     if ($LASTEXITCODE -ne 0) { throw "Release extraction failed" }
+    Get-ChildItem $ProjectRoot -Force -Filter '._*' -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction Stop
+    @("backend", "frontend", "scripts") | ForEach-Object {
+        Get-ChildItem (Join-Path $ProjectRoot $_) -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction Stop
+    }
 
     $migrationAttempted = $true
     docker compose run --rm --no-deps backend alembic upgrade head
-    if ($LASTEXITCODE -ne 0) { throw "Database migration failed" }
-    $postMigrationRevision = "$(docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc 'SELECT version_num FROM alembic_version LIMIT 1;' | Select-Object -Last 1)".Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $postMigrationRevision) {
+    $migrationExitCode = $LASTEXITCODE
+    $observedMigrationRevision = "$(docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc 'SELECT version_num FROM alembic_version LIMIT 1;' | Select-Object -Last 1)".Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $observedMigrationRevision) {
         throw "Unable to verify the post-migration Alembic revision"
     }
-    if ($postMigrationRevision -eq $preMigrationRevision) {
-        # An application-only patch must never restore an older database backup
-        # if a later startup/health check fails.
-        $migrationAttempted = $false
-    }
+    # Only restore the database when its revision actually changed. Syntax or
+    # startup failures before the first migration must not replay an older dump.
+    $migrationAttempted = $observedMigrationRevision -ne $preMigrationRevision
+    if ($migrationExitCode -ne 0) { throw "Database migration failed" }
+    $postMigrationRevision = $observedMigrationRevision
     docker compose up -d --no-deps backend ai-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
