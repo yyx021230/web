@@ -18,6 +18,10 @@ $sourceSnapshot = Join-Path $releaseRoot "predeploy-source.tar.gz"
 $previousRelease = $null
 $backupDir = $null
 $servicesStopped = $false
+$originalBackendImageId = ""
+$originalFrontendImageId = ""
+$candidateBackendImage = ""
+$candidateFrontendImage = ""
 
 function Resolve-ComposeProjectName([string]$RequestedName) {
     if ($RequestedName) { return $RequestedName }
@@ -49,6 +53,33 @@ function Read-EnvValue([string]$Path, [string]$Name, [string]$DefaultValue) {
         Select-Object -Last 1
     if (-not $line) { return $DefaultValue }
     return (($line -split '=', 2)[1]).Trim().Trim('"').Trim("'")
+}
+
+function Assert-BackgroundQueuesDrained(
+    [string]$PostgresId,
+    [string]$DatabaseUser,
+    [string]$DatabaseName,
+    [string]$RedisId,
+    [string]$Phase
+) {
+    $activeTasksSql = "SELECT count(*) FROM ai_tasks WHERE status IN ('queued','processing');"
+    $activeTasksRaw = docker exec $PostgresId psql -U $DatabaseUser -d $DatabaseName -Atc $activeTasksSql
+    if ($LASTEXITCODE -ne 0) { throw "Unable to verify active AI tasks during $Phase" }
+    $activeTasks = [int]($activeTasksRaw | Select-Object -Last 1)
+    $otherTasksSql = @"
+SELECT
+  (SELECT count(*) FROM dify_tasks WHERE status IN ('pending','running'))
+  + (SELECT count(*) FROM xhs_account_sync_runs WHERE status IN ('queued','running','cancelling'))
+  + (SELECT count(*) FROM xhs_schedule_run_logs WHERE status = 'running' AND started_at >= now() - interval '12 hours');
+"@
+    $otherTasksRaw = docker exec $PostgresId psql -U $DatabaseUser -d $DatabaseName -Atc $otherTasksSql
+    if ($LASTEXITCODE -ne 0) { throw "Unable to verify active Dify/XHS tasks during $Phase" }
+    $otherActiveTasks = [int]($otherTasksRaw | Select-Object -Last 1)
+    $pendingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:pending | Select-Object -Last 1) } else { 0 }
+    $processingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:processing | Select-Object -Last 1) } else { 0 }
+    if ($activeTasks -gt 0 -or $pendingTasks -gt 0 -or $processingTasks -gt 0 -or $otherActiveTasks -gt 0) {
+        throw "Background tasks are active during $Phase (ai_database=$activeTasks ai_pending=$pendingTasks ai_processing=$processingTasks dify_xhs=$otherActiveTasks)"
+    }
 }
 
 if (Test-Path $currentPath) {
@@ -87,34 +118,26 @@ try {
     if (-not $originalPgMount -or -not $originalUploadsMount) {
         throw "Unable to resolve existing PostgreSQL/uploads mounts; refusing a data-volume blind deployment"
     }
+    $originalBackendImageId = "$(docker inspect --format '{{.Image}}' $currentBackendId)".Trim()
+    $currentFrontendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q frontend)".Trim()
+    $originalFrontendImageId = if ($currentFrontendId) { "$(docker inspect --format '{{.Image}}' $currentFrontendId)".Trim() } else { "" }
+    if (-not $originalBackendImageId -or -not $originalFrontendImageId) {
+        throw "Unable to preserve current backend/frontend image IDs for automatic rollback"
+    }
 
     $databaseUser = "$(docker exec $currentPostgresId printenv POSTGRES_USER | Select-Object -Last 1)".Trim()
     $databaseName = "$(docker exec $currentPostgresId printenv POSTGRES_DB | Select-Object -Last 1)".Trim()
     if (-not $databaseUser -or -not $databaseName) {
         throw "Unable to resolve PostgreSQL credentials from the production container"
     }
-    $activeTasksSql = "SELECT count(*) FROM ai_tasks WHERE status IN ('queued','processing');"
-    $activeTasksRaw = docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc $activeTasksSql
-    if ($LASTEXITCODE -ne 0) { throw "Unable to verify active AI tasks" }
-    $activeTasks = [int]($activeTasksRaw | Select-Object -Last 1)
-    $otherTasksSql = @"
-SELECT
-  (SELECT count(*) FROM dify_tasks WHERE status IN ('pending','running'))
-  + (SELECT count(*) FROM xhs_account_sync_runs WHERE status IN ('queued','running','cancelling'))
-  + (SELECT count(*) FROM xhs_schedule_run_logs WHERE status = 'running' AND started_at >= now() - interval '12 hours');
-"@
-    $otherTasksRaw = docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc $otherTasksSql
-    if ($LASTEXITCODE -ne 0) { throw "Unable to verify active Dify/XHS tasks" }
-    $otherActiveTasks = [int]($otherTasksRaw | Select-Object -Last 1)
     $redisId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q redis)".Trim()
-    $pendingTasks = if ($redisId) { [int](docker exec $redisId redis-cli LLEN ai:image:tasks:pending | Select-Object -Last 1) } else { 0 }
-    $processingTasks = if ($redisId) { [int](docker exec $redisId redis-cli LLEN ai:image:tasks:processing | Select-Object -Last 1) } else { 0 }
-    if ($activeTasks -gt 0 -or $pendingTasks -gt 0 -or $processingTasks -gt 0 -or $otherActiveTasks -gt 0) {
-        throw "Background tasks are still active (ai_database=$activeTasks ai_pending=$pendingTasks ai_processing=$processingTasks dify_xhs=$otherActiveTasks); wait for drain before deployment"
-    }
+    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "initial preflight"
 
     $pythonImage = Read-EnvValue $rootEnvPath "PYTHON_IMAGE" "python:3.11.13-slim-bookworm"
     $nodeImage = Read-EnvValue $rootEnvPath "NODE_IMAGE" "node:20.19.4-alpine3.22"
+    $appImagePrefix = Read-EnvValue $rootEnvPath "APP_IMAGE_PREFIX" "ztqc"
+    $candidateBackendImage = "${appImagePrefix}/backend:${Version}"
+    $candidateFrontendImage = "${appImagePrefix}/frontend:${Version}"
     foreach ($baseImage in @($pythonImage, $nodeImage)) {
         docker image inspect $baseImage | Out-Null
         if ($LASTEXITCODE -ne 0) {
@@ -142,18 +165,43 @@ SELECT
     docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build backend frontend
     if ($LASTEXITCODE -ne 0) { throw "Release image build failed" }
 
-    $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
-    $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
-    if (-not $backupDir) { throw "Backup did not return a path" }
+    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "post-build preflight"
 
     if (Test-Path $sourceSnapshot) { Remove-Item -Force $sourceSnapshot }
     $sourceItems = @("backend", "frontend", "scripts", "docker-compose.yml", "docker-compose.dev.yml") |
         Where-Object { Test-Path (Join-Path $ProjectRoot $_) }
-    tar -czf $sourceSnapshot --exclude=.git --exclude='.env*' --exclude=.release --exclude=uploads --exclude=runtime --exclude=node_modules --exclude=.next --exclude='._*' -C $ProjectRoot @sourceItems
+    tar -czf $sourceSnapshot `
+        --exclude=.git `
+        --exclude='.env*' `
+        --exclude=.release `
+        --exclude=uploads `
+        --exclude=runtime `
+        --exclude=node_modules `
+        --exclude=.next `
+        --exclude=.venv `
+        --exclude=__pycache__ `
+        --exclude=.pytest_cache `
+        --exclude=.mypy_cache `
+        --exclude='*.db' `
+        --exclude='*.db-*' `
+        --exclude=db_backups `
+        --exclude=backups `
+        --exclude='._*' `
+        -C $ProjectRoot @sourceItems
     if ($LASTEXITCODE -ne 0) { throw "Source snapshot failed" }
 
-    docker compose stop frontend backend ai-worker | Out-Null
+    # Close the user entrypoint first, then make sure no task entered during the
+    # image build before stopping the API and worker processes.
+    docker compose stop frontend | Out-Null
     $servicesStopped = $true
+    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
+    docker compose stop backend ai-worker | Out-Null
+    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"
+
+    $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
+    $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+    if (-not $backupDir) { throw "Backup did not return a path" }
+
     Get-ChildItem $ProjectRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
         Remove-Item -Force -ErrorAction SilentlyContinue
     tar -xzf $PackagePath -C $ProjectRoot
@@ -204,15 +252,25 @@ SELECT
 }
 catch {
     Write-Error "Deployment failed: $($_.Exception.Message)"
-    if ($servicesStopped -and $backupDir -and (Test-Path $sourceSnapshot)) {
-        Write-Warning "Restoring previous source and database backup..."
-        tar -xzf $sourceSnapshot -C $ProjectRoot
+    if ($servicesStopped) {
+        Write-Warning "Restoring previous source, images, and database state..."
+        if (Test-Path $sourceSnapshot) {
+            tar -xzf $sourceSnapshot -C $ProjectRoot
+        }
         if ($previousRelease) {
             $env:APP_VERSION = $previousRelease.version
             $env:GIT_COMMIT = $previousRelease.commit
             $env:BUILD_TIME = $previousRelease.buildTime
         }
-        & (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
+        if ($backupDir) {
+            & (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
+        }
+        if ($originalBackendImageId -and $candidateBackendImage) {
+            docker tag $originalBackendImageId $candidateBackendImage
+        }
+        if ($originalFrontendImageId -and $candidateFrontendImage) {
+            docker tag $originalFrontendImageId $candidateFrontendImage
+        }
         docker compose up -d --no-build backend ai-worker frontend
     }
     throw
