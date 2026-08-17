@@ -19,8 +19,12 @@ tar -czf "$output" \
   --exclude='.venv' \
   --exclude='uploads' \
   --exclude='runtime' \
-  --exclude='*.db' \
-  --exclude='*.db-*' \
+  --exclude='*.db*' \
+  --exclude='db_backups' \
+  --exclude='backups' \
+  --exclude='cookies.json' \
+  --exclude='cookies-*.json' \
+  --exclude='backend/content_tag_*.csv' \
   --exclude='._*' \
   -C "$repo_root" \
   backend frontend scripts docker-compose.yml docker-compose.dev.yml
