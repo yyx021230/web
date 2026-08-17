@@ -11,6 +11,7 @@ WIN_IP="${WIN_IP:-192.168.10.107}"
 WIN_PATH="${WIN_PATH:-C:/projects/web}"
 WIN_PS_PATH="${WIN_PATH//\//\\}"
 WIN_PASS="${WIN_PASS:-}"
+EXISTING_BACKUP_DIR="${EXISTING_BACKUP_DIR:-}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
 REQUIRE_RELEASE_TAG="${REQUIRE_RELEASE_TAG:-true}"
 GO_TOOLCHAIN="${GO_TOOLCHAIN:-go1.24.6}"
@@ -76,8 +77,12 @@ for script in "$PROJECT"/scripts/windows/*.ps1; do
 done
 
 echo "[5/6] Deploy with backup, migration, health check, and automatic rollback"
+BACKUP_ARG=""
+if [[ -n "$EXISTING_BACKUP_DIR" ]]; then
+  BACKUP_ARG=" -ExistingBackupDir '${EXISTING_BACKUP_DIR}'"
+fi
 "${SSH[@]}" "$TARGET" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${WIN_PS_PATH}\\scripts\\windows\\Deploy-Release.ps1' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'; if (-not \$?) { exit 1 }\""
+  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${WIN_PS_PATH}\\scripts\\windows\\Deploy-Release.ps1' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'${BACKUP_ARG}; if (-not \$?) { exit 1 }\""
 
 echo "[6/6] Verify deployed version"
 DEPLOYED_JSON="$("${SSH[@]}" "$TARGET" \

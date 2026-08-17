@@ -276,7 +276,9 @@ try {
         $backupDir = $ExistingBackupDir
     } else {
         $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
-        $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+        # The daily job keeps a full uploads archive. Releases only mutate code
+        # and schema, so avoid extending downtime by recompressing immutable files.
+        $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot -SkipUploads
     }
     if (-not $backupDir) { throw "Backup did not return a path" }
 

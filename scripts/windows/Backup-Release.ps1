@@ -2,7 +2,8 @@ param(
     [string]$ProjectRoot = "C:\projects\web",
     [string]$BackupRoot = "D:\ztqc-backups\web",
     [string]$MirrorRoot = $env:BACKUP_MIRROR_DIR,
-    [int]$RetentionDays = 30
+    [int]$RetentionDays = 30,
+    [switch]$SkipUploads
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,7 +69,7 @@ try {
     if (-not [System.IO.Path]::IsPathRooted($uploadsPath)) {
         $uploadsPath = Join-Path $ProjectRoot $uploadsPath
     }
-    if (Test-Path $uploadsPath) {
+    if (-not $SkipUploads -and (Test-Path $uploadsPath)) {
         tar -czf $uploadsArchive -C $uploadsPath .
         if ($LASTEXITCODE -ne 0) { throw "uploads backup failed" }
     }
