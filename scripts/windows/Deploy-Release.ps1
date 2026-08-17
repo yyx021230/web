@@ -337,7 +337,10 @@ catch {
             $env:GIT_COMMIT = $previousRelease.commit
             $env:BUILD_TIME = $previousRelease.buildTime
         } else {
-            $env:APP_VERSION = $originalAppVersion
+            # Legacy deployments may not expose release metadata. The old image
+            # IDs are retagged to the candidate tags below, so keep that tag
+            # instead of attempting to pull an invalid ':unknown' image.
+            $env:APP_VERSION = if ($originalAppVersion -and $originalAppVersion -ne "unknown") { $originalAppVersion } else { $Version }
             $env:GIT_COMMIT = $originalGitCommit
             $env:BUILD_TIME = $originalBuildTime
         }
