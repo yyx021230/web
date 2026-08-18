@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const backendOrigin = process.env.BACKEND_ORIGIN || 'http://localhost:8000';
+    const baseUrl = `${backendOrigin.replace(/\/$/, '')}/api/v1`;
     const res = await fetch(`${baseUrl}/ai-image/generate`, {
       method: 'POST',
       headers: {
