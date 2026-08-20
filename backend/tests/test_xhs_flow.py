@@ -2113,6 +2113,37 @@ async def test_wait_sms_ignores_bank_message_matched_by_exact_order(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_wait_sms_stops_when_browser_becomes_logged_in(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    cancelled: list[str] = []
+
+    async def fake_exact(self: XHSService, request_id: str):
+        return {"requestId": request_id, "status": "waiting"}
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        assert api_base == "http://mcp.test"
+        assert probe is False
+        return {"is_logged_in": True}
+
+    async def fake_cancel(self: XHSService, request_id: str):
+        cancelled.append(request_id)
+
+    monkeypatch.setattr(XHSService, "_get_open_sms_code_request", fake_exact)
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
+
+    result = await service._wait_open_sms_code_request(
+        "request-login-recovered",
+        initial_request={"requestId": "request-login-recovered", "status": "waiting"},
+        login_api_base="http://mcp.test",
+    )
+
+    assert result["alreadyLoggedIn"] is True
+    assert result["status"] == "already_logged_in"
+    assert cancelled == ["request-login-recovered"]
+
+
+@pytest.mark.asyncio
 async def test_create_xhs_qr_task_uses_existing_phone_cloud_admin_route(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     calls: list[dict[str, object]] = []
@@ -2838,6 +2869,72 @@ async def test_creator_auto_login_keeps_listening_when_countdown_detection_is_fa
     await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
 
     assert events == ["listener-kept", "submit:135790"]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_stops_when_explore_page_is_already_logged_in(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=912, shop_id="shop_912", account_name="已登录账号", login_phone_number="17570049665")
+    events: list[str] = []
+    status_results = iter((False, False))
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        events.append(f"status:{probe}")
+        return {"is_logged_in": next(status_results)}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        events.append("create-request")
+        return {"requestId": "request-912", "status": "waiting"}
+
+    async def fake_wait_request(self: XHSService, request_id: str, **kwargs):
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            events.append("listener-cancelled")
+            raise
+
+    async def fake_cancel(self: XHSService, request_id: str):
+        events.append(f"cancel:{request_id}")
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {"is_logged_in": True, "message": "已登录"}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            events.append("open-explore")
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-secret")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
+    monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == [
+        "status:True",
+        "create-request",
+        "open-explore",
+        "cancel:request-912",
+        "listener-cancelled",
+    ]
 
 
 @pytest.mark.asyncio

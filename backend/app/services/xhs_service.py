@@ -7695,6 +7695,7 @@ class XHSService:
                         initial_request=sms_request,
                         cancel_check=cancel_check,
                         timeout_seconds=SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS,
+                        login_api_base=api_base,
                     )
                 )
                 try:
@@ -7717,6 +7718,28 @@ class XHSService:
                             )
                         else:
                             send_error = "触发小红书发送验证码失败"
+
+                    send_data = payload.get("data") if isinstance(payload, dict) else None
+                    if not send_error and isinstance(send_data, dict) and bool(send_data.get("is_logged_in")):
+                        await self._cancel_open_sms_code_request(request_id)
+                        logger.info(
+                            "打开小红书首页后已确认登录，跳过验证码等待: "
+                            "env_id=%s request_id=%s elapsed_ms=%s",
+                            getattr(env, "id", None),
+                            request_id,
+                            round((time.monotonic() - flow_started_at) * 1000),
+                        )
+                        request_id = ""
+                        await self._emit_progress(
+                            progress_callback,
+                            {
+                                "phase": "creator_login_recovered",
+                                "detail": f"{account_name or '当前账号'} 已确认登录，正在进入创作者中心",
+                                "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                                "account_name": account_name,
+                            },
+                        )
+                        return
 
                     # Countdown detection is UI observation, not proof that
                     # the click failed.  Keep the already-armed SMS listener
@@ -7772,6 +7795,25 @@ class XHSService:
                         await self._cancel_open_sms_code_request(request_id)
                         request_id = ""
                         continue
+                    if bool(received_request.get("alreadyLoggedIn")):
+                        logger.info(
+                            "等待验证码期间检测到浏览器已登录，立即结束登录流程: "
+                            "env_id=%s request_id=%s elapsed_ms=%s",
+                            getattr(env, "id", None),
+                            request_id,
+                            round((time.monotonic() - flow_started_at) * 1000),
+                        )
+                        request_id = ""
+                        await self._emit_progress(
+                            progress_callback,
+                            {
+                                "phase": "creator_login_recovered",
+                                "detail": f"{account_name or '当前账号'} 已确认登录，正在进入创作者中心",
+                                "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                                "account_name": account_name,
+                            },
+                        )
+                        return
                 finally:
                     await self._stop_background_task(sms_wait_task)
                 if received_request is not None:
@@ -8162,6 +8204,7 @@ class XHSService:
         initial_request: dict[str, Any] | None = None,
         cancel_check: CancelCheck | None = None,
         timeout_seconds: float | None = None,
+        login_api_base: str | None = None,
     ) -> dict[str, Any]:
         wait_seconds = min(
             float(SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS),
@@ -8227,6 +8270,24 @@ class XHSService:
                     fallback_result.get("subscriptionId"),
                 )
                 return fallback_result
+            if login_api_base:
+                try:
+                    login_status = await self._get_mcp_login_status(login_api_base)
+                except Exception as exc:
+                    logger.warning(
+                        "等待验证码期间复查浏览器登录态失败，继续等待短信: request_id=%s error=%s",
+                        request_id,
+                        exc,
+                    )
+                else:
+                    if bool(login_status.get("is_logged_in")):
+                        await self._cancel_open_sms_code_request(request_id)
+                        return {
+                            "requestId": request_id,
+                            "status": "already_logged_in",
+                            "isLoggedIn": True,
+                            "alreadyLoggedIn": True,
+                        }
             if status in {"expired", "cancelled", "failed"}:
                 raise SmsCodeWaitFailure(status, request_id, f"验证码请求未收到验证码: {status}")
             if status not in {"waiting", "received"}:
