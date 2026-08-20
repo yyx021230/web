@@ -175,18 +175,28 @@ async def test_due_schedule_reconciles_stale_running_logs(client):
 
 
 class _FakeXHSService:
+    observed_calls: list[str] = []
+
     def __init__(self, _session):
         self.calls = []
 
     async def sync_account_notes(self, **kwargs):
+        self.observed_calls.append("posts")
         self.calls.append(("posts", kwargs))
-        return {"synced_accounts": 2, "created_notes": 3, "updated_notes": 4}
+        return {
+            "synced_accounts": 2,
+            "created_notes": 0,
+            "updated_notes": 4,
+            "deferred_homepage_notes": 3,
+        }
 
     async def sync_account_note_engagements(self, **kwargs):
+        self.observed_calls.append("engagement")
         self.calls.append(("engagement", kwargs))
         return {"synced_accounts": 2, "metric_synced_notes": 5}
 
     async def sync_existing_account_note_stats(self, **kwargs):
+        self.observed_calls.append("detail")
         self.calls.append(("detail", kwargs))
         return {"synced_notes": 2, "failed_notes": 1}
 
@@ -199,6 +209,7 @@ class _FakeXHSService:
 
 @pytest.mark.asyncio
 async def test_execute_account_data_sync_all_steps(client, monkeypatch):
+    _FakeXHSService.observed_calls = []
     monkeypatch.setattr(module, "XHSService", _FakeXHSService)
     monkeypatch.setattr(module, "_resolve_target_environment_ids", lambda *_args, **_kwargs: None)
 
@@ -231,9 +242,13 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
             },
         )
         assert "主页帖子" in result
-        assert "创作中心互动" in result
+        assert "补齐 4 条" in result
+        assert "待创作者中心建档 3 条" in result
+        assert "创作中心主同步" in result
         assert "未同步策略" in result
         assert "内容打标 2/3" in result
+        assert _FakeXHSService.observed_calls[:2] == ["engagement", "posts"]
+        assert all(call == "detail" for call in _FakeXHSService.observed_calls[2:])
 
         empty = await _execute_account_data_sync(db, {"post_sync_enabled": False})
         assert empty == "未启用任何账户同步步骤"

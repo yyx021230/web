@@ -11,6 +11,7 @@ export interface XHSEnvironment {
   sync_browser_start_config?: string;
   xhs_account_id?: string;
   login_phone_number?: string;
+  xhs_account_type?: 'enterprise_professional' | 'enterprise_employee' | 'personal' | string;
   is_sync_runner?: boolean;
   notes?: string;
   proxy_info?: string;
@@ -230,6 +231,15 @@ export interface XHSAccountNoteSyncResponse {
   updated_notes: number;
   metric_synced_notes: number;
   total_notes: number;
+  deferred_homepage_notes?: number;
+  deferred_homepage_items?: Array<{
+    environment_id: number;
+    account_name: string;
+    feed_id: string;
+    title: string;
+    published_at?: string | null;
+    reason: string;
+  }>;
   exported_rows?: number;
   unmatched_notes?: number;
   duplicate_title_skips?: number;
@@ -259,6 +269,7 @@ export interface XHSAccountNoteSyncJobProgress {
   current_feed_id?: string | null;
   created_notes?: number | null;
   updated_notes?: number | null;
+  deferred_homepage_notes?: number | null;
   synced_notes?: number | null;
   failed_notes?: number | null;
   synced_accounts?: number | null;

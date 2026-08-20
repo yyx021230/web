@@ -116,6 +116,17 @@ workflow:
     - data:
         isInIteration: false
         sourceType: code
+        targetType: knowledge-retrieval
+      id: query-source-vehicleknowledge-target
+      source: build_queries
+      sourceHandle: source
+      target: vehicle_knowledge
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
         targetType: http-request
       id: query-source-copy-target
       source: build_queries
@@ -185,6 +196,17 @@ workflow:
         targetType: code
       id: copy-source-prepare-target
       source: fetch_copy_library
+      sourceHandle: source
+      target: prepare_materials
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: knowledge-retrieval
+        targetType: code
+      id: vehicleknowledge-source-prepare-target
+      source: vehicle_knowledge
       sourceHandle: source
       target: prepare_materials
       targetHandle: target
@@ -736,7 +758,10 @@ workflow:
       width: 270
     - data:
         code: |-
-          def main(run_id: str, post_count: str, vehicle_model: str, policy_text: str, account_name: str) -> dict:
+          import re
+
+          def main(run_id: str, post_count: str, brand: str, vehicle_model: str, policy_text: str, account_name: str) -> dict:
+              brand_name = str(brand or "").strip()
               model = str(vehicle_model or "").strip()
               policy = str(policy_text or "").strip()
               if not model:
@@ -748,11 +773,17 @@ workflow:
               count = max(1, min(5, int(post_count or 1)))
               seed = sum(ord(ch) for ch in (str(run_id or "") + "|" + str(account_name or "")))
               copy_page = seed % 14 + 1
+              policy_model_match = re.search(r"(?:车型|车系|车款)\s*[:：]\s*([^\n\r]+)", policy)
+              policy_model = policy_model_match.group(1).strip() if policy_model_match else ""
               return {
                   "copy_page": copy_page,
                   "copy_page_2": (copy_page + 4 - 1) % 14 + 1,
                   "copy_page_3": (copy_page + 9 - 1) % 14 + 1,
                   "prompt_page": seed % 4 + 1,
+                  "vehicle_knowledge_query": (
+                      f"{brand_name} {model} {policy_model} 当前在售 官网 当前年款 具体版本 "
+                      "续航 电池 动力 尺寸 快充 底盘 智驾 标配 选配"
+                  ).strip(),
                   "slots": [str(i) for i in range(1, count + 1)]
               }
         code_language: python3
@@ -770,6 +801,9 @@ workflow:
           prompt_page:
             children: null
             type: number
+          vehicle_knowledge_query:
+            children: null
+            type: string
           slots:
             children: null
             type: array[string]
@@ -785,6 +819,10 @@ workflow:
           - start
           - post_count
           variable: post_count
+        - value_selector:
+          - start
+          - brand
+          variable: brand
         - value_selector:
           - start
           - vehicle_model
@@ -810,6 +848,38 @@ workflow:
       targetPosition: left
       type: custom
       width: 280
+    - data:
+        dataset_ids:
+        - 745f1046-8234-4349-b785-1893dbed6bed
+        desc: 按品牌和用户指定车型检索当前官网年款、版本及配置；产品事实只使用本节点返回内容。
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: Pro/BAAI/bge-reranker-v2-m3
+            provider: langgenius/siliconflow/siliconflow
+          top_k: 6
+        query_attachment_selector: []
+        query_variable_selector:
+        - build_queries
+        - vehicle_knowledge_query
+        retrieval_mode: multiple
+        selected: false
+        title: 检索当前车型产品知识
+        type: knowledge-retrieval
+      height: 98
+      id: vehicle_knowledge
+      position:
+        x: 1350
+        y: 920
+      positionAbsolute:
+        x: 1350
+        y: 920
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 300
     - data:
         authorization:
           config: null
@@ -1123,15 +1193,15 @@ workflow:
 
           LINE_BANNED = (
               "私信", "加微信", "微信号", "扫码", "电话", "站外", "评论区", "评论",
-              "留言", "回复", "咨询", "点击", "领取", "进群", "联系方式", "城市+",
-              "地区+", "扣【", "留【", "立即咨询", "手慢无", "错过", "闭眼冲",
+              "留言", "回复", "咨询", "点击", "领取", "赠送", "进群", "联系方式",
+              "扣【", "留【", "立即咨询", "手慢无", "错过", "闭眼",
           )
           POLICY_OUTPUT_BANNED = (
               "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
-              "白嫖", "白送", "送你", "免费", "发你", "评论区", "评论",
+              "白嫖", "白送", "送你", "赠送", "免费", "发你", "评论区", "评论",
               "国旗", "国家", "薅", "崩", "秒发", "底价",
-              "全网最低", "最便宜", "抄底", "闭眼冲", "直降", "下调",
-              "大跳水", "割韭菜", "内部", "隐藏福利", "行情曝光",
+              "全网最低", "最便宜", "抄底", "闭眼", "直降", "下调",
+              "跳水", "割韭菜", "冲量", "内部", "隐藏福利", "行情曝光",
               "618", "双11", "双12", "链接", "一手资讯", "抢先看",
           )
           POLICY_OUTPUT_SEMANTIC = re.compile(
@@ -1142,7 +1212,7 @@ workflow:
           )
           CTA_TEMPLATE_LINE = re.compile(
               r"想预约|想体验|想知道|想了解|想看|想算|预约|咨询|滴滴|私信|"
-              r"留【|扣【|城市\s*\+|城市】|找我|发你|帮你"
+              r"留【|扣【|(?:城市|地区)\s*[+＋]|城市】|找我|发你|帮你"
           )
           POLICY_FACT_LINE = re.compile(
               r"20\d{2}年|\d{1,2}月|\d{1,2}日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月|\d+(?:\.\d+)?\s*(?:元|万|万元|%|折)|"
@@ -1221,7 +1291,31 @@ workflow:
                   return variants[mode % len(variants)]
               return original
 
+          def _symbol_lead_close(source, policy, vehicle_model):
+              """保留文案库的符号承接：禁敏感文字，但不删除留资功能。"""
+              source_text = str(source or "")
+              model = str(vehicle_model or "").strip()
+              model_label = re.sub(r"^(?:零跑汽车|零跑)", "", model, flags=re.I).strip() or model
+              cue_tokens = re.findall(r"⬇️|👇|👉|💬|📩", source_text)
+              cue = "".join(cue_tokens[:2]) or "⬇️💬"
+              if "💬" not in cue and "📩" not in cue:
+                  cue += "💬"
+              combined = source_text + "\n" + str(policy or "")
+              if "试驾" in source_text and "试驾" in str(policy or ""):
+                  benefit = "了解本地方案和实车体验安排"
+              elif any(word in combined for word in ("版本", "配置")):
+                  benefit = "了解本地方案和版本明细"
+              elif any(word in combined for word in ("补贴", "权益")):
+                  benefit = "了解本地方案和权益明细"
+              else:
+                  benefit = "了解本月落地方案"
+              tail_tokens = re.findall(r"💰|✨|✅|🔥|💡|💌", source_text)
+              tail = tail_tokens[-1] if tail_tokens else "💰"
+              return f"{cue}【城市＋{model_label}】，{benefit}{tail}"
+
           def _template_policy_close(source, policy, vehicle_model, mode):
+              return _symbol_lead_close(source, policy, vehicle_model)
+              # 以下旧分支保留仅用于兼容历史 DSL；当前统一采用母版符号承接。
               facts = _policy_facts(policy)
               deadline_fact = next((fact for fact in facts if re.search(r"截止|截至", fact)), "")
               deadline = re.search(r"20\d{2}年\d{1,2}月\d{1,2}日", deadline_fact)
@@ -1325,7 +1419,9 @@ workflow:
                       action = "DELETE"
                       replacement = ""
                   elif PRODUCT_FACT_LINE.search(clean) and same_model:
-                      action = "KEEP_SOURCE_FACT"
+                      # 本流程是政策帖：同车型原文也只能借版式与语气，政策未提供的
+                      # 配置、功能和体验事实同样删除，避免把车型教程混入政策正文。
+                      action = "DELETE"
                       replacement = ""
                   else:
                       action = "MIN_EDIT"
@@ -1412,9 +1508,9 @@ workflow:
               ]
               hard_banned_markers = [
                   "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
-                  "白嫖", "白送", "送你", "免费", "发你", "评论区", "评论",
+                  "白嫖", "白送", "送你", "赠送", "免费", "发你", "评论区", "评论",
                   "国旗", "国家", "薅", "崩", "秒发", "底价", "全网最低",
-                  "最便宜", "抄底", "闭眼冲", "直降", "下调", "大跳水", "割韭菜"
+                  "最便宜", "抄底", "闭眼", "直降", "下调", "跳水", "割韭菜", "冲量"
                   ,"夯爆", "太香", "香爆", "神车"
               ]
               aggressive_markers = [
@@ -1422,8 +1518,7 @@ workflow:
                   "报价单", "纯净落地", "全盘托出", "信息差", "套路"
               ]
               cta_markers = [
-                  "留言", "咨询", "点击", "一对一", "地区+车型", "地区 + 车型",
-                  "城市+车型", "城市 + 车型", "预约", "领取", "解锁", "进群",
+                  "留言", "咨询", "点击", "一对一", "预约", "领取", "解锁", "进群",
                   "加好友", "联系方式", "报车型", "溜【", "回复", "获取"
               ]
               commercial_markers = [
@@ -1518,7 +1613,7 @@ workflow:
                   tangential_hits = sum(1 for marker in tangential_markers if marker in haystack)
                   detail_title_hits = sum(1 for marker in detailed_title_markers if marker in title)
                   title_date_tokens = re.findall(
-                      r"20\d{2}年|\d{1,2}月|\d{1,2}日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月",
+                      r"20\d{2}年|\d{1,2}\s*月|\d{1,2}\s*日|(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月",
                       title,
                   )
                   title_amount_tokens = re.findall(r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)", title)
@@ -1626,7 +1721,7 @@ workflow:
                   and row["automotive_hits"] >= 1
                   and not row["title_policy_conflict"]
                   and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
-                  and (row["line_plan"]["same_model_source"] or row["detail_title_hits"] == 0)
+                  and row["detail_title_hits"] == 0
                   and row["retention_ratio"] >= 0.68
                   and 2 <= row["body_line_count"] <= 16
                   and row["structure_units"] <= 12
@@ -1644,7 +1739,7 @@ workflow:
                       and row["automotive_hits"] >= 1
                       and not row["title_policy_conflict"]
                       and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
-                      and (row["line_plan"]["same_model_source"] or row["detail_title_hits"] == 0)
+                      and row["detail_title_hits"] == 0
                       and row["retention_ratio"] >= 0.52
                       and 2 <= row["body_line_count"] <= 18
                       and row["line_plan"]["expected_output_line_count"] >= 4
@@ -1662,6 +1757,7 @@ workflow:
                       and row["tangential_hits"] == 0
                       and row["automotive_hits"] >= 1
                       and row["title_hard_banned_hits"] == 0
+                      and row["detail_title_hits"] == 0
                       and row["semantic_banned_hits"] == 0
                       and not row["title_policy_conflict"]
                       and (policy_has_commercial_fact or row["title_commercial_hits"] == 0)
@@ -1674,7 +1770,11 @@ workflow:
               # 同车型标题安全、正文能逐行净化时，优先使用该池；旧政策和互动句在
               # line_plan 中删除或替换。全车型文案仍作为 3 条辅参考提供少量话术。
               if len(same_model_primary_pool) >= max(count * 4, 8):
-                  primary_pool = same_model_primary_pool
+                  # 同车型母版优先，但不再排斥其它车型的安全母版。用户要求可参考
+                  # 全车型文案库；保留跨车型候选也能避免单车型长期锁死同一结构。
+                  primary_pool = same_model_primary_pool + [
+                      row for row in primary_pool if row not in same_model_primary_pool
+                  ]
               elif len(primary_pool) < count:
                   raise ValueError("文案库中可逐行安全复刻的不同母版不足 %s 条" % count)
               if _norm(copy_keyword):
@@ -1774,7 +1874,7 @@ workflow:
                       "locked_emoji_sequence": styled_line_plan["safe_emoji_sequence"],
                       "support_references": group[1:],
                       "source_copy_ids": [item.get("id") for item in group],
-                      "instruction": "严格执行 line_plan：MIN_EDIT/KEEP_SOURCE_FACT 保持原行，POLICY_REPLACE 使用本帖指定的等义表达，SAFE_POLICY_CLOSE 保留母版收尾句式、问句结构和emoji但使用replacement替换禁用互动含义，DELETE 不输出，REWRITE_TAGS 仅换安全话题；政策事实不变，但本批各帖表达方式不得相同；不得自行增行",
+                      "instruction": "严格执行 line_plan：MIN_EDIT/KEEP_SOURCE_FACT 保持原行；母版中的⬇️、👇、👉、💬、📩及【城市＋车型】属于允许保留的符号承接，不是敏感文字；POLICY_REPLACE 使用本帖指定的等义表达，SAFE_POLICY_CLOSE 必须逐字使用replacement保留符号承接与原位置，DELETE 不输出，REWRITE_TAGS 仅换安全话题；政策事实不变，但本批各帖表达方式不得相同；不得自行增行",
                   }, ensure_ascii=False))
 
               visual_terms = [
@@ -1962,7 +2062,7 @@ workflow:
             max_tokens: 2600
             temperature: 0.2
           mode: chat
-          name: gpt-5.4
+          name: gpt-5.4-mini
           provider: langgenius/openai/openai
         prompt_template:
         - id: 77ea2b13-0cd3-4a76-b74c-0b1ea74c0001
@@ -2078,8 +2178,10 @@ workflow:
       zIndex: 1002
     - data:
         context:
-          enabled: false
-          variable_selector: []
+          enabled: true
+          variable_selector:
+          - vehicle_knowledge
+          - result
         desc: 一篇一篇地做，不套统一模板，不自行改车型或政策。
         isInIteration: true
         iteration_id: copy_iteration
@@ -2088,7 +2190,7 @@ workflow:
             max_tokens: 5000
             temperature: 0.2
           mode: chat
-          name: gpt-5.4
+          name: gpt-5.4-mini
           provider: langgenius/openai/openai
         prompt_template:
         - id: 985302d3-990c-4a15-9424-c1d92bc70001
@@ -2098,9 +2200,9 @@ workflow:
 
             严格按输入里的 line_plan 逐行执行，不允许自行决定重写整篇：
             - MIN_EDIT：保留该行句式、语序、标点、emoji 和换行，只把原品牌/车型换成用户指定车型，最多改 20% 字词。
-            - KEEP_SOURCE_FACT：主参考本身明确属于当前车型，可保留这一行的车型产品事实；仍不得新增原行没有的事实。
+            - KEEP_SOURCE_FACT：只有该行产品事实能在“当前车型产品知识”中找到同车型、同版本依据时才可保留；无法核实或版本不明确时，保留句式骨架但删除参数、配置和体验判断。
             - POLICY_REPLACE：在原行位置使用 replacement 给出的本帖专属等义表达。保留原行开头的 emoji、序号或小标题；不得改回政策原句，也不得自行再次改写 replacement。
-            - SAFE_POLICY_CLOSE：这是母版原来的咨询/互动收尾行。必须保留它的“想知道…？”、“想体验…、了解…”等句式骨架、问句节奏、所在位置和结尾 emoji，但逐字使用 replacement，把禁用互动含义替换成安全政策信息；不能删除这一行。
+            - SAFE_POLICY_CLOSE：这是母版原来的留资收尾位置。必须逐字使用 replacement，保留母版的符号承接、所在位置和 emoji；不得改回“私信、评论、留言、咨询、发你”等敏感文字，也不能删除这一行。
             - DELETE：该行完全不输出，也不补新句，不补 emoji。
             - REWRITE_TAGS：只输出当前车型、品牌、试驾/看车相关的安全话题标签。
 
@@ -2108,11 +2210,14 @@ workflow:
 
             事实边界：
             - 价格、权益、期限、日期、活动状态、金融和库存只允许来自飞书政策原文。
+            - 车型年款、版本、续航、电池、动力、尺寸、快充、底盘、智驾、座椅和其他产品配置只允许来自“当前车型产品知识”。文案库只能提供原句结构和语气，不能作为产品事实来源。
+            - 用户只指定车型、未指定具体版本时，只能使用知识库中各当前版本共同具备的事实；任何仅高配、激光雷达版或选装才有的配置，禁止写成全系配置，也不得擅自替用户选择版本。
+            - “当前车型产品知识”中出现的采集时价格不得进入文案；所有营销价格和权益仍只能来自飞书政策原文。
             - 政策事实与 policy_source 一致，但每帖的 policy_expression_mode 不同；必须使用当前 line_plan 的 replacement，让同一批文案分别呈现直述、提醒、信息说明等不同说法。
             - 跨车型主参考只保留结构和通用话术；KEEP_SOURCE_FACT 只会出现在当前车型原文中。
             - 每条政策事实在正文最多出现一次。政策只有两句话时，正文可以很短，不能换同义词重复。
             - 禁止写政策未确认的“已开启、已上线、已落地、进行中、已经安排”等状态。
-            - 禁止点名平台入口、联系方式、站外导流、传播召集、强催促和用户给出的全部禁用词；但必须保留母版中不含禁词的站内软承接问句，让读者产生进一步了解意愿。line_plan 标成 DELETE 的内容绝不能换一种说法补回。
+            - 禁止点名平台入口、联系方式、站外导流、传播召集、强催促和用户给出的全部禁用词；但母版中的⬇️、👇、👉、💬、📩及【城市＋车型】属于允许保留的符号承接，不是敏感文字，也不是需要删除的入口名称。line_plan 标成 DELETE 的内容绝不能换一种说法补回。
 
             来源边界：
             - primary_copy_id 必须等于 locked_primary.id；source_copy_ids 必须原样复制。
@@ -2157,6 +2262,9 @@ workflow:
 
             飞书政策原文（唯一事实源）：
             {{#start.policy_text#}}
+
+            当前车型产品知识（唯一产品事实源；先按当前年款和具体版本筛选）：
+            {{#context#}}
 
             参考图分析与相似提示词排序：
             {{#analyze_reference.text#}}
@@ -2264,7 +2372,7 @@ workflow:
         model:
           completion_params: {max_tokens: 1200, temperature: 0}
           mode: chat
-          name: gpt-5.4
+          name: gpt-5.4-mini
           provider: langgenius/openai/openai
         prompt_template:
         - id: 62c13535-b9de-4b95-9cf1-07ac8a030001
@@ -2272,7 +2380,7 @@ workflow:
           text: |-
             你是汽车营销成图质检员。严格看图，只返回一行 JSON：{"pass":true或false,"reasons":["原因"]}。
             必须全部满足才 pass：画面不是空白；有且只有一辆主体汽车；车辆结构、车标、轮毂和比例无明显畸变；能看见清晰中文文字且不是无字图；content_item_json 的 image_text_blocks 中各文字区块大意均出现，没有明显乱码或大面积错别字；没有二维码、联系方式、旗帜、明确的极限价格词和禁用引流元素；排版完整，无文字严重裁切遮挡。
-            只把 image_text_blocks 当作必须出现的文字；image_prompt 中其他引号文字可能只是布局示例，不要求逐字出现。政策事实正确性已由上游校验，你不要自行判断某个指导价、补贴或金额“未提供”。普通指导价、政策金额、补贴金额本身允许出现；只有图片实际出现“全网最低、最便宜、抄底、底价、闭眼冲、直降”等明确极限词时，才按极限价格宣传判失败。不要因为场景轻微变化判失败。
+            只把 image_text_blocks 当作必须出现的文字；image_prompt 中其他引号文字可能只是布局示例，不要求逐字出现。政策事实正确性已由上游校验，你不要自行判断某个指导价、补贴或金额“未提供”。普通指导价、政策金额、补贴金额本身允许出现；图片实际出现“全网最低、最便宜、抄底、底价、闭眼、直降、冲量、跳水”等禁用或同义变体时，必须判失败。不要因为场景轻微变化判失败。
         - id: 62c13535-b9de-4b95-9cf1-07ac8a030002
           role: user
           text: |-
@@ -2596,13 +2704,13 @@ workflow:
         model:
           completion_params: {max_tokens: 1200, temperature: 0}
           mode: chat
-          name: gpt-5.4
+          name: gpt-5.4-mini
           provider: langgenius/openai/openai
         prompt_template:
         - id: 81986888-3ee0-4c54-a62a-f37107f40001
           role: system
           text: |-
-            你是汽车营销成图质检员。严格看图，只返回一行 JSON：{"pass":true或false,"reasons":["原因"]}。必须有清晰中文文字，且 content_item_json 的 image_text_blocks 中各文字区块大意均出现；只有一辆正确汽车，车辆无明显畸变；没有乱码、严重裁切、二维码、联系方式、旗帜、禁用引流或明确极限价格词。只把 image_text_blocks 当作必须出现的文字，image_prompt 中其他引号文字只是布局示例。不要自行判断政策事实是否提供；普通指导价、政策金额和补贴金额允许出现，只有图片实际出现“全网最低、最便宜、抄底、底价、闭眼冲、直降”等词时才按极限价格判失败。全部满足才 pass。
+            你是汽车营销成图质检员。严格看图，只返回一行 JSON：{"pass":true或false,"reasons":["原因"]}。必须有清晰中文文字，且 content_item_json 的 image_text_blocks 中各文字区块大意均出现；只有一辆正确汽车，车辆无明显畸变；没有乱码、严重裁切、二维码、联系方式、旗帜、禁用引流或明确极限价格词。只把 image_text_blocks 当作必须出现的文字，image_prompt 中其他引号文字只是布局示例。不要自行判断政策事实是否提供；普通指导价、政策金额和补贴金额允许出现，图片实际出现“全网最低、最便宜、抄底、底价、闭眼、直降、冲量、跳水”等禁用或同义变体时必须判失败。全部满足才 pass。
         - id: 81986888-3ee0-4c54-a62a-f37107f40002
           role: user
           text: '生产要求：{{#parse_completed_image.content_item_json#}}'
@@ -2767,6 +2875,10 @@ workflow:
               for index, value in enumerate(values, start=1):
                   item = _parse(value)
                   item["slot"] = index
+                  # 终审只需要提示词编号与改写稿；完整原提示词会在硬校验阶段
+                  # 依据 selected_prompt_id 从提示词候选中恢复。提前清空可避免
+                  # 大段提示词被模型原样回传，造成终审 JSON 超长截断。
+                  item["selected_prompt_original"] = ""
                   normalized.append(item)
               return {"drafts_json": json.dumps(normalized, ensure_ascii=False)}
         code_language: python3
@@ -2798,15 +2910,17 @@ workflow:
       width: 270
     - data:
         context:
-          enabled: false
-          variable_selector: []
+          enabled: true
+          variable_selector:
+          - vehicle_knowledge
+          - result
         desc: 对整批文案做政策、禁用语、车型、来源和图片文字复核；只做必要修正。
         model:
           completion_params:
             max_tokens: 24000
             temperature: 0.1
           mode: chat
-          name: gpt-5.4
+          name: gpt-5.4-mini
           provider: langgenius/openai/openai
         prompt_template:
         - id: 093c968e-69bb-4988-8b3b-06fcf58d0001
@@ -2815,9 +2929,9 @@ workflow:
             你是“只删不重写”的终审。必须原顺序返回全部对象；不得统一润色、重排段落、补标题、补句子、补 emoji 或改写成同一种模板。
 
             唯一允许的修改：
-            1. 删除命中禁用词、明确的平台互动指令、联系方式、强催促、传播召集的分句；不能换一种说法补回。不含禁词、不指定入口的购车咨询问句属于正常软承接，必须保留。
+            1. 删除命中禁用词、明确的平台互动文字、联系方式、强催促、传播召集的分句；不能换一种说法补回。母版中的⬇️、👇、👉、💬、📩及【城市＋车型】是允许保留的符号承接，不能把它们当成“私信/评论”等敏感文字删除。
             2. 删除政策原文未提供的价格、权益、日期、条件和活动状态；不能改成模糊的新事实。
-            3. 删除跨车型带来的配置、续航、功能和体验事实。当前车型原文中的产品事实可保留，不能扩写。
+            3. 删除“当前车型产品知识”无法核实的配置、续航、功能和体验事实。即使来自当前车型原文，只要知识库未命中同车型、同版本依据也必须删除；用户未指定具体版本时，仅保留当前各版本共有事实。
             4. 同一政策事实正文只保留第一次，后续同义复述直接删除。
             5. image_prompt 只删除违规营销或无依据金额；不得改变原构图、车辆角度、文字区块数量和版式，只允许保留一处场景轻改。
             6. 特别注意：飞书政策原文本身也可能含“免费、最低、0元”等禁用词或同义含义。该条政策事实只允许逐字留在 policy_evidence 供审计，必须从 title、content、policy_expression、image_text_blocks、image_prompt 中整句删除；不得换成“无成本、无需费用、不要钱”等变体。每篇从其余不含禁用含义的政策事实中任选 1-3 条承载，不要求把整张政策表全部写进一篇。
@@ -2828,7 +2942,7 @@ workflow:
             - 不得为了补行数恢复已删除内容；删除后文章变短是正确结果。
             - 不得把不同文章改成相同开头、相同小标题或相同 emoji 顺序。
 
-            全文、标题、图片文字和提示词继续执行用户给出的全部绝对禁用词及同义表达。允许在正文保留“想知道本地方案怎么核算”“城市、版本、预算一起比较”等不点名入口的软承接，但图片文字与图片提示词不得出现获客指令。policy_evidence 必须逐字来自政策原文。输入有几篇就必须输出几篇。
+            全文、标题、图片文字和提示词继续执行用户给出的全部绝对禁用词及同义表达。正文必须跟随母版保留不含敏感文字的符号承接，如“⬇️💬【城市＋车型】，了解本月方案”；不得再统一改成“先准备城市、版本和预算”。图片文字与图片提示词不得出现获客指令。policy_evidence 必须逐字来自政策原文。输入有几篇就必须输出几篇。
 
             只返回 JSON 数组，不要 Markdown，不要解释。数组中每个对象保留这些字段：
             slot,title,content,primary_copy_id,source_copy_ids,source_use_notes,policy_evidence,policy_expression,selected_prompt_id,selected_prompt_original,image_text_blocks,image_prompt,prompt_change_note
@@ -2842,6 +2956,9 @@ workflow:
 
             飞书政策原文：
             {{#start.policy_text#}}
+
+            当前车型产品知识（唯一产品事实源；其中采集时价格不可作为营销政策）：
+            {{#context#}}
 
             参考图分析：
             {{#analyze_reference.text#}}
@@ -2883,10 +3000,10 @@ workflow:
 
           BANNED = [
               "私信", "加微信", "微信号", "扫码", "电话", "站外引流",
-              "白嫖", "白送", "送你", "免费", "发你", "评论区",
+              "白嫖", "白送", "送你", "赠送", "免费", "发你", "评论区",
               "国旗", "国家", "薅", "崩", "秒发", "底价",
-              "全网最低", "最便宜", "抄底", "闭眼冲", "直降", "下调",
-              "非节假日不用冲量", "崩了", "降价", "大跳水", "被割韭菜",
+              "全网最低", "最便宜", "抄底", "闭眼", "直降", "下调",
+              "冲量", "崩了", "降价", "跳水", "被割韭菜",
               "一键三连", "点赞", "收藏", "关注我", "点个赞",
               "转发", "分享给", "发给身边", "留言", "回复", "评论",
               "蹲一个", "蹲蹲", "扣数字", "打在公屏", "告诉我", "说说看",
@@ -2899,20 +3016,20 @@ workflow:
               (r"联系我|找我|留(?:下)?联系方式|主页(?:找|联系)|转到站外|引流|导流|留资|获客|线索转化", "疑似引导联系、导流或留资获客"),
               (r"零元|(?<!\d)0元|不要钱|不花钱", "疑似无成本获取表述"),
               (r"历史低价|史低|地板价|亏本价|赔本价|最低价", "疑似极限价格表述"),
-              (r"价格(?:跳水|腰斩|下探|下来了)|清仓甩卖|冲量", "疑似夸张价格或冲量表述")
+              (r"闭眼|价格(?:跳水|腰斩|下探|下来了)|清仓甩卖|冲量", "疑似闭眼、夸张价格或冲量表述")
               ,(r"不容错过|千万别拖|别再犹豫|立即预约|机会来了|快来体验|错过.{0,8}(?:等|后悔)|手慢无", "疑似强催促或错过焦虑表述")
               ,(r"(?:转给|转一下|转起来|分享一下|分享出去|分享身边|发给.{0,10}(?:朋友|车友|家人|同事|身边))", "疑似要求传播或转发表达")
               ,(r"(?:懂的|想看的|想了解的|想知道的|需要的|感兴趣的).{0,8}(?:来|集合|报到|举手|找|问|聊|留言|回复|说)", "疑似互动召集或咨询引导")
               ,(r"(?:来|一起).{0,4}(?:聊聊|聊一聊|交流|讨论)|(?:有问题|有疑问).{0,8}(?:找|问|聊|留言|回复)", "疑似交流或咨询引导")
               ,(r"(?:下方|下面|文末|主页).{0,8}(?:留言|回复|评论|找|联系|看)|(?:留言|回复|评论).{0,8}(?:告诉|说|交流|讨论)", "疑似平台互动引导")
-              ,(r"(?:扣|打|敲).{0,3}(?:1|数字|公屏)|(?:蹲|报到|举手|集合)(?:一下|一个|一波|等)?", "疑似互动口令或召集")
+              ,(r"(?<![抵折])(?:扣|打|敲).{0,3}(?:1|数字|公屏)|(?:蹲|报到|举手|集合)(?:一下|一个|一波|等)?", "疑似互动口令或召集")
               ,(r"(?:戳|敲|滴|call).{0,3}(?:我|一下)|@\S+|艾特.{0,8}(?:朋友|车友|家人|同事)", "疑似变体联系或艾特传播")
               ,(r"(?:点|求).{0,3}(?:赞|关注|收藏)|关注.{0,6}(?:我|账号|主页)|收藏.{0,5}(?:备用|起来|一下)", "疑似点赞关注收藏引导")
               ,(r"(?:一个一个|一个个|逐个|挨个|统一|都给).{0,3}回", "疑似承诺逐一回复")
               ,(r"月薪.{0,8}(?:轻松|也能).{0,8}(?:拥有|入手)|人人都能.{0,6}(?:拥有|入手)|轻松(?:拥有|入手)", "疑似无依据的购车负担承诺")
               ,(r"被问.{0,8}链接|要链接|求链接", "疑似链接或站外引导")
               ,(r"最高标准|辨识度拉满|实力拉满|操作丝滑|顶级(?:配置|体验|享受)|完美(?:适配|解决)", "疑似绝对化或夸张体验表述")
-              ,(r"终身.{0,8}(?:流量|质保)", "疑似无成本权益的变体表述")
+              ,(r"保费|高枕无忧|致命误区|不保|坏个.{0,6}零件|过了\s*\d+\s*年.{0,8}质保", "疑似保险或质保模板残留")
           ]
           UNSUPPORTED_FEATURES = re.compile(
               r"L\s*\d\s*级|自动泊车|座椅.{0,12}(?:加热|通风|腰托)|大五座|"
@@ -2929,7 +3046,10 @@ workflow:
           UNSUPPORTED_COPY_CLAIMS = re.compile(
               r"安全感|更安心|安全座驾|贴心代步|代步车|开起来.{0,8}顺不顺手|"
               r"家用\s*SUV|关注度.{0,6}(?:高|很高)|体验.{0,8}(?:一下|不错|很好)|"
-              r"白跑一趟|跑冤枉路|跑空|更方便.{0,8}行程|更从容"
+              r"白跑一趟|跑冤枉路|跑空|更方便.{0,8}行程|更从容|"
+              r"适合谁|日常通勤|周末出行|家庭(?:出行|用户|用车)?|好开|好停|"
+              r"首台新能源|补能|小尺寸|SUV|轿车|轿跑|两厢|三厢|六座|七座|"
+              r"全尺寸|中大型|旗舰(?:车型|SUV|定位|级)?"
           )
           UNSUPPORTED_PRICE_LAYOUT = re.compile(
               r"原价|现价|划线价|价格表|价格突出|裸车价|落地价|报价|优惠价|指导价|补贴价|\d+(?:\.\d+)?\s*(?:元|万元|万)|\d+(?:\.\d+)?\s*%"
@@ -3322,7 +3442,7 @@ workflow:
               ]
               cta_pattern = re.compile(
                   r"想预约|想体验|想知道|想了解|想看|想算|预约|咨询|滴滴|私信|"
-                  r"留【|扣【|城市\s*\+|城市】|找我|发你|帮你"
+                  r"留【|扣【|(?:城市|地区)\s*[+＋]|城市】|找我|发你|帮你"
               )
               source_lines = [
                   line.strip() for line in str(original_content or "").splitlines()
@@ -3332,6 +3452,24 @@ workflow:
               if not source:
                   return ""
               model = str(vehicle_model or "").strip()
+              model_label = re.sub(r"^(?:零跑汽车|零跑)", "", model, flags=re.I).strip() or model
+              cue_tokens = re.findall(r"⬇️|👇|👉|💬|📩", source)
+              cue = "".join(cue_tokens[:2]) or "⬇️💬"
+              if "💬" not in cue and "📩" not in cue:
+                  cue += "💬"
+              combined = source + "\n" + str(policy or "")
+              if "试驾" in source and "试驾" in str(policy or ""):
+                  benefit = "了解本地方案和实车体验安排"
+              elif any(word in combined for word in ("版本", "配置")):
+                  benefit = "了解本地方案和版本明细"
+              elif any(word in combined for word in ("补贴", "权益")):
+                  benefit = "了解本地方案和权益明细"
+              else:
+                  benefit = "了解本月落地方案"
+              tail_tokens = re.findall(r"💰|✨|✅|🔥|💡|💌", source)
+              tail = tail_tokens[-1] if tail_tokens else "💰"
+              return f"{cue}【城市＋{model_label}】，{benefit}{tail}"
+              # 以下旧分支保留仅用于兼容历史 DSL；当前统一采用母版符号承接。
               deadline_fact = next((fact for fact in facts if re.search(r"截止|截至", fact)), "")
               deadline = re.search(r"20\d{2}年\d{1,2}月\d{1,2}日", deadline_fact)
               gate_ok = any("门店公布" in fact and "现场核验" in fact for fact in facts)
@@ -3382,6 +3520,9 @@ workflow:
                   if line.startswith("#"):
                       tag_lines.append(line)
                       continue
+                  if re.search(r"[⬇️👇👉💬📩].{0,24}【(?:城市|地区)\s*[+＋]", line):
+                      # 统一由 template_close 在原收尾区只保留一条，避免模型轻改后重复。
+                      continue
                   if re.match(
                       r"^想(?:知道.+这次权益怎么搭配|核算.+的购车方案|了解.+哪套金融方案|体验.+实车、再核算本地方案|看.+不同购车方式怎么选)",
                       line,
@@ -3422,7 +3563,7 @@ workflow:
                       updated_blocks.append(text)
               return content, image_prompt, updated_blocks
 
-          def main(audited_text: str, policy_text: str, vehicle_model: str,
+          def main(audited_text: str, policy_text: str, vehicle_knowledge, vehicle_model: str,
                    brand: str, account_name: str, vehicle_images_json: str,
                    prompt_candidates_json: str, copy_candidates_json: str,
                    history_body: str, post_count: str) -> dict:
@@ -3435,6 +3576,22 @@ workflow:
               expected_count = max(1, min(5, int(post_count or 1)))
               if len(items) < expected_count:
                   raise ValueError("终审返回候选不足：至少需要 %s 篇，实际为 %s 篇" % (expected_count, len(items)))
+
+              knowledge_records = vehicle_knowledge
+              if isinstance(knowledge_records, str):
+                  try:
+                      knowledge_records = json.loads(knowledge_records)
+                  except Exception:
+                      knowledge_records = []
+              if isinstance(knowledge_records, dict):
+                  knowledge_records = knowledge_records.get("result") or []
+              knowledge_text = "\n".join(
+                  str(record.get("content") or "")
+                  for record in list(knowledge_records or [])
+                  if isinstance(record, dict)
+              )
+              if not knowledge_text.strip():
+                  raise ValueError("当前车型产品知识为空，禁止在无产品依据时继续生产")
 
               recent_content_hashes = set()
               try:
@@ -3458,6 +3615,9 @@ workflow:
               copy_by_id = {str(x.get("id")): x for x in copy_candidates if isinstance(x, dict)}
 
               policy = str(policy_text or "")
+              policy_model_match = re.search(r"(?:^|\n)\s*车型\s*[:：]\s*([^\n]+)", policy)
+              policy_model = policy_model_match.group(1).strip() if policy_model_match else ""
+              policy_model_required = re.sub(r"^(?:全新|零跑)+", "", policy_model, flags=re.I).strip()
               policy_markers = [
                   "试驾", "到店", "品鉴", "活动", "截止", "时间", "门店",
                   "政策", "权益", "补贴", "置换", "金融", "购车", "锁单", "交付"
@@ -3490,6 +3650,11 @@ workflow:
                   source_expectations = _planned_source_expectations(
                       original_title, original_content, vehicle_model, policy
                   )
+                  if policy_model_required:
+                      normalized_source = re.sub(r"\s+", "", original_title + "\n" + original_content).lower()
+                      normalized_policy_model = re.sub(r"\s+", "", policy_model_required).lower()
+                      if normalized_policy_model not in normalized_source:
+                          source_expectations["same_model"] = False
                   title = _remove_banned_tokens(_strip_interaction_clauses(_text(item.get("title"))))
                   # 对少量高风险夸张口语做局部降调，不因此挡掉整篇，也不重写母版标题。
                   title = re.sub(r"(?:杀疯了?|夯爆了?)", "值得看看", title)
@@ -3517,9 +3682,8 @@ workflow:
                   ]
                   title = re.sub(r"[*_]{2,}", "", title)
                   content = re.sub(r"[*_]{2,}", "", content)
-                  if not source_expectations["same_model"]:
-                      title = UNSUPPORTED_COPY_CLAIMS.sub("", title).strip(" -—丨|，,；;。")
-                      content = _strip_unsupported_copy_clauses(content, policy)
+                  title = UNSUPPORTED_COPY_CLAIMS.sub("", title).strip(" -—丨|，,；;。")
+                  content = _strip_unsupported_copy_clauses(content, policy)
                   image_prompt = _remove_banned_tokens(_strip_interaction_clauses(_text(item.get("image_prompt"))))
                   if not UNSUPPORTED_STATUS.search(policy):
                       title = UNSUPPORTED_STATUS.sub("活动信息", title)
@@ -3555,6 +3719,19 @@ workflow:
                           for block in image_blocks
                       ) if cleaned
                   ]
+                  # 精确车型版本来自政策首行。车型库可能只有基础目录名（如
+                  # 零跑Lafa5），但政策明确为 Lafa5 Ultra 时，确定性补齐版本名，
+                  # 不再让模型把 Ultra 漏掉，也不改变其它政策事实。
+                  if policy_model_required:
+                      normalized_copy = re.sub(r"\s+", "", title + "\n" + content).lower()
+                      normalized_required = re.sub(r"\s+", "", policy_model_required).lower()
+                      if normalized_required not in normalized_copy:
+                          base_model = re.sub(r"^(?:全新|零跑)+", "", str(vehicle_model or ""), flags=re.I).strip()
+                          if base_model and re.search(re.escape(base_model), title + "\n" + content, flags=re.I):
+                              title = re.sub(re.escape(base_model), policy_model_required, title, flags=re.I)
+                              content = re.sub(re.escape(base_model), policy_model_required, content, flags=re.I)
+                          else:
+                              content = ("车型：" + policy_model_required + "\n" + content).strip()
                   # 终审清洗可能连同互动句删掉母版 emoji；若其余内容仍有效，
                   # 从锁定主参考的安全 emoji 序列恢复一个，保持母版语气而不新增事实。
                   emoji_pattern = r"[✅🔹▫️📢🔥💡🚗📝📍👀👏💥🎉🎁⭐❤❤️💌👇📸📷💬📩✨🌸]"
@@ -3580,20 +3757,26 @@ workflow:
 
                   scan_text = "\n".join([title, content, image_prompt, "\n".join(image_blocks)])
                   unsupported_dates = sorted(set(
-                      token for token in re.findall(r"20\d{2}年|\d{1,2}月|\d{1,2}日", title + "\n" + content)
-                      if token not in policy
+                      token for token in re.findall(r"20\d{2}年|(?<![A-Za-z0-9])\d{1,2}\s*月|(?<![A-Za-z0-9])\d{1,2}\s*日", title + "\n" + content)
+                      if token not in policy and token not in knowledge_text
                   ))
                   chinese_months = re.findall(
                       r"(?<![一二三四五六七八九十])(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月",
                       title + "\n" + content,
                   )
-                  unsupported_dates.extend(token for token in chinese_months if token not in policy)
+                  unsupported_dates.extend(
+                      token for token in chinese_months
+                      if token not in policy and token not in knowledge_text
+                  )
                   quarter_tokens = re.findall(
                       r"(?:Q[1-4]|第[一二三四]季度|[一二三四]季度)",
                       title + "\n" + content,
                       flags=re.I,
                   )
-                  unsupported_dates.extend(token for token in quarter_tokens if token not in policy)
+                  unsupported_dates.extend(
+                      token for token in quarter_tokens
+                      if token not in policy and token not in knowledge_text
+                  )
                   unsupported_dates = sorted(set(unsupported_dates))
                   if unsupported_dates:
                       reasons.append("出现政策原文未提供的日期：" + "、".join(unsupported_dates))
@@ -3610,10 +3793,10 @@ workflow:
                   # 配置/性能只审正文，不把提示词库原有的画面描述误判成文案事实。
                   # 同车型主参考中的既有产品事实允许高保真保留；跨车型主参考继续强拦截。
                   unsupported = UNSUPPORTED_FEATURES.findall(title + "\n" + content)
-                  if source_expectations["same_model"]:
-                      unsupported = []
-                  else:
-                      unsupported = [x for x in unsupported if x and x not in policy]
+                  unsupported = [
+                      x for x in unsupported
+                      if x and x not in policy and x not in knowledge_text
+                  ]
                   if unsupported:
                       reasons.append("出现政策原文未提供的配置或性能细节")
                   unsupported_status = UNSUPPORTED_STATUS.findall(title + "\n" + content)
@@ -3623,10 +3806,10 @@ workflow:
                   if unsupported_status:
                       reasons.append("出现政策原文未确认的活动状态")
                   unsupported_copy_claims = UNSUPPORTED_COPY_CLAIMS.findall(title + "\n" + content)
-                  if source_expectations["same_model"]:
-                      unsupported_copy_claims = []
-                  else:
-                      unsupported_copy_claims = [phrase for phrase in unsupported_copy_claims if phrase and phrase not in policy]
+                  unsupported_copy_claims = [
+                      phrase for phrase in unsupported_copy_claims
+                      if phrase and phrase not in policy and phrase not in knowledge_text
+                  ]
                   if unsupported_copy_claims:
                       reasons.append("出现政策原文未提供的体验或产品判断")
                   policy_has_amount = bool(re.search(r"\d+(?:\.\d+)?\s*(?:元|万元|万|%)", policy))
@@ -3635,11 +3818,14 @@ workflow:
                       "",
                       image_prompt,
                   )
-                  amount_scan = title + "\n" + content + "\n" + "\n".join(image_blocks) + "\n" + prompt_for_price_scan
-                  claimed_amounts = sorted(set(re.findall(
-                      r"\d[\d,]*(?:\.\d+)?\s*(?:元|万元|万|%)",
-                      amount_scan,
-                  )))
+                  copy_amount_scan = title + "\n" + content + "\n" + "\n".join(image_blocks)
+                  amount_scan = copy_amount_scan + "\n" + prompt_for_price_scan
+                  # 图片提示词里的 35%/65% 等常用于版面占比，不是政策优惠数字。
+                  # 金额仍扫描全文；百分比只扫描真正会发布的标题、正文和图片文字。
+                  claimed_amounts = sorted(set(
+                      re.findall(r"\d[\d,]*(?:\.\d+)?\s*(?:元|万元|万)", amount_scan)
+                      + re.findall(r"\d[\d,]*(?:\.\d+)?\s*%", copy_amount_scan)
+                  ))
                   unsupported_amounts = [
                       amount for amount in claimed_amounts
                       if amount.replace(" ", "").replace(",", "")
@@ -3668,6 +3854,11 @@ workflow:
                       reasons.append("与近期已提交文案完全重复")
                   if str(vehicle_model or "").strip() not in copy_text:
                       reasons.append("标题或正文没有明确保留用户指定车型")
+                  if policy_model_required:
+                      normalized_copy_text = re.sub(r"\s+", "", copy_text).lower()
+                      normalized_policy_model = re.sub(r"\s+", "", policy_model_required).lower()
+                      if normalized_policy_model not in normalized_copy_text:
+                          reasons.append("标题或正文没有明确保留政策指定车型版本：" + policy_model)
                   if not policy_evidence:
                       reasons.append("缺少政策依据，正文可能没有承载用户政策")
                   # 政策可明说、模糊表达或仅作为本批审核依据，不强制每篇套同一个政策主题。
@@ -3729,16 +3920,24 @@ workflow:
                                       image_prompt += f"；{level}. 保持原提示词第{level}层文字的原位置、字号和对齐方式，文字替换为「{filler}」"
                           if len(image_blocks) != expected_blocks:
                               reasons.append(f"图片文字层级数量应保留为 {expected_blocks} 层，当前为 {len(image_blocks)} 层")
-                  effective_change_note = re.sub(
-                      r"(?:保留|保持|沿用|不改|不变)[^。；;]{0,40}(?:排版|角度|视角|颜色|车身|文字区块)",
-                      "",
-                      change_note,
-                  )
-                  changed_dimensions = sum(
-                      1 for term in ["场景", "背景", "角度", "视角", "颜色", "车身", "排版", "文字区块"]
-                      if term in effective_change_note
-                  )
-                  if changed_dimensions > 2 or (("角度" in effective_change_note or "视角" in effective_change_note or "颜色" in effective_change_note) and ("场景" in effective_change_note or "背景" in effective_change_note)):
+                  # 只有与“改为/调整/替换/新增”等修改动词处于同一分句的维度
+                  # 才计作实际改动；“车辆角度保持一致”不能反向误判为改了角度。
+                  changed_terms = []
+                  for term in ["场景", "背景", "角度", "视角", "颜色", "车身", "排版", "文字区块"]:
+                      changed = bool(
+                          re.search(
+                              rf"(?:将|把)?[^。；;]{{0,8}}{term}[^。；;]{{0,24}}(?:改为|调整为?|替换为?|修改为?|新增|变化)",
+                              change_note,
+                          )
+                          or re.search(
+                              rf"(?:改为|调整为?|替换为?|修改为?|新增|变化)[^。；;]{{0,24}}{term}",
+                              change_note,
+                          )
+                      )
+                      if changed:
+                          changed_terms.append(term)
+                  changed_dimensions = len(changed_terms)
+                  if changed_dimensions > 2 or (("角度" in changed_terms or "视角" in changed_terms or "颜色" in changed_terms) and ("场景" in changed_terms or "背景" in changed_terms)):
                       reasons.append("提示词同时改动多个视觉维度，不属于轻微场景变化")
                   if not image_blocks:
                       reasons.append("图片必须包含文字区块")
@@ -3856,6 +4055,10 @@ workflow:
           - start
           - policy_text
           variable: policy_text
+        - value_selector:
+          - vehicle_knowledge
+          - result
+          variable: vehicle_knowledge
         - value_selector:
           - start
           - vehicle_model

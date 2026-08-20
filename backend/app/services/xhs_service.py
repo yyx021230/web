@@ -17,6 +17,7 @@ import threading
 import socket
 import io
 import time
+import shutil
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Awaitable, Callable
@@ -63,6 +64,7 @@ from app.services.copywriting_service import CopywritingService
 from app.services.request_queue import xhs_publish_queue
 from app.services.vehicle_catalog_service import VehicleCatalogService
 from app.services.yundeng_sync_coordinator import yundeng_sync_coordinator, yundeng_sync_guard
+from app.services.sms_device_coordinator import sms_device_coordinator
 from app.db.session import async_session
 from app.utils.timezone import (
     aware_or_cst_naive_to_utc_naive,
@@ -71,6 +73,17 @@ from app.utils.timezone import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class SmsCodeWaitFailure(RuntimeError):
+    """A retryable activation outcome where no usable XHS code was captured."""
+
+    def __init__(self, reason: str, request_id: str, message: str):
+        super().__init__(message)
+        self.reason = reason
+        self.request_id = request_id
+
+
 _VEHICLE_CATALOG_CACHE: list[dict[str, Any]] | None = None
 _VEHICLE_INDEX_CACHE: dict[str, Any] | None = None
 _INSIGHTS_DASHBOARD_CACHE: dict[str, dict[str, Any]] = {}
@@ -125,6 +138,17 @@ SMS_CODE_CENTER_ADMIN_USERNAME = (getattr(settings, "sms_code_center_admin_usern
 SMS_CODE_CENTER_ADMIN_PASSWORD = getattr(settings, "sms_code_center_admin_password", "") or ""
 SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS = max(5, int(getattr(settings, "sms_code_center_wait_timeout_seconds", 60) or 60))
 SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS = max(30, int(getattr(settings, "sms_code_center_activation_ttl_seconds", 300) or 300))
+SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS = max(
+    1,
+    min(2, int(getattr(settings, "sms_code_center_primary_send_attempts", 2) or 2)),
+)
+SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS = max(
+    60,
+    min(
+        SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS,
+        int(getattr(settings, "sms_code_center_primary_attempt_timeout_seconds", 180) or 180),
+    ),
+)
 SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS = min(
     5.0,
     max(3.0, float(getattr(settings, "sms_code_center_open_api_poll_interval_seconds", 4.0) or 4.0)),
@@ -255,6 +279,10 @@ class SyncJobCancelled(RuntimeError):
     """Raised when a cooperative XHS sync job is cancelled by the user."""
 
 
+class CreatorStatsUnavailable(RuntimeError):
+    """Raised when an account has no creator-center statistics permission."""
+
+
 def _ad_to_float(value: object) -> float:
     try:
         raw = str(value if value is not None else "").strip().replace(",", "")
@@ -365,6 +393,7 @@ class XHSService:
     _mcp_port_guard = threading.Lock()
     _reserved_mcp_ports: dict[int, float] = {}
     _mcp_ports_by_pid: dict[int, int] = {}
+    _mcp_download_dirs_by_pid: dict[int, str] = {}
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -2737,6 +2766,7 @@ class XHSService:
                 selectinload(XHSAccountNote.assigned_runner_environment),
             )
             .order_by(
+                XHSAccountNote.published_at.desc().nullslast(),
                 XHSAccountNote.environment_id.asc(),
                 XHSAccountNote.sort_index.asc(),
                 XHSAccountNote.id.desc(),
@@ -4186,6 +4216,8 @@ class XHSService:
             updated_notes = 0
             metric_synced_notes = 0
             total_notes = 0
+            deferred_homepage_notes = 0
+            deferred_homepage_items: list[dict[str, Any]] = []
             failed_accounts: list[dict[str, Any]] = []
             failed_runners: list[dict[str, Any]] = []
             for env in envs:
@@ -4202,6 +4234,8 @@ class XHSService:
                 updated_notes += int(result.get("updated_notes") or 0)
                 metric_synced_notes += int(result.get("metric_synced_notes") or 0)
                 total_notes += int(result.get("total_notes") or 0)
+                deferred_homepage_notes += int(result.get("deferred_homepage_notes") or 0)
+                deferred_homepage_items.extend(result.get("deferred_homepage_items") or [])
                 failed_accounts.extend(result.get("failed_accounts") or [])
                 failed_runners.extend(result.get("failed_runners") or [])
             result = {
@@ -4210,6 +4244,8 @@ class XHSService:
                 "updated_notes": updated_notes,
                 "metric_synced_notes": metric_synced_notes,
                 "total_notes": total_notes,
+                "deferred_homepage_notes": deferred_homepage_notes,
+                "deferred_homepage_items": deferred_homepage_items,
             }
             if failed_accounts:
                 result["failed_accounts"] = failed_accounts
@@ -4223,6 +4259,8 @@ class XHSService:
         updated_notes = 0
         metric_synced_notes = 0
         total_notes = 0
+        deferred_homepage_notes = 0
+        deferred_homepage_items: list[dict[str, Any]] = []
         failed_accounts: list[dict[str, Any]] = []
         failed_runners: list[dict[str, Any]] = []
 
@@ -4233,6 +4271,8 @@ class XHSService:
                 "updated_notes": 0,
                 "metric_synced_notes": 0,
                 "total_notes": 0,
+                "deferred_homepage_notes": 0,
+                "deferred_homepage_items": [],
             }
 
         scrape_envs = await self._resolve_account_scrape_environments(
@@ -4263,6 +4303,8 @@ class XHSService:
                 updated_notes += int(result.get("updated_notes") or 0)
                 metric_synced_notes += int(result.get("metric_synced_notes") or 0)
                 total_notes += int(result.get("total_notes") or 0)
+                deferred_homepage_notes += int(result.get("deferred_homepage_notes") or 0)
+                deferred_homepage_items.extend(result.get("deferred_homepage_items") or [])
             except Exception as e:
                 error_message = self._sync_exception_message(e)
                 logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", envs[0].id, envs[0].account_name, error_message)
@@ -4333,6 +4375,8 @@ class XHSService:
             updated_notes += int(batch_result.get("updated_notes") or 0)
             metric_synced_notes += int(batch_result.get("metric_synced_notes") or 0)
             total_notes += int(batch_result.get("total_notes") or 0)
+            deferred_homepage_notes += int(batch_result.get("deferred_homepage_notes") or 0)
+            deferred_homepage_items.extend(batch_result.get("deferred_homepage_items") or [])
             failed_accounts.extend(batch_result.get("failed_accounts") or [])
             failed_runners.extend(batch_result.get("failed_runners") or [])
 
@@ -4342,6 +4386,8 @@ class XHSService:
             "updated_notes": updated_notes,
             "metric_synced_notes": metric_synced_notes,
             "total_notes": total_notes,
+            "deferred_homepage_notes": deferred_homepage_notes,
+            "deferred_homepage_items": deferred_homepage_items,
         }
         if failed_accounts:
             result["failed_accounts"] = failed_accounts
@@ -4413,6 +4459,8 @@ class XHSService:
         created_notes = 0
         updated_notes = 0
         total_notes = 0
+        deferred_homepage_notes = 0
+        deferred_homepage_items: list[dict[str, Any]] = []
         failed_accounts: list[dict[str, Any]] = []
 
         try:
@@ -4479,6 +4527,8 @@ class XHSService:
                     created_notes += int(result.get("created_notes") or 0)
                     updated_notes += int(result.get("updated_notes") or 0)
                     total_notes += int(result.get("total_notes") or 0)
+                    deferred_homepage_notes += int(result.get("deferred_homepage_notes") or 0)
+                    deferred_homepage_items.extend(result.get("deferred_homepage_items") or [])
                 except Exception as e:
                     error_message = self._sync_exception_message(e)
                     logger.warning("同步账号帖子失败: env_id=%s, account=%s, error=%s", env.id, env.account_name, error_message)
@@ -4509,6 +4559,8 @@ class XHSService:
                 "updated_notes": updated_notes,
                 "metric_synced_notes": 0,
                 "total_notes": total_notes,
+                "deferred_homepage_notes": deferred_homepage_notes,
+                "deferred_homepage_items": deferred_homepage_items,
             }
             if failed_accounts:
                 result["failed_accounts"] = failed_accounts
@@ -4616,6 +4668,8 @@ class XHSService:
         created_notes = 0
         updated_notes = 0
         total_notes = 0
+        deferred_homepage_notes = 0
+        deferred_homepage_items: list[dict[str, Any]] = []
         failed_runners: list[dict[str, Any]] = []
         failed_accounts: list[dict[str, Any]] = []
         for (runner_id, environment_ids, _), raw_result in zip(active_buckets, raw_results):
@@ -4635,6 +4689,8 @@ class XHSService:
             created_notes += int(raw_result.get("created_notes") or 0)
             updated_notes += int(raw_result.get("updated_notes") or 0)
             total_notes += int(raw_result.get("total_notes") or 0)
+            deferred_homepage_notes += int(raw_result.get("deferred_homepage_notes") or 0)
+            deferred_homepage_items.extend(raw_result.get("deferred_homepage_items") or [])
             failed_accounts.extend(raw_result.get("failed_accounts") or [])
             failed_runners.extend(raw_result.get("failed_runners") or [])
 
@@ -4644,6 +4700,8 @@ class XHSService:
             "updated_notes": updated_notes,
             "metric_synced_notes": 0,
             "total_notes": total_notes,
+            "deferred_homepage_notes": deferred_homepage_notes,
+            "deferred_homepage_items": deferred_homepage_items,
         }
         if failed_runners:
             result["failed_runners"] = failed_runners
@@ -4873,6 +4931,7 @@ class XHSService:
         applied_feed_ids: list[str] = []
         applied_feed_id_set: set[str] = set()
         touched_notes: list[XHSAccountNote] = []
+        deferred_homepage_items: list[dict[str, Any]] = []
         pending_cover_localizations: list[tuple[int, str, str | None, str]] = []
         source_posts = list((await self.db.execute(
             select(XHSPost).where(XHSPost.environment_id == env.id)
@@ -4923,21 +4982,36 @@ class XHSService:
 
             note, match_method, match_confidence = self._match_homepage_item_to_note(item, existing_notes)
             if note is None:
-                note = XHSAccountNote(
-                    environment_id=env.id,
-                    feed_id=feed_id,
-                    ai_origin_type="",
-                    status="active",
-                    identity_status="homepage_only",
-                    identity_match_method="homepage_new",
-                    identity_match_confidence=0.6,
-                    first_synced_at=now,
+                published_at = item.get("published_at")
+                deferred_homepage_items.append({
+                    "environment_id": int(env.id),
+                    "account_name": env.account_name or "",
+                    "feed_id": feed_id,
+                    "title": str(item.get("title") or ""),
+                    "published_at": published_at.isoformat() if isinstance(published_at, datetime) else None,
+                    "reason": "creator_primary_note_missing",
+                })
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "processing_account_posts",
+                        "detail": f"{env.account_name} 的主页帖子尚未出现在创作者中心，已暂缓入库 {item_index}/{total_notes}",
+                        "runner_id": runner_id,
+                        "runner_name": runner_name,
+                        "account_name": env.account_name,
+                        "account_index": current_account_index,
+                        "account_total": total_accounts,
+                        "current": item_index,
+                        "total": total_notes,
+                        "percent": int((item_index / total_notes) * 100) if total_notes > 0 else 100,
+                        "created_notes": aggregate_created_notes + created_notes,
+                        "updated_notes": aggregate_updated_notes + updated_notes,
+                        "deferred_homepage_notes": len(deferred_homepage_items),
+                    },
                 )
-                self.db.add(note)
-                existing_notes.append(note)
-                created_notes += 1
-            else:
-                updated_notes += 1
+                continue
+
+            updated_notes += 1
 
             has_creator_metrics = note.creator_synced_at is not None
             note.feed_id = feed_id
@@ -5034,7 +5108,10 @@ class XHSService:
             progress_callback,
             {
                 "phase": "account_posts_completed",
-                "detail": f"{env.account_name} 的账号帖子已入库",
+                "detail": (
+                    f"{env.account_name} 的主页补充完成：补齐 {updated_notes} 条，"
+                    f"待创作者中心建档 {len(deferred_homepage_items)} 条"
+                ),
                 "runner_id": runner_id,
                 "runner_name": runner_name,
                 "account_name": env.account_name,
@@ -5045,6 +5122,7 @@ class XHSService:
                 "percent": 100,
                 "created_notes": aggregate_created_notes + created_notes,
                 "updated_notes": aggregate_updated_notes + updated_notes,
+                "deferred_homepage_notes": len(deferred_homepage_items),
             },
         )
         return {
@@ -5052,6 +5130,8 @@ class XHSService:
             "updated_notes": updated_notes,
             "metric_synced_notes": 0,
             "total_notes": total_notes,
+            "deferred_homepage_notes": len(deferred_homepage_items),
+            "deferred_homepage_items": deferred_homepage_items,
         }
 
     async def update_account_note_ai_origin_type(
@@ -5263,6 +5343,7 @@ class XHSService:
     ) -> dict:
         totals: dict[str, Any] = {
             "synced_accounts": 0,
+            "skipped_accounts": 0,
             "created_notes": 0,
             "updated_notes": 0,
             "metric_synced_notes": 0,
@@ -5270,8 +5351,31 @@ class XHSService:
             "ambiguous_notes": 0,
         }
         failed_accounts: list[dict[str, Any]] = []
+        skipped_account_details: list[dict[str, Any]] = []
         for env, raw_result in zip(envs, raw_results):
             if isinstance(raw_result, Exception):
+                error_message = str(raw_result)
+                if "不存在或未启用" in error_message or "不存在、不可用" in error_message:
+                    skipped_account_details.append(
+                        {
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "reason": error_message,
+                        }
+                    )
+                    totals["skipped_accounts"] += 1
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "account_engagement_skipped",
+                            "detail": f"{env.account_name} 已从环境列表移除，本次自动跳过",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "skipped": True,
+                            "skip_reason": error_message,
+                        },
+                    )
+                    continue
                 logger.warning(
                     "并行同步创作者中心互动失败: env_id=%s account=%s error=%s",
                     env.id,
@@ -5286,14 +5390,16 @@ class XHSService:
                     {
                         "phase": "account_engagement_failed",
                         "detail": f"{env.account_name} 的互动数据同步失败",
+                        "environment_id": int(env.id),
                         "account_name": env.account_name,
-                        "error": str(raw_result),
+                        "error": error_message,
                     },
                 )
                 continue
             _, result = raw_result
             for key in (
                 "synced_accounts",
+                "skipped_accounts",
                 "created_notes",
                 "updated_notes",
                 "metric_synced_notes",
@@ -5301,8 +5407,37 @@ class XHSService:
                 "ambiguous_notes",
             ):
                 totals[key] += int(result.get(key) or 0)
+            skipped_account_details.extend(result.get("skipped_account_details") or [])
+            if result.get("skipped"):
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "account_engagement_skipped",
+                        "detail": str(result.get("skip_reason") or f"{env.account_name} 本次已跳过"),
+                        "environment_id": int(env.id),
+                        "account_name": env.account_name,
+                        "skipped": True,
+                        "skip_reason": str(result.get("skip_reason") or ""),
+                    },
+                )
+            else:
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "account_engagement_completed",
+                        "detail": f"{env.account_name} 的互动数据已同步完成",
+                        "environment_id": int(env.id),
+                        "account_name": env.account_name,
+                        "created_notes": int(result.get("created_notes") or 0),
+                        "updated_notes": int(result.get("updated_notes") or 0),
+                        "metric_synced_notes": int(result.get("metric_synced_notes") or 0),
+                        "exported_rows": int(result.get("exported_rows") or 0),
+                    },
+                )
         if failed_accounts:
             totals["failed_accounts"] = failed_accounts
+        if skipped_account_details:
+            totals["skipped_account_details"] = skipped_account_details
         return totals
 
     async def sync_account_note_engagement_environment(
@@ -5457,87 +5592,232 @@ class XHSService:
         aggregate_metric_synced_notes: int,
         sync_run_id: int | None = None,
     ) -> dict:
-        mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
-        mcp_port = None if use_external_mcp else await self._allocate_free_port()
-        mcp_api = XHS_MCP_EXTERNAL_API if use_external_mcp else f"http://localhost:{mcp_port}"
         previous_mcp_api = getattr(self, "_active_mcp_api", None)
-
+        max_attempts = 1 if use_external_mcp else 2
+        last_error: BaseException | None = None
         try:
-            self._active_mcp_api = mcp_api
-            active_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(int(env.id), allow_fallback=False)
-            if active_env is not None:
-                env = active_env
-            if not ws_url:
-                raise RuntimeError(f"无法获取发布账号环境 {env.shop_id} 的浏览器连接")
+            for attempt in range(1, max_attempts + 1):
+                mcp_pid: int | None = None
+                mcp_port = None if use_external_mcp else await self._allocate_free_port()
+                mcp_api = XHS_MCP_EXTERNAL_API if use_external_mcp else f"http://localhost:{mcp_port}"
+                stage = "browser"
+                try:
+                    self._active_mcp_api = mcp_api
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "opening_account_engagement_browser",
+                            "detail": f"正在连接 {env.account_name} 的浏览器（第 {attempt}/{max_attempts} 次）",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "account_index": current_account_index,
+                            "account_total": total_accounts,
+                            "current": aggregate_synced_accounts,
+                            "total": total_accounts,
+                            "percent": int((aggregate_synced_accounts / total_accounts) * 100) if total_accounts > 0 else 0,
+                        },
+                    )
+                    active_env, ws_url = await self._acquire_ready_sync_browser_ws_with_fallback(
+                        int(env.id),
+                        allow_fallback=False,
+                    )
+                    if active_env is not None:
+                        env = active_env
+                    if not ws_url:
+                        raise RuntimeError(f"无法获取发布账号环境 {env.shop_id} 的浏览器连接")
 
-            if use_external_mcp:
-                if not await self._check_mcp_running(mcp_api):
-                    raise RuntimeError("外部小红书发布服务不可用，请先启动 XHS MCP 服务")
-            else:
-                mcp_pid = await self._start_mcp(ws_url, mcp_port or 0)
-                if not mcp_pid:
-                    raise RuntimeError("启动小红书发布服务失败，请稍后重试")
-                await self._wait_mcp_ready(mcp_api)
+                    if use_external_mcp:
+                        if not await self._check_mcp_running(mcp_api):
+                            raise RuntimeError("外部小红书发布服务不可用，请先启动 XHS MCP 服务")
+                    else:
+                        mcp_pid = await self._start_mcp(ws_url, mcp_port or 0)
+                        if not mcp_pid:
+                            raise RuntimeError("启动小红书发布服务失败，请稍后重试")
+                        await self._wait_mcp_ready(mcp_api)
 
-            await self._emit_progress(
-                progress_callback,
-                {
-                    "phase": "fetching_account_engagements",
-                    "detail": f"正在读取 {env.account_name} 创作中心互动数据",
-                    "account_name": env.account_name,
-                    "account_index": current_account_index,
-                    "account_total": total_accounts,
-                    "current": aggregate_synced_accounts,
-                    "total": total_accounts,
-                    "percent": int((aggregate_synced_accounts / total_accounts) * 100) if total_accounts > 0 else 0,
-                    "synced_accounts": aggregate_synced_accounts,
-                    "metric_synced_notes": aggregate_metric_synced_notes,
-                },
-            )
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "fetching_account_engagements",
+                            "detail": f"正在读取 {env.account_name} 的创作者中心帖子主数据",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "account_index": current_account_index,
+                            "account_total": total_accounts,
+                            "current": aggregate_synced_accounts,
+                            "total": total_accounts,
+                            "percent": int((aggregate_synced_accounts / total_accounts) * 100) if total_accounts > 0 else 0,
+                            "synced_accounts": aggregate_synced_accounts,
+                            "metric_synced_notes": aggregate_metric_synced_notes,
+                        },
+                    )
 
-            stats_rows = await self._fetch_creator_note_stats(api_base=mcp_api, env=env)
-            await self._raise_if_sync_cancelled(cancel_check)
-            import_result = await self._import_creator_note_stats_rows(
-                env,
-                stats_rows,
-                sync_run_id=sync_run_id,
-            )
-            await self.db.commit()
-            metric_updates = int(import_result.get("metric_synced_notes") or 0)
-            total_notes = int(import_result.get("total_notes") or 0)
-            await self._emit_progress(
-                progress_callback,
-                {
-                    "phase": "account_engagement_completed",
-                    "detail": f"{env.account_name} 的互动数据已同步完成",
-                    "account_name": env.account_name,
-                    "account_index": current_account_index,
-                    "account_total": total_accounts,
-                    "current": aggregate_synced_accounts + 1,
-                    "total": total_accounts,
-                    "percent": int(((aggregate_synced_accounts + 1) / total_accounts) * 100) if total_accounts > 0 else 100,
-                    "synced_accounts": aggregate_synced_accounts + 1,
-                    "metric_synced_notes": aggregate_metric_synced_notes + metric_updates,
-                    "created_notes": int(import_result.get("created_notes") or 0),
-                    "updated_notes": int(import_result.get("updated_notes") or 0),
-                    "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
-                    "exported_rows": len(stats_rows),
-                },
-            )
-            return {
-                "synced_accounts": 1,
-                "created_notes": int(import_result.get("created_notes") or 0),
-                "updated_notes": int(import_result.get("updated_notes") or 0),
-                "metric_synced_notes": metric_updates,
-                "total_notes": total_notes,
-                "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
-                "exported_rows": len(stats_rows),
-            }
+                    try:
+                        stats_rows = await self._fetch_creator_note_stats(
+                            api_base=mcp_api,
+                            env=env,
+                            progress_callback=progress_callback,
+                            cancel_check=cancel_check,
+                        )
+                    except CreatorStatsUnavailable:
+                        recovered = await self._recover_creator_account_mismatch(
+                            mcp_api,
+                            env=env,
+                            progress_callback=progress_callback,
+                            cancel_check=cancel_check,
+                        )
+                        if not recovered:
+                            raise
+                        stats_rows = await self._fetch_creator_note_stats(
+                            api_base=mcp_api,
+                            env=env,
+                            progress_callback=progress_callback,
+                            cancel_check=cancel_check,
+                        )
+                    stage = "database_import"
+                    await self._raise_if_sync_cancelled(cancel_check)
+                    import_result = await self._import_creator_note_stats_rows(
+                        env,
+                        stats_rows,
+                        sync_run_id=sync_run_id,
+                    )
+                    await self.db.commit()
+                    metric_updates = int(import_result.get("metric_synced_notes") or 0)
+                    total_notes = int(import_result.get("total_notes") or 0)
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "account_engagement_completed",
+                            "detail": f"{env.account_name} 的互动数据已同步完成",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "account_index": current_account_index,
+                            "account_total": total_accounts,
+                            "current": aggregate_synced_accounts + 1,
+                            "total": total_accounts,
+                            "percent": int(((aggregate_synced_accounts + 1) / total_accounts) * 100) if total_accounts > 0 else 100,
+                            "synced_accounts": aggregate_synced_accounts + 1,
+                            "metric_synced_notes": aggregate_metric_synced_notes + metric_updates,
+                            "created_notes": int(import_result.get("created_notes") or 0),
+                            "updated_notes": int(import_result.get("updated_notes") or 0),
+                            "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
+                            "exported_rows": len(stats_rows),
+                        },
+                    )
+                    return {
+                        "synced_accounts": 1,
+                        "created_notes": int(import_result.get("created_notes") or 0),
+                        "updated_notes": int(import_result.get("updated_notes") or 0),
+                        "metric_synced_notes": metric_updates,
+                        "total_notes": total_notes,
+                        "ambiguous_notes": int(import_result.get("ambiguous_notes") or 0),
+                        "exported_rows": len(stats_rows),
+                    }
+                except CreatorStatsUnavailable as exc:
+                    reason = self._sync_exception_message(exc)
+                    logger.info(
+                        "创作者中心账号无统计数据权限，本次跳过: env_id=%s account=%s reason=%s",
+                        env.id,
+                        env.account_name,
+                        reason,
+                    )
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "account_engagement_skipped",
+                            "detail": f"{env.account_name} 暂未开通创作者中心数据权限，本次已跳过",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "skipped": True,
+                            "skip_reason": reason,
+                        },
+                    )
+                    return {
+                        "synced_accounts": 0,
+                        "skipped_accounts": 1,
+                        "created_notes": 0,
+                        "updated_notes": 0,
+                        "metric_synced_notes": 0,
+                        "total_notes": 0,
+                        "ambiguous_notes": 0,
+                        "exported_rows": 0,
+                        "skipped": True,
+                        "skip_reason": reason,
+                        "skipped_account_details": [
+                            {
+                                "environment_id": int(env.id),
+                                "account_name": env.account_name,
+                                "reason": reason,
+                            }
+                        ],
+                    }
+                except BaseException as exc:
+                    last_error = exc
+                    should_retry = (
+                        stage != "database_import"
+                        and attempt < max_attempts
+                        and self._is_retryable_creator_browser_error(exc)
+                    )
+                    if not should_retry:
+                        raise
+                    logger.warning(
+                        "创作者中心浏览器会话异常，准备重建后重试: env_id=%s account=%s attempt=%s error=%s",
+                        env.id,
+                        env.account_name,
+                        attempt,
+                        self._sync_exception_message(exc),
+                    )
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "retrying_account_engagement_browser",
+                            "detail": f"{env.account_name} 的浏览器会话异常，正在自动重建后重试",
+                            "environment_id": int(env.id),
+                            "account_name": env.account_name,
+                            "account_index": current_account_index,
+                            "account_total": total_accounts,
+                            "current": aggregate_synced_accounts,
+                            "total": total_accounts,
+                            "percent": int((aggregate_synced_accounts / total_accounts) * 100) if total_accounts > 0 else 0,
+                        },
+                    )
+                finally:
+                    if mcp_pid is not None:
+                        await self._stop_mcp(mcp_pid)
+                    if not use_external_mcp:
+                        await self._stop_browser(env.shop_id)
+                if not use_external_mcp:
+                    await asyncio.sleep(1)
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("创作者中心同步未完成")
         finally:
             self._active_mcp_api = previous_mcp_api
-            if mcp_pid is not None:
-                await self._stop_mcp(mcp_pid)
+
+    @staticmethod
+    def _is_retryable_creator_browser_error(exc: BaseException) -> bool:
+        if isinstance(exc, httpx.RequestError):
+            return True
+        message = str(exc).strip().lower()
+        if any(token in message for token in ("验证码", "activation", "device_not_available", "countdown")):
+            return False
+        return any(
+            token in message
+            for token in (
+                "browser",
+                "websocket",
+                "devtools",
+                "cdp",
+                "context deadline",
+                "context canceled",
+                "phone input",
+                "登录状态",
+                "创作中心",
+                "导出",
+                "xiaohongshu-mcp",
+            )
+        )
 
     async def sync_existing_account_note_stats(
         self,
@@ -6725,15 +7005,16 @@ class XHSService:
         )
         if not detail_data:
             return False
-        if isinstance(detail_data.get("liked_count"), int):
+        has_creator_metrics = note.creator_synced_at is not None
+        if not has_creator_metrics and isinstance(detail_data.get("liked_count"), int):
             note.liked_count = self._merge_metric_count(note.liked_count, detail_data["liked_count"])
-        if isinstance(detail_data.get("comment_count"), int):
+        if not has_creator_metrics and isinstance(detail_data.get("comment_count"), int):
             note.comment_count = self._merge_metric_count(note.comment_count, detail_data["comment_count"])
-        if isinstance(detail_data.get("collected_count"), int):
+        if not has_creator_metrics and isinstance(detail_data.get("collected_count"), int):
             note.collected_count = self._merge_metric_count(note.collected_count, detail_data["collected_count"])
-        if isinstance(detail_data.get("share_count"), int):
+        if not has_creator_metrics and isinstance(detail_data.get("share_count"), int):
             note.share_count = self._merge_metric_count(note.share_count, detail_data["share_count"])
-        if detail_data.get("published_at"):
+        if note.published_at is None and detail_data.get("published_at"):
             note.published_at = detail_data["published_at"]
         if detail_data.get("cover_image_url"):
             note.cover_image_url, pending_cover_url = self._prepare_account_note_cover_image(
@@ -6798,6 +7079,8 @@ class XHSService:
     @classmethod
     def _prepare_creator_stats_rows(cls, stats_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         occurrences: dict[str, int] = {}
+        legacy_raw_occurrences: dict[str, int] = {}
+        legacy_occurrences: dict[str, int] = {}
         prepared: list[dict[str, Any]] = []
         for fallback_index, row in enumerate(stats_rows, start=1):
             payload = dict(row or {})
@@ -6812,9 +7095,22 @@ class XHSService:
             base = f"{normalized_title}|{published_part}"
             occurrence = occurrences.get(base, 0) + 1
             occurrences[base] = occurrence
+            legacy_raw_value = str(payload.get("published_at_raw") or "").strip()
+            legacy_raw_base = f"{normalized_title}|{legacy_raw_value}"
+            legacy_raw_occurrence = legacy_raw_occurrences.get(legacy_raw_base, 0) + 1
+            legacy_raw_occurrences[legacy_raw_base] = legacy_raw_occurrence
+            legacy_base = f"{normalized_title}|"
+            legacy_occurrence = legacy_occurrences.get(legacy_base, 0) + 1
+            legacy_occurrences[legacy_base] = legacy_occurrence
             payload["normalized_title"] = normalized_title
             payload["published_at_utc"] = published_at_utc
             payload["source_key"] = hashlib.sha256(f"{base}|{occurrence}".encode("utf-8")).hexdigest()
+            payload["legacy_raw_source_key"] = hashlib.sha256(
+                f"{legacy_raw_base}|{legacy_raw_occurrence}".encode("utf-8")
+            ).hexdigest()
+            payload["legacy_source_key"] = hashlib.sha256(
+                f"{legacy_base}|{legacy_occurrence}".encode("utf-8")
+            ).hexdigest()
             prepared.append(payload)
         return prepared
 
@@ -6842,6 +7138,30 @@ class XHSService:
             if len(keyed) == 1:
                 return keyed[0], "creator_key", 1.0, False
             if len(keyed) > 1:
+                return None, None, None, True
+
+        legacy_raw_source_key = str(row.get("legacy_raw_source_key") or "").strip()
+        if legacy_raw_source_key and legacy_raw_source_key != source_key:
+            legacy_raw_keyed = [
+                note
+                for note in available
+                if str(note.creator_identity_key or "").strip() == legacy_raw_source_key
+            ]
+            if len(legacy_raw_keyed) == 1:
+                return legacy_raw_keyed[0], "creator_legacy_raw_key", 1.0, False
+            if len(legacy_raw_keyed) > 1:
+                return None, None, None, True
+
+        legacy_source_key = str(row.get("legacy_source_key") or "").strip()
+        if legacy_source_key and legacy_source_key != source_key:
+            legacy_keyed = [
+                note
+                for note in available
+                if str(note.creator_identity_key or "").strip() == legacy_source_key
+            ]
+            if len(legacy_keyed) == 1:
+                return legacy_keyed[0], "creator_legacy_key", 1.0, False
+            if len(legacy_keyed) > 1:
                 return None, None, None, True
 
         normalized_title = str(row.get("normalized_title") or "").strip()
@@ -6977,7 +7297,7 @@ class XHSService:
                 note.identity_match_method = match_method or note.identity_match_method
                 note.identity_match_confidence = confidence if confidence is not None else note.identity_match_confidence
 
-            if not note.creator_identity_key:
+            if not note.creator_identity_key or match_method in {"creator_legacy_key", "creator_legacy_raw_key"}:
                 note.creator_identity_key = str(row.get("source_key") or "") or None
             note.account_name = env.account_name or note.account_name or ""
             note.profile_nickname = note.profile_nickname or env.account_name or ""
@@ -7055,31 +7375,83 @@ class XHSService:
         *,
         api_base: str | None = None,
         env: XHSEnvironment | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
     ) -> list[dict[str, Any]]:
         resolved_api = self._resolve_active_mcp_api(api_base)
-        await self._ensure_xhs_creator_login(resolved_api, env=env)
+        await self._ensure_xhs_creator_login(
+            resolved_api,
+            env=env,
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
+        )
         started_at = time.monotonic()
-        logger.info("开始导出创作中心笔记数据: api_base=%s", resolved_api)
-        # Windows 指纹浏览器导出 Excel 常常接近 3 分钟，180s 会在下载成功后先超时断开。
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(resolved_api, timeout=420.0)) as client:
-            resp = await client.get(f"{resolved_api}/api/v1/creator/stats/export")
-        if resp.status_code != 200:
-            raise RuntimeError(f"导出创作中心笔记数据失败: HTTP {resp.status_code}")
+        account_name = str(getattr(env, "account_name", "") or "").strip()
+        content: bytes | None = None
+        for export_attempt in range(1, 3):
+            await self._raise_if_sync_cancelled(cancel_check)
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "exporting_creator_stats" if export_attempt == 1 else "retrying_creator_stats_export",
+                    "detail": (
+                        f"{account_name or '当前账号'} 已登录，正在导出创作者中心表格"
+                        if export_attempt == 1
+                        else f"{account_name or '当前账号'} 浏览器页面已恢复，正在重新导出表格"
+                    ),
+                    "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                    "account_name": account_name,
+                },
+            )
+            logger.info(
+                "开始导出创作中心笔记数据: api_base=%s attempt=%s/2",
+                resolved_api,
+                export_attempt,
+            )
+            try:
+                content = await self._download_creator_stats_excel(resolved_api)
+                break
+            except CreatorStatsUnavailable:
+                raise
+            except Exception as exc:
+                detail = str(exc)
+                if export_attempt >= 2:
+                    raise
+                if self._is_creator_session_expired_error(detail):
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "recovering_creator_login_session",
+                            "detail": f"{account_name or '当前账号'} 创作者登录态已失效，正在自动重新登录",
+                            "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                            "account_name": account_name,
+                        },
+                    )
+                    logger.warning(
+                        "导出阶段检测到创作者登录态失效，自动重置并重新登录: env_id=%s error=%s",
+                        getattr(env, "id", None),
+                        detail,
+                    )
+                    await self._reset_mcp_login_session(resolved_api)
+                    await self._ensure_xhs_creator_login(
+                        resolved_api,
+                        env=env,
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
+                    )
+                    continue
+                if self._is_transient_mcp_browser_error(detail):
+                    logger.warning(
+                        "导出阶段浏览器上下文暂时失效，保留登录态并重试: env_id=%s error=%s",
+                        getattr(env, "id", None),
+                        detail,
+                    )
+                    await asyncio.sleep(1.0)
+                    continue
+                raise
 
-        payload = resp.json() if resp.content else {}
-        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-            raise RuntimeError(str(payload.get("message") or "导出创作中心笔记数据失败"))
-
-        data = payload.get("data") or {}
-        if not isinstance(data, dict):
-            raise RuntimeError("创作中心导出数据结构异常")
-        file_base64 = str(data.get("file_base64") or data.get("content_base64") or "").strip()
-        if not file_base64:
-            raise RuntimeError("创作中心导出文件为空")
-        try:
-            content = base64.b64decode(file_base64)
-        except Exception as exc:
-            raise RuntimeError(f"创作中心导出文件解码失败: {exc}") from exc
+        if content is None:
+            raise RuntimeError("创作中心导出未返回文件")
         rows = self._parse_creator_stats_excel(content)
         logger.info(
             "创作中心笔记数据导出解析完成: rows=%s elapsed=%.1fs",
@@ -7088,12 +7460,127 @@ class XHSService:
         )
         return rows
 
-    async def _ensure_xhs_creator_login(self, api_base: str, *, env: XHSEnvironment | None = None) -> None:
-        flow_started_at = time.monotonic()
-        login_status = await self._get_mcp_login_status(api_base)
-        if bool(login_status.get("is_logged_in")):
-            return
+    async def _download_creator_stats_excel(self, api_base: str) -> bytes:
+        # Windows 指纹浏览器导出 Excel 常常接近 3 分钟，180s 会在下载成功后先超时断开。
+        try:
+            async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=420.0)) as client:
+                resp = await client.get(f"{api_base}/api/v1/creator/stats/export")
+        except httpx.RequestError as exc:
+            message = str(exc).strip() or "请求超时或连接已断开"
+            raise RuntimeError(f"请求创作者中心导出接口失败: {type(exc).__name__}: {message}") from exc
 
+        try:
+            payload = resp.json() if resp.content else {}
+        except Exception:
+            payload = {"details": (resp.text or "")[:500]}
+        if resp.status_code != 200:
+            detail = self._mcp_error_detail(payload)
+            if any(marker in detail for marker in ("暂未开通数据权限", "未开通数据权限", "CREATOR_STATS_UNAVAILABLE")):
+                raise CreatorStatsUnavailable(detail or "创作者中心暂未开通数据权限")
+            raise RuntimeError(
+                f"导出创作中心笔记数据失败: HTTP {resp.status_code}"
+                f"{f' {detail}' if detail else ''}"
+            )
+
+        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+            message = payload.get("message") if isinstance(payload, dict) else None
+            raise RuntimeError(str(message or "导出创作中心笔记数据失败"))
+
+        data = payload.get("data") or {}
+        if not isinstance(data, dict):
+            raise RuntimeError("创作中心导出数据结构异常")
+        file_base64 = str(data.get("file_base64") or data.get("content_base64") or "").strip()
+        if not file_base64:
+            raise RuntimeError("创作中心导出文件为空")
+        try:
+            return base64.b64decode(file_base64)
+        except Exception as exc:
+            raise RuntimeError(f"创作中心导出文件解码失败: {exc}") from exc
+
+    @staticmethod
+    def _is_creator_session_expired_error(detail: str) -> bool:
+        normalized = str(detail or "").lower()
+        return any(
+            marker in normalized
+            for marker in (
+                "创作者中心登录态已失效",
+                "redirectreason=401",
+                "creator.xiaohongshu.com/login",
+                "creator session expired",
+            )
+        )
+
+    @staticmethod
+    def _is_transient_mcp_browser_error(detail: str) -> bool:
+        normalized = str(detail or "").lower()
+        return any(
+            marker in normalized
+            for marker in (
+                "execution context was destroyed",
+                "cannot find context with specified id",
+                "inspected target navigated or closed",
+                "browser target temporarily unavailable",
+                "target closed",
+                "readtimeout",
+                "请求超时或连接已断开",
+            )
+        )
+
+    async def _ensure_xhs_creator_login(
+        self,
+        api_base: str,
+        *,
+        env: XHSEnvironment | None = None,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+        _device_lock_acquired: bool = False,
+    ) -> None:
+        flow_started_at = time.monotonic()
+        account_name = str(getattr(env, "account_name", "") or "").strip()
+        await self._raise_if_sync_cancelled(cancel_check)
+        await self._emit_progress(
+            progress_callback,
+            {
+                "phase": "checking_creator_login",
+                "detail": f"正在检查 {account_name or '当前账号'} 的小红书登录状态",
+                "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                "account_name": account_name,
+            },
+        )
+        # The initial check may safely verify persisted cookies in a temporary
+        # tab. Later status polling stays non-navigating to preserve QR/SMS UI.
+        account_type = str(getattr(env, "xhs_account_type", "") or "enterprise_professional").strip().lower()
+        login_status = await self._get_mcp_login_status(api_base, probe=True)
+        if bool(login_status.get("is_logged_in")):
+            expected_id = str(getattr(env, "xhs_account_id", "") or "").strip()
+            if account_type == "enterprise_employee" and expected_id:
+                identity = await self._get_mcp_current_profile_identity(api_base)
+                actual_id = str(identity.get("xhs_account_id") or "").strip()
+                if not actual_id:
+                    raise RuntimeError("企业员工号已登录，但无法读取当前小红书 ID")
+                if actual_id == expected_id:
+                    return
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "recovering_creator_account_mismatch",
+                        "detail": f"{account_name or '当前账号'} 检测到登录错号，正在清理旧会话并重新扫码",
+                        "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                        "account_name": account_name,
+                    },
+                )
+                logger.warning(
+                    "企业员工号登录身份不匹配，登录前重置会话: env_id=%s expected_id=%s actual_id=%s actual_name=%s",
+                    getattr(env, "id", None),
+                    expected_id,
+                    actual_id,
+                    identity.get("account_name") or "",
+                )
+                await self._reset_mcp_login_session(api_base)
+            else:
+                return
+
+        await self._raise_if_sync_cancelled(cancel_check)
         phone_number = self._normalize_cn_phone_number(str(getattr(env, "login_phone_number", "") or ""))
         if not phone_number:
             account_name = str(getattr(env, "account_name", "") or "").strip()
@@ -7103,29 +7590,112 @@ class XHSService:
         if not SMS_CODE_CENTER_OPEN_API_CLIENT_ID or not SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET:
             raise RuntimeError("未配置 SMS_CODE_CENTER_OPEN_API_CLIENT_ID / SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET，无法自动接码登录")
 
-        client_request_id = f"xhs-login-{getattr(env, 'id', 'env')}-{uuid.uuid4().hex}"
+        if not _device_lock_acquired:
+            device_id = await self._resolve_phone_cloud_sms_device_id(phone_number)
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "waiting_creator_sms_device",
+                    "detail": f"{account_name or '当前账号'} 正在等待绑定手机释放验证码通道",
+                    "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                    "account_name": account_name,
+                },
+            )
+            async with sms_device_coordinator.lease(f"device:{device_id}") as lease:
+                logger.info(
+                    "小红书验证码设备锁已获取: env_id=%s device_id=%s distributed=%s queue_wait_ms=%s",
+                    getattr(env, "id", None),
+                    device_id,
+                    lease.distributed,
+                    round(lease.queue_wait_seconds * 1000),
+                )
+                return await self._ensure_xhs_creator_login(
+                    api_base,
+                    env=env,
+                    progress_callback=progress_callback,
+                    cancel_check=cancel_check,
+                    _device_lock_acquired=True,
+                )
+
+        if account_type == "enterprise_employee":
+            await self._raise_if_sync_cancelled(cancel_check)
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "requesting_creator_qr",
+                    "detail": f"{account_name or '当前账号'} 是企业员工号，正在直接发起扫码登录",
+                    "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                    "account_name": account_name,
+                },
+            )
+            logger.info(
+                "小红书企业员工号使用扫码优先登录: env_id=%s account=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                account_name,
+                round((time.monotonic() - flow_started_at) * 1000),
+            )
+            await self._complete_xhs_qr_login_if_needed(api_base, phone_number, {}, env=env)
+            status = await self._get_mcp_login_status(api_base)
+            if not bool(status.get("is_logged_in")):
+                raise RuntimeError("企业员工号扫码和后置验证已处理，但小红书登录态确认失败")
+            logger.info(
+                "小红书企业员工号扫码登录完成: env_id=%s elapsed_ms=%s",
+                getattr(env, "id", None),
+                round((time.monotonic() - flow_started_at) * 1000),
+            )
+            return
+
         request_id = ""
         sms_received = False
         try:
-            sms_request = await self._create_open_sms_code_request(phone_number, client_request_id)
-            request_id = str(sms_request.get("requestId") or sms_request.get("request_id") or "").strip()
-            if not request_id:
-                raise RuntimeError("验证码中台未返回 requestId")
-            logger.info(
-                "小红书自动登录第一条接码订单已创建: env_id=%s request_id=%s elapsed_ms=%s",
-                getattr(env, "id", None),
-                request_id,
-                round((time.monotonic() - flow_started_at) * 1000),
-            )
+            received_request: dict[str, Any] | None = None
+            last_wait_failure: SmsCodeWaitFailure | None = None
+            for send_attempt in range(1, SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS + 1):
+                client_request_id = (
+                    f"xhs-login-{getattr(env, 'id', 'env')}-attempt-{send_attempt}-{uuid.uuid4().hex}"
+                )
+                sms_request = await self._create_open_sms_code_request(phone_number, client_request_id)
+                request_id = str(sms_request.get("requestId") or sms_request.get("request_id") or "").strip()
+                if not request_id:
+                    raise RuntimeError("验证码中台未返回 requestId")
+                logger.info(
+                    "小红书自动登录接码订单已创建: env_id=%s request_id=%s send_attempt=%s/%s elapsed_ms=%s",
+                    getattr(env, "id", None),
+                    request_id,
+                    send_attempt,
+                    SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS,
+                    round((time.monotonic() - flow_started_at) * 1000),
+                )
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "requesting_creator_sms" if send_attempt == 1 else "retrying_creator_sms",
+                        "detail": (
+                            f"{account_name or '当前账号'} 未登录，正在填写手机号并发送验证码"
+                            if send_attempt == 1
+                            else f"{account_name or '当前账号'} 首次短信未到，正在受控补发一次"
+                        ),
+                        "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                        "account_name": account_name,
+                    },
+                )
 
-            request_status = str(sms_request.get("status") or "").strip()
-            if request_status == "received":
-                received_request = sms_request
-            elif request_status == "waiting":
-                # Start both the exact-SIM order poll and the same-device SMS
-                # library fallback before asking Xiaohongshu to send the code.
+                request_status = str(sms_request.get("status") or "").strip()
+                if request_status == "received":
+                    received_request = sms_request
+                    break
+                if request_status != "waiting":
+                    raise RuntimeError(f"验证码请求创建后状态异常: {request_status or 'unknown'}")
+
+                # Arm the order and same-device/all-SIM fallback before the
+                # browser click so even a very fast SMS cannot be missed.
                 sms_wait_task = asyncio.create_task(
-                    self._wait_open_sms_code_request(request_id, initial_request=sms_request)
+                    self._wait_open_sms_code_request(
+                        request_id,
+                        initial_request=sms_request,
+                        cancel_check=cancel_check,
+                        timeout_seconds=SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS,
+                    )
                 )
                 try:
                     await asyncio.sleep(0)
@@ -7135,30 +7705,115 @@ class XHSService:
                             json={"phone_number": phone_number},
                         )
                     payload = resp.json() if resp.content else {}
+                    send_error = ""
                     if resp.status_code != 200:
-                        raise RuntimeError(
-                            f"触发小红书发送验证码失败: HTTP {resp.status_code} "
-                            f"{self._mcp_error_detail(payload)}"
+                        send_error = (
+                            f"HTTP {resp.status_code} {self._mcp_error_detail(payload)}"
+                        ).strip()
+                    elif not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+                        if isinstance(payload, dict):
+                            send_error = str(
+                                payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"
+                            )
+                        else:
+                            send_error = "触发小红书发送验证码失败"
+
+                    # Countdown detection is UI observation, not proof that
+                    # the click failed.  Keep the already-armed SMS listener
+                    # alive so a real SMS is not thrown away on a false
+                    # negative; other browser failures remain fail-fast.
+                    if send_error and not self._is_ambiguous_phone_code_send_error(send_error):
+                        raise RuntimeError(f"触发小红书发送验证码失败: {send_error}")
+                    if send_error:
+                        logger.warning(
+                            "小红书发码倒计时未确认，保留接码监听等待真实短信: "
+                            "env_id=%s request_id=%s send_attempt=%s error=%s",
+                            getattr(env, "id", None),
+                            request_id,
+                            send_attempt,
+                            send_error,
                         )
-                    if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-                        raise RuntimeError(str(payload.get("message") or payload.get("error") or "触发小红书发送验证码失败"))
-                    logger.info(
-                        "小红书第一条验证码已触发发送: env_id=%s request_id=%s elapsed_ms=%s",
-                        getattr(env, "id", None),
-                        request_id,
-                        round((time.monotonic() - flow_started_at) * 1000),
+                    else:
+                        logger.info(
+                            "小红书验证码已触发发送: env_id=%s request_id=%s send_attempt=%s/%s elapsed_ms=%s",
+                            getattr(env, "id", None),
+                            request_id,
+                            send_attempt,
+                            SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS,
+                            round((time.monotonic() - flow_started_at) * 1000),
+                        )
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "waiting_creator_sms",
+                            "detail": (
+                                f"{account_name or '当前账号'} 已发送验证码，正在等待绑定手机回传"
+                                if not send_error
+                                else f"{account_name or '当前账号'} 发码状态待确认，正在核对手机真实短信"
+                            ),
+                            "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                            "account_name": account_name,
+                        },
                     )
-                    received_request = await sms_wait_task
+                    try:
+                        received_request = await sms_wait_task
+                    except SmsCodeWaitFailure as exc:
+                        last_wait_failure = exc
+                        if send_attempt >= SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS:
+                            break
+                        logger.warning(
+                            "小红书验证码首次未捕获，准备受控补发: "
+                            "env_id=%s request_id=%s reason=%s wait_seconds=%s",
+                            getattr(env, "id", None),
+                            request_id,
+                            exc.reason,
+                            SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS,
+                        )
+                        await self._cancel_open_sms_code_request(request_id)
+                        request_id = ""
+                        continue
                 finally:
                     await self._stop_background_task(sms_wait_task)
-            else:
-                raise RuntimeError(f"验证码请求创建后状态异常: {request_status or 'unknown'}")
+                if received_request is not None:
+                    break
+
+            if received_request is None:
+                reason = last_wait_failure.reason if last_wait_failure is not None else "not_received"
+                raise RuntimeError(
+                    f"小红书验证码连续 {SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS} 次发送后仍未收到: {reason}"
+                )
 
             sms_received = True
             code = str(received_request.get("code") or "").strip()
             if not code:
                 raise RuntimeError("验证码中台返回 received 但 code 为空")
-            result = await self._submit_mcp_phone_code(api_base, phone_number, code)
+            await self._raise_if_sync_cancelled(cancel_check)
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "submitting_creator_sms",
+                    "detail": f"{account_name or '当前账号'} 已收到验证码，正在提交登录",
+                    "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                    "account_name": account_name,
+                },
+            )
+            try:
+                result = await self._submit_mcp_phone_code(api_base, phone_number, code)
+            except Exception as exc:
+                error_detail = f"{type(exc).__name__}: {exc}"
+                if not self._is_transient_mcp_browser_error(error_detail):
+                    raise
+                recovered_status = await self._recover_mcp_login_after_phone_submit_error(
+                    api_base,
+                    env=env,
+                    request_id=request_id,
+                    error=exc,
+                    progress_callback=progress_callback,
+                    cancel_check=cancel_check,
+                )
+                if recovered_status is None:
+                    raise
+                result = recovered_status
             logger.info(
                 "小红书第一条验证码已提交: env_id=%s request_id=%s requires_qr=%s elapsed_ms=%s",
                 getattr(env, "id", None),
@@ -7168,6 +7823,7 @@ class XHSService:
             )
             if not bool(result.get("is_logged_in")):
                 if bool(result.get("requires_qr")):
+                    await self._raise_if_sync_cancelled(cancel_check)
                     await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_request, env=env)
                     status = await self._get_mcp_login_status(api_base)
                     if not bool(status.get("is_logged_in")):
@@ -7175,6 +7831,7 @@ class XHSService:
                 else:
                     status = await self._get_mcp_login_status(api_base)
                     if not bool(status.get("is_logged_in")):
+                        await self._raise_if_sync_cancelled(cancel_check)
                         await self._complete_xhs_qr_login_if_needed(api_base, phone_number, received_request, env=env)
                         status = await self._get_mcp_login_status(api_base)
                         if not bool(status.get("is_logged_in")):
@@ -7190,22 +7847,236 @@ class XHSService:
                 await self._cancel_open_sms_code_request(request_id)
             raise
 
-    async def _get_mcp_login_status(self, api_base: str) -> dict[str, Any]:
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
-            resp = await client.get(f"{api_base}/api/v1/login/status")
-        if resp.status_code != 200:
-            raise RuntimeError(f"检查小红书登录状态失败: HTTP {resp.status_code}")
-        payload = resp.json() if resp.content else {}
-        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
-            raise RuntimeError(str(payload.get("message") or payload.get("error") or "检查小红书登录状态失败"))
-        data = payload.get("data") or {}
-        return data if isinstance(data, dict) else {}
+    async def _recover_mcp_login_after_phone_submit_error(
+        self,
+        api_base: str,
+        *,
+        env: XHSEnvironment | None,
+        request_id: str,
+        error: Exception,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+    ) -> dict[str, Any] | None:
+        """Resolve an ambiguous submit without replacing a possibly logged-in browser session."""
+        account_name = str(getattr(env, "account_name", "") or "").strip()
+        logger.warning(
+            "提交小红书验证码响应异常，保留当前会话复查登录态: "
+            "env_id=%s request_id=%s error=%s",
+            getattr(env, "id", None),
+            request_id,
+            error,
+        )
+        await self._emit_progress(
+            progress_callback,
+            {
+                "phase": "confirming_creator_login",
+                "detail": f"{account_name or '当前账号'} 验证码已输入，正在确认实际登录结果",
+                "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                "account_name": account_name,
+            },
+        )
 
-    async def _submit_mcp_phone_code(self, api_base: str, phone_number: str, code: str) -> dict[str, Any]:
+        last_status_error = ""
+        for attempt, delay_seconds in enumerate((1.0, 2.0, 4.0), start=1):
+            await self._raise_if_sync_cancelled(cancel_check)
+            await asyncio.sleep(delay_seconds)
+            try:
+                status = await self._get_mcp_login_status(api_base)
+            except Exception as status_exc:
+                last_status_error = str(status_exc)
+                logger.warning(
+                    "验证码提交异常后的登录态复查暂时失败: "
+                    "env_id=%s request_id=%s attempt=%s error=%s",
+                    getattr(env, "id", None),
+                    request_id,
+                    attempt,
+                    status_exc,
+                )
+                continue
+            if bool(status.get("is_logged_in")):
+                recovered = dict(status)
+                recovered["is_logged_in"] = True
+                recovered["recovered_after_submit_error"] = True
+                logger.info(
+                    "验证码提交响应异常但实际登录已成功: "
+                    "env_id=%s request_id=%s attempt=%s",
+                    getattr(env, "id", None),
+                    request_id,
+                    attempt,
+                )
+                return recovered
+            logger.info(
+                "验证码提交异常后尚未确认登录，继续在原会话复查: "
+                "env_id=%s request_id=%s attempt=%s",
+                getattr(env, "id", None),
+                request_id,
+                attempt,
+            )
+
+        logger.warning(
+            "验证码提交异常后仍未确认登录，交回原重试策略: "
+            "env_id=%s request_id=%s status_error=%s",
+            getattr(env, "id", None),
+            request_id,
+            last_status_error or "none",
+        )
+        return None
+
+    async def _get_mcp_login_status(self, api_base: str, *, probe: bool = False) -> dict[str, Any]:
+        last_error = ""
+        for attempt in range(1, 4):
+            try:
+                async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
+                    resp = await client.get(
+                        f"{api_base}/api/v1/login/status",
+                        params={"probe": "true"} if probe else None,
+                    )
+            except httpx.RequestError as exc:
+                message = str(exc).strip() or "请求超时或连接已断开"
+                last_error = f"{type(exc).__name__}: {message}"
+                if attempt < 3:
+                    await asyncio.sleep(float(attempt))
+                    continue
+                raise RuntimeError(f"检查小红书登录状态失败: {last_error}") from exc
+
+            try:
+                payload = resp.json() if resp.content else {}
+            except Exception:
+                payload = {"details": (resp.text or "")[:500]}
+            if resp.status_code == 200:
+                if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+                    raise RuntimeError(str(payload.get("message") or payload.get("error") or "检查小红书登录状态失败"))
+                data = payload.get("data") or {}
+                return data if isinstance(data, dict) else {}
+
+            detail = self._mcp_error_detail(payload)
+            last_error = f"HTTP {resp.status_code}{f' {detail}' if detail else ''}"
+            if resp.status_code >= 500 and attempt < 3:
+                logger.warning(
+                    "检查小红书登录状态暂时失败，同一浏览器会话内重试: api=%s probe=%s attempt=%s error=%s",
+                    api_base,
+                    probe,
+                    attempt,
+                    last_error,
+                )
+                await asyncio.sleep(float(attempt))
+                continue
+            raise RuntimeError(f"检查小红书登录状态失败: {last_error}")
+        raise RuntimeError(f"检查小红书登录状态失败: {last_error or 'unknown'}")
+
+    async def _get_mcp_current_profile_identity(self, api_base: str) -> dict[str, str]:
+        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
+            resp = await client.get(f"{api_base}/api/v1/user/me")
+        try:
+            payload = resp.json() if resp.content else {}
+        except Exception:
+            payload = {"details": (resp.text or "")[:500]}
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"读取当前小红书账号身份失败: HTTP {resp.status_code} "
+                f"{self._mcp_error_detail(payload)}"
+            )
+        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+            raise RuntimeError(str(payload.get("message") or payload.get("error") or "读取当前小红书账号身份失败"))
+        outer = payload.get("data") or {}
+        profile = outer.get("data") if isinstance(outer, dict) else {}
+        if not isinstance(profile, dict):
+            profile = outer if isinstance(outer, dict) else {}
+        basic = profile.get("userBasicInfo") or profile.get("user_basic_info") or {}
+        if not isinstance(basic, dict):
+            basic = {}
+        return {
+            "xhs_account_id": str(basic.get("redId") or basic.get("red_id") or "").strip(),
+            "account_name": str(basic.get("nickname") or "").strip(),
+        }
+
+    async def _reset_mcp_login_session(self, api_base: str) -> None:
+        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
+            resp = await client.delete(f"{api_base}/api/v1/login/cookies")
+        try:
+            payload = resp.json() if resp.content else {}
+        except Exception:
+            payload = {"details": (resp.text or "")[:500]}
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"清理错误小红书登录会话失败: HTTP {resp.status_code} "
+                f"{self._mcp_error_detail(payload)}"
+            )
+        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+            raise RuntimeError(str(payload.get("message") or payload.get("error") or "清理错误小红书登录会话失败"))
+
+    async def _recover_creator_account_mismatch(
+        self,
+        api_base: str,
+        *,
+        env: XHSEnvironment,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+    ) -> bool:
+        expected_id = str(getattr(env, "xhs_account_id", "") or "").strip()
+        if not expected_id:
+            return False
+        try:
+            identity = await self._get_mcp_current_profile_identity(api_base)
+        except Exception as exc:
+            logger.warning(
+                "创作者中心无权限后读取当前账号身份失败，不自动重置会话: env_id=%s error=%s",
+                getattr(env, "id", None),
+                exc,
+            )
+            return False
+        actual_id = str(identity.get("xhs_account_id") or "").strip()
+        if not actual_id or actual_id == expected_id:
+            return False
+
+        account_name = str(getattr(env, "account_name", "") or "").strip()
+        logger.warning(
+            "检测到云登环境登录错号，准备重置并按账号类型重新登录: env_id=%s expected_id=%s actual_id=%s actual_name=%s",
+            getattr(env, "id", None),
+            expected_id,
+            actual_id,
+            identity.get("account_name") or "",
+        )
+        await self._emit_progress(
+            progress_callback,
+            {
+                "phase": "recovering_creator_account_mismatch",
+                "detail": f"{account_name or '当前账号'} 检测到登录错号，正在清理旧会话并重新登录",
+                "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                "account_name": account_name,
+            },
+        )
+        await self._raise_if_sync_cancelled(cancel_check)
+        await self._reset_mcp_login_session(api_base)
+        await self._ensure_xhs_creator_login(
+            api_base,
+            env=env,
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
+        )
+        verified = await self._get_mcp_current_profile_identity(api_base)
+        verified_id = str(verified.get("xhs_account_id") or "").strip()
+        if verified_id != expected_id:
+            raise RuntimeError(
+                f"重新登录后小红书账号仍不匹配: 期望 {expected_id}，实际 {verified_id or '未知'}"
+            )
+        return True
+
+    async def _submit_mcp_phone_code(
+        self,
+        api_base: str,
+        phone_number: str,
+        code: str,
+        *,
+        post_qr: bool = False,
+    ) -> dict[str, Any]:
+        request_payload: dict[str, Any] = {"phone_number": phone_number, "code": code}
+        if post_qr:
+            request_payload["post_qr"] = True
         async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
             resp = await client.post(
                 f"{api_base}/api/v1/login/phone/submit-code",
-                json={"phone_number": phone_number, "code": code},
+                json=request_payload,
             )
         payload = resp.json() if resp.content else {}
         if resp.status_code != 200:
@@ -7289,8 +8160,14 @@ class XHSService:
         request_id: str,
         *,
         initial_request: dict[str, Any] | None = None,
+        cancel_check: CancelCheck | None = None,
+        timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
-        deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+        wait_seconds = min(
+            float(SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS),
+            max(1.0, float(timeout_seconds or SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS)),
+        )
+        deadline = asyncio.get_running_loop().time() + wait_seconds
         request_context = dict(initial_request or {})
         admin_token = ""
         fallback_enabled = bool(str(request_context.get("deviceId") or "").strip())
@@ -7306,9 +8183,10 @@ class XHSService:
                 )
         ignored_non_xhs_exact_message = False
         while True:
+            await self._raise_if_sync_cancelled(cancel_check)
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
-                raise RuntimeError("等待小红书验证码超时")
+                raise SmsCodeWaitFailure("timeout", request_id, "等待小红书验证码超时")
             if fallback_enabled:
                 exact_result, fallback_result = await asyncio.gather(
                     self._get_open_sms_code_request(request_id),
@@ -7350,7 +8228,7 @@ class XHSService:
                 )
                 return fallback_result
             if status in {"expired", "cancelled", "failed"}:
-                raise RuntimeError(f"验证码请求未收到验证码: {status}")
+                raise SmsCodeWaitFailure(status, request_id, f"验证码请求未收到验证码: {status}")
             if status not in {"waiting", "received"}:
                 raise RuntimeError(f"验证码请求状态异常: {status or 'unknown'}")
             await asyncio.sleep(min(SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS, remaining))
@@ -7436,6 +8314,11 @@ class XHSService:
         body = str(message.get("body") or "")
         sender = str(message.get("address") or message.get("sender") or "")
         return "小红书" in f"{body} {sender}"
+
+    @staticmethod
+    def _is_ambiguous_phone_code_send_error(message: str) -> bool:
+        normalized = str(message or "").strip().lower()
+        return "countdown" in normalized or "倒计时" in normalized
 
     @staticmethod
     async def _stop_background_task(task: asyncio.Task[Any] | None) -> None:
@@ -7650,7 +8533,12 @@ class XHSService:
                 code = str(sms_request.get("code") or "").strip()
                 if not code:
                     raise RuntimeError("二维码二次验证接码订单已收到短信但验证码为空")
-                result = await self._submit_mcp_phone_code(api_base, phone_number, code)
+                result = await self._submit_mcp_phone_code(
+                    api_base,
+                    phone_number,
+                    code,
+                    post_qr=True,
+                )
                 logger.info("小红书扫码后二次验证码已提交: request_id=%s", request_id)
                 if bool(result.get("is_logged_in")):
                     return True
@@ -7676,11 +8564,56 @@ class XHSService:
             await asyncio.sleep(min(1.0, remaining))
 
     async def _get_mcp_login_qrcode(self, api_base: str) -> dict[str, Any]:
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
-            resp = await client.get(f"{api_base}/api/v1/login/qrcode")
+        resp: httpx.Response | None = None
+        last_error: httpx.RequestError | None = None
+        payload: dict[str, Any] = {}
+        for attempt in range(1, 4):
+            try:
+                async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
+                    resp = await client.get(f"{api_base}/api/v1/login/qrcode")
+            except httpx.RequestError as exc:
+                last_error = exc
+                if attempt >= 3:
+                    raise RuntimeError(
+                        f"获取小红书二维码超时或连接中断（{type(exc).__name__}，已重试 3 次）"
+                    ) from exc
+                logger.warning(
+                    "获取小红书登录二维码暂时失败，同一浏览器会话内重试: api=%s attempt=%s error=%s",
+                    api_base,
+                    attempt,
+                    self._sync_exception_message(exc),
+                )
+                await asyncio.sleep(float(attempt))
+                continue
+
+            try:
+                parsed_payload = resp.json() if resp.content else {}
+                payload = parsed_payload if isinstance(parsed_payload, dict) else {}
+            except Exception:
+                payload = {"details": (resp.text or "")[:500]}
+            if resp.status_code >= 500 and attempt < 3:
+                detail = self._mcp_error_detail(payload)
+                logger.warning(
+                    "获取小红书登录二维码返回服务端错误，等待 MCP 重连后重试: "
+                    "api=%s attempt=%s status=%s error=%s",
+                    api_base,
+                    attempt,
+                    resp.status_code,
+                    detail or "unknown",
+                )
+                await asyncio.sleep(float(attempt))
+                continue
+            break
+        if resp is None:
+            raise RuntimeError(
+                f"获取小红书二维码失败: {self._sync_exception_message(last_error) if last_error else '无响应'}"
+            )
         if resp.status_code != 200:
-            raise RuntimeError(f"获取小红书二维码失败: HTTP {resp.status_code}")
-        payload = resp.json() if resp.content else {}
+            detail = self._mcp_error_detail(payload)
+            raise RuntimeError(
+                f"获取小红书二维码失败: HTTP {resp.status_code}"
+                f"{f' {detail}' if detail else ''}"
+            )
         if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
             raise RuntimeError(str(payload.get("message") or payload.get("error") or "获取小红书二维码失败"))
         data = payload.get("data") or {}
@@ -7805,6 +8738,47 @@ class XHSService:
             raise RuntimeError(f"获取手机云控管理员会话失败: HTTP {resp.status_code} {str(data)[:300]}")
         return token
 
+    async def _resolve_phone_cloud_sms_device_id(self, phone_number: str) -> str:
+        """Resolve a SIM phone number to exactly one physical Phone Cloud device."""
+        normalized_phone = self._normalize_cn_phone_number(phone_number)
+        if not normalized_phone:
+            raise RuntimeError("验证码设备锁无法解析空手机号")
+        admin_token = await self._get_phone_cloud_admin_token()
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(
+                f"{SMS_CODE_CENTER_BASE_URL}/api/v1/devices",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        data = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(f"建立验证码设备锁时读取手机列表失败: HTTP {resp.status_code} {str(data)[:300]}")
+        devices = data.get("devices") if isinstance(data, dict) else None
+        if not isinstance(devices, list):
+            raise RuntimeError("建立验证码设备锁时手机列表响应结构异常")
+
+        candidates: list[str] = []
+        for device in devices:
+            if not isinstance(device, dict):
+                continue
+            device_id = str(device.get("deviceId") or "").strip()
+            sims = device.get("sims") if isinstance(device.get("sims"), list) else []
+            if not device_id:
+                continue
+            if any(
+                isinstance(sim, dict)
+                and sim.get("enabled") is not False
+                and self._normalize_cn_phone_number(str(sim.get("phoneNumber") or sim.get("number") or "")) == normalized_phone
+                for sim in sims
+            ):
+                candidates.append(device_id)
+
+        unique_candidates = sorted(set(candidates))
+        if not unique_candidates:
+            raise RuntimeError("验证码手机号未绑定到任何手机，无法建立设备级接码锁")
+        if len(unique_candidates) > 1:
+            raise RuntimeError("验证码手机号重复绑定到多台手机，无法安全接码")
+        return unique_candidates[0]
+
     async def _resolve_phone_cloud_xhs_target(
         self,
         xhs_account: str,
@@ -7842,7 +8816,8 @@ class XHSService:
                 slot = str(account.get("appSlot") or "").strip()
                 account_name = str(account.get("accountName") or "").strip()
                 account_id = str(
-                    account.get("xhsAccountId")
+                    account.get("xhsId")
+                    or account.get("xhsAccountId")
                     or account.get("accountId")
                     or account.get("xhs_account_id")
                     or ""
@@ -7994,7 +8969,14 @@ class XHSService:
         raw = str(value or "").strip()
         if not raw:
             return None
-        raw = raw.replace("年", "-").replace("月", "-").replace("日", " ")
+        raw = (
+            raw.replace("年", "-")
+            .replace("月", "-")
+            .replace("日", " ")
+            .replace("时", ":")
+            .replace("分", ":")
+            .replace("秒", "")
+        )
         raw = re.sub(r"\s+", " ", raw).strip()
         for fmt in (
             "%Y-%m-%d %H:%M:%S",
@@ -9269,13 +10251,19 @@ class XHSService:
             env["XHS_BROWSER_WS"] = ws_url
             browser_download_dir = XHS_MCP_BROWSER_DOWNLOAD_DIR
             container_download_dir = XHS_MCP_CONTAINER_DOWNLOAD_DIR
+            session_container_download_dir = ""
             if not browser_download_dir and XHS_HOST_UPLOAD_ROOT:
                 browser_download_dir = _join_env_path(XHS_HOST_UPLOAD_ROOT, "mcp-downloads")
             if not container_download_dir and XHS_CONTAINER_UPLOAD_ROOT:
                 container_download_dir = _join_env_path(XHS_CONTAINER_UPLOAD_ROOT, "mcp-downloads")
             if browser_download_dir and container_download_dir:
+                session_dir = f"session-{port}-{uuid.uuid4().hex[:8]}"
+                browser_download_dir = _join_env_path(browser_download_dir, session_dir)
+                container_download_dir = _join_env_path(container_download_dir, session_dir)
+                os.makedirs(container_download_dir, exist_ok=True)
                 env["XHS_MCP_BROWSER_DOWNLOAD_DIR"] = browser_download_dir
                 env["XHS_MCP_CONTAINER_DOWNLOAD_DIR"] = container_download_dir
+                session_container_download_dir = container_download_dir
 
             proc = await asyncio.create_subprocess_exec(
                 XHS_MCP_BIN,
@@ -9284,6 +10272,8 @@ class XHSService:
             )
             with self._mcp_port_guard:
                 self._mcp_ports_by_pid[int(proc.pid)] = int(port)
+                if session_container_download_dir:
+                    self._mcp_download_dirs_by_pid[int(proc.pid)] = session_container_download_dir
             return proc.pid
         except FileNotFoundError:
             self._release_reserved_mcp_port(port)
@@ -9295,11 +10285,30 @@ class XHSService:
             return None
 
     async def _wait_mcp_ready(self, api_base: str | None = None, timeout: int = 15):
+        resolved_api = self._resolve_active_mcp_api(api_base)
         for i in range(timeout):
-            if await self._check_mcp_running(api_base):
-                return
+            if await self._check_mcp_running(resolved_api):
+                break
             await asyncio.sleep(1)
-        raise RuntimeError("xiaohongshu-mcp 启动超时")
+        else:
+            raise RuntimeError("xiaohongshu-mcp HTTP 服务启动超时")
+
+        last_error = ""
+        for attempt in range(1, 3):
+            try:
+                async with httpx.AsyncClient(
+                    **self._httpx_client_kwargs(resolved_api, timeout=8.0)
+                ) as client:
+                    response = await client.get(f"{resolved_api}/api/v1/login/status")
+                if response.status_code == 200:
+                    logger.info("xiaohongshu-mcp 浏览器连接探活成功: api=%s attempt=%s", resolved_api, attempt)
+                    return
+                last_error = f"HTTP {response.status_code}: {(response.text or '')[:300]}"
+            except Exception as exc:
+                last_error = self._sync_exception_message(exc)
+            if attempt < 2:
+                await asyncio.sleep(1)
+        raise RuntimeError(f"xiaohongshu-mcp 浏览器连接探活失败: {last_error or 'unknown'}")
 
     async def _stop_mcp(self, pid: int):
         try:
@@ -9309,7 +10318,13 @@ class XHSService:
         finally:
             with self._mcp_port_guard:
                 port = self._mcp_ports_by_pid.pop(int(pid), None)
+                download_dir = self._mcp_download_dirs_by_pid.pop(int(pid), None)
             self._release_reserved_mcp_port(port)
+            if download_dir:
+                try:
+                    await asyncio.to_thread(shutil.rmtree, download_dir, True)
+                except Exception as exc:
+                    logger.warning("清理 MCP 独立下载目录失败: dir=%s error=%s", download_dir, exc)
 
     async def _call_publish_api(
         self, title, content, images, tags, is_original, visibility, api_base: str | None = None

@@ -327,7 +327,7 @@ async def _send_feishu_robot_message(webhook_url: str, text: str) -> None:
 async def _load_system_admin_user(db: AsyncSession) -> User:
     user = (await db.execute(select(User).where(User.role == "admin").order_by(User.id.asc()))).scalars().first()
     if not user:
-        raise ValueError("系统中还没有管理员账号，暂时无法执行创作者中心互动同步")
+        raise ValueError("系统中还没有管理员账号，暂时无法执行创作者中心帖子主同步")
     return user
 
 
@@ -563,9 +563,12 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
                 sync_account_limit=len(target_env_ids),
                 concurrency=int(normalized["yundeng_sync_concurrency"]),
             )
-            summary_parts.append(f"创作中心互动 {result.get('synced_accounts', 0)} 个账号，成功 {result.get('metric_synced_notes', 0)} 条")
+            summary_parts.append(
+                f"创作中心主同步 {result.get('synced_accounts', 0)} 个账号，"
+                f"新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
+            )
         else:
-            summary_parts.append("创作中心互动 0 个账号")
+            summary_parts.append("创作中心主同步 0 个账号")
 
     # Creator-center export owns the post inventory and metrics. Homepage sync
     # follows it only to resolve feed IDs and enrich content-related fields.
@@ -586,7 +589,9 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
                 limit_per_env=int(normalized["post_sync_limit_per_env"]),
             )
             summary_parts.append(
-                f"主页帖子 {scope_label} {result.get('synced_accounts', 0)} 个账号，新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
+                f"主页帖子 {scope_label} {result.get('synced_accounts', 0)} 个账号，"
+                f"补齐 {result.get('updated_notes', 0)} 条，"
+                f"待创作者中心建档 {result.get('deferred_homepage_notes', 0)} 条"
             )
 
     if normalized["detail_sync_enabled"]:

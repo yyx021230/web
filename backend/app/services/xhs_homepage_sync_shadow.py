@@ -208,14 +208,19 @@ class HomepageSyncShadowAdapter:
             return items
         phase = str(progress.get("phase") or "").strip()
         account_name = str(progress.get("account_name") or "").strip()
+        try:
+            environment_id = int(progress.get("environment_id") or 0)
+        except (TypeError, ValueError):
+            environment_id = 0
         progress_phases = SHADOW_PROGRESS_PHASES_BY_KIND.get(sync_kind, frozenset())
-        if phase not in progress_phases or not account_name:
+        if phase not in progress_phases or (not account_name and environment_id <= 0):
             return items
 
-        # Legacy history updates the first exact-name match, so mirror that same row.
-        matched = [
-            item for item in items if (item.account_name or "").strip() == account_name
-        ]
+        matched = [item for item in items if environment_id > 0 and int(item.environment_id or 0) == environment_id]
+        if not matched and account_name:
+            matched = [
+                item for item in items if (item.account_name or "").strip() == account_name
+            ]
         return matched[:1]
 
     @staticmethod

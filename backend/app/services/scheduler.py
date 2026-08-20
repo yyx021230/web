@@ -67,7 +67,7 @@ async def scheduled_publish_loop(session_factory: async_sessionmaker, interval_s
 
 
 async def account_notes_sync_loop(session_factory: async_sessionmaker):
-    """每天 19:00 后执行账号帖子同步：先发现最近60条，再逐条刷新库内帖子互动数据。"""
+    """每天 19:00 后执行主页字段补齐，不负责新增帖子主记录。"""
     while True:
         now = cst_now_naive()
         if now.hour < 19:
@@ -85,10 +85,10 @@ async def account_notes_sync_loop(session_factory: async_sessionmaker):
                 service = XHSService(session)
                 result = await service.sync_account_notes(user=None, limit_per_env=30)
             logger.info(
-                "账号帖子列表同步完成: 账号=%s, 新增=%s, 更新=%s, 拉取总数=%s",
+                "主页帖子补充完成: 账号=%s, 补齐=%s, 待创作者中心建档=%s, 拉取总数=%s",
                 result.get("synced_accounts", 0),
-                result.get("created_notes", 0),
                 result.get("updated_notes", 0),
+                result.get("deferred_homepage_notes", 0),
                 result.get("total_notes", 0),
             )
         except Exception as e:

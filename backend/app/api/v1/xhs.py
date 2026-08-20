@@ -551,6 +551,10 @@ async def _update_sync_history_from_progress(history_run_id: int | None, payload
         return
     phase = str(payload.get("phase") or "")
     account_name = str(payload.get("account_name") or "").strip()
+    try:
+        environment_id = int(payload.get("environment_id") or 0)
+    except (TypeError, ValueError):
+        environment_id = 0
     now = datetime.now()
     async with async_session() as session:
         run = (await session.execute(select(XHSAccountSyncRun).where(XHSAccountSyncRun.id == history_run_id))).scalar_one_or_none()
@@ -610,7 +614,7 @@ async def _update_sync_history_from_progress(history_run_id: int | None, payload
                 item.result = result
                 item.message = str(payload.get("detail") or "")
                 item.finished_at = now
-        if account_name:
+        if account_name or environment_id > 0:
             candidates = list(
                 (
                     await session.execute(
@@ -620,9 +624,33 @@ async def _update_sync_history_from_progress(history_run_id: int | None, payload
                     )
                 ).scalars().all()
             )
-            item = next((candidate for candidate in candidates if (candidate.account_name or "").strip() == account_name), None)
+            item = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if environment_id > 0 and int(candidate.environment_id or 0) == environment_id
+                ),
+                None,
+            )
+            if item is None and account_name:
+                item = next(
+                    (candidate for candidate in candidates if (candidate.account_name or "").strip() == account_name),
+                    None,
+                )
             if item is not None:
-                if phase in {"opening_runner", "fetching_account_posts", "fetching_account_engagements", "syncing_account_engagements"} and item.status == "queued":
+                if phase in {
+                    "opening_runner",
+                    "opening_account_engagement_browser",
+                    "retrying_account_engagement_browser",
+                    "checking_creator_login",
+                    "requesting_creator_sms",
+                    "waiting_creator_sms",
+                    "submitting_creator_sms",
+                    "exporting_creator_stats",
+                    "fetching_account_posts",
+                    "fetching_account_engagements",
+                    "syncing_account_engagements",
+                } and item.status == "queued":
                     item.status = "running"
                     item.started_at = now
                 elif phase in {"account_posts_completed", "account_engagement_completed", "account_engagement_skipped"}:
@@ -632,7 +660,17 @@ async def _update_sync_history_from_progress(history_run_id: int | None, payload
                     item.finished_at = now
                     item.result = {
                         key: payload.get(key)
-                        for key in ("created_notes", "updated_notes", "metric_synced_notes", "exported_rows", "unmatched_notes", "duplicate_title_skips")
+                        for key in (
+                            "created_notes",
+                            "updated_notes",
+                            "deferred_homepage_notes",
+                            "metric_synced_notes",
+                            "exported_rows",
+                            "unmatched_notes",
+                            "duplicate_title_skips",
+                            "skipped",
+                            "skip_reason",
+                        )
                         if payload.get(key) is not None
                     }
                 elif phase in {"account_posts_failed", "account_engagement_failed"}:
@@ -688,7 +726,7 @@ async def _finish_sync_history_run(
                 item.finished_at = now
             elif item.status in {"queued", "running"}:
                 item.status = "failed"
-                item.error = error or "任务未返回该账号的完成回执，请重新运行"
+                item.error = "任务未返回该账号的完成回执，请单独重试"
                 item.message = "未确认完成"
                 item.finished_at = now
         await session.commit()
@@ -899,7 +937,7 @@ async def _run_account_note_sync_job(
     job["started_at"] = _now_iso()
     job["updated_at"] = _now_iso()
     if engagement_only:
-        job["message"] = "正在同步账号互动数据"
+        job["message"] = "正在执行创作者中心帖子主同步"
     else:
         job["message"] = "正在同步账号帖子数据" if details else "正在同步账号帖子"
     _update_job_progress(
@@ -978,8 +1016,8 @@ async def _run_account_note_sync_job(
         failure_detail = _sync_result_failure_detail(result if isinstance(result, dict) else None)
         final_status = "failed" if failure_detail else "succeeded"
         if engagement_only:
-            success_message = "账号互动同步完成"
-            failure_message = "账号互动同步失败"
+            success_message = "创作者中心帖子主同步完成"
+            failure_message = "创作者中心帖子主同步失败"
         else:
             success_message = "账号帖子数据同步完成" if details else "账号帖子同步完成"
             failure_message = "账号帖子数据同步存在失败" if details else "账号帖子同步存在失败"
@@ -1002,6 +1040,7 @@ async def _run_account_note_sync_job(
             failed_notes=int(result.get("failed_notes") or 0) if isinstance(result, dict) else 0,
             created_notes=int(result.get("created_notes") or 0) if isinstance(result, dict) else 0,
             updated_notes=int(result.get("updated_notes") or 0) if isinstance(result, dict) else 0,
+            deferred_homepage_notes=int(result.get("deferred_homepage_notes") or 0) if isinstance(result, dict) else 0,
             synced_accounts=int(result.get("synced_accounts") or 0) if isinstance(result, dict) else 0,
             metric_synced_notes=int(result.get("metric_synced_notes") or 0) if isinstance(result, dict) else 0,
         )
@@ -2023,7 +2062,7 @@ async def sync_account_note_engagements(
         )
     )
     XHS_BACKGROUND_JOB_TASKS[job["job_id"]] = task
-    return ApiResponse(data=job, message="账号互动同步任务已开始")
+    return ApiResponse(data=job, message="创作者中心帖子主同步任务已开始")
 
 
 @router.post("/account-notes/sync-details")
@@ -3019,7 +3058,7 @@ async def worker_sync_account_note_engagements(
         environment_id,
         sync_run_id=sync_run_id,
     )
-    return ApiResponse(data=result, message="账号互动同步完成")
+    return ApiResponse(data=result, message="创作者中心帖子主同步完成")
 
 
 @router.post("/internal/account-notes/sync-details")

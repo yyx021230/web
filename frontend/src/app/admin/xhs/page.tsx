@@ -17,6 +17,7 @@ interface XHSEnvironment {
   sync_browser_start_config?: string;
   xhs_account_id?: string;
   login_phone_number?: string;
+  xhs_account_type?: XHSAccountType | string;
   is_sync_runner?: boolean;
   notes?: string;
   group_name?: string;
@@ -89,6 +90,7 @@ interface SyncRunnerBrowseOverview {
 
 type EnvFilterKey = 'all' | 'configured' | 'unconfigured' | 'sync_runner' | 'online' | 'offline' | 'unassigned';
 type DepartmentKey = 'all' | 'xhs' | 'brand';
+type XHSAccountType = 'enterprise_professional' | 'enterprise_employee' | 'personal';
 type WorkbenchPanelKey = 'profile' | 'users' | 'browser' | 'activity';
 
 const ENV_FILTER_OPTIONS: Array<{ key: EnvFilterKey; label: string }> = [
@@ -131,6 +133,18 @@ function getDepartmentTone(value?: string, selected = false): string {
   return normalizeDepartment(value) === 'brand'
     ? 'bg-sky-50 text-sky-700'
     : 'bg-violet-50 text-violet-700';
+}
+
+function normalizeXHSAccountType(value?: string): XHSAccountType {
+  if (value === 'enterprise_employee' || value === 'personal') return value;
+  return 'enterprise_professional';
+}
+
+function getXHSAccountTypeLabel(value?: string): string {
+  const normalized = normalizeXHSAccountType(value);
+  if (normalized === 'enterprise_employee') return '企业员工号';
+  if (normalized === 'personal') return '个人号';
+  return '企业专业号';
 }
 
 function userHasRole(user: { role?: string; roles?: string[] }, roles: string[]): boolean {
@@ -227,6 +241,7 @@ export default function AdminXhsPage() {
   const [syncBrowserConfigDrafts, setSyncBrowserConfigDrafts] = useState<Record<number, string>>({});
   const [xhsAccountIdDrafts, setXhsAccountIdDrafts] = useState<Record<number, string>>({});
   const [loginPhoneDrafts, setLoginPhoneDrafts] = useState<Record<number, string>>({});
+  const [accountTypeDrafts, setAccountTypeDrafts] = useState<Record<number, XHSAccountType>>({});
   const [departmentDrafts, setDepartmentDrafts] = useState<Record<number, Exclude<DepartmentKey, 'all'>>>({});
   const [savingProfileId, setSavingProfileId] = useState<number | null>(null);
   const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
@@ -255,6 +270,7 @@ export default function AdminXhsPage() {
       setSyncBrowserConfigDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.sync_browser_start_config || ''])));
       setXhsAccountIdDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.xhs_account_id || ''])));
       setLoginPhoneDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, env.login_phone_number || ''])));
+      setAccountTypeDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, normalizeXHSAccountType(env.xhs_account_type)])));
       setDepartmentDrafts(Object.fromEntries(nextEnvs.map((env) => [env.id, normalizeDepartment(env.department)])));
       setUsers(userRes?.data?.items || []);
       setAssignments(assignRes?.data || []);
@@ -372,10 +388,12 @@ export default function AdminXhsPage() {
       (syncBrowserConfigDrafts[selectedEnv.id] || '') !== (selectedEnv.sync_browser_start_config || '') ||
       (xhsAccountIdDrafts[selectedEnv.id] || '') !== (selectedEnv.xhs_account_id || '') ||
       (loginPhoneDrafts[selectedEnv.id] || '') !== (selectedEnv.login_phone_number || '') ||
+      (accountTypeDrafts[selectedEnv.id] || 'enterprise_professional') !== normalizeXHSAccountType(selectedEnv.xhs_account_type) ||
       (departmentDrafts[selectedEnv.id] || 'xhs') !== normalizeDepartment(selectedEnv.department)
     );
   }, [
     profileDrafts,
+    accountTypeDrafts,
     departmentDrafts,
     loginPhoneDrafts,
     selectedEnv,
@@ -453,6 +471,7 @@ export default function AdminXhsPage() {
     setSyncBrowserConfigDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.sync_browser_start_config || '' }));
     setXhsAccountIdDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.xhs_account_id || '' }));
     setLoginPhoneDrafts((prev) => ({ ...prev, [selectedEnv.id]: selectedEnv.login_phone_number || '' }));
+    setAccountTypeDrafts((prev) => ({ ...prev, [selectedEnv.id]: normalizeXHSAccountType(selectedEnv.xhs_account_type) }));
     setDepartmentDrafts((prev) => ({ ...prev, [selectedEnv.id]: normalizeDepartment(selectedEnv.department) }));
   }, [selectedEnv]);
 
@@ -468,6 +487,7 @@ export default function AdminXhsPage() {
         sync_browser_start_config: (syncBrowserConfigDrafts[envId] || '').trim(),
         xhs_account_id: (xhsAccountIdDrafts[envId] || '').trim(),
         login_phone_number: (loginPhoneDrafts[envId] || '').trim(),
+        xhs_account_type: accountTypeDrafts[envId] || 'enterprise_professional',
         department: departmentDrafts[envId] || 'xhs',
       });
       toast.success('配置已保存');
@@ -853,6 +873,9 @@ export default function AdminXhsPage() {
                         <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${getDepartmentTone(selectedEnv.department)}`}>
                           {getDepartmentLabel(selectedEnv.department)}部门
                         </span>
+                        <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">
+                          {getXHSAccountTypeLabel(selectedEnv.xhs_account_type)}
+                        </span>
                         {isSyncRunnerEnv(selectedEnv) ? (
                           <span className="rounded-full bg-slate-950 px-3 py-1 text-[11px] font-bold text-white">同步环境</span>
                         ) : null}
@@ -973,6 +996,22 @@ export default function AdminXhsPage() {
                               className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-[#fbfaf7] px-3 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
                             />
                             <div className="mt-2 text-xs leading-5 text-slate-400">填写账号主页对应的小红书 ID；按文本保存，不会丢失长数字。</div>
+                          </div>
+                          <div className="mt-4">
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">账号类型</label>
+                            <select
+                              value={accountTypeDrafts[selectedEnv.id] || 'enterprise_professional'}
+                              onChange={(event) => setAccountTypeDrafts((prev) => ({
+                                ...prev,
+                                [selectedEnv.id]: normalizeXHSAccountType(event.target.value),
+                              }))}
+                              className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-[#fbfaf7] px-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                            >
+                              <option value="enterprise_professional">企业专业号</option>
+                              <option value="enterprise_employee">企业员工号</option>
+                              <option value="personal">个人号</option>
+                            </select>
+                            <div className="mt-2 text-xs leading-5 text-slate-400">企业员工号未登录时直接扫码；企业专业号先走手机号验证码。</div>
                           </div>
                           <textarea
                             value={profileDrafts[selectedEnv.id] ?? ''}
@@ -1140,6 +1179,7 @@ export default function AdminXhsPage() {
                             ['开放平台', selectedEnv.sync_cloud_session_id && selectedEnv.sync_cloud_api_key ? '已配置' : '未配置'],
                             ['小红书 ID', selectedEnv.xhs_account_id || '未配置'],
                             ['登录手机号', selectedEnv.login_phone_number ? '已配置' : '未配置'],
+                            ['账号类型', getXHSAccountTypeLabel(selectedEnv.xhs_account_type)],
                             ['运营负责人', selectedOwnerUser ? (selectedOwnerUser.display_name || selectedOwnerUser.username) : '未设置'],
                           ].map(([label, value]) => (
                             <div key={label} className="rounded-[24px] border border-slate-200 bg-white p-5">

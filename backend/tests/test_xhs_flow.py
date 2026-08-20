@@ -6,8 +6,10 @@ import asyncio
 import hashlib
 import hmac
 import uuid
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -18,12 +20,13 @@ from app.models.user_xhs_env import UserXHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
 from app.models.xhs_environment import XHSEnvironment
+from app.models.xhs_account_sync_run import XHSAccountSyncRun, XHSAccountSyncRunItem
 from app.models.xhs_post import XHSPost
 from app.models.xhs_report import XHSReportDaily
 from app.models.copywriting import Copywriting
 from app.services.request_queue import RateLimitedQueue, xhs_publish_queue
 import app.services.xhs_service as xhs_service_module
-from app.services.xhs_service import XHSService, SyncJobCancelled
+from app.services.xhs_service import CreatorStatsUnavailable, XHSService, SyncJobCancelled
 from tests.conftest import make_auth_headers
 from app.utils.timezone import utc_now_naive
 
@@ -114,6 +117,64 @@ def _patch_publish_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(XHSService, "_start_mcp", fake_start_mcp)
     monkeypatch.setattr(XHSService, "_wait_mcp_ready", fake_wait_mcp_ready)
     monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
+
+
+@pytest.mark.asyncio
+async def test_sync_history_progress_prefers_environment_id_for_duplicate_account_names(client):
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(id=91, shop_id="duplicate-shop-91", account_name="同名账号", status="active"),
+            XHSEnvironment(id=92, shop_id="duplicate-shop-92", account_name="同名账号", status="active"),
+        ])
+        run = XHSAccountSyncRun(
+            job_id="duplicate-account-history",
+            sync_kind="engagement",
+            source="manual",
+            status="running",
+            request_config={},
+        )
+        db.add(run)
+        await db.flush()
+        db.add_all([
+            XHSAccountSyncRunItem(
+                run_id=run.id,
+                environment_id=91,
+                account_name="同名账号",
+                status="queued",
+            ),
+            XHSAccountSyncRunItem(
+                run_id=run.id,
+                environment_id=92,
+                account_name="同名账号",
+                status="queued",
+            ),
+        ])
+        await db.commit()
+        run_id = int(run.id)
+
+    await xhs_api_module._update_sync_history_from_progress(
+        run_id,
+        {
+            "phase": "account_engagement_completed",
+            "environment_id": 92,
+            "account_name": "同名账号",
+            "detail": "第二个环境同步完成",
+            "metric_synced_notes": 3,
+        },
+    )
+
+    async with async_session() as db:
+        items = list((await db.execute(
+            select(XHSAccountSyncRunItem)
+            .where(XHSAccountSyncRunItem.run_id == run_id)
+            .order_by(XHSAccountSyncRunItem.environment_id.asc())
+        )).scalars().all())
+
+    assert items[0].environment_id == 91
+    assert items[0].status == "queued"
+    assert items[1].environment_id == 92
+    assert items[1].status == "succeeded"
+    assert items[1].result == {"metric_synced_notes": 3}
 
 
 @pytest.mark.asyncio
@@ -843,6 +904,43 @@ async def test_admin_assign_nonexistent_ids_returns_404(client):
 
 
 @pytest.mark.asyncio
+async def test_account_notes_list_orders_by_publish_time_before_legacy_sort_index(client):
+    await _seed_users_and_envs()
+    async with async_session() as db:
+        db.add_all([
+            XHSAccountNote(
+                environment_id=101,
+                account_name="账号A",
+                feed_id="older-first-sort-index",
+                title="较早帖子",
+                published_at=datetime(2026, 8, 17, 8, 0),
+                sort_index=0,
+            ),
+            XHSAccountNote(
+                environment_id=101,
+                account_name="账号A",
+                feed_id="newer-late-sort-index",
+                title="最新帖子",
+                published_at=datetime(2026, 8, 18, 8, 0),
+                sort_index=999,
+            ),
+        ])
+        await db.commit()
+
+    response = await client.get(
+        "/api/v1/xhs/account-notes?environment_id=101&page=1&limit=20&status=all",
+        headers=make_auth_headers(1),
+    )
+
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    assert [item["feed_id"] for item in items] == [
+        "newer-late-sort-index",
+        "older-first-sort-index",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_sync_existing_account_note_stats_unpublished_only_uses_selected_scrape_env(client, monkeypatch):
     await _seed_users_and_envs()
     async with async_session() as db:
@@ -1006,6 +1104,7 @@ async def test_sync_account_note_engagement_stats_updates_metrics_from_creator_c
         *,
         api_base: str | None = None,
         env: XHSEnvironment | None = None,
+        **kwargs,
     ):
         assert api_base == "http://localhost:18123"
         return [
@@ -1112,6 +1211,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
         *,
         api_base: str | None = None,
         env: XHSEnvironment | None = None,
+        **kwargs,
     ):
         if env is not None and int(env.id) == 811:
             return [{
@@ -1156,7 +1256,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     assert result["metric_synced_notes"] == 2
     assert result["total_notes"] == 2
     assert sorted(started_env_ids) == [811, 812]
-    assert stopped_shop_ids == []
+    assert sorted(stopped_shop_ids) == ["shop_publish_811", "shop_publish_812"]
 
     async with async_session() as db:
         note_813 = await db.get(XHSAccountNote, 813)
@@ -1225,6 +1325,182 @@ async def test_sync_account_note_engagements_respects_requested_concurrency(clie
 
 
 @pytest.mark.asyncio
+async def test_creator_engagement_rebuilds_transient_browser_session_once(client, monkeypatch):
+    async with async_session() as db:
+        db.add(XHSEnvironment(
+            id=829,
+            shop_id="shop_publish_829",
+            account_name="会话重试账号",
+            status="active",
+        ))
+        await db.commit()
+
+    allocated_ports = iter([21001, 21002])
+    started_ports: list[int] = []
+    stopped_pids: list[int] = []
+    stopped_browsers: list[str] = []
+    progress_phases: list[str] = []
+    fetch_attempts = 0
+
+    async def fake_allocate_free_port(self: XHSService) -> int:
+        return next(allocated_ports)
+
+    async def fake_acquire(self: XHSService, env_id: int, allow_fallback: bool = True):
+        assert env_id == 829
+        return None, f"ws://browser-{len(started_ports) + 1}"
+
+    async def fake_start_mcp(self: XHSService, ws_url: str, port: int):
+        started_ports.append(port)
+        return 30000 + port
+
+    async def fake_wait_mcp_ready(self: XHSService, api_base=None, timeout: int = 15):
+        return None
+
+    async def fake_stop_mcp(self: XHSService, pid: int):
+        stopped_pids.append(pid)
+
+    async def fake_stop_browser(self: XHSService, shop_id: str):
+        stopped_browsers.append(shop_id)
+
+    async def fake_fetch(self: XHSService, *, api_base=None, env=None, **kwargs):
+        nonlocal fetch_attempts
+        fetch_attempts += 1
+        if fetch_attempts == 1:
+            raise httpx.ReadTimeout("creator page stalled")
+        return [{"title": "重试后成功", "published_at_raw": "2026-08-19 10:00"}]
+
+    async def fake_import(self: XHSService, env, stats_rows, *, sync_run_id=None):
+        assert len(stats_rows) == 1
+        return {
+            "created_notes": 1,
+            "updated_notes": 0,
+            "ambiguous_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 1,
+        }
+
+    async def capture_progress(payload: dict):
+        progress_phases.append(str(payload.get("phase") or ""))
+
+    monkeypatch.setattr(XHSService, "_allocate_free_port", fake_allocate_free_port)
+    monkeypatch.setattr(XHSService, "_acquire_ready_sync_browser_ws_with_fallback", fake_acquire)
+    monkeypatch.setattr(XHSService, "_start_mcp", fake_start_mcp)
+    monkeypatch.setattr(XHSService, "_wait_mcp_ready", fake_wait_mcp_ready)
+    monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
+    monkeypatch.setattr(XHSService, "_stop_browser", fake_stop_browser)
+    monkeypatch.setattr(XHSService, "_fetch_creator_note_stats", fake_fetch)
+    monkeypatch.setattr(XHSService, "_import_creator_note_stats_rows", fake_import)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        result = await service.sync_account_note_engagement_environment(
+            829,
+            progress_callback=capture_progress,
+        )
+
+    assert result["synced_accounts"] == 1
+    assert fetch_attempts == 2
+    assert started_ports == [21001, 21002]
+    assert stopped_pids == [51001, 51002]
+    assert stopped_browsers == ["shop_publish_829", "shop_publish_829"]
+    assert "retrying_account_engagement_browser" in progress_phases
+
+
+@pytest.mark.asyncio
+async def test_creator_engagement_skips_missing_stats_permission_without_rebuilding_browser(client, monkeypatch):
+    async with async_session() as db:
+        db.add(XHSEnvironment(
+            id=830,
+            shop_id="shop_publish_830",
+            account_name="无统计权限账号",
+            status="active",
+        ))
+        await db.commit()
+
+    allocated_ports = iter([21101, 21102])
+    started_ports: list[int] = []
+    stopped_pids: list[int] = []
+    stopped_browsers: list[str] = []
+    progress_payloads: list[dict] = []
+
+    async def fake_allocate_free_port(self: XHSService) -> int:
+        return next(allocated_ports)
+
+    async def fake_acquire(self: XHSService, env_id: int, allow_fallback: bool = True):
+        assert env_id == 830
+        return None, "ws://browser-no-stats"
+
+    async def fake_start_mcp(self: XHSService, ws_url: str, port: int):
+        started_ports.append(port)
+        return 30000 + port
+
+    async def fake_wait_mcp_ready(self: XHSService, api_base=None, timeout: int = 15):
+        return None
+
+    async def fake_stop_mcp(self: XHSService, pid: int):
+        stopped_pids.append(pid)
+
+    async def fake_stop_browser(self: XHSService, shop_id: str):
+        stopped_browsers.append(shop_id)
+
+    async def fake_fetch(self: XHSService, **kwargs):
+        raise CreatorStatsUnavailable("CREATOR_STATS_UNAVAILABLE: 暂未开通数据权限")
+
+    async def capture_progress(payload: dict):
+        progress_payloads.append(dict(payload))
+
+    monkeypatch.setattr(XHSService, "_allocate_free_port", fake_allocate_free_port)
+    monkeypatch.setattr(XHSService, "_acquire_ready_sync_browser_ws_with_fallback", fake_acquire)
+    monkeypatch.setattr(XHSService, "_start_mcp", fake_start_mcp)
+    monkeypatch.setattr(XHSService, "_wait_mcp_ready", fake_wait_mcp_ready)
+    monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
+    monkeypatch.setattr(XHSService, "_stop_browser", fake_stop_browser)
+    monkeypatch.setattr(XHSService, "_fetch_creator_note_stats", fake_fetch)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        result = await service.sync_account_note_engagement_environment(
+            830,
+            progress_callback=capture_progress,
+        )
+
+    assert result["skipped"] is True
+    assert result["skipped_accounts"] == 1
+    assert started_ports == [21101]
+    assert stopped_pids == [51101]
+    assert stopped_browsers == ["shop_publish_830"]
+    assert not any(payload.get("phase") == "retrying_account_engagement_browser" for payload in progress_payloads)
+    skipped = next(payload for payload in progress_payloads if payload.get("phase") == "account_engagement_skipped")
+    assert skipped["environment_id"] == 830
+
+
+@pytest.mark.asyncio
+async def test_mcp_process_uses_isolated_download_directory(tmp_path, monkeypatch):
+    captured_env: dict[str, str] = {}
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        captured_env.update(kwargs["env"])
+        return SimpleNamespace(pid=99881)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setattr(xhs_service_module, "XHS_MCP_BIN", "/tmp/fake-xhs-mcp")
+    monkeypatch.setattr(xhs_service_module, "XHS_MCP_BROWSER_DOWNLOAD_DIR", r"C:\projects\web\uploads\mcp-downloads")
+    monkeypatch.setattr(xhs_service_module, "XHS_MCP_CONTAINER_DOWNLOAD_DIR", str(tmp_path))
+
+    async with async_session() as db:
+        service = XHSService(db)
+        pid = await service._start_mcp("ws://browser", 22001)
+
+    assert pid == 99881
+    browser_dir = captured_env["XHS_MCP_BROWSER_DOWNLOAD_DIR"]
+    container_dir = captured_env["XHS_MCP_CONTAINER_DOWNLOAD_DIR"]
+    assert browser_dir.startswith(r"C:\projects\web\uploads\mcp-downloads\session-22001-")
+    assert container_dir.startswith(f"{tmp_path}/session-22001-")
+    assert browser_dir.rsplit("\\", 1)[-1] == container_dir.rsplit("/", 1)[-1]
+    assert (tmp_path / container_dir.rsplit("/", 1)[-1]).is_dir()
+
+
+@pytest.mark.asyncio
 async def test_creator_center_import_creates_primary_note_and_preserves_missing_metrics(client):
     async with async_session() as db:
         db.add(XHSEnvironment(id=821, shop_id="shop_821", account_name="创作者主账号", status="active"))
@@ -1286,6 +1562,127 @@ async def test_creator_center_import_creates_primary_note_and_preserves_missing_
         assert note.comment_count == 7
         assert note.collected_count == 3
         assert note.share_count == 1
+
+
+def test_parse_creator_stats_published_at_supports_real_export_chinese_time():
+    parsed = XHSService._parse_creator_stats_published_at("2026年08月18日17时01分05秒")
+
+    assert parsed == datetime(2026, 8, 18, 17, 1, 5)
+
+
+@pytest.mark.asyncio
+async def test_creator_import_migrates_legacy_empty_time_keys_without_duplicates(client):
+    async with async_session() as db:
+        db.add(XHSEnvironment(id=822, shop_id="shop_822", account_name="旧指纹账号", status="active"))
+        await db.commit()
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 822)
+        assert env is not None
+        initial = await service._import_creator_note_stats_rows(env, [
+            {"source_row_index": 2, "title": "重复标题", "published_at": None, "published_at_raw": ""},
+            {"source_row_index": 3, "title": "重复标题", "published_at": None, "published_at_raw": ""},
+        ])
+        await db.commit()
+
+    assert initial["created_notes"] == 2
+
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 822)
+        assert env is not None
+        migrated = await service._import_creator_note_stats_rows(env, [
+            {
+                "source_row_index": 2,
+                "title": "重复标题",
+                "published_at": datetime(2026, 8, 18, 17, 1, 5),
+                "published_at_raw": "2026年08月18日17时01分05秒",
+            },
+            {
+                "source_row_index": 3,
+                "title": "重复标题",
+                "published_at": datetime(2026, 8, 17, 16, 2, 6),
+                "published_at_raw": "2026年08月17日16时02分06秒",
+            },
+        ])
+        await db.commit()
+
+    assert migrated["created_notes"] == 0
+    assert migrated["updated_notes"] == 2
+    assert migrated["ambiguous_notes"] == 0
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote)
+            .where(XHSAccountNote.environment_id == 822)
+            .order_by(XHSAccountNote.published_at.desc())
+        )).scalars().all())
+    assert len(notes) == 2
+    assert [note.published_at for note in notes] == [
+        datetime(2026, 8, 18, 9, 1, 5),
+        datetime(2026, 8, 17, 8, 2, 6),
+    ]
+    assert all(note.identity_match_method == "creator_legacy_key" for note in notes)
+
+
+@pytest.mark.asyncio
+async def test_creator_import_migrates_legacy_raw_chinese_time_keys_without_duplicates(client):
+    raw_times = [
+        "2026年08月18日15时12分28秒",
+        "2026年08月18日14时52分11秒",
+    ]
+    parsed_times = [
+        datetime(2026, 8, 18, 15, 12, 28),
+        datetime(2026, 8, 18, 14, 52, 11),
+    ]
+    titles = ("海鸥 8 月新政", "比亚迪宋Pro 18号新政")
+    async with async_session() as db:
+        db.add(XHSEnvironment(id=823, shop_id="shop_823", account_name="中文时间旧指纹", status="active"))
+        await db.commit()
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 823)
+        assert env is not None
+        initial = await service._import_creator_note_stats_rows(env, [
+            {
+                "source_row_index": index + 2,
+                "title": title,
+                "published_at": None,
+                "published_at_raw": raw_times[index],
+            }
+            for index, title in enumerate(titles)
+        ])
+        await db.commit()
+
+    assert initial["created_notes"] == 2
+
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 823)
+        assert env is not None
+        migrated = await service._import_creator_note_stats_rows(env, [
+            {
+                "source_row_index": index + 2,
+                "title": title,
+                "published_at": parsed_times[index],
+                "published_at_raw": raw_times[index],
+            }
+            for index, title in enumerate(titles)
+        ])
+        await db.commit()
+
+    assert migrated["created_notes"] == 0
+    assert migrated["updated_notes"] == 2
+    assert migrated["ambiguous_notes"] == 0
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote)
+            .where(XHSAccountNote.environment_id == 823)
+            .order_by(XHSAccountNote.published_at.desc())
+        )).scalars().all())
+    assert len(notes) == 2
+    assert [note.published_at for note in notes] == [
+        datetime(2026, 8, 18, 7, 12, 28),
+        datetime(2026, 8, 18, 6, 52, 11),
+    ]
+    assert all(note.identity_match_method == "creator_legacy_raw_key" for note in notes)
 
 
 @pytest.mark.asyncio
@@ -1372,6 +1769,55 @@ async def test_homepage_sync_resolves_creator_note_without_duplicate_or_metric_r
     assert notes[0].liked_count == 50
     assert notes[0].comment_count == 8
     assert notes[0].homepage_synced_at is not None
+
+
+@pytest.mark.asyncio
+async def test_detail_sync_only_enriches_creator_primary_note(client, monkeypatch):
+    creator_published_at = datetime(2026, 8, 14, 2, 30)
+    note = XHSAccountNote(
+        environment_id=831,
+        account_name="创作者主账号",
+        feed_id="feed_creator_primary",
+        title="创作者中心主记录",
+        ai_origin_type="",
+        liked_count=50,
+        comment_count=8,
+        collected_count=6,
+        share_count=2,
+        view_count=500,
+        published_at=creator_published_at,
+        creator_synced_at=utc_now_naive(),
+    )
+
+    async def fake_fetch_detail(self, *args, **kwargs):
+        return {
+            "liked_count": 999,
+            "comment_count": 999,
+            "collected_count": 999,
+            "share_count": 999,
+            "published_at": datetime(2026, 8, 15, 1, 0),
+            "content": "主页详情补回的正文",
+            "content_status": "from_detail",
+            "content_missing_reason": None,
+            "image_urls": ["https://example.com/detail-1.jpg"],
+            "cover_image_url": None,
+        }
+
+    monkeypatch.setattr(XHSService, "_fetch_account_note_detail_metrics", fake_fetch_detail)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        synced = await service._sync_account_note_metrics(note, api_base="http://localhost:18061")
+
+    assert synced is True
+    assert note.liked_count == 50
+    assert note.comment_count == 8
+    assert note.collected_count == 6
+    assert note.share_count == 2
+    assert note.published_at == creator_published_at
+    assert note.content == "主页详情补回的正文"
+    assert note.image_urls == ["https://example.com/detail-1.jpg"]
+    assert note.detail_synced_at is not None
 
 
 @pytest.mark.asyncio
@@ -1823,7 +2269,7 @@ async def test_resolve_phone_cloud_qr_target_prefers_xhs_account_id(monkeypatch)
                         "xhsAccounts": [{
                             "appSlot": "app2",
                             "accountName": "已经改名",
-                            "xhsAccountId": "26819980796",
+                            "xhsId": "26819980796",
                             "enabled": True,
                         }],
                     },
@@ -1896,13 +2342,252 @@ async def test_phone_cloud_qr_auth_can_create_short_lived_admin_session(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_creator_login_preflight_requests_persisted_session_probe(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    calls: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {"is_logged_in": True}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, params: dict[str, str] | None = None):
+            calls.append({"url": url, "params": params})
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    status = await service._get_mcp_login_status("http://mcp.test", probe=True)
+
+    assert status == {"is_logged_in": True}
+    assert calls == [{
+        "url": "http://mcp.test/api/v1/login/status",
+        "params": {"probe": "true"},
+    }]
+
+
+@pytest.mark.asyncio
+async def test_creator_login_status_retries_transient_server_errors_in_same_session(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    attempts = 0
+    sleeps: list[float] = []
+
+    class _FakeResponse:
+        content = b"ok"
+
+        def __init__(self, status_code: int, payload: dict):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    responses = [
+        _FakeResponse(500, {"details": "execution context was destroyed"}),
+        _FakeResponse(500, {"details": "browser target temporarily unavailable"}),
+        _FakeResponse(200, {"success": True, "data": {"is_logged_in": True}}),
+    ]
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, params: dict[str, str] | None = None):
+            nonlocal attempts
+            assert url == "http://mcp.test/api/v1/login/status"
+            assert params == {"probe": "true"}
+            response = responses[attempts]
+            attempts += 1
+            return response
+
+    async def fake_sleep(seconds: float):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    status = await service._get_mcp_login_status("http://mcp.test", probe=True)
+
+    assert status == {"is_logged_in": True}
+    assert attempts == 3
+    assert sleeps == [1.0, 2.0]
+
+
+@pytest.mark.asyncio
+async def test_creator_stats_permission_error_is_classified_without_losing_details(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=905, shop_id="shop_905", account_name="无统计权限账号", status="active")
+
+    async def fake_ensure_login(self: XHSService, api_base: str, **kwargs):
+        return None
+
+    class _FakeResponse:
+        status_code = 500
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {
+                "error": "导出创作者数据失败",
+                "code": "EXPORT_CREATOR_STATS_FAILED",
+                "details": "CREATOR_STATS_UNAVAILABLE: 暂未开通数据权限",
+            }
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str):
+            assert url == "http://mcp.test/api/v1/creator/stats/export"
+            return _FakeResponse()
+
+    monkeypatch.setattr(XHSService, "_ensure_xhs_creator_login", fake_ensure_login)
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    with pytest.raises(CreatorStatsUnavailable, match="暂未开通数据权限"):
+        await service._fetch_creator_note_stats(api_base="http://mcp.test", env=env)
+
+
+@pytest.mark.asyncio
+async def test_creator_export_retries_destroyed_browser_context_without_relogin(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=908, shop_id="shop_908", account_name="瞬态导出账号", status="active")
+    events: list[str] = []
+    download_attempts = 0
+
+    async def fake_ensure(self: XHSService, api_base: str, **kwargs):
+        events.append("ensure-login")
+
+    async def fake_download(self: XHSService, api_base: str):
+        nonlocal download_attempts
+        download_attempts += 1
+        events.append(f"download-{download_attempts}")
+        if download_attempts == 1:
+            raise RuntimeError("Execution context was destroyed")
+        return b"valid-export"
+
+    def fake_parse(self: XHSService, content: bytes):
+        assert content == b"valid-export"
+        return [{"title": "恢复后的导出记录"}]
+
+    async def fake_sleep(seconds: float):
+        events.append(f"sleep-{seconds}")
+
+    monkeypatch.setattr(XHSService, "_ensure_xhs_creator_login", fake_ensure)
+    monkeypatch.setattr(XHSService, "_download_creator_stats_excel", fake_download)
+    monkeypatch.setattr(XHSService, "_parse_creator_stats_excel", fake_parse)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    rows = await service._fetch_creator_note_stats(api_base="http://mcp.test", env=env)
+
+    assert rows == [{"title": "恢复后的导出记录"}]
+    assert events == ["ensure-login", "download-1", "sleep-1.0", "download-2"]
+
+
+@pytest.mark.asyncio
+async def test_creator_export_reauthenticates_once_when_creator_session_expired(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=909, shop_id="shop_909", account_name="登录态恢复账号", status="active")
+    events: list[str] = []
+    download_attempts = 0
+
+    async def fake_ensure(self: XHSService, api_base: str, **kwargs):
+        events.append("ensure-login")
+
+    async def fake_reset(self: XHSService, api_base: str):
+        events.append("reset-session")
+
+    async def fake_download(self: XHSService, api_base: str):
+        nonlocal download_attempts
+        download_attempts += 1
+        events.append(f"download-{download_attempts}")
+        if download_attempts == 1:
+            raise RuntimeError(
+                "创作者中心登录态已失效: "
+                "url=https://creator.xiaohongshu.com/login?redirectReason=401"
+            )
+        return b"valid-export"
+
+    def fake_parse(self: XHSService, content: bytes):
+        return [{"title": "重新登录后的导出记录"}]
+
+    monkeypatch.setattr(XHSService, "_ensure_xhs_creator_login", fake_ensure)
+    monkeypatch.setattr(XHSService, "_reset_mcp_login_session", fake_reset)
+    monkeypatch.setattr(XHSService, "_download_creator_stats_excel", fake_download)
+    monkeypatch.setattr(XHSService, "_parse_creator_stats_excel", fake_parse)
+
+    rows = await service._fetch_creator_note_stats(api_base="http://mcp.test", env=env)
+
+    assert rows == [{"title": "重新登录后的导出记录"}]
+    assert events == [
+        "ensure-login",
+        "download-1",
+        "reset-session",
+        "ensure-login",
+        "download-2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_login_status_preserves_request_error_type_after_retries(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, *, params=None):
+            raise httpx.ReadTimeout("")
+
+    async def fake_sleep(seconds: float):
+        return None
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    with pytest.raises(RuntimeError, match="ReadTimeout: 请求超时或连接已断开"):
+        await service._get_mcp_login_status("http://mcp.test", probe=True)
+
+
+@pytest.mark.asyncio
 async def test_creator_auto_login_uses_signed_open_sms_request(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     events: list[tuple[str, object]] = []
     env = XHSEnvironment(id=901, shop_id="shop_901", account_name="测试账号", login_phone_number="17570049665")
 
-    async def fake_login_status(self: XHSService, api_base: str):
-        events.append(("login-status", api_base))
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        events.append(("login-status", {"api_base": api_base, "probe": probe}))
         return {"is_logged_in": False}
 
     async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
@@ -1950,15 +2635,569 @@ async def test_creator_auto_login_uses_signed_open_sms_request(monkeypatch):
     monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
     monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
 
-    await service._ensure_xhs_creator_login("http://mcp.test", env=env)
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
 
     assert events == [
-        ("login-status", "http://mcp.test"),
+        ("login-status", {"api_base": "http://mcp.test", "probe": True}),
         ("create-request", "17570049665"),
         ("wait-request", "request-901"),
         ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/request-code", "json": {"phone_number": "17570049665"}}),
         ("mcp-post", {"url": "http://mcp.test/api/v1/login/phone/submit-code", "json": {"phone_number": "17570049665", "code": "246810"}}),
     ]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_recovers_when_code_submit_times_out_after_login(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(
+        id=910,
+        shop_id="shop_910",
+        account_name="提交超时账号",
+        login_phone_number="17570049665",
+    )
+    events: list[tuple[str, object]] = []
+    status_results = iter((False, False, True))
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        logged_in = next(status_results)
+        events.append(("login-status", {"probe": probe, "logged_in": logged_in}))
+        return {"is_logged_in": logged_in}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        events.append(("create-request", phone_number))
+        return {
+            "requestId": "request-910",
+            "status": "received",
+            "code": "246810",
+            "deviceId": "device-910",
+        }
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str, **kwargs):
+        events.append(("submit-code", code))
+        raise httpx.ReadTimeout("submit response timed out")
+
+    async def fake_sleep(seconds: float):
+        events.append(("sleep", seconds))
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "http://sms.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-secret")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == [
+        ("login-status", {"probe": True, "logged_in": False}),
+        ("create-request", "17570049665"),
+        ("submit-code", "246810"),
+        ("sleep", 1.0),
+        ("login-status", {"probe": False, "logged_in": False}),
+        ("sleep", 2.0),
+        ("login-status", {"probe": False, "logged_in": True}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_retries_one_isolated_order_when_first_sms_never_arrives(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=907, shop_id="shop_907", account_name="补发账号", login_phone_number="17570049665")
+    events: list[tuple[str, object]] = []
+    create_count = 0
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        return {"is_logged_in": False}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        nonlocal create_count
+        create_count += 1
+        events.append(("create", create_count))
+        assert f"attempt-{create_count}" in client_request_id
+        return {
+            "requestId": f"request-{create_count}",
+            "status": "waiting",
+            "deviceId": "device-907",
+        }
+
+    async def fake_wait_request(self: XHSService, request_id: str, **kwargs):
+        events.append(("wait", {"request_id": request_id, "timeout": kwargs["timeout_seconds"]}))
+        if request_id == "request-1":
+            raise xhs_service_module.SmsCodeWaitFailure("timeout", request_id, "等待小红书验证码超时")
+        return {"requestId": request_id, "status": "received", "code": "246810"}
+
+    async def fake_cancel(self: XHSService, request_id: str):
+        events.append(("cancel", request_id))
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str, **kwargs):
+        events.append(("submit", code))
+        return {"is_logged_in": True}
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            events.append(("send", url))
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-secret")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS", 2)
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS", 180)
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
+    monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == [
+        ("create", 1),
+        ("wait", {"request_id": "request-1", "timeout": 180}),
+        ("send", "http://mcp.test/api/v1/login/phone/request-code"),
+        ("cancel", "request-1"),
+        ("create", 2),
+        ("wait", {"request_id": "request-2", "timeout": 180}),
+        ("send", "http://mcp.test/api/v1/login/phone/request-code"),
+        ("submit", "246810"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_keeps_listening_when_countdown_detection_is_false_negative(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=908, shop_id="shop_908", account_name="倒计时账号", login_phone_number="17570049665")
+    events: list[str] = []
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        return {"is_logged_in": False}
+
+    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+        return {"requestId": "request-908", "status": "waiting", "deviceId": "device-908"}
+
+    async def fake_wait_request(self: XHSService, request_id: str, **kwargs):
+        events.append("listener-kept")
+        return {
+            "requestId": request_id,
+            "status": "received",
+            "code": "135790",
+            "body": "【小红书】验证码 135790",
+        }
+
+    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str, **kwargs):
+        events.append(f"submit:{code}")
+        return {"is_logged_in": True}
+
+    class _FakeResponse:
+        status_code = 500
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"details": "phone code request did not enter countdown state"}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-secret")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
+    monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
+    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == ["listener-kept", "submit:135790"]
+
+
+@pytest.mark.asyncio
+async def test_creator_auto_login_rechecks_status_inside_physical_device_lock(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(id=909, shop_id="shop_909", account_name="双卡账号", login_phone_number="17570049665")
+    events: list[tuple[str, object]] = []
+    status_results = iter((False, True))
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        logged_in = next(status_results)
+        events.append(("login-status", logged_in))
+        return {"is_logged_in": logged_in}
+
+    async def fake_resolve_device(self: XHSService, phone_number: str):
+        events.append(("resolve-device", phone_number))
+        return "device-shared"
+
+    class _Lease:
+        async def __aenter__(self):
+            events.append(("lock-enter", "device-shared"))
+            return SimpleNamespace(distributed=True, queue_wait_seconds=0.125)
+
+        async def __aexit__(self, exc_type, exc, tb):
+            events.append(("lock-exit", "device-shared"))
+            return False
+
+    class _Coordinator:
+        def lease(self, resource_id: str):
+            assert resource_id == "device:device-shared"
+            return _Lease()
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "http://sms.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(xhs_service_module, "sms_device_coordinator", _Coordinator())
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_resolve_phone_cloud_sms_device_id", fake_resolve_device)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env)
+
+    assert events == [
+        ("login-status", False),
+        ("resolve-device", "17570049665"),
+        ("lock-enter", "device-shared"),
+        ("login-status", True),
+        ("lock-exit", "device-shared"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_employee_account_uses_qr_before_first_sms(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    events: list[tuple[str, object]] = []
+    env = XHSEnvironment(
+        id=902,
+        shop_id="shop_902",
+        account_name="员工号测试账号",
+        xhs_account_id="49210760912",
+        login_phone_number="15580983154",
+        xhs_account_type="enterprise_employee",
+    )
+    status_results = iter((False, True))
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        logged_in = next(status_results)
+        events.append(("login-status", {"probe": probe, "logged_in": logged_in}))
+        return {"is_logged_in": logged_in}
+
+    async def fake_qr_login(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        activation: dict,
+        *,
+        env: XHSEnvironment | None = None,
+    ):
+        events.append(("qr-first", {"phone": phone_number, "activation": activation, "env_id": env.id if env else None}))
+
+    async def fail_first_sms(*args, **kwargs):
+        raise AssertionError("enterprise employee account must not create the first SMS activation")
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "http://sms.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_complete_xhs_qr_login_if_needed", fake_qr_login)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fail_first_sms)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == [
+        ("login-status", {"probe": True, "logged_in": False}),
+        ("qr-first", {"phone": "15580983154", "activation": {}, "env_id": 902}),
+        ("login-status", {"probe": False, "logged_in": True}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_employee_replaces_wrong_persisted_login_before_qr(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(
+        id=907,
+        shop_id="shop_907",
+        account_name="员工号正确账号",
+        xhs_account_id="correct-red-id",
+        login_phone_number="15580983154",
+        xhs_account_type="enterprise_employee",
+    )
+    status_results = iter((True, True))
+    events: list[object] = []
+
+    async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
+        logged_in = next(status_results)
+        events.append(("login-status", probe, logged_in))
+        return {"is_logged_in": logged_in}
+
+    async def fake_identity(self: XHSService, api_base: str):
+        events.append("identity")
+        return {"xhs_account_id": "wrong-red-id", "account_name": "错误账号"}
+
+    async def fake_reset(self: XHSService, api_base: str):
+        events.append("reset")
+
+    async def fake_qr_login(self: XHSService, api_base: str, phone_number: str, activation: dict, *, env=None):
+        events.append(("qr", phone_number, env.id))
+
+    async def fail_first_sms(*args, **kwargs):
+        raise AssertionError("enterprise employee account must not create the first SMS activation")
+
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_BASE_URL", "http://sms.test")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
+    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-open-api-secret")
+    monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
+    monkeypatch.setattr(XHSService, "_get_mcp_current_profile_identity", fake_identity)
+    monkeypatch.setattr(XHSService, "_reset_mcp_login_session", fake_reset)
+    monkeypatch.setattr(XHSService, "_complete_xhs_qr_login_if_needed", fake_qr_login)
+    monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fail_first_sms)
+
+    await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
+
+    assert events == [
+        ("login-status", True, True),
+        "identity",
+        "reset",
+        ("qr", "15580983154", 907),
+        ("login-status", False, True),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_creator_qrcode_retries_transient_read_timeout(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    attempts = 0
+    sleeps: list[float] = []
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {"is_logged_in": False, "img": "qr-data"}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str):
+            nonlocal attempts
+            attempts += 1
+            assert url == "http://mcp.test/api/v1/login/qrcode"
+            if attempts < 3:
+                raise httpx.ReadTimeout("")
+            return _FakeResponse()
+
+    async def fake_sleep(seconds: float):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    result = await service._get_mcp_login_qrcode("http://mcp.test")
+
+    assert result == {"is_logged_in": False, "img": "qr-data"}
+    assert attempts == 3
+    assert sleeps == [1.0, 2.0]
+
+
+@pytest.mark.asyncio
+async def test_creator_qrcode_retries_mcp_server_error_and_keeps_details(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    attempts = 0
+    sleeps: list[float] = []
+
+    class _FakeResponse:
+        content = b"ok"
+        text = ""
+
+        def __init__(self, status_code: int, payload: dict):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str):
+            nonlocal attempts
+            attempts += 1
+            assert url == "http://mcp.test/api/v1/login/qrcode"
+            if attempts == 1:
+                return _FakeResponse(
+                    500,
+                    {
+                        "message": "获取登录二维码失败",
+                        "details": "browser page lookup failed",
+                    },
+                )
+            return _FakeResponse(
+                200,
+                {"success": True, "data": {"is_logged_in": False, "img": "qr-data"}},
+            )
+
+    async def fake_sleep(seconds: float):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setattr(xhs_service_module.asyncio, "sleep", fake_sleep)
+
+    result = await service._get_mcp_login_qrcode("http://mcp.test")
+
+    assert result == {"is_logged_in": False, "img": "qr-data"}
+    assert attempts == 2
+    assert sleeps == [1.0]
+
+
+@pytest.mark.asyncio
+async def test_creator_permission_error_recovers_wrong_logged_in_account(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(
+        id=906,
+        shop_id="shop_906",
+        account_name="员工号目标账号",
+        xhs_account_id="49210760912",
+        login_phone_number="15580983154",
+        xhs_account_type="enterprise_employee",
+    )
+    identities = iter((
+        {"xhs_account_id": "wrong-red-id", "account_name": "错误账号"},
+        {"xhs_account_id": "49210760912", "account_name": "员工号目标账号"},
+    ))
+    events: list[object] = []
+
+    async def fake_identity(self: XHSService, api_base: str):
+        identity = next(identities)
+        events.append(("identity", identity["xhs_account_id"]))
+        return identity
+
+    async def fake_reset(self: XHSService, api_base: str):
+        events.append("reset")
+
+    async def fake_ensure(self: XHSService, api_base: str, **kwargs):
+        events.append(("ensure", kwargs["env"].xhs_account_type))
+
+    async def capture_progress(payload: dict):
+        events.append(("progress", payload.get("phase")))
+
+    monkeypatch.setattr(XHSService, "_get_mcp_current_profile_identity", fake_identity)
+    monkeypatch.setattr(XHSService, "_reset_mcp_login_session", fake_reset)
+    monkeypatch.setattr(XHSService, "_ensure_xhs_creator_login", fake_ensure)
+
+    recovered = await service._recover_creator_account_mismatch(
+        "http://mcp.test",
+        env=env,
+        progress_callback=capture_progress,
+    )
+
+    assert recovered is True
+    assert events == [
+        ("identity", "wrong-red-id"),
+        ("progress", "recovering_creator_account_mismatch"),
+        "reset",
+        ("ensure", "enterprise_employee"),
+        ("identity", "49210760912"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_submit_mcp_phone_code_marks_post_qr_request(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    requests: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {"is_logged_in": True}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, *, json: dict):
+            requests.append({"url": url, "json": json})
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._submit_mcp_phone_code(
+        "http://mcp.test",
+        "17570049665",
+        "135790",
+        post_qr=True,
+    )
+
+    assert result == {"is_logged_in": True}
+    assert requests == [{
+        "url": "http://mcp.test/api/v1/login/phone/submit-code",
+        "json": {"phone_number": "17570049665", "code": "135790", "post_qr": True},
+    }]
+
+
+@pytest.mark.asyncio
+async def test_creator_sms_wait_honors_job_cancellation_before_polling(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+
+    async def fail_if_polled(self: XHSService, request_id: str):
+        raise AssertionError(f"cancelled request must not be polled: {request_id}")
+
+    monkeypatch.setattr(XHSService, "_get_open_sms_code_request", fail_if_polled)
+
+    with pytest.raises(SyncJobCancelled):
+        await service._wait_open_sms_code_request(
+            "request-cancelled",
+            cancel_check=lambda: True,
+        )
 
 
 @pytest.mark.asyncio
@@ -2048,8 +3287,15 @@ async def test_post_qr_verification_submits_automatically_received_code(monkeypa
         events.append(("login-status", api_base))
         return {"is_logged_in": False}
 
-    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
-        events.append(("submit-secondary", {"phone": phone_number, "code": code}))
+    async def fake_submit(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        code: str,
+        *,
+        post_qr: bool = False,
+    ):
+        events.append(("submit-secondary", {"phone": phone_number, "code": code, "post_qr": post_qr}))
         return {"is_logged_in": True}
 
     monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
@@ -2065,7 +3311,7 @@ async def test_post_qr_verification_submits_automatically_received_code(monkeypa
     assert consumed is True
     assert events == [
         ("login-status", "http://mcp.test"),
-        ("submit-secondary", {"phone": "17570049665", "code": "135790"}),
+        ("submit-secondary", {"phone": "17570049665", "code": "135790", "post_qr": True}),
     ]
 
 
@@ -2105,8 +3351,15 @@ async def test_post_qr_verification_refreshes_waiting_request_before_first_decis
         events.append("refresh-sms")
         return {"requestId": request_id, "status": "received", "code": "246810"}
 
-    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
-        events.append(f"submit:{code}")
+    async def fake_submit(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        code: str,
+        *,
+        post_qr: bool = False,
+    ):
+        events.append(f"submit:{code}:{post_qr}")
         return {"is_logged_in": True}
 
     monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
@@ -2122,7 +3375,7 @@ async def test_post_qr_verification_refreshes_waiting_request_before_first_decis
 
     assert consumed is True
     assert set(events[:2]) == {"login-status", "refresh-sms"}
-    assert events[2] == "submit:246810"
+    assert events[2] == "submit:246810:True"
 
 
 def test_normalize_cn_phone_number_accepts_country_code():
@@ -2138,7 +3391,15 @@ async def test_post_qr_verification_keeps_waiting_when_login_status_check_fails(
     async def fake_login_status(self: XHSService, api_base: str):
         raise RuntimeError("temporary browser status failure")
 
-    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str):
+    async def fake_submit(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        code: str,
+        *,
+        post_qr: bool = False,
+    ):
+        assert post_qr is True
         submitted.append(code)
         return {"is_logged_in": True}
 
@@ -3045,7 +4306,7 @@ async def test_fetch_profile_account_notes_preserves_missing_interact_fields_as_
 
 
 @pytest.mark.asyncio
-async def test_sync_account_notes_keeps_unknown_posts_between_known_posts(client, monkeypatch):
+async def test_sync_account_notes_defers_unknown_posts_between_known_posts(client, monkeypatch):
     async with async_session() as db:
         db.add_all([
             XHSEnvironment(id=610, shop_id="shop_publish_610", account_name="发布账号B", status="active", profile_url="https://example.com/profile"),
@@ -3159,9 +4420,14 @@ async def test_sync_account_notes_keeps_unknown_posts_between_known_posts(client
             assigned_runner_env=runner_env,
         )
 
-    assert result["created_notes"] == 2
+    assert result["created_notes"] == 0
     assert result["updated_notes"] == 2
     assert result["total_notes"] == 4
+    assert result["deferred_homepage_notes"] == 2
+    assert {item["feed_id"] for item in result["deferred_homepage_items"]} == {
+        "feed_new_top",
+        "feed_older_unknown",
+    }
     assert fetch_calls and fetch_calls[0]["scroll_mode"] == "input"
     assert fetch_calls[0]["stop_feed_id"] == "feed_known_oldest"
 
@@ -3173,15 +4439,13 @@ async def test_sync_account_notes_keeps_unknown_posts_between_known_posts(client
         )).scalars().all())
 
     assert [note.feed_id for note in notes] == [
-        "feed_new_top",
         "feed_known_latest",
-        "feed_older_unknown",
         "feed_known_oldest",
     ]
 
 
 @pytest.mark.asyncio
-async def test_sync_account_notes_first_sync_does_not_force_profile_scroll(client, monkeypatch):
+async def test_sync_account_notes_first_sync_defers_until_creator_center_import(client, monkeypatch):
     async with async_session() as db:
         db.add_all([
             XHSEnvironment(id=710, shop_id="shop_publish_710", account_name="发布账号首刷", status="active", profile_url="https://example.com/profile"),
@@ -3253,15 +4517,22 @@ async def test_sync_account_notes_first_sync_does_not_force_profile_scroll(clien
             assigned_runner_env=runner_env,
         )
 
-    assert result["created_notes"] == 2
+    assert result["created_notes"] == 0
     assert result["updated_notes"] == 0
     assert result["total_notes"] == 2
+    assert result["deferred_homepage_notes"] == 2
     assert fetch_calls
     assert fetch_calls[0]["scroll_mode"] is None
     assert fetch_calls[0]["stop_feed_id"] is None
     assert fetch_calls[0]["max_feeds"] is None
     assert fetch_calls[0]["max_scroll_rounds"] is None
     assert fetch_calls[0]["max_stagnant_rounds"] is None
+
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 710)
+        )).scalars().all())
+    assert notes == []
 
 
 @pytest.mark.asyncio

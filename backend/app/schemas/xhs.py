@@ -17,6 +17,7 @@ class EnvironmentOut(BaseModel):
     sync_browser_start_config: Optional[str] = None
     xhs_account_id: Optional[str] = None
     login_phone_number: Optional[str] = None
+    xhs_account_type: str = "enterprise_professional"
     is_sync_runner: bool = False
     notes: Optional[str] = None
     proxy_info: Optional[str] = None

@@ -6,7 +6,8 @@ param(
     [string]$ProjectRoot = "C:\projects\web",
     [string]$BackupRoot = "D:\ztqc-backups\web",
     [string]$ExistingBackupDir = "",
-    [string]$ComposeProjectName = ""
+    [string]$ComposeProjectName = "",
+    [switch]$InstallDailyBackup
 )
 
 $ErrorActionPreference = "Stop"
@@ -334,7 +335,9 @@ try {
         throw "Production data mount changed during deployment; refusing to accept the release"
     }
 
-    & (Join-Path $ProjectRoot "scripts\windows\Install-DailyBackup.ps1") -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+    if ($InstallDailyBackup) {
+        & (Join-Path $ProjectRoot "scripts\windows\Install-DailyBackup.ps1") -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot
+    }
     & (Join-Path $ProjectRoot "scripts\windows\Install-HealthMonitor.ps1") -ProjectRoot $ProjectRoot
 
     $release = [ordered]@{

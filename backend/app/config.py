@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.9"
+    app_version: str = "0.3.10"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -166,6 +166,13 @@ class Settings(BaseSettings):
     sms_code_center_admin_password: str = ""
     sms_code_center_wait_timeout_seconds: int = 60
     sms_code_center_activation_ttl_seconds: int = 300
+    # A successful countdown does not guarantee carrier delivery.  Retry one
+    # complete, isolated activation after the first bounded wait expires.
+    sms_code_center_primary_send_attempts: int = 2
+    sms_code_center_primary_attempt_timeout_seconds: int = 180
+    sms_device_login_lock_enabled: bool = True
+    sms_device_login_lock_lease_seconds: int = 1800
+    sms_device_login_lock_acquire_timeout_seconds: int = 1800
     remote_image_allowed_hosts: list[str] = []
 
     model_config = {"env_file": ".env"}

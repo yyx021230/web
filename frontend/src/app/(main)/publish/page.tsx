@@ -1950,7 +1950,7 @@ export default function XHSPublishManagePage() {
       setAccountEngagementSyncJob(job);
       setAccountSyncProgressPanel('account_engagement');
       setAccountEngagementSyncStrategy(null);
-      toast.success(`账号互动同步任务已开始：${selectedEnvIds.length} 个发布账号已下发`);
+      toast.success(`创作者中心主同步已开始：${selectedEnvIds.length} 个发布账号已下发`);
     } catch (err: any) {
       toast.error(`同步失败: ${err.message}`);
     } finally {
@@ -2297,8 +2297,8 @@ export default function XHSPublishManagePage() {
         setAccountNotesSyncJob(job);
         if (job.status === 'succeeded') {
           window.clearInterval(timer);
-          const result = job.result as { synced_accounts?: number; created_notes?: number; updated_notes?: number } | null;
-          toast.success(`同步完成：账号${result?.synced_accounts ?? 0}个，新增${result?.created_notes ?? 0}条，更新${result?.updated_notes ?? 0}条`);
+          const result = job.result as { synced_accounts?: number; updated_notes?: number; deferred_homepage_notes?: number } | null;
+          toast.success(`主页补充完成：账号${result?.synced_accounts ?? 0}个，补齐${result?.updated_notes ?? 0}条，待创作者中心建档${result?.deferred_homepage_notes ?? 0}条`);
           await fetchAccountNotes({ page: 1, limit: 20, environment_id: accountEnvId, keyword: accountSearch, ai_origin_type: accountAiFilter });
           await loadAccountSyncHistory();
           setPage(1);
@@ -2308,8 +2308,8 @@ export default function XHSPublishManagePage() {
           await loadAccountSyncHistory();
         } else if (job.status === 'cancelled') {
           window.clearInterval(timer);
-          const result = job.result as { synced_accounts?: number; created_notes?: number; updated_notes?: number } | null;
-          toast.success(`同步已中止：账号${result?.synced_accounts ?? 0}个，新增${result?.created_notes ?? 0}条，更新${result?.updated_notes ?? 0}条`);
+          const result = job.result as { synced_accounts?: number; updated_notes?: number; deferred_homepage_notes?: number } | null;
+          toast.success(`主页补充已中止：账号${result?.synced_accounts ?? 0}个，已补齐${result?.updated_notes ?? 0}条，待创作者中心建档${result?.deferred_homepage_notes ?? 0}条`);
           await fetchAccountNotes({ page: 1, limit: 20, environment_id: accountEnvId, keyword: accountSearch, ai_origin_type: accountAiFilter });
           await loadAccountSyncHistory();
           setPage(1);
@@ -2333,26 +2333,26 @@ export default function XHSPublishManagePage() {
         setAccountEngagementSyncJob(job);
         if (job.status === 'succeeded') {
           window.clearInterval(timer);
-          const result = job.result as { synced_accounts?: number; metric_synced_notes?: number } | null;
-          toast.success(`互动同步完成：账号${result?.synced_accounts ?? 0}个，命中互动${result?.metric_synced_notes ?? 0}条`);
+          const result = job.result as { synced_accounts?: number; created_notes?: number; updated_notes?: number; metric_synced_notes?: number } | null;
+          toast.success(`创作者中心主同步完成：账号${result?.synced_accounts ?? 0}个，新增主记录${result?.created_notes ?? 0}条，更新${result?.updated_notes ?? 0}条`);
           await fetchAccountNotes({ page: 1, limit: 20, environment_id: accountEnvId, keyword: accountSearch, ai_origin_type: accountAiFilter });
           await loadAccountSyncHistory();
           setPage(1);
         } else if (job.status === 'failed') {
           window.clearInterval(timer);
-          toast.error(`互动同步失败: ${job.error || job.message || '未知错误'}`);
+          toast.error(`创作者中心主同步失败: ${job.error || job.message || '未知错误'}`);
           await loadAccountSyncHistory();
         } else if (job.status === 'cancelled') {
           window.clearInterval(timer);
           const result = job.result as { synced_accounts?: number; metric_synced_notes?: number } | null;
-          toast.success(`互动同步已中止：账号${result?.synced_accounts ?? 0}个，命中互动${result?.metric_synced_notes ?? 0}条`);
+          toast.success(`创作者中心主同步已中止：账号${result?.synced_accounts ?? 0}个，已处理${result?.metric_synced_notes ?? 0}条`);
           await fetchAccountNotes({ page: 1, limit: 20, environment_id: accountEnvId, keyword: accountSearch, ai_origin_type: accountAiFilter });
           await loadAccountSyncHistory();
           setPage(1);
         }
       } catch (err: any) {
         window.clearInterval(timer);
-        toast.error(`获取互动同步状态失败: ${err.message}`);
+        toast.error(`获取创作者中心主同步状态失败: ${err.message}`);
         setAccountEngagementSyncJob(null);
       }
     }, 2000);
@@ -3447,6 +3447,22 @@ export default function XHSPublishManagePage() {
                       <>
                         {isAdmin && (
                           <button
+                            className="h-9 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 disabled:opacity-50"
+                            onClick={() => {
+                              if (accountEngagementSyncInProgress) {
+                                setAccountSyncProgressPanel('account_engagement');
+                                return;
+                              }
+                              openAccountEngagementSyncStrategyModal();
+                            }}
+                            disabled={accountEngagementSyncing || (!accountEngagementSyncInProgress && (accountNotesSyncInProgress || accountNoteDetailsSyncInProgress))}
+                            title={accountEngagementSyncInProgress ? '查看当前主同步进度' : '唯一的新增帖子入口：从创作者中心创建主记录并刷新互动数据'}
+                          >
+                            {accountEngagementSyncing ? '下发中...' : accountEngagementSyncInProgress ? '同步中 · 查看进度' : '创作中心主同步'}
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
                             className="h-9 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 disabled:opacity-50"
                             onClick={() => {
                               if (accountNotesSyncInProgress) {
@@ -3459,26 +3475,10 @@ export default function XHSPublishManagePage() {
                             title={
                               accountNotesSyncInProgress
                                 ? '查看当前账号帖子同步进度'
-                                : '先选测试账号和本轮发布账号，再按策略分摊同步主页帖子：顶部新帖会入库，已存在帖子会刷新链接'
-                          }
-                        >
-                            {accountNotesSyncing ? '提交中...' : accountNotesSyncInProgress ? '同步中 · 查看进度' : '主页帖子同步策略'}
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            className="h-9 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100 disabled:opacity-50"
-                            onClick={() => {
-                              if (accountEngagementSyncInProgress) {
-                                setAccountSyncProgressPanel('account_engagement');
-                                return;
-                              }
-                              openAccountEngagementSyncStrategyModal();
-                            }}
-                            disabled={accountEngagementSyncing || (!accountEngagementSyncInProgress && (accountNotesSyncInProgress || accountNoteDetailsSyncInProgress))}
-                            title={accountEngagementSyncInProgress ? '查看当前互动同步进度' : '发布账号会逐个启动自己的 MCP 环境，并同步自己的创作中心互动数据'}
+                                : '主页同步只补齐创作者中心已有帖子的帖子 ID、链接、封面和账号信息，不再新增帖子'
+                            }
                           >
-                            {accountEngagementSyncing ? '下发中...' : accountEngagementSyncInProgress ? '同步中 · 查看进度' : '创作中心互动同步'}
+                            {accountNotesSyncing ? '提交中...' : accountNotesSyncInProgress ? '同步中 · 查看进度' : '主页帖子补充策略'}
                           </button>
                         )}
                         {isAdmin && (
@@ -3738,7 +3738,7 @@ export default function XHSPublishManagePage() {
                 <InlineSpinner label="账号帖子加载中..." />
               ) : accountNotesData.items.length === 0 ? (
                 <div className="grid place-items-center rounded-[24px] border border-dashed border-slate-200 bg-white/55 py-20 text-sm text-slate-400">
-                  暂无账号帖子数据，先点击“主页帖子同步策略”
+                  暂无账号帖子数据，先点击“创作中心主同步”建立帖子主记录
                 </div>
               ) : (
                 <div className="flex h-full min-h-0 flex-col">
@@ -4762,11 +4762,11 @@ export default function XHSPublishManagePage() {
               {accountSyncHistoryLoading && accountSyncHistory.length === 0 ? (
                 <div className="grid min-h-44 place-items-center text-sm text-slate-400">正在读取同步历史...</div>
               ) : accountSyncHistory.length === 0 ? (
-                <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">还没有同步历史。发起一次主页帖子或互动同步后会显示在这里。</div>
+                <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">还没有同步历史。发起一次创作者中心主同步、主页补充或详情补充后会显示在这里。</div>
               ) : (
                 <div className="space-y-3">
                   {accountSyncHistory.map((run) => {
-                    const kindLabel = run.sync_kind === 'posts' ? '主页帖子' : run.sync_kind === 'engagement' ? '创作中心互动' : '帖子详情';
+                    const kindLabel = run.sync_kind === 'posts' ? '主页帖子补充' : run.sync_kind === 'engagement' ? '创作中心主同步' : '帖子详情补充';
                     const canRetry = run.summary.failed > 0;
                     return (
                       <section key={`account-sync-history-${run.id}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50/70">
@@ -4833,7 +4833,7 @@ export default function XHSPublishManagePage() {
                   {accountSyncProgressPanel === 'account_notes'
                     ? '账号帖子同步进度'
                     : accountSyncProgressPanel === 'account_engagement'
-                      ? '账号互动同步进度'
+                      ? '创作者中心主同步进度'
                       : '账号详情同步进度'}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -4915,11 +4915,11 @@ export default function XHSPublishManagePage() {
               {accountSyncProgressPanel === 'account_notes' ? (
                 <>
                   <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">新增 / 更新</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">已补齐 / 待主数据</div>
                     <div className="mt-1 font-semibold text-slate-900">
-                      {activeAccountSyncPanelJob.progress?.created_notes ?? (activeAccountSyncPanelJob.result as { created_notes?: number } | null)?.created_notes ?? 0}
-                      <span className="mx-1 text-slate-300">/</span>
                       {activeAccountSyncPanelJob.progress?.updated_notes ?? (activeAccountSyncPanelJob.result as { updated_notes?: number } | null)?.updated_notes ?? 0}
+                      <span className="mx-1 text-slate-300">/</span>
+                      {activeAccountSyncPanelJob.progress?.deferred_homepage_notes ?? (activeAccountSyncPanelJob.result as { deferred_homepage_notes?: number } | null)?.deferred_homepage_notes ?? 0}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
@@ -4932,9 +4932,11 @@ export default function XHSPublishManagePage() {
               ) : accountSyncProgressPanel === 'account_engagement' ? (
                 <>
                   <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">命中互动数据</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">新增主记录 / 更新互动</div>
                     <div className="mt-1 font-semibold text-slate-900">
-                      {activeAccountSyncPanelJob.progress?.metric_synced_notes ?? (activeAccountSyncPanelJob.result as { metric_synced_notes?: number } | null)?.metric_synced_notes ?? 0}
+                      {activeAccountSyncPanelJob.progress?.created_notes ?? (activeAccountSyncPanelJob.result as { created_notes?: number } | null)?.created_notes ?? 0}
+                      <span className="mx-1 text-slate-300">/</span>
+                      {activeAccountSyncPanelJob.progress?.updated_notes ?? (activeAccountSyncPanelJob.result as { updated_notes?: number } | null)?.updated_notes ?? 0}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
@@ -5094,7 +5096,7 @@ export default function XHSPublishManagePage() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Sync Strategy</div>
                 <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-950">主页帖子同步策略</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  左边先点测试账号，右边再把发布账号明确分配给它。提交后会按你这里的指派关系去同步主页帖子：顶部新帖会新增入库，已存在帖子会刷新链接，不会把更老的未知帖子加进来。
+                  左边先点测试账号，右边再把发布账号明确分配给它。主页任务只补齐创作者中心主记录的帖子 ID、访问令牌、链接、封面和账号信息；主页存在但创作者中心尚未建档的帖子会暂缓，不会直接入库。
                 </p>
               </div>
               <button
@@ -5373,9 +5375,9 @@ export default function XHSPublishManagePage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-600">Creator Center MCP Sync</div>
-                  <h3 className="mt-1 text-2xl font-black tracking-[-0.04em] text-slate-950">创作中心互动同步</h3>
+                  <h3 className="mt-1 text-2xl font-black tracking-[-0.04em] text-slate-950">创作中心帖子主同步</h3>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                    这里不再分配测试账号。每个发布账号会按选择顺序启动自己的浏览器环境和 MCP，进入自己的创作中心，同步浏览、点赞、评论、收藏、转发等数据。
+                    这是帖子主数据的唯一新增入口。每个发布账号会启动自己的浏览器环境和 MCP，导出创作者中心数据：新帖子创建标题、发布时间和互动指标，已有帖子只刷新互动数据。
                   </p>
                 </div>
                 <button
@@ -5390,10 +5392,10 @@ export default function XHSPublishManagePage() {
 
               <div className="mt-4 grid gap-3 md:grid-cols-4">
                 {[
-                  ['1', '选发布账号', '只选择本轮要同步互动的真实发布账号'],
+                  ['1', '选发布账号', '只选择本轮要建立或更新帖子主数据的发布账号'],
                   ['2', '自启 MCP', '每个账号打开自己的环境，不借用测试号'],
-                  ['3', '读创作中心', '导出并读取该账号创作中心互动数据'],
-                  ['4', '匹配回写', '按帖子匹配后更新浏览和互动指标'],
+                  ['3', '读创作中心', '导出标题、发布时间和完整互动数据'],
+                  ['4', '主记录入库', '新增帖子主记录或刷新已有帖子的互动指标'],
                 ].map(([index, title, desc]) => (
                   <div key={index} className="rounded-2xl border border-white bg-white/80 p-3 shadow-sm">
                     <div className="flex items-center gap-2">
@@ -5571,7 +5573,7 @@ export default function XHSPublishManagePage() {
                   disabled={accountEngagementSyncing || accountEngagementSelectedCount === 0}
                   onClick={() => handleSyncAccountEngagements(accountEngagementSyncStrategy)}
                 >
-                  {accountEngagementSyncing ? '下发中...' : '开始同步创作中心互动'}
+                  {accountEngagementSyncing ? '下发中...' : '开始创作者中心主同步'}
                 </button>
               </div>
             </div>

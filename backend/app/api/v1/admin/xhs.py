@@ -47,12 +47,18 @@ class UpdateProfileUrlRequest(BaseModel):
     sync_browser_start_config: str | None = None
     xhs_account_id: str | None = Field(default=None, max_length=100)
     login_phone_number: str | None = None
+    xhs_account_type: str | None = None
     department: str | None = None
 
 
 class UpdateSyncRunnerRequest(BaseModel):
     environment_id: int
     is_sync_runner: bool
+
+
+class UpdateAccountTypeRequest(BaseModel):
+    environment_id: int
+    xhs_account_type: str
 
 
 class AssignAdAccountRequest(BaseModel):
@@ -243,6 +249,11 @@ async def update_environment_profile_url(
     if "xhs_account_id" in req.model_fields_set:
         env.xhs_account_id = (req.xhs_account_id or "").strip() or None
     env.login_phone_number = (req.login_phone_number or "").strip() or None
+    if req.xhs_account_type is not None:
+        account_type = req.xhs_account_type.strip().lower()
+        if account_type not in {"enterprise_professional", "enterprise_employee", "personal"}:
+            raise HTTPException(status_code=400, detail="账号类型仅支持企业专业号、企业员工号或个人号")
+        env.xhs_account_type = account_type
     if req.department is not None:
         department = req.department.strip().lower()
         if department not in {"xhs", "brand"}:
@@ -260,9 +271,38 @@ async def update_environment_profile_url(
             "sync_browser_start_config": env.sync_browser_start_config,
             "xhs_account_id": env.xhs_account_id,
             "login_phone_number": env.login_phone_number,
+            "xhs_account_type": env.xhs_account_type,
             "department": env.department,
         },
         message="保存成功",
+    )
+
+
+@router.post("/account-type")
+async def update_environment_account_type(
+    req: UpdateAccountTypeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """只更新账号类型，避免批量回填时覆盖其他账号配置。"""
+    service = XHSService(db)
+    env = await service.get_environment(req.environment_id)
+    if not env:
+        raise HTTPException(status_code=404, detail="云登环境不存在")
+
+    account_type = req.xhs_account_type.strip().lower()
+    if account_type not in {"enterprise_professional", "enterprise_employee", "personal"}:
+        raise HTTPException(status_code=400, detail="账号类型仅支持企业专业号、企业员工号或个人号")
+    env.xhs_account_type = account_type
+    await db.commit()
+    await db.refresh(env)
+    return ApiResponse(
+        data={
+            "environment_id": env.id,
+            "xhs_account_id": env.xhs_account_id,
+            "xhs_account_type": env.xhs_account_type,
+        },
+        message="账号类型已更新",
     )
 
 
