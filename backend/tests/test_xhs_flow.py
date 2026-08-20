@@ -2946,7 +2946,7 @@ async def test_creator_auto_login_rechecks_status_inside_physical_device_lock(mo
 
     async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
         logged_in = next(status_results)
-        events.append(("login-status", logged_in))
+        events.append(("login-status", {"probe": probe, "logged_in": logged_in}))
         return {"is_logged_in": logged_in}
 
     async def fake_resolve_device(self: XHSService, phone_number: str):
@@ -2977,10 +2977,10 @@ async def test_creator_auto_login_rechecks_status_inside_physical_device_lock(mo
     await service._ensure_xhs_creator_login("http://mcp.test", env=env)
 
     assert events == [
-        ("login-status", False),
+        ("login-status", {"probe": True, "logged_in": False}),
         ("resolve-device", "17570049665"),
         ("lock-enter", "device-shared"),
-        ("login-status", True),
+        ("login-status", {"probe": False, "logged_in": True}),
         ("lock-exit", "device-shared"),
     ]
 

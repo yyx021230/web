@@ -7534,6 +7534,7 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
         _device_lock_acquired: bool = False,
+        _login_preflight_completed: bool = False,
     ) -> None:
         flow_started_at = time.monotonic()
         account_name = str(getattr(env, "account_name", "") or "").strip()
@@ -7550,7 +7551,14 @@ class XHSService:
         # The initial check may safely verify persisted cookies in a temporary
         # tab. Later status polling stays non-navigating to preserve QR/SMS UI.
         account_type = str(getattr(env, "xhs_account_type", "") or "enterprise_professional").strip().lower()
-        login_status = await self._get_mcp_login_status(api_base, probe=True)
+        # The first check opens the explore page to verify the persisted main
+        # session. Re-entry after acquiring the physical SMS-device lock must
+        # only inspect the existing page, otherwise one login stage visibly
+        # opens the homepage more than once.
+        login_status = await self._get_mcp_login_status(
+            api_base,
+            probe=not _login_preflight_completed,
+        )
         if bool(login_status.get("is_logged_in")):
             expected_id = str(getattr(env, "xhs_account_id", "") or "").strip()
             if account_type == "enterprise_employee" and expected_id:
@@ -7615,6 +7623,7 @@ class XHSService:
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
                     _device_lock_acquired=True,
+                    _login_preflight_completed=True,
                 )
 
         if account_type == "enterprise_employee":
