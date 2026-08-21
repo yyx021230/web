@@ -201,6 +201,14 @@ try {
         throw "Unable to resolve the production Alembic revision"
     }
     $redisId = $currentRedisId
+
+    # Close the user entrypoint before the first queue gate. Keeping the
+    # frontend open while candidate images build lets new AI tasks enter after
+    # preflight and makes a busy production system impossible to release. The
+    # API and worker stay alive here so already accepted work can finish; any
+    # non-empty queue fails fast and the catch block restores the frontend.
+    docker compose stop frontend | Out-Null
+    $servicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "initial preflight"
 
     $pythonImage = Read-EnvValue $rootEnvPath "PYTHON_IMAGE" "python:3.11.13-slim-bookworm"
@@ -264,10 +272,8 @@ try {
         -C $ProjectRoot @sourceItems
     if ($LASTEXITCODE -ne 0) { throw "Source snapshot failed" }
 
-    # Close the user entrypoint first, then make sure no task entered during the
-    # image build before stopping the API and worker processes.
-    docker compose stop frontend | Out-Null
-    $servicesStopped = $true
+    # The user entrypoint has remained closed throughout the image build. Check
+    # once more before stopping API and worker processes.
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
     docker compose stop backend ai-worker | Out-Null
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"

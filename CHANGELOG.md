@@ -9,6 +9,7 @@ All notable changes are recorded here. Versions follow semantic versioning.
 - Homepage-note synchronization now lets selected YunDeng runners execute concurrently without an obsolete in-process lock serializing them.
 - Homepage enrichment sizes its scroll from all Creator Center notes, including notes whose feed IDs still need to be resolved.
 - SMS-timeout fallback now reopens the Xiaohongshu homepage and captures a fresh QR code before dispatching the phone scan task.
+- Windows releases now close the frontend before the first queue gate so new image tasks cannot race candidate-image builds and repeatedly block deployment.
 
 ## [0.3.13] - 2026-08-21
 
