@@ -1716,7 +1716,10 @@ async def test_homepage_sync_resolves_creator_note_without_duplicate_or_metric_r
         }])
         await db.commit()
 
+    fetch_calls: list[dict] = []
+
     async def fake_fetch_profile_account_notes(self, profile_url, api_base, limit=60, **kwargs):
+        fetch_calls.append(kwargs)
         return {
             "profile_nickname": "发布账号831",
             "red_id": "red831",
@@ -1758,6 +1761,13 @@ async def test_homepage_sync_resolves_creator_note_without_duplicate_or_metric_r
 
     assert result["created_notes"] == 0
     assert result["updated_notes"] == 1
+    assert fetch_calls == [{
+        "scroll_mode": "input",
+        "stop_feed_id": None,
+        "max_feeds": 121,
+        "max_scroll_rounds": 4,
+        "max_stagnant_rounds": 2,
+    }]
     async with async_session() as db:
         notes = list((await db.execute(
             select(XHSAccountNote).where(XHSAccountNote.environment_id == 831)
@@ -2764,6 +2774,7 @@ async def test_creator_auto_login_switches_to_qr_when_first_sms_never_arrives(mo
         activation: dict,
         *,
         env: XHSEnvironment | None = None,
+        fresh_qr: bool = False,
     ):
         events.append(
             (
@@ -2772,6 +2783,7 @@ async def test_creator_auto_login_switches_to_qr_when_first_sms_never_arrives(mo
                     "phone_number": phone_number,
                     "activation": activation,
                     "env_id": env.id if env else None,
+                    "fresh_qr": fresh_qr,
                 },
             )
         )
@@ -2815,8 +2827,51 @@ async def test_creator_auto_login_switches_to_qr_when_first_sms_never_arrives(mo
         ("wait", {"request_id": "request-1", "timeout": 180}),
         ("send", "http://mcp.test/api/v1/login/phone/request-code"),
         ("cancel", "request-1"),
-        ("qr", {"phone_number": "17570049665", "activation": {}, "env_id": 907}),
+        (
+            "qr",
+            {
+                "phone_number": "17570049665",
+                "activation": {},
+                "env_id": 907,
+                "fresh_qr": True,
+            },
+        ),
     ]
+
+
+@pytest.mark.asyncio
+async def test_creator_qrcode_fresh_mode_reopens_homepage(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    requested_urls: list[str] = []
+
+    class _FakeResponse:
+        status_code = 200
+        content = b"ok"
+
+        @staticmethod
+        def json():
+            return {"success": True, "data": {"is_logged_in": False, "img": "fresh-qr-data"}}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str):
+            requested_urls.append(url)
+            return _FakeResponse()
+
+    monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
+
+    result = await service._get_mcp_login_qrcode("http://mcp.test", fresh=True)
+
+    assert result == {"is_logged_in": False, "img": "fresh-qr-data"}
+    assert requested_urls == ["http://mcp.test/api/v1/login/qrcode?fresh=true"]
 
 
 @pytest.mark.asyncio

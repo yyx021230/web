@@ -8,6 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.db.session import async_session
+from app.models.xhs_environment import XHSEnvironment
 from app.services.xhs_service import XHSService
 
 
@@ -45,6 +47,57 @@ async def test_account_note_runners_are_dispatched_concurrently(monkeypatch):
     assert result["synced_accounts"] == 3
     assert result["created_notes"] == 2
     assert result["updated_notes"] == 4
+
+
+@pytest.mark.asyncio
+async def test_local_account_note_runner_buckets_do_not_wait_on_legacy_publish_lock(monkeypatch, client):
+    service = XHSService(db=None)
+    both_requests_started = asyncio.Event()
+    started_runners: set[int] = set()
+
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(id=9043, shop_id="runner-9043", account_name="测试5", status="active"),
+            XHSEnvironment(id=9045, shop_id="runner-9045", account_name="测试4", status="active"),
+            XHSEnvironment(id=9101, shop_id="target-9101", account_name="发布账号A", status="active"),
+            XHSEnvironment(id=9102, shop_id="target-9102", account_name="发布账号B", status="active"),
+        ])
+        await db.commit()
+
+    async def fake_batch(self, envs, *, scrape_env, **kwargs):
+        started_runners.add(int(scrape_env.id))
+        if len(started_runners) == 2:
+            both_requests_started.set()
+        await asyncio.wait_for(both_requests_started.wait(), timeout=0.2)
+        return {
+            "synced_accounts": len(envs),
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 0,
+            "total_notes": 0,
+        }
+
+    monkeypatch.setattr(XHSService, "_sync_account_notes_batch_locked", fake_batch)
+
+    legacy_lock = await service._get_env_publish_lock(9043)
+    await legacy_lock.acquire()
+    try:
+        result = await service._sync_account_notes_with_strategy(
+            envs=[SimpleNamespace(id=9101), SimpleNamespace(id=9102)],
+            scrape_envs=[SimpleNamespace(id=9043), SimpleNamespace(id=9045)],
+            limit=60,
+            persona=SimpleNamespace(),
+            runner_buckets=[
+                (SimpleNamespace(id=9043), [SimpleNamespace(id=9101)]),
+                (SimpleNamespace(id=9045), [SimpleNamespace(id=9102)]),
+            ],
+            concurrency=2,
+        )
+    finally:
+        legacy_lock.release()
+
+    assert started_runners == {9043, 9045}
+    assert result["synced_accounts"] == 2
 
 
 @pytest.mark.asyncio

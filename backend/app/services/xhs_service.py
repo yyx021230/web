@@ -4642,22 +4642,24 @@ class XHSService:
                     assigned = [rows_by_id[env_id] for env_id in environment_ids if env_id in rows_by_id]
                     if len(assigned) != len(environment_ids):
                         raise RuntimeError(f"同步环境 {runner_id} 的部分发布账号不存在")
-                    env_lock = await service._get_env_publish_lock(runner_id)
-                    async with env_lock:
-                        return await service._sync_account_notes_batch_locked(
-                            assigned,
-                            scrape_env=runner,
-                            limit=limit,
-                            persona=persona,
-                            progress_callback=progress_callback,
-                            cancel_check=cancel_check,
-                            runner_envs=[runner],
-                            processed_offset=offset,
-                            total_accounts=overall_total_accounts,
-                            base_synced_accounts=0,
-                            base_created_notes=0,
-                            base_updated_notes=0,
-                        )
+                    # The guarded batch method already owns the cross-process,
+                    # per-runner YunDeng lease. Taking the legacy publish lock
+                    # here can strand one runner behind an unrelated stale
+                    # in-process task before it ever reaches the coordinator.
+                    return await service._sync_account_notes_batch_locked(
+                        assigned,
+                        scrape_env=runner,
+                        limit=limit,
+                        persona=persona,
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
+                        runner_envs=[runner],
+                        processed_offset=offset,
+                        total_accounts=overall_total_accounts,
+                        base_synced_accounts=0,
+                        base_created_notes=0,
+                        base_updated_notes=0,
+                    )
 
         raw_results = await asyncio.gather(
             *(run_bucket(runner_id, environment_ids, offset) for runner_id, environment_ids, offset in active_buckets),
@@ -4849,14 +4851,19 @@ class XHSService:
             for note in existing_notes
             if str(note.feed_id or "").strip()
         ]
+        # Creator Center is the primary source and can create every note before
+        # homepage sync has resolved any feed IDs. Use the full primary-note
+        # count to size the scroll, otherwise that first enrichment pass only
+        # reads the initial profile batch and never reaches older notes.
+        profile_reference_note_count = len(existing_notes)
         known_feed_id_set = set(existing_feed_ids)
         oldest_known_feed_id = existing_feed_ids[-1] if existing_feed_ids else None
         max_profile_feeds = self._estimate_account_note_profile_fetch_max_feeds(
-            known_note_count=len(existing_feed_ids),
+            known_note_count=profile_reference_note_count,
             limit=limit,
         )
         max_scroll_rounds = self._estimate_account_note_profile_scroll_rounds(
-            known_note_count=len(existing_feed_ids),
+            known_note_count=profile_reference_note_count,
             limit=limit,
         )
 
@@ -4882,7 +4889,7 @@ class XHSService:
                 "updated_notes": aggregate_updated_notes,
             },
         )
-        should_scroll_profile = bool(oldest_known_feed_id)
+        should_scroll_profile = profile_reference_note_count > 0
         payload = await self._fetch_profile_account_notes(
             str(env.profile_url or "").strip(),
             api_base,
@@ -7832,7 +7839,7 @@ class XHSService:
                     progress_callback,
                     {
                         "phase": "switching_creator_qr",
-                        "detail": f"{account_name or '当前账号'} 首次验证码未到，已切换扫码登录",
+                        "detail": f"{account_name or '当前账号'} 首次验证码未到，正在重新打开小红书首页并切换扫码登录",
                         "environment_id": int(getattr(env, "id", 0) or 0) or None,
                         "account_name": account_name,
                     },
@@ -7844,7 +7851,13 @@ class XHSService:
                     reason,
                     round((time.monotonic() - flow_started_at) * 1000),
                 )
-                await self._complete_xhs_qr_login_if_needed(api_base, phone_number, {}, env=env)
+                await self._complete_xhs_qr_login_if_needed(
+                    api_base,
+                    phone_number,
+                    {},
+                    env=env,
+                    fresh_qr=True,
+                )
                 status = await self._get_mcp_login_status(api_base)
                 if not bool(status.get("is_logged_in")):
                     raise RuntimeError(f"首次短信未收到，扫码和后置验证完成后仍未登录: {reason}")
@@ -8440,9 +8453,13 @@ class XHSService:
         activation: dict[str, Any],
         *,
         env: XHSEnvironment | None = None,
+        fresh_qr: bool = False,
     ) -> None:
         qr_started_at = time.monotonic()
-        qr_payload = await self._get_mcp_login_qrcode(api_base)
+        if fresh_qr:
+            qr_payload = await self._get_mcp_login_qrcode(api_base, fresh=True)
+        else:
+            qr_payload = await self._get_mcp_login_qrcode(api_base)
         if bool(qr_payload.get("is_logged_in")):
             return
 
@@ -8654,14 +8671,17 @@ class XHSService:
                 raise RuntimeError("二次验证码已提交，但小红书登录态确认失败")
             await asyncio.sleep(min(1.0, remaining))
 
-    async def _get_mcp_login_qrcode(self, api_base: str) -> dict[str, Any]:
+    async def _get_mcp_login_qrcode(self, api_base: str, *, fresh: bool = False) -> dict[str, Any]:
         resp: httpx.Response | None = None
         last_error: httpx.RequestError | None = None
         payload: dict[str, Any] = {}
         for attempt in range(1, 4):
             try:
                 async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=45.0)) as client:
-                    resp = await client.get(f"{api_base}/api/v1/login/qrcode")
+                    url = f"{api_base}/api/v1/login/qrcode"
+                    if fresh:
+                        url = f"{url}?fresh=true"
+                    resp = await client.get(url)
             except httpx.RequestError as exc:
                 last_error = exc
                 if attempt >= 3:

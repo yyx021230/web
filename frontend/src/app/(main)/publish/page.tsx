@@ -1922,6 +1922,7 @@ export default function XHSPublishManagePage() {
         scrape_environment_ids: normalizedRunnerIds.length > 1 ? normalizedRunnerIds.join(',') : undefined,
         sync_account_limit: assignedPublishEnvIds.length || undefined,
         runner_account_assignments: JSON.stringify(normalizedAssignments),
+        concurrency: Math.min(normalizedRunnerIds.length, 5),
       });
       setAccountNotesSyncJob(job);
       setAccountSyncProgressPanel('account_notes');
