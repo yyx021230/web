@@ -8,6 +8,7 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 - Creator Center imports now reserve exact post-ID and stable-fingerprint matches before title fallback, preventing a newly reused title from taking an older post and triggering the per-account creator-key uniqueness constraint.
 - Same-title Creator Center rows with known, materially different publish times are now treated as different posts instead of being linked by title alone.
+- Windows releases can now preserve the rollback image when the frontend was already stopped for a maintenance window.
 
 ### Changed
 

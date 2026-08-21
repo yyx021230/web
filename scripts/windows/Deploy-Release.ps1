@@ -174,7 +174,7 @@ try {
         throw "Unable to resolve existing PostgreSQL/uploads mounts; refusing a data-volume blind deployment"
     }
     $originalBackendImageId = "$(docker inspect --format '{{.Image}}' $currentBackendId)".Trim()
-    $currentFrontendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q frontend)".Trim()
+    $currentFrontendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps --all -q frontend)".Trim()
     $originalFrontendImageId = if ($currentFrontendId) { "$(docker inspect --format '{{.Image}}' $currentFrontendId)".Trim() } else { "" }
     if (-not $originalBackendImageId -or -not $originalFrontendImageId) {
         throw "Unable to preserve current backend/frontend image IDs for automatic rollback"
