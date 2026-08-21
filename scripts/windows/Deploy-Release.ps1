@@ -21,6 +21,7 @@ $rollbackRestoreScript = Join-Path $releaseRoot "rollback-Restore-Backup.ps1"
 $previousRelease = $null
 $backupDir = $null
 $servicesStopped = $false
+$applicationServicesStopped = $false
 $originalBackendImageId = ""
 $originalFrontendImageId = ""
 $candidateBackendImage = ""
@@ -276,6 +277,7 @@ try {
     # once more before stopping API and worker processes.
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
     docker compose stop backend ai-worker | Out-Null
+    $applicationServicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"
 
     if ($ExistingBackupDir) {
@@ -393,14 +395,22 @@ catch {
             }
         }
         try {
-            if ($originalBackendImageId -and $candidateBackendImage) {
-                docker tag $originalBackendImageId $candidateBackendImage
+            if ($applicationServicesStopped) {
+                if ($originalBackendImageId -and $candidateBackendImage) {
+                    docker tag $originalBackendImageId $candidateBackendImage
+                }
+                if ($originalFrontendImageId -and $candidateFrontendImage) {
+                    docker tag $originalFrontendImageId $candidateFrontendImage
+                }
+                docker compose up -d --no-build --no-deps backend ai-worker frontend
+                if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
+            } else {
+                # Initial/post-build queue gates only close the frontend. Do not
+                # recreate API or worker containers that may still be draining
+                # an accepted task; just reopen the user entrypoint.
+                docker compose up -d --no-build --no-deps frontend
+                if ($LASTEXITCODE -ne 0) { throw "frontend failed to reopen" }
             }
-            if ($originalFrontendImageId -and $candidateFrontendImage) {
-                docker tag $originalFrontendImageId $candidateFrontendImage
-            }
-            docker compose up -d --no-build --no-deps backend ai-worker frontend
-            if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
         } catch {
             $rollbackErrors.Add("application: $($_.Exception.Message)")
         }
