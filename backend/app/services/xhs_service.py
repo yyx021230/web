@@ -138,10 +138,9 @@ SMS_CODE_CENTER_ADMIN_USERNAME = (getattr(settings, "sms_code_center_admin_usern
 SMS_CODE_CENTER_ADMIN_PASSWORD = getattr(settings, "sms_code_center_admin_password", "") or ""
 SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS = max(5, int(getattr(settings, "sms_code_center_wait_timeout_seconds", 60) or 60))
 SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS = max(30, int(getattr(settings, "sms_code_center_activation_ttl_seconds", 300) or 300))
-SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS = max(
-    1,
-    min(2, int(getattr(settings, "sms_code_center_primary_send_attempts", 2) or 2)),
-)
+# The first primary SMS is the only phone-login attempt. If it does not arrive,
+# the flow switches to QR login, whose secondary SMS listener is armed first.
+SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS = 1
 SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS = max(
     60,
     min(
@@ -7791,10 +7790,8 @@ class XHSService:
                         received_request = await sms_wait_task
                     except SmsCodeWaitFailure as exc:
                         last_wait_failure = exc
-                        if send_attempt >= SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS:
-                            break
                         logger.warning(
-                            "小红书验证码首次未捕获，准备受控补发: "
+                            "小红书首次验证码未捕获，取消主短信订单并切换扫码登录: "
                             "env_id=%s request_id=%s reason=%s wait_seconds=%s",
                             getattr(env, "id", None),
                             request_id,
@@ -7803,7 +7800,7 @@ class XHSService:
                         )
                         await self._cancel_open_sms_code_request(request_id)
                         request_id = ""
-                        continue
+                        break
                     if bool(received_request.get("alreadyLoggedIn")):
                         logger.info(
                             "等待验证码期间检测到浏览器已登录，立即结束登录流程: "
@@ -7830,9 +7827,33 @@ class XHSService:
 
             if received_request is None:
                 reason = last_wait_failure.reason if last_wait_failure is not None else "not_received"
-                raise RuntimeError(
-                    f"小红书验证码连续 {SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS} 次发送后仍未收到: {reason}"
+                await self._raise_if_sync_cancelled(cancel_check)
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "switching_creator_qr",
+                        "detail": f"{account_name or '当前账号'} 首次验证码未到，已切换扫码登录",
+                        "environment_id": int(getattr(env, "id", 0) or 0) or None,
+                        "account_name": account_name,
+                    },
                 )
+                logger.info(
+                    "小红书首次短信失败后切换扫码登录: env_id=%s account=%s reason=%s elapsed_ms=%s",
+                    getattr(env, "id", None),
+                    account_name,
+                    reason,
+                    round((time.monotonic() - flow_started_at) * 1000),
+                )
+                await self._complete_xhs_qr_login_if_needed(api_base, phone_number, {}, env=env)
+                status = await self._get_mcp_login_status(api_base)
+                if not bool(status.get("is_logged_in")):
+                    raise RuntimeError(f"首次短信未收到，扫码和后置验证完成后仍未登录: {reason}")
+                logger.info(
+                    "小红书短信失败后扫码登录完成: env_id=%s elapsed_ms=%s",
+                    getattr(env, "id", None),
+                    round((time.monotonic() - flow_started_at) * 1000),
+                )
+                return
 
             sms_received = True
             code = str(received_request.get("code") or "").strip()

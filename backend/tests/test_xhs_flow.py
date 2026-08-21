@@ -2732,38 +2732,49 @@ async def test_creator_auto_login_recovers_when_code_submit_times_out_after_logi
 
 
 @pytest.mark.asyncio
-async def test_creator_auto_login_retries_one_isolated_order_when_first_sms_never_arrives(monkeypatch):
+async def test_creator_auto_login_switches_to_qr_when_first_sms_never_arrives(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     env = XHSEnvironment(id=907, shop_id="shop_907", account_name="补发账号", login_phone_number="17570049665")
     events: list[tuple[str, object]] = []
-    create_count = 0
+    login_statuses = iter((False, True))
 
     async def fake_login_status(self: XHSService, api_base: str, *, probe: bool = False):
-        return {"is_logged_in": False}
+        return {"is_logged_in": next(login_statuses)}
 
     async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
-        nonlocal create_count
-        create_count += 1
-        events.append(("create", create_count))
-        assert f"attempt-{create_count}" in client_request_id
+        events.append(("create", 1))
+        assert "attempt-1" in client_request_id
         return {
-            "requestId": f"request-{create_count}",
+            "requestId": "request-1",
             "status": "waiting",
             "deviceId": "device-907",
         }
 
     async def fake_wait_request(self: XHSService, request_id: str, **kwargs):
         events.append(("wait", {"request_id": request_id, "timeout": kwargs["timeout_seconds"]}))
-        if request_id == "request-1":
-            raise xhs_service_module.SmsCodeWaitFailure("timeout", request_id, "等待小红书验证码超时")
-        return {"requestId": request_id, "status": "received", "code": "246810"}
+        raise xhs_service_module.SmsCodeWaitFailure("timeout", request_id, "等待小红书验证码超时")
 
     async def fake_cancel(self: XHSService, request_id: str):
         events.append(("cancel", request_id))
 
-    async def fake_submit(self: XHSService, api_base: str, phone_number: str, code: str, **kwargs):
-        events.append(("submit", code))
-        return {"is_logged_in": True}
+    async def fake_qr_login(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+        activation: dict,
+        *,
+        env: XHSEnvironment | None = None,
+    ):
+        events.append(
+            (
+                "qr",
+                {
+                    "phone_number": phone_number,
+                    "activation": activation,
+                    "env_id": env.id if env else None,
+                },
+            )
+        )
 
     class _FakeResponse:
         status_code = 200
@@ -2789,13 +2800,12 @@ async def test_creator_auto_login_retries_one_isolated_order_when_first_sms_neve
 
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_SECRET", "test-secret")
-    monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS", 2)
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS", 180)
     monkeypatch.setattr(XHSService, "_get_mcp_login_status", fake_login_status)
     monkeypatch.setattr(XHSService, "_create_open_sms_code_request", fake_create_request)
     monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_request)
     monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
-    monkeypatch.setattr(XHSService, "_submit_mcp_phone_code", fake_submit)
+    monkeypatch.setattr(XHSService, "_complete_xhs_qr_login_if_needed", fake_qr_login)
     monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
 
     await service._ensure_xhs_creator_login("http://mcp.test", env=env, _device_lock_acquired=True)
@@ -2805,10 +2815,7 @@ async def test_creator_auto_login_retries_one_isolated_order_when_first_sms_neve
         ("wait", {"request_id": "request-1", "timeout": 180}),
         ("send", "http://mcp.test/api/v1/login/phone/request-code"),
         ("cancel", "request-1"),
-        ("create", 2),
-        ("wait", {"request_id": "request-2", "timeout": 180}),
-        ("send", "http://mcp.test/api/v1/login/phone/request-code"),
-        ("submit", "246810"),
+        ("qr", {"phone_number": "17570049665", "activation": {}, "env_id": 907}),
     ]
 
 

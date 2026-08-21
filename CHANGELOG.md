@@ -2,6 +2,13 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.13] - 2026-08-21
+
+### Changed
+
+- Xiaohongshu enterprise-account login now sends the primary SMS only once and switches to QR login when that SMS is not received.
+- The QR fallback arms its secondary SMS receiver before dispatching the phone task, preserving automatic post-scan verification.
+
 ## [0.3.0] - Unreleased
 
 ### Added
