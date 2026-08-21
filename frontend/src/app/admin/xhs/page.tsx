@@ -91,6 +91,7 @@ interface SyncRunnerBrowseOverview {
 type EnvFilterKey = 'all' | 'configured' | 'unconfigured' | 'sync_runner' | 'online' | 'offline' | 'unassigned';
 type DepartmentKey = 'all' | 'xhs' | 'brand';
 type XHSAccountType = 'enterprise_professional' | 'enterprise_employee' | 'personal';
+type XHSAccountTypeFilter = 'all' | XHSAccountType;
 type WorkbenchPanelKey = 'profile' | 'users' | 'browser' | 'activity';
 
 const ENV_FILTER_OPTIONS: Array<{ key: EnvFilterKey; label: string }> = [
@@ -142,9 +143,17 @@ function normalizeXHSAccountType(value?: string): XHSAccountType {
 
 function getXHSAccountTypeLabel(value?: string): string {
   const normalized = normalizeXHSAccountType(value);
-  if (normalized === 'enterprise_employee') return '企业员工号';
+  if (normalized === 'enterprise_employee') return '员工号';
   if (normalized === 'personal') return '个人号';
-  return '企业专业号';
+  return '企业号';
+}
+
+function getXHSAccountTypeTone(value?: string, selected = false): string {
+  if (selected) return 'bg-white/10 text-white';
+  const normalized = normalizeXHSAccountType(value);
+  if (normalized === 'enterprise_employee') return 'bg-orange-50 text-orange-700';
+  if (normalized === 'personal') return 'bg-sky-50 text-sky-700';
+  return 'bg-emerald-50 text-emerald-700';
 }
 
 function userHasRole(user: { role?: string; roles?: string[] }, roles: string[]): boolean {
@@ -195,6 +204,7 @@ function buildEnvSearchText(env: XHSEnvironment): string {
     env.group_name,
     env.proxy_info,
     env.labels,
+    getXHSAccountTypeLabel(env.xhs_account_type),
   ]
     .filter(Boolean)
     .join(' ')
@@ -248,6 +258,7 @@ export default function AdminXhsPage() {
   const [envQuery, setEnvQuery] = useState('');
   const [envFilter, setEnvFilter] = useState<EnvFilterKey>('all');
   const [departmentFilter, setDepartmentFilter] = useState<DepartmentKey>('xhs');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<XHSAccountTypeFilter>('all');
   const [activePanel, setActivePanel] = useState<WorkbenchPanelKey>('profile');
   const [browseOverview, setBrowseOverview] = useState<SyncRunnerBrowseOverview | null>(null);
   const [browserStatuses, setBrowserStatuses] = useState<BrowserEnvironmentStatus[]>([]);
@@ -323,10 +334,11 @@ export default function AdminXhsPage() {
       if (envFilter === 'offline' && browserStatus === 'online') return false;
       if (envFilter === 'unassigned' && assignedCount > 0) return false;
       if (departmentFilter !== 'all' && normalizeDepartment(env.department) !== departmentFilter) return false;
+      if (accountTypeFilter !== 'all' && normalizeXHSAccountType(env.xhs_account_type) !== accountTypeFilter) return false;
       if (normalizedQuery && !buildEnvSearchText(env).includes(normalizedQuery)) return false;
       return true;
     });
-  }, [assignmentsByEnv, browserStatusByEnv, departmentFilter, envFilter, envQuery, envs]);
+  }, [accountTypeFilter, assignmentsByEnv, browserStatusByEnv, departmentFilter, envFilter, envQuery, envs]);
 
   useEffect(() => {
     if (filteredEnvs.length === 0) {
@@ -412,6 +424,9 @@ export default function AdminXhsPage() {
     const errors = browserStatuses.filter((item) => item.browser_status === 'error').length;
     const xhs = envs.filter((env) => normalizeDepartment(env.department) === 'xhs').length;
     const brand = envs.filter((env) => normalizeDepartment(env.department) === 'brand').length;
+    const enterprise = envs.filter((env) => normalizeXHSAccountType(env.xhs_account_type) === 'enterprise_professional').length;
+    const employee = envs.filter((env) => normalizeXHSAccountType(env.xhs_account_type) === 'enterprise_employee').length;
+    const personal = envs.filter((env) => normalizeXHSAccountType(env.xhs_account_type) === 'personal').length;
     return {
       total: envs.length,
       configured,
@@ -423,6 +438,9 @@ export default function AdminXhsPage() {
       unassigned: envs.length - assigned,
       xhs,
       brand,
+      enterprise,
+      employee,
+      personal,
     };
   }, [assignmentsByEnv, browserStatuses, envs]);
 
@@ -773,6 +791,27 @@ export default function AdminXhsPage() {
                   </button>
                 ))}
               </div>
+              <div className="mt-3 grid grid-cols-4 gap-1 rounded-2xl bg-slate-100 p-1">
+                {([
+                  ['all', `全部 ${stats.total}`],
+                  ['enterprise_professional', `企业号 ${stats.enterprise}`],
+                  ['enterprise_employee', `员工号 ${stats.employee}`],
+                  ['personal', `个人号 ${stats.personal}`],
+                ] as Array<[XHSAccountTypeFilter, string]>).map(([accountType, label]) => (
+                  <button
+                    key={accountType}
+                    type="button"
+                    onClick={() => setAccountTypeFilter(accountType)}
+                    className={`rounded-xl px-1.5 py-2 text-[11px] font-semibold transition-all ${
+                      accountTypeFilter === accountType
+                        ? 'bg-white text-slate-950 shadow-sm'
+                        : 'text-slate-500 hover:bg-white/70 hover:text-slate-900'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {ENV_FILTER_OPTIONS.map((option) => (
                   <button
@@ -791,7 +830,7 @@ export default function AdminXhsPage() {
               </div>
             </div>
 
-            <div className="max-h-[calc(100vh-235px)] overflow-y-auto p-3">
+            <div className="max-h-[calc(100vh-300px)] overflow-y-auto p-3">
               {loading ? (
                 <div className="grid place-items-center py-12 text-sm text-slate-400">加载中...</div>
               ) : filteredEnvs.length === 0 ? (
@@ -837,6 +876,9 @@ export default function AdminXhsPage() {
                               </span>
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDepartmentTone(env.department, selected)}`}>
                                 {getDepartmentLabel(env.department)}
+                              </span>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getXHSAccountTypeTone(env.xhs_account_type, selected)}`}>
+                                {getXHSAccountTypeLabel(env.xhs_account_type)}
                               </span>
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${selected ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'}`}>
                                 {getBrowserStatusLabel(browserStatus?.browser_status)}
@@ -998,7 +1040,7 @@ export default function AdminXhsPage() {
                             <div className="mt-2 text-xs leading-5 text-slate-400">填写账号主页对应的小红书 ID；按文本保存，不会丢失长数字。</div>
                           </div>
                           <div className="mt-4">
-                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">账号类型</label>
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">登录账号类型</label>
                             <select
                               value={accountTypeDrafts[selectedEnv.id] || 'enterprise_professional'}
                               onChange={(event) => setAccountTypeDrafts((prev) => ({
@@ -1007,11 +1049,11 @@ export default function AdminXhsPage() {
                               }))}
                               className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-[#fbfaf7] px-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
                             >
-                              <option value="enterprise_professional">企业专业号</option>
-                              <option value="enterprise_employee">企业员工号</option>
+                              <option value="enterprise_professional">企业号（短信验证码优先）</option>
+                              <option value="enterprise_employee">员工号（扫码优先）</option>
                               <option value="personal">个人号</option>
                             </select>
-                            <div className="mt-2 text-xs leading-5 text-slate-400">企业员工号未登录时直接扫码；企业专业号先走手机号验证码。</div>
+                            <div className="mt-2 text-xs leading-5 text-slate-400">员工号未登录时先走扫码；企业号未登录时先走手机号验证码，首次验证码失败后再切换扫码。</div>
                           </div>
                           <textarea
                             value={profileDrafts[selectedEnv.id] ?? ''}

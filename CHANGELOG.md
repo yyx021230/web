@@ -2,6 +2,17 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.15] - 2026-08-21
+
+### Fixed
+
+- Creator Center imports now reserve exact post-ID and stable-fingerprint matches before title fallback, preventing a newly reused title from taking an older post and triggering the per-account creator-key uniqueness constraint.
+- Same-title Creator Center rows with known, materially different publish times are now treated as different posts instead of being linked by title alone.
+
+### Changed
+
+- Xiaohongshu administration now exposes enterprise/employee/personal account types in the environment directory, adds account-type filtering, and labels the SMS-first versus QR-first login strategy.
+
 ## [0.3.14] - 2026-08-21
 
 ### Changed

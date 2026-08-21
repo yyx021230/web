@@ -7193,6 +7193,24 @@ class XHSService:
             if len(timed_matches) > 1:
                 return None, None, None, True
 
+            used_timed_matches = [
+                note for note in all_title_matches
+                if isinstance(note.published_at, datetime)
+                and abs((note.published_at.replace(tzinfo=None) - published_at_utc).total_seconds()) <= 180
+            ]
+            if used_timed_matches:
+                return None, None, None, True
+
+            undated_matches = [note for note in title_matches if not isinstance(note.published_at, datetime)]
+            if len(undated_matches) == 1:
+                return undated_matches[0], "title_unique", 0.72, False
+            if len(undated_matches) > 1:
+                return None, None, None, True
+
+            # Reused titles are common. A known, different publish time proves this is a new post.
+            if all_title_matches:
+                return None, None, None, False
+
         if len(title_matches) == 1:
             return title_matches[0], "title_unique", 0.72, False
         if len(title_matches) > 1:
@@ -7241,6 +7259,36 @@ class XHSService:
             .where(XHSAccountNote.environment_id == env.id)
             .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
         )).scalars().all())
+
+        known_feed_ids = {
+            str(note.feed_id or "").strip()
+            for note in notes
+            if str(note.feed_id or "").strip()
+        }
+        known_creator_keys = {
+            str(note.creator_identity_key or "").strip()
+            for note in notes
+            if str(note.creator_identity_key or "").strip()
+        }
+
+        def has_exact_identity_match(row: dict[str, Any]) -> bool:
+            note_id = str(row.get("note_id") or "").strip()
+            if note_id and note_id in known_feed_ids:
+                return True
+            return any(
+                str(row.get(key) or "").strip() in known_creator_keys
+                for key in ("source_key", "legacy_raw_source_key", "legacy_source_key")
+                if str(row.get(key) or "").strip()
+            )
+
+        # Reserve existing posts for their exact export rows before title-based fallback matching.
+        prepared_rows = [
+            row
+            for _, row in sorted(
+                enumerate(prepared_rows),
+                key=lambda item: (0 if has_exact_identity_match(item[1]) else 1, item[0]),
+            )
+        ]
         posts = list((await self.db.execute(
             select(XHSPost).where(XHSPost.environment_id == env.id)
         )).scalars().all())

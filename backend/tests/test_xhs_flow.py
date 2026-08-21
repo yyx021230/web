@@ -1865,6 +1865,65 @@ async def test_duplicate_creator_rows_are_kept_as_ambiguous_instead_of_reused(cl
     assert notes[0].creator_identity_key != notes[1].creator_identity_key
 
 
+@pytest.mark.asyncio
+async def test_creator_import_reserves_exact_old_post_before_same_title_new_post(client):
+    async with async_session() as db:
+        db.add(XHSEnvironment(id=842, shop_id="shop_842", account_name="复用标题账号", status="active"))
+        await db.commit()
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 842)
+        assert env is not None
+        initial = await service._import_creator_note_stats_rows(env, [{
+            "source_row_index": 2,
+            "title": "确定了！车型八月行情整理",
+            "published_at": datetime(2026, 8, 10, 10, 0),
+            "published_at_raw": "2026年08月10日10时00分00秒",
+            "view_count": 100,
+        }])
+        await db.commit()
+
+    assert initial["created_notes"] == 1
+
+    async with async_session() as db:
+        service = XHSService(db)
+        env = await db.get(XHSEnvironment, 842)
+        assert env is not None
+        result = await service._import_creator_note_stats_rows(env, [
+            {
+                "source_row_index": 2,
+                "title": "确定了！车型八月行情整理",
+                "published_at": datetime(2026, 8, 20, 10, 0),
+                "published_at_raw": "2026年08月20日10时00分00秒",
+                "view_count": 200,
+            },
+            {
+                "source_row_index": 3,
+                "title": "确定了！车型八月行情整理",
+                "published_at": datetime(2026, 8, 10, 10, 0),
+                "published_at_raw": "2026年08月10日10时00分00秒",
+                "view_count": 150,
+            },
+        ])
+        await db.commit()
+
+    assert result["created_notes"] == 1
+    assert result["updated_notes"] == 1
+    assert result["ambiguous_notes"] == 0
+    async with async_session() as db:
+        notes = list((await db.execute(
+            select(XHSAccountNote)
+            .where(XHSAccountNote.environment_id == 842)
+            .order_by(XHSAccountNote.published_at.asc())
+        )).scalars().all())
+    assert len(notes) == 2
+    assert [note.published_at for note in notes] == [
+        datetime(2026, 8, 10, 2, 0),
+        datetime(2026, 8, 20, 2, 0),
+    ]
+    assert [note.view_count for note in notes] == [150, 200]
+    assert len({note.creator_identity_key for note in notes}) == 2
+
+
 def test_open_sms_api_headers_follow_documented_hmac_format(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     monkeypatch.setattr(xhs_service_module, "SMS_CODE_CENTER_OPEN_API_CLIENT_ID", "xhs-backend")
