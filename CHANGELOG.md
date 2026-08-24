@@ -2,6 +2,17 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.16] - 2026-08-24
+
+### Fixed
+
+- Creator Center engagement sync now defers phone-busy accounts to a bounded tail queue instead of failing them immediately.
+- Phone verification submission now waits up to three minutes for the existing Xiaohongshu page to become interactive.
+
+### Changed
+
+- Windows releases now build and validate candidate images before briefly closing the frontend for the final switch.
+
 ## [0.3.15] - 2026-08-21
 
 ### Fixed

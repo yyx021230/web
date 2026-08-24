@@ -203,15 +203,9 @@ try {
     }
     $redisId = $currentRedisId
 
-    # Close the user entrypoint before the first queue gate. Keeping the
-    # frontend open while candidate images build lets new AI tasks enter after
-    # preflight and makes a busy production system impossible to release. The
-    # API and worker stay alive here so already accepted work can finish; any
-    # non-empty queue fails fast and the catch block restores the frontend.
-    docker compose stop frontend | Out-Null
-    $servicesStopped = $true
-    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "initial preflight"
-
+    # Build and compile-check candidate images while the current release keeps
+    # serving traffic. The user entrypoint is closed only after the candidate
+    # is ready, which keeps the actual release interruption short.
     $pythonImage = Read-EnvValue $rootEnvPath "PYTHON_IMAGE" "python:3.11.13-slim-bookworm"
     $nodeImage = Read-EnvValue $rootEnvPath "NODE_IMAGE" "node:20.19.4-alpine3.22"
     $appImagePrefix = Read-EnvValue $rootEnvPath "APP_IMAGE_PREFIX" "ztqc"
@@ -248,6 +242,12 @@ try {
         throw "Candidate backend image contains invalid Python source"
     }
 
+    # The candidate is ready. Close the user entrypoint only for the final
+    # queue gate and switch. Existing API and worker processes stay alive until
+    # all accepted work has finished; a non-empty queue aborts and reopens the
+    # frontend without touching those processes.
+    docker compose stop frontend | Out-Null
+    $servicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "post-build preflight"
 
     if (Test-Path $sourceSnapshot) { Remove-Item -Force $sourceSnapshot }
@@ -273,7 +273,7 @@ try {
         -C $ProjectRoot @sourceItems
     if ($LASTEXITCODE -ne 0) { throw "Source snapshot failed" }
 
-    # The user entrypoint has remained closed throughout the image build. Check
+    # The user entrypoint has remained closed since the post-build gate. Check
     # once more before stopping API and worker processes.
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
     docker compose stop backend ai-worker | Out-Null

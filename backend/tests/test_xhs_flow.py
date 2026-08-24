@@ -1325,6 +1325,181 @@ async def test_sync_account_note_engagements_respects_requested_concurrency(clie
 
 
 @pytest.mark.asyncio
+async def test_sync_account_note_engagements_moves_device_busy_account_to_tail(client, monkeypatch):
+    await _seed_users_and_envs()
+    environment_ids = [1881, 1882, 1883]
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(
+                id=environment_id,
+                shop_id=f"shop_publish_{environment_id}",
+                account_name=f"发布账号{environment_id}",
+                status="active",
+            )
+            for environment_id in environment_ids
+        ])
+        await db.commit()
+
+    attempts: dict[int, int] = {}
+    call_order: list[int] = []
+    progress_phases: list[str] = []
+    checked_lock_ids: list[str] = []
+
+    async def fake_sync_environment(self: XHSService, environment_id: int, **kwargs):
+        call_order.append(environment_id)
+        attempts[environment_id] = attempts.get(environment_id, 0) + 1
+        if environment_id == 1881 and attempts[environment_id] == 1:
+            raise RuntimeError(
+                "HTTP 409 {'error': 'device_busy', 'detail': '当前手机正在执行扫码任务', "
+                "'conflict': {'lockId': 'lock-1881'}}"
+            )
+        return {
+            "synced_accounts": 1,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 1,
+            "ambiguous_notes": 0,
+        }
+
+    async def capture_progress(payload: dict):
+        progress_phases.append(str(payload.get("phase") or ""))
+
+    async def fake_get_admin_token(self: XHSService) -> str:
+        return "admin-token"
+
+    lock_states = iter([True, False])
+
+    async def fake_lock_active(self: XHSService, lock_id: str, admin_token: str):
+        assert admin_token == "admin-token"
+        checked_lock_ids.append(lock_id)
+        return next(lock_states)
+
+    monkeypatch.setattr(XHSService, "sync_account_note_engagement_environment", fake_sync_environment)
+    monkeypatch.setattr(XHSService, "_get_phone_cloud_admin_token", fake_get_admin_token)
+    monkeypatch.setattr(XHSService, "_is_phone_device_lock_active", fake_lock_active)
+    monkeypatch.setattr(xhs_service_module, "XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS", 0.001)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        user = await db.get(User, 1)
+        assert user is not None
+        result = await service.sync_account_note_engagements(
+            user=user,
+            target_environment_ids=environment_ids,
+            concurrency=1,
+            progress_callback=capture_progress,
+        )
+
+    assert call_order == [1881, 1882, 1883, 1881]
+    assert result["synced_accounts"] == 3
+    assert "failed_accounts" not in result
+    assert checked_lock_ids == ["lock-1881", "lock-1881"]
+    assert "account_engagement_deferred_device_busy" in progress_phases
+    assert "retrying_account_engagement_device_busy" in progress_phases
+
+
+@pytest.mark.asyncio
+async def test_sync_account_note_engagements_fails_after_device_busy_tail_timeout(client, monkeypatch):
+    await _seed_users_and_envs()
+    environment_ids = [1891, 1892]
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(
+                id=environment_id,
+                shop_id=f"shop_publish_{environment_id}",
+                account_name=f"发布账号{environment_id}",
+                status="active",
+            )
+            for environment_id in environment_ids
+        ])
+        await db.commit()
+
+    call_order: list[int] = []
+
+    async def fake_sync_environment(self: XHSService, environment_id: int, **kwargs):
+        call_order.append(environment_id)
+        if environment_id == 1891:
+            raise RuntimeError("HTTP 409 {'error': 'device_busy'}")
+        return {
+            "synced_accounts": 1,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 1,
+            "ambiguous_notes": 0,
+        }
+
+    monkeypatch.setattr(XHSService, "sync_account_note_engagement_environment", fake_sync_environment)
+    monkeypatch.setattr(xhs_service_module, "XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS", 0.03)
+    monkeypatch.setattr(xhs_service_module, "XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS", 0.005)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        user = await db.get(User, 1)
+        assert user is not None
+        result = await service.sync_account_note_engagements(
+            user=user,
+            target_environment_ids=environment_ids,
+            concurrency=1,
+        )
+
+    assert call_order[:2] == [1891, 1892]
+    assert call_order.count(1891) > 1
+    assert result["synced_accounts"] == 1
+    assert len(result["failed_accounts"]) == 1
+    assert result["failed_accounts"][0]["environment_id"] == 1891
+    assert "手机持续被占用" in result["failed_accounts"][0]["error"]
+
+
+@pytest.mark.asyncio
+async def test_delegated_single_engagement_waits_for_device_busy_tail_retry(client, monkeypatch):
+    await _seed_users_and_envs()
+    async with async_session() as db:
+        db.add(XHSEnvironment(
+            id=1901,
+            shop_id="shop_publish_1901",
+            account_name="发布账号1901",
+            status="active",
+        ))
+        await db.commit()
+
+    attempts = 0
+
+    async def fake_trigger(cls, environment_id: int, sync_run_id: int | None = None):
+        nonlocal attempts
+        assert environment_id == 1901
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("HTTP 409 {'error': 'device_busy'}")
+        return {
+            "synced_accounts": 1,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 1,
+            "ambiguous_notes": 0,
+        }
+
+    monkeypatch.setattr(XHSService, "_should_delegate_browser_ops", classmethod(lambda cls: True))
+    monkeypatch.setattr(XHSService, "trigger_worker_sync_account_note_engagements", classmethod(fake_trigger))
+
+    async with async_session() as db:
+        service = XHSService(db)
+        user = await db.get(User, 1)
+        assert user is not None
+        result = await service.sync_account_note_engagements(
+            user=user,
+            target_environment_ids=[1901],
+            concurrency=5,
+        )
+
+    assert attempts == 2
+    assert result["synced_accounts"] == 1
+    assert "failed_accounts" not in result
+
+
+@pytest.mark.asyncio
 async def test_creator_engagement_rebuilds_transient_browser_session_once(client, monkeypatch):
     async with async_session() as db:
         db.add(XHSEnvironment(
@@ -3363,6 +3538,7 @@ async def test_creator_permission_error_recovers_wrong_logged_in_account(monkeyp
 async def test_submit_mcp_phone_code_marks_post_qr_request(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     requests: list[dict[str, object]] = []
+    client_kwargs: list[dict[str, object]] = []
 
     class _FakeResponse:
         status_code = 200
@@ -3374,7 +3550,7 @@ async def test_submit_mcp_phone_code_marks_post_qr_request(monkeypatch):
 
     class _FakeClient:
         def __init__(self, *args, **kwargs):
-            pass
+            client_kwargs.append(kwargs)
 
         async def __aenter__(self):
             return self
@@ -3400,6 +3576,7 @@ async def test_submit_mcp_phone_code_marks_post_qr_request(monkeypatch):
         "url": "http://mcp.test/api/v1/login/phone/submit-code",
         "json": {"phone_number": "17570049665", "code": "135790", "post_qr": True},
     }]
+    assert client_kwargs[0]["timeout"] == xhs_service_module.XHS_MCP_PHONE_SUBMIT_TIMEOUT_SECONDS
 
 
 @pytest.mark.asyncio

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.15"
+    app_version: str = "0.3.16"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -112,6 +112,8 @@ class Settings(BaseSettings):
     xhs_profile_fetch_timeout_seconds: float = 300.0
     xhs_publish_queue_workers: int = 2
     xhs_yundeng_sync_concurrency: int = 5
+    xhs_device_busy_defer_timeout_seconds: float = 300.0
+    xhs_device_busy_retry_interval_seconds: float = 10.0
     xhs_yundeng_lease_seconds: int = 1800
     xhs_yundeng_acquire_timeout_seconds: int = 3600
     xhs_yundeng_start_stagger_seconds: float = 2.0
@@ -168,6 +170,8 @@ class Settings(BaseSettings):
     sms_code_center_activation_ttl_seconds: int = 300
     # Bound the first SMS wait; expiry switches the login flow to QR.
     sms_code_center_primary_attempt_timeout_seconds: int = 180
+    # The MCP may need up to three minutes for the already-open login page to become interactive.
+    xhs_mcp_phone_submit_timeout_seconds: float = 225.0
     # Compatibility-only: primary SMS login now always switches to QR after
     # the first failed wait instead of sending the main verification code again.
     sms_code_center_primary_send_attempts: int = 1

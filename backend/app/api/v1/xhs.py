@@ -642,6 +642,8 @@ async def _update_sync_history_from_progress(history_run_id: int | None, payload
                     "opening_runner",
                     "opening_account_engagement_browser",
                     "retrying_account_engagement_browser",
+                    "account_engagement_deferred_device_busy",
+                    "retrying_account_engagement_device_busy",
                     "checking_creator_login",
                     "requesting_creator_sms",
                     "waiting_creator_sms",

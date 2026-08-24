@@ -18,6 +18,7 @@ import socket
 import io
 import time
 import shutil
+from collections import deque
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Awaitable, Callable
@@ -123,6 +124,14 @@ XHS_WORKER_API_BASE = _worker_api_base.strip().rstrip("/")
 XHS_WORKER_INTERNAL_TOKEN = getattr(settings, "xhs_worker_internal_token", "") or ""
 XHS_ACCOUNT_SCRAPE_ENVIRONMENT_ID = int(getattr(settings, "xhs_account_scrape_environment_id", 0) or 0)
 XHS_YUNDENG_SYNC_CONCURRENCY = max(1, min(int(getattr(settings, "xhs_yundeng_sync_concurrency", 5) or 5), 5))
+XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS = max(
+    1.0,
+    float(getattr(settings, "xhs_device_busy_defer_timeout_seconds", 300.0) or 300.0),
+)
+XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS = max(
+    0.1,
+    float(getattr(settings, "xhs_device_busy_retry_interval_seconds", 10.0) or 10.0),
+)
 XHS_PROFILE_FETCH_TIMEOUT_SECONDS = max(
     90.0,
     float(getattr(settings, "xhs_profile_fetch_timeout_seconds", 300.0) or 300.0),
@@ -147,6 +156,10 @@ SMS_CODE_CENTER_PRIMARY_ATTEMPT_TIMEOUT_SECONDS = max(
         SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS,
         int(getattr(settings, "sms_code_center_primary_attempt_timeout_seconds", 180) or 180),
     ),
+)
+XHS_MCP_PHONE_SUBMIT_TIMEOUT_SECONDS = max(
+    180.0,
+    float(getattr(settings, "xhs_mcp_phone_submit_timeout_seconds", 225.0) or 225.0),
 )
 SMS_CODE_CENTER_OPEN_API_POLL_INTERVAL_SECONDS = min(
     5.0,
@@ -989,19 +1002,22 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
-        semaphore = asyncio.Semaphore(
-            max(1, min(int(concurrency or 1), len(envs) or 1, XHS_YUNDENG_SYNC_CONCURRENCY, 5))
+        normalized_concurrency = max(
+            1,
+            min(int(concurrency or 1), len(envs) or 1, XHS_YUNDENG_SYNC_CONCURRENCY, 5),
         )
 
-        async def run_environment(env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
+        async def run_environment(index: int, env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
             await self._raise_if_sync_cancelled(cancel_check)
-            async with semaphore:
-                result = await self.trigger_worker_sync_account_note_engagements(int(env.id), sync_run_id)
-                return env, result
+            result = await self.trigger_worker_sync_account_note_engagements(int(env.id), sync_run_id)
+            return env, result
 
-        raw_results = await asyncio.gather(
-            *(run_environment(env) for env in envs),
-            return_exceptions=True,
+        raw_results = await self._run_engagement_batch_with_device_busy_deferral(
+            envs=envs,
+            concurrency=normalized_concurrency,
+            run_environment=run_environment,
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
         )
         return await self._aggregate_parallel_engagement_results(
             envs=envs,
@@ -5446,6 +5462,193 @@ class XHSService:
             totals["skipped_account_details"] = skipped_account_details
         return totals
 
+    @staticmethod
+    def _is_phone_device_busy_error(error: BaseException) -> bool:
+        message = str(error or "").strip().lower()
+        return any(
+            marker in message
+            for marker in (
+                "device_busy",
+                "account_slot_busy",
+                "当前手机正在执行扫码任务",
+                "当前账号槽位正在执行扫码任务",
+                "当前小红书账号槽位正在执行扫码任务",
+            )
+        )
+
+    @staticmethod
+    def _phone_device_busy_lock_id(error: BaseException) -> str:
+        message = str(error or "")
+        match = re.search(r"[\"']lockId[\"']\s*:\s*[\"']([^\"']+)", message)
+        return str(match.group(1) if match else "").strip()
+
+    async def _is_phone_device_lock_active(self, lock_id: str, admin_token: str) -> bool | None:
+        if not lock_id or not admin_token:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                response = await client.get(
+                    f"{SMS_CODE_CENTER_BASE_URL}/api/v1/device-locks",
+                    headers={"Authorization": f"Bearer {admin_token}"},
+                )
+            data = response.json() if response.content else {}
+            if response.status_code != 200 or not isinstance(data, dict):
+                return None
+            locks = data.get("locks") if isinstance(data.get("locks"), list) else []
+            lock = next(
+                (
+                    item
+                    for item in locks
+                    if isinstance(item, dict) and str(item.get("lockId") or "").strip() == lock_id
+                ),
+                None,
+            )
+            if lock is None:
+                return False
+            return str(lock.get("status") or "").strip().lower() == "active"
+        except Exception as exc:
+            logger.warning("查询手机云控设备锁失败，降级为队尾重试: lock_id=%s error=%s", lock_id, exc)
+            return None
+
+    async def _run_engagement_batch_with_device_busy_deferral(
+        self,
+        *,
+        envs: list[XHSEnvironment],
+        concurrency: int,
+        run_environment: Callable[[int, XHSEnvironment], Awaitable[tuple[XHSEnvironment, dict]]],
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+    ) -> list[Any]:
+        """Run the batch once, then move phone-busy accounts to a bounded tail queue."""
+        semaphore = asyncio.Semaphore(max(1, min(int(concurrency or 1), len(envs) or 1)))
+
+        async def run_limited(index: int, env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
+            await self._raise_if_sync_cancelled(cancel_check)
+            async with semaphore:
+                return await run_environment(index, env)
+
+        raw_results = list(
+            await asyncio.gather(
+                *(run_limited(index, env) for index, env in enumerate(envs, start=1)),
+                return_exceptions=True,
+            )
+        )
+        deferred = deque(
+            index
+            for index, result in enumerate(raw_results)
+            if isinstance(result, Exception) and self._is_phone_device_busy_error(result)
+        )
+        if not deferred:
+            return raw_results
+
+        loop = asyncio.get_running_loop()
+        first_busy_at = {index: loop.time() for index in deferred}
+        next_attempt_at = {index: loop.time() for index in deferred}
+        last_busy_error = {index: raw_results[index] for index in deferred}
+        busy_lock_ids = {index: self._phone_device_busy_lock_id(raw_results[index]) for index in deferred}
+        admin_token = ""
+        if any(busy_lock_ids.values()):
+            try:
+                admin_token = await self._get_phone_cloud_admin_token()
+            except Exception as exc:
+                logger.warning("获取手机云控会话失败，设备占用队列降级为定时重试: %s", exc)
+        for index in deferred:
+            env = envs[index]
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "account_engagement_deferred_device_busy",
+                    "detail": f"{env.account_name} 的手机正在使用，已移到队尾等待释放",
+                    "environment_id": int(env.id),
+                    "account_name": env.account_name,
+                    "device_busy_wait_seconds": 0,
+                    "device_busy_timeout_seconds": int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS),
+                },
+            )
+
+        # Deferred accounts run one by one so SIMs or app slots on the same
+        # physical phone cannot contend again during the tail retry phase.
+        while deferred:
+            await self._raise_if_sync_cancelled(cancel_check)
+            index = deferred.popleft()
+            now = loop.time()
+            elapsed = now - first_busy_at[index]
+            if elapsed >= XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS:
+                raw_results[index] = RuntimeError(
+                    f"手机持续被占用，移到队尾等待超过{int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS)}秒后仍不可用: "
+                    f"{last_busy_error[index]}"
+                )
+                continue
+
+            wait_seconds = max(0.0, next_attempt_at[index] - now)
+            if wait_seconds > 0:
+                deferred.append(index)
+                nearest_retry_at = min(next_attempt_at[pending_index] for pending_index in deferred)
+                await asyncio.sleep(
+                    max(0.0, min(nearest_retry_at - loop.time(), XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS))
+                )
+                continue
+
+            env = envs[index]
+            lock_id = busy_lock_ids.get(index, "")
+            lock_active = await self._is_phone_device_lock_active(lock_id, admin_token)
+            if lock_active is True:
+                next_attempt_at[index] = loop.time() + XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS
+                deferred.append(index)
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "account_engagement_deferred_device_busy",
+                        "detail": f"{env.account_name} 的手机仍在使用，继续排到队尾观察",
+                        "environment_id": int(env.id),
+                        "account_name": env.account_name,
+                        "device_busy_wait_seconds": int(elapsed),
+                        "device_busy_timeout_seconds": int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS),
+                    },
+                )
+                continue
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "phase": "retrying_account_engagement_device_busy",
+                    "detail": f"{env.account_name} 已轮到队尾，正在重新检查手机状态",
+                    "environment_id": int(env.id),
+                    "account_name": env.account_name,
+                    "device_busy_wait_seconds": int(elapsed),
+                    "device_busy_timeout_seconds": int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS),
+                },
+            )
+            try:
+                raw_results[index] = await run_environment(index + 1, env)
+            except Exception as exc:
+                if not self._is_phone_device_busy_error(exc):
+                    raw_results[index] = exc
+                    continue
+                last_busy_error[index] = exc
+                busy_lock_ids[index] = self._phone_device_busy_lock_id(exc)
+                elapsed = loop.time() - first_busy_at[index]
+                if elapsed >= XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS:
+                    raw_results[index] = RuntimeError(
+                        f"手机持续被占用，移到队尾等待超过{int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS)}秒后仍不可用: "
+                        f"{exc}"
+                    )
+                    continue
+                next_attempt_at[index] = loop.time() + XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS
+                deferred.append(index)
+                await self._emit_progress(
+                    progress_callback,
+                    {
+                        "phase": "account_engagement_deferred_device_busy",
+                        "detail": f"{env.account_name} 的手机仍在使用，继续排到队尾等待",
+                        "environment_id": int(env.id),
+                        "account_name": env.account_name,
+                        "device_busy_wait_seconds": int(elapsed),
+                        "device_busy_timeout_seconds": int(XHS_DEVICE_BUSY_DEFER_TIMEOUT_SECONDS),
+                    },
+                )
+
+        return raw_results
+
     async def sync_account_note_engagement_environment(
         self,
         environment_id: int,
@@ -5526,16 +5729,13 @@ class XHSService:
             }
 
         if self._should_delegate_browser_ops():
-            if len(envs) > 1:
-                return await self._delegate_account_note_engagement_sync(
-                    envs=envs,
-                    concurrency=normalized_concurrency,
-                    sync_run_id=sync_run_id,
-                    progress_callback=progress_callback,
-                    cancel_check=cancel_check,
-                )
-            result = await self.trigger_worker_sync_account_note_engagements(int(envs[0].id), sync_run_id)
-            return result
+            return await self._delegate_account_note_engagement_sync(
+                envs=envs,
+                concurrency=normalized_concurrency,
+                sync_run_id=sync_run_id,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check,
+            )
 
         await self._emit_progress(
             progress_callback,
@@ -5558,26 +5758,26 @@ class XHSService:
                 cancel_check=cancel_check,
             )
 
-        semaphore = asyncio.Semaphore(max(1, min(normalized_concurrency, len(envs))))
-
         async def run_environment(index: int, env: XHSEnvironment) -> tuple[XHSEnvironment, dict]:
             await self._raise_if_sync_cancelled(cancel_check)
-            async with semaphore:
-                async with async_session() as session:
-                    service = XHSService(session)
-                    result = await service.sync_account_note_engagement_environment(
-                        int(env.id),
-                        sync_run_id=sync_run_id,
-                        progress_callback=progress_callback,
-                        cancel_check=cancel_check,
-                        current_account_index=index,
-                        total_accounts=len(envs),
-                    )
-                    return env, result
+            async with async_session() as session:
+                service = XHSService(session)
+                result = await service.sync_account_note_engagement_environment(
+                    int(env.id),
+                    sync_run_id=sync_run_id,
+                    progress_callback=progress_callback,
+                    cancel_check=cancel_check,
+                    current_account_index=index,
+                    total_accounts=len(envs),
+                )
+                return env, result
 
-        raw_results = await asyncio.gather(
-            *(run_environment(index, env) for index, env in enumerate(envs, start=1)),
-            return_exceptions=True,
+        raw_results = await self._run_engagement_batch_with_device_busy_deferral(
+            envs=envs,
+            concurrency=normalized_concurrency,
+            run_environment=run_environment,
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
         )
         return await self._aggregate_parallel_engagement_results(
             envs=envs,
@@ -7925,7 +8125,7 @@ class XHSService:
                 progress_callback,
                 {
                     "phase": "submitting_creator_sms",
-                    "detail": f"{account_name or '当前账号'} 已收到验证码，正在提交登录",
+                    "detail": f"{account_name or '当前账号'} 已收到验证码，正在等待登录页就绪并提交（最长3分钟）",
                     "environment_id": int(getattr(env, "id", 0) or 0) or None,
                     "account_name": account_name,
                 },
@@ -8206,7 +8406,9 @@ class XHSService:
         request_payload: dict[str, Any] = {"phone_number": phone_number, "code": code}
         if post_qr:
             request_payload["post_qr"] = True
-        async with httpx.AsyncClient(**self._httpx_client_kwargs(api_base, timeout=90.0)) as client:
+        async with httpx.AsyncClient(
+            **self._httpx_client_kwargs(api_base, timeout=XHS_MCP_PHONE_SUBMIT_TIMEOUT_SECONDS)
+        ) as client:
             resp = await client.post(
                 f"{api_base}/api/v1/login/phone/submit-code",
                 json=request_payload,
