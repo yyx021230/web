@@ -180,6 +180,18 @@ class _FakeXHSService:
     def __init__(self, _session):
         self.calls = []
 
+    async def refresh_report_token_statuses(self):
+        self.calls.append(("refresh_tokens", {}))
+        return {
+            "configured_accounts": 2,
+            "valid_accounts": [
+                {"account_id": "a", "account_name": "账户A"},
+                {"account_id": "b", "account_name": "账户B"},
+            ],
+            "failed_accounts": [],
+            "transient_errors": [],
+        }
+
     async def sync_account_notes(self, **kwargs):
         self.observed_calls.append("posts")
         self.calls.append(("posts", kwargs))
@@ -203,8 +215,24 @@ class _FakeXHSService:
     async def refresh_jg_report_cache(self, **kwargs):
         self.calls.append(("report", kwargs))
         if kwargs["report_type"] == "creative":
-            return {"updated_accounts": 1, "updated_rows": 2, "changed_rows": 1, "errors": ["one"]}
-        return {"updated_accounts": 2, "updated_rows": 3, "changed_rows": 2, "errors": []}
+            return {
+                "updated_accounts": 1,
+                "attempted_accounts": 2,
+                "updated_rows": 2,
+                "changed_rows": 1,
+                "errors": ["one"],
+            }
+        return {
+            "updated_accounts": 2,
+            "attempted_accounts": 2,
+            "updated_rows": 3,
+            "changed_rows": 2,
+            "errors": [],
+        }
+
+    async def finalize_jg_report_refresh(self, **kwargs):
+        self.calls.append(("finalize_reports", kwargs))
+        return {"promoted": {}, "aggregates": {}, "errors": []}
 
 
 @pytest.mark.asyncio
@@ -275,7 +303,8 @@ async def test_ad_refresh_records_success_and_failure(client, monkeypatch):
             {"date_range_mode": "fixed", "start_date": "2026-06-01", "end_date": "2026-06-01", "report_types": ["simple", "creative"]},
             history_run_id=9,
         )
-        assert "读取 3 个账户、5 行，实际变更 3 行，异常 1 条" in message
+        assert "成功 3/4 个账户报表组合" in message
+        assert "读取 5 行，实际变更 3 行，异常 1 条" in message
         assert events
 
     class _Failing(_FakeXHSService):
@@ -290,6 +319,107 @@ async def test_ad_refresh_records_success_and_failure(client, monkeypatch):
                 {"date_range_mode": "fixed", "start_date": "2026-06-01", "end_date": "2026-06-01", "report_types": ["simple"]},
                 history_run_id=10,
             )
+
+
+@pytest.mark.asyncio
+async def test_ad_refresh_rebuilds_aggregates_even_when_raw_rows_are_unchanged(client, monkeypatch):
+    class UnchangedReportService:
+        finalize_calls: list[dict] = []
+
+        def __init__(self, _session):
+            pass
+
+        async def refresh_report_token_statuses(self):
+            return {
+                "configured_accounts": 1,
+                "valid_accounts": [{"account_id": "a", "account_name": "账户A"}],
+                "failed_accounts": [],
+                "transient_errors": [],
+            }
+
+        async def refresh_jg_report_cache(self, **kwargs):
+            return {
+                "updated_accounts": 1,
+                "attempted_accounts": 1,
+                "updated_rows": 1,
+                "changed_rows": 0,
+                "errors": [],
+            }
+
+        async def finalize_jg_report_refresh(self, **kwargs):
+            self.finalize_calls.append(kwargs)
+            return {"promoted": {}, "aggregates": {}, "errors": []}
+
+    UnchangedReportService.finalize_calls = []
+    monkeypatch.setattr(module, "XHSService", UnchangedReportService)
+    async with session_factory() as db:
+        message = await _execute_ad_data_refresh(
+            db,
+            {
+                "date_range_mode": "fixed",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-01",
+                "report_types": ["simple"],
+            },
+        )
+
+    assert "数据一致性验收通过" in message
+    assert len(UnchangedReportService.finalize_calls) == 1
+    assert UnchangedReportService.finalize_calls[0]["report_types"] == ["simple"]
+
+
+@pytest.mark.asyncio
+async def test_schedule_claim_is_persisted_before_long_task_starts(client, monkeypatch):
+    observed_last_run_at: list[datetime | None] = []
+
+    async with session_factory() as db:
+        await XHSScheduleService(db).update_setting(
+            AD_DATA_REFRESH_TASK,
+            enabled=True,
+            run_time="06:30",
+            config={
+                "date_range_mode": "fixed",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-01",
+                "report_types": ["simple"],
+            },
+        )
+
+    async def inspect_durable_claim(_session, _config, *, history_run_id=None):
+        async with session_factory() as verification_db:
+            row = await XHSScheduleService(verification_db).get_row(AD_DATA_REFRESH_TASK)
+            observed_last_run_at.append(row.last_run_at)
+        return "刷新完成，数据一致性验收通过"
+
+    monkeypatch.setattr(module, "_execute_ad_data_refresh", inspect_durable_claim)
+    await module._run_task(AD_DATA_REFRESH_TASK, "schedule", session_factory)
+
+    assert len(observed_last_run_at) == 1
+    assert observed_last_run_at[0] is not None
+
+
+@pytest.mark.asyncio
+async def test_consistency_check_ignores_reports_not_selected_for_refresh(client):
+    async with session_factory() as db:
+        db.add(
+            XHSReportDaily(
+                report_type="creative",
+                account_id="creative-only",
+                account_name="不在本次范围",
+                report_date=date(2026, 6, 1),
+                campaign_id="creative-1",
+                payload={"time": "2026-06-01", "creative_id": "creative-1"},
+            )
+        )
+        await db.commit()
+        result = await module._validate_ad_refresh_consistency(
+            db,
+            start_d=date(2026, 6, 1),
+            end_d=date(2026, 6, 1),
+            report_types=["simple"],
+        )
+
+    assert result["errors"] == []
 
 
 @pytest.mark.asyncio

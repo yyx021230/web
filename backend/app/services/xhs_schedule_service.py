@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import settings
 from app.db.session import async_session
-from app.models.xhs_report import XHSReportDaily
+from app.models.xhs_report import XHSAdStatsDailyAccount, XHSAdStatsDailyNote, XHSReportDaily
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
@@ -676,10 +676,31 @@ async def _execute_ad_data_refresh(
     report_types = report_types or list(AD_REPORT_TYPES)
 
     total_accounts = 0
+    total_attempted_accounts = 0
     total_rows = 0
     total_changed_rows = 0
     errors: list[str] = []
+    skipped_token_accounts: dict[str, str] = {}
+    refreshed_report_types: list[str] = []
     await mark_report_refresh_running_safely(history_run_id)
+    try:
+        token_refresh = await service.refresh_report_token_statuses()
+    except Exception as exc:
+        await finish_report_refresh_run_safely(
+            history_run_id,
+            status="failed",
+            message="广告账户 Token 统一复核失败",
+            error=str(exc),
+        )
+        raise
+    for item in token_refresh.get("failed_accounts") or []:
+        errors.append(
+            f"{item.get('account_id')} {item.get('account_name')}: Token 不可用: {item.get('error')}"
+        )
+    for item in token_refresh.get("transient_errors") or []:
+        errors.append(
+            f"{item.get('account_id')} {item.get('account_name')}: Token 复核暂时失败，继续使用缓存: {item.get('error')}"
+        )
     for report_type in report_types:
         try:
             result = await service.refresh_jg_report_cache(
@@ -687,6 +708,11 @@ async def _execute_ad_data_refresh(
                 start_date=start_d.isoformat(),
                 end_date=end_d.isoformat(),
                 days=days,
+                resilient=True,
+                preserve_existing_on_empty=True,
+                successful_tokens_only=True,
+                use_cached_tokens=True,
+                defer_post_processing=True,
             )
         except Exception as exc:
             await record_report_refresh_result_safely(
@@ -705,23 +731,152 @@ async def _execute_ad_data_refresh(
         await record_report_refresh_result_safely(
             history_run_id,
             report_type=report_type,
-            status="succeeded",
+            status="failed" if result.get("errors") else "succeeded",
             result=result,
         )
         total_accounts += int(result.get("updated_accounts") or 0)
+        total_attempted_accounts += int(result.get("attempted_accounts") or 0)
         total_rows += int(result.get("updated_rows") or 0)
         total_changed_rows += int(result.get("changed_rows") or 0)
+        refreshed_report_types.append(report_type)
+        for skipped in result.get("skipped_token_accounts") or []:
+            skipped_account_id = str(skipped.get("account_id") or "").strip()
+            if skipped_account_id:
+                skipped_token_accounts[skipped_account_id] = str(skipped.get("account_name") or "")
         errors.extend(str(item) for item in (result.get("errors") or []))
+
+    if refreshed_report_types:
+        finalized = await service.finalize_jg_report_refresh(
+            report_types=refreshed_report_types,
+            start_date=start_d,
+            end_date=end_d,
+            account_id=None,
+        )
+        errors.extend(str(item) for item in (finalized.get("errors") or []))
+
+    consistency = await _validate_ad_refresh_consistency(
+        session,
+        start_d=start_d,
+        end_d=end_d,
+        report_types=report_types,
+    )
+    errors.extend(consistency["errors"])
+
+    token_progress = (
+        f"Token 有效 {len(token_refresh.get('valid_accounts') or [])}/"
+        f"{int(token_refresh.get('configured_accounts') or 0)} 个"
+    )
+    progress = f"{token_progress}，成功 {total_accounts}/{total_attempted_accounts} 个账户报表组合"
+    skipped = f"，跳过 Token 不可用账户 {len(skipped_token_accounts)} 个" if skipped_token_accounts else ""
     if errors:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，{progress}{skipped}，读取 {total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
     else:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，{progress}{skipped}，读取 {total_rows} 行，实际变更 {total_changed_rows} 行，数据一致性验收通过"
     await finish_report_refresh_run_safely(
         history_run_id,
-        status="succeeded",
+        status="failed" if errors else "succeeded",
         message=message,
+        error=" | ".join(errors[:20]) if errors else None,
     )
     return message
+
+
+async def _validate_ad_refresh_consistency(
+    session: AsyncSession,
+    *,
+    start_d: date,
+    end_d: date,
+    report_types: list[str] | tuple[str, ...] = AD_REPORT_TYPES,
+) -> dict[str, Any]:
+    normalized_types = tuple(
+        report_type
+        for report_type in dict.fromkeys(str(item).strip() for item in report_types)
+        if report_type in AD_REPORT_TYPES
+    )
+    if not normalized_types:
+        return {"errors": []}
+    raw_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSReportDaily.report_type,
+                    XHSReportDaily.account_id,
+                    XHSReportDaily.report_date,
+                )
+                .where(
+                    XHSReportDaily.report_type.in_(normalized_types),
+                    XHSReportDaily.report_date >= start_d,
+                    XHSReportDaily.report_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    raw_dates: dict[str, set[tuple[str, date]]] = {report_type: set() for report_type in normalized_types}
+    for report_type, account_id, report_date in raw_rows:
+        raw_dates.setdefault(str(report_type), set()).add((str(account_id), report_date))
+
+    account_aggregate_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSAdStatsDailyAccount.report_type,
+                    XHSAdStatsDailyAccount.account_id,
+                    XHSAdStatsDailyAccount.stat_date,
+                )
+                .where(
+                    XHSAdStatsDailyAccount.report_type.in_(normalized_types),
+                    XHSAdStatsDailyAccount.stat_date >= start_d,
+                    XHSAdStatsDailyAccount.stat_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    note_aggregate_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSAdStatsDailyNote.report_type,
+                    XHSAdStatsDailyNote.account_id,
+                    XHSAdStatsDailyNote.stat_date,
+                )
+                .where(
+                    XHSAdStatsDailyNote.report_type.in_(normalized_types),
+                    XHSAdStatsDailyNote.stat_date >= start_d,
+                    XHSAdStatsDailyNote.stat_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    aggregate_dates: dict[str, set[tuple[str, date]]] = {report_type: set() for report_type in normalized_types}
+    for report_type, account_id, stat_date in account_aggregate_rows + note_aggregate_rows:
+        aggregate_dates.setdefault(str(report_type), set()).add((str(account_id), stat_date))
+
+    errors: list[str] = []
+    pair_checks = (
+        ("简单投", "simple", "simple_note"),
+        ("标准投", "standard", "standard_note"),
+    )
+    for label, account_report, note_report in pair_checks:
+        if account_report not in normalized_types or note_report not in normalized_types:
+            continue
+        account_only = raw_dates.get(account_report, set()) - raw_dates.get(note_report, set())
+        note_only = raw_dates.get(note_report, set()) - raw_dates.get(account_report, set())
+        if account_only or note_only:
+            errors.append(
+                f"{label}账户/笔记报表日期不一致: 账户侧缺口 {len(note_only)}，笔记侧缺口 {len(account_only)}"
+            )
+
+    for report_type in normalized_types:
+        raw_only = raw_dates.get(report_type, set()) - aggregate_dates.get(report_type, set())
+        aggregate_only = aggregate_dates.get(report_type, set()) - raw_dates.get(report_type, set())
+        if raw_only or aggregate_only:
+            errors.append(
+                f"{report_type}原始/聚合日期不一致: 未聚合 {len(raw_only)}，残留聚合 {len(aggregate_only)}"
+            )
+    return {"errors": errors}
 
 
 async def _execute_ad_report_publish(session: AsyncSession, config: dict[str, Any]) -> str:
@@ -828,16 +983,21 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
         async with session_factory() as session:
             schedule_service = XHSScheduleService(session)
             row = await schedule_service.get_row(task_key)
+            started_at = utc_now_naive()
             run_log = XHSScheduleRunLog(
                 task_key=task_key,
                 source=source,
                 status="running",
                 message="任务执行中",
-                started_at=utc_now_naive(),
+                started_at=started_at,
             )
             session.add(run_log)
             row.last_status = "running"
             row.last_message = "任务执行中"
+            if source == "schedule":
+                # Claim today's schedule durably before doing any long-running work.
+                # A container restart then cannot start the same task a second time.
+                row.last_run_at = started_at
             await session.commit()
             await session.refresh(run_log)
             run_log_id = int(run_log.id)

@@ -2067,6 +2067,221 @@ class XHSService:
         await self.db.commit()
         return result
 
+    @staticmethod
+    def _is_report_authorization_error(error: object) -> bool:
+        message = str(error or "").strip().lower()
+        return any(
+            marker in message
+            for marker in (
+                "没有获取该账号授权",
+                "unauthorized",
+                "forbidden",
+                "invalid token",
+                "token expired",
+                "鉴权失败",
+            )
+        )
+
+    @classmethod
+    def _is_retryable_report_error(cls, error: object) -> bool:
+        if cls._is_report_authorization_error(error):
+            return False
+        message = str(error or "").strip().lower()
+        return any(
+            marker in message
+            for marker in (
+                "timeout",
+                "timed out",
+                "rpc server",
+                "internal server error",
+                "connection",
+                "temporar",
+                "too many requests",
+                "rate limit",
+                "502",
+                "503",
+                "504",
+            )
+        )
+
+    async def _fetch_report_rows_resilient(
+        self,
+        *,
+        token: str,
+        advertiser_id: str,
+        api_path: str,
+        start_date: str,
+        end_date: str,
+        max_day_attempts: int = 3,
+    ) -> tuple[list[dict], int]:
+        start_d = date.fromisoformat(start_date)
+        end_d = date.fromisoformat(end_date)
+
+        async def fetch_range(range_start: date, range_end: date) -> list[dict]:
+            try:
+                rows, _ = await self._fetch_report_rows(
+                    token=token,
+                    advertiser_id=advertiser_id,
+                    api_path=api_path,
+                    start_date=range_start.isoformat(),
+                    end_date=range_end.isoformat(),
+                )
+                return rows
+            except Exception as exc:
+                if not self._is_retryable_report_error(exc):
+                    raise
+                if range_start < range_end:
+                    midpoint = range_start + timedelta(days=(range_end - range_start).days // 2)
+                    logger.warning(
+                        "投流报表范围请求失败，自动拆分: account=%s path=%s range=%s..%s error=%s",
+                        advertiser_id,
+                        api_path,
+                        range_start,
+                        range_end,
+                        exc,
+                    )
+                    left_rows = await fetch_range(range_start, midpoint)
+                    right_rows = await fetch_range(midpoint + timedelta(days=1), range_end)
+                    return left_rows + right_rows
+
+                last_error = exc
+                for attempt in range(2, max(2, int(max_day_attempts)) + 1):
+                    await asyncio.sleep(min(6, attempt * 2))
+                    try:
+                        rows, _ = await self._fetch_report_rows(
+                            token=token,
+                            advertiser_id=advertiser_id,
+                            api_path=api_path,
+                            start_date=range_start.isoformat(),
+                            end_date=range_end.isoformat(),
+                        )
+                        return rows
+                    except Exception as retry_exc:
+                        last_error = retry_exc
+                        if not self._is_retryable_report_error(retry_exc):
+                            raise
+                        logger.warning(
+                            "投流报表单日重试失败: account=%s path=%s date=%s attempt=%s error=%s",
+                            advertiser_id,
+                            api_path,
+                            range_start,
+                            attempt,
+                            retry_exc,
+                        )
+                raise last_error
+
+        rows = await fetch_range(start_d, end_d)
+        return rows, len(rows)
+
+    async def finalize_jg_report_refresh(
+        self,
+        *,
+        report_types: list[str] | tuple[str, ...] | set[str],
+        start_date: date,
+        end_date: date,
+        account_id: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_types = [
+            report_type
+            for report_type in dict.fromkeys(str(item).strip() for item in report_types)
+            if report_type in REPORT_API_PATHS
+        ]
+        result: dict[str, Any] = {"promoted": None, "aggregates": {}, "errors": []}
+        if not normalized_types:
+            return result
+
+        if set(normalized_types).intersection({"creative", "simple", "simple_note", "standard_note"}):
+            try:
+                result["promoted"] = await self.backfill_promoted_flags_from_reports(
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except Exception as exc:
+                result["errors"].append(f"投流标记刷新失败: {exc}")
+                logger.exception("投流标记统一刷新失败: start=%s end=%s", start_date, end_date)
+
+        for report_type in normalized_types:
+            try:
+                result["aggregates"][report_type] = await self.refresh_xhs_ad_aggregates(
+                    report_type=report_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    account_id=account_id,
+                )
+            except Exception as exc:
+                result["errors"].append(f"{report_type} 聚合刷新失败: {exc}")
+                logger.exception(
+                    "投流聚合表统一刷新失败: report_type=%s start=%s end=%s account_id=%s",
+                    report_type,
+                    start_date,
+                    end_date,
+                    account_id,
+                )
+
+        try:
+            from app.services.xhs_ad_dashboard_service import invalidate_ad_dashboard_caches
+
+            invalidate_ad_dashboard_caches()
+        except Exception as exc:
+            result["errors"].append(f"投流看板内存缓存清理失败: {exc}")
+            logger.warning("投流看板缓存清理失败: %s", exc)
+        return result
+
+    async def refresh_report_token_statuses(self, *, concurrency: int = 8) -> dict[str, Any]:
+        token_rows = list(
+            (
+                await self.db.execute(
+                    select(XHSReportToken).order_by(XHSReportToken.account_name.asc())
+                )
+            ).scalars().all()
+        )
+        semaphore = asyncio.Semaphore(max(1, min(20, int(concurrency))))
+
+        async def fetch_token(row: XHSReportToken) -> dict[str, Any]:
+            async with semaphore:
+                try:
+                    token = await self._fetch_report_token(row.account_id)
+                    return {"row": row, "token": token, "error": None}
+                except Exception as exc:
+                    return {"row": row, "token": None, "error": str(exc)}
+
+        fetched = await asyncio.gather(*(fetch_token(row) for row in token_rows))
+        valid_accounts: list[dict[str, str]] = []
+        failed_accounts: list[dict[str, str]] = []
+        transient_errors: list[dict[str, str]] = []
+        for result in fetched:
+            row = result["row"]
+            error = str(result.get("error") or "").strip()
+            token = str(result.get("token") or "").strip()
+            if token:
+                row.token = token
+                row.token_status = "成功"
+                row.token_message = None
+                valid_accounts.append(
+                    {"account_id": str(row.account_id), "account_name": str(row.account_name or "")}
+                )
+                continue
+
+            detail = {
+                "account_id": str(row.account_id),
+                "account_name": str(row.account_name or ""),
+                "error": error or "Token 接口未返回有效 Token",
+            }
+            if self._is_retryable_report_error(error) and row.token_status == "成功" and row.token:
+                transient_errors.append(detail)
+                continue
+            row.token_status = "失败"
+            row.token_message = detail["error"]
+            failed_accounts.append(detail)
+
+        await self.db.commit()
+        return {
+            "configured_accounts": len(token_rows),
+            "valid_accounts": valid_accounts,
+            "failed_accounts": failed_accounts,
+            "transient_errors": transient_errors,
+        }
+
     async def refresh_jg_report_cache(
         self,
         report_type: str,
@@ -2075,6 +2290,11 @@ class XHSService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         days: int = 30,
+        resilient: bool = False,
+        preserve_existing_on_empty: bool = False,
+        successful_tokens_only: bool = False,
+        use_cached_tokens: bool = False,
+        defer_post_processing: bool = False,
     ) -> dict:
         api_path = REPORT_API_PATHS.get(report_type)
         if not api_path:
@@ -2089,12 +2309,22 @@ class XHSService:
             tokens_stmt = tokens_stmt.where(XHSReportToken.account_id == account_id)
         elif account_name:
             tokens_stmt = tokens_stmt.where(XHSReportToken.account_name == account_name)
-        token_rows = (await self.db.execute(tokens_stmt.order_by(XHSReportToken.account_name.asc()))).scalars().all()
+        configured_token_rows = list(
+            (await self.db.execute(tokens_stmt.order_by(XHSReportToken.account_name.asc()))).scalars().all()
+        )
+        skipped_token_rows = [
+            tk for tk in configured_token_rows if successful_tokens_only and tk.token_status != "成功"
+        ]
+        token_rows = [
+            tk for tk in configured_token_rows if not successful_tokens_only or tk.token_status == "成功"
+        ]
 
         updated_accounts = 0
         updated_rows = 0
         changed_rows = 0
         errors: list[str] = []
+        failed_accounts: list[dict[str, str]] = []
+        preserved_empty_accounts: list[dict[str, str]] = []
         start_d = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_d = datetime.strptime(end_date, "%Y-%m-%d").date()
         semaphore = asyncio.Semaphore(4)
@@ -2102,8 +2332,21 @@ class XHSService:
         async def fetch_account_report(tk: XHSReportToken) -> dict:
             async with semaphore:
                 try:
-                    token = await self._fetch_report_token(tk.account_id)
-                    rows, _ = await self._fetch_report_rows(
+                    token = str(tk.token or "").strip() if use_cached_tokens else ""
+                    if not token:
+                        token = await self._fetch_report_token(tk.account_id)
+                except Exception as exc:
+                    return {
+                        "account_id": tk.account_id,
+                        "account_name": tk.account_name,
+                        "token": None,
+                        "rows": [],
+                        "error": str(exc),
+                        "error_stage": "token",
+                    }
+                try:
+                    fetcher = self._fetch_report_rows_resilient if resilient else self._fetch_report_rows
+                    rows, _ = await fetcher(
                         token=token,
                         advertiser_id=tk.account_id,
                         api_path=api_path,
@@ -2116,14 +2359,16 @@ class XHSService:
                         "token": token,
                         "rows": rows,
                         "error": None,
+                        "error_stage": None,
                     }
-                except Exception as e:
+                except Exception as exc:
                     return {
                         "account_id": tk.account_id,
                         "account_name": tk.account_name,
-                        "token": None,
+                        "token": token,
                         "rows": [],
-                        "error": str(e),
+                        "error": str(exc),
+                        "error_stage": "report",
                     }
 
         fetched_results = await asyncio.gather(*(fetch_account_report(tk) for tk in token_rows))
@@ -2136,9 +2381,20 @@ class XHSService:
 
             error = result.get("error")
             if error:
-                tk.token_status = "失败"
-                tk.token_message = str(error)
-                errors.append(f"{tk.account_name}: {error}")
+                error_stage = str(result.get("error_stage") or "report")
+                if error_stage == "token" or self._is_report_authorization_error(error):
+                    tk.token_status = "失败"
+                    tk.token_message = str(error)
+                error_message = f"{tk.account_id} {tk.account_name}: {error}"
+                errors.append(error_message)
+                failed_accounts.append(
+                    {
+                        "account_id": str(tk.account_id),
+                        "account_name": str(tk.account_name or ""),
+                        "stage": error_stage,
+                        "error": str(error),
+                    }
+                )
                 continue
 
             token = str(result.get("token") or "")
@@ -2205,6 +2461,21 @@ class XHSService:
                 for row in insert_rows
             }
 
+            if preserve_existing_on_empty and existing_rows and not incoming_by_key:
+                warning = (
+                    f"{tk.account_id} {tk.account_name}: 接口返回空数据，"
+                    f"已保留 {len(existing_rows)} 行现有数据"
+                )
+                errors.append(warning)
+                preserved_empty_accounts.append(
+                    {
+                        "account_id": str(tk.account_id),
+                        "account_name": str(tk.account_name or ""),
+                        "preserved_rows": str(len(existing_rows)),
+                    }
+                )
+                continue
+
             stale_ids = [
                 row.id
                 for key, row in existing_by_key.items()
@@ -2232,41 +2503,40 @@ class XHSService:
             updated_rows += len(insert_rows)
             updated_accounts += 1
         await self.db.commit()
-        if changed_rows and report_type in {"creative", "simple", "simple_note", "standard_note"}:
-            await self.backfill_promoted_flags_from_reports(start_date=start_d, end_date=end_d)
         aggregate_result: dict[str, int] | None = None
         aggregate_error: str | None = None
-        if changed_rows:
-            try:
-                aggregate_result = await self.refresh_xhs_ad_aggregates(
-                    report_type=report_type,
-                    start_date=start_d,
-                    end_date=end_d,
-                    account_id=account_id,
-                )
-                try:
-                    from app.services.xhs_ad_dashboard_service import invalidate_ad_dashboard_caches
-
-                    invalidate_ad_dashboard_caches()
-                except Exception as cache_exc:
-                    logger.warning("投流看板缓存清理失败: %s", cache_exc)
-            except Exception as exc:
-                aggregate_error = str(exc)
-                logger.exception(
-                    "投流聚合表刷新失败: report_type=%s start=%s end=%s account_id=%s",
-                    report_type,
-                    start_d,
-                    end_d,
-                    account_id,
-                )
+        if changed_rows and not defer_post_processing:
+            finalized = await self.finalize_jg_report_refresh(
+                report_types=[report_type],
+                start_date=start_d,
+                end_date=end_d,
+                account_id=account_id,
+            )
+            aggregate_result = finalized.get("aggregates", {}).get(report_type)
+            if finalized.get("errors"):
+                aggregate_error = " | ".join(str(item) for item in finalized["errors"])
         return {
             "report_type": report_type,
             "start_date": start_date,
             "end_date": end_date,
             "account_id": account_id,
             "updated_accounts": updated_accounts,
+            "attempted_accounts": len(token_rows),
+            "configured_accounts": len(configured_token_rows),
+            "skipped_token_accounts": [
+                {
+                    "account_id": str(tk.account_id),
+                    "account_name": str(tk.account_name or ""),
+                    "token_status": str(tk.token_status or ""),
+                    "token_message": str(tk.token_message or ""),
+                }
+                for tk in skipped_token_rows
+            ],
             "updated_rows": updated_rows,
             "changed_rows": changed_rows,
+            "failed_accounts": failed_accounts,
+            "preserved_empty_accounts": preserved_empty_accounts,
+            "post_processing_deferred": bool(defer_post_processing and changed_rows),
             "aggregate_result": aggregate_result,
             "aggregate_error": aggregate_error,
             "errors": errors,
