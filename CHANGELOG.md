@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.18] - 2026-09-02
+
+### Fixed
+
+- Scheduled Creator Center synchronization now excludes browser runner environments with the same rule used by the execution service.
+- Incomplete Xiaohongshu account configurations are skipped during scheduled preflight instead of aborting the entire account batch.
+- Accounts that fail the first Creator Center pass are retried once without rerunning successful accounts.
+
 ## [0.3.16] - 2026-08-24
 
 ### Fixed

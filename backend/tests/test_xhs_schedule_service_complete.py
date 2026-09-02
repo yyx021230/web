@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from app.db.session import async_session as session_factory
+from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_report import XHSReportDaily
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.services import xhs_schedule_service as module
@@ -23,14 +24,67 @@ from app.services.xhs_schedule_service import (
     _is_due,
     _normalize_run_time,
     _normalize_task_config,
+    _partition_creator_sync_targets,
     _report_conversion_value,
     _report_metric_value,
     _resolve_ad_refresh_date_range,
+    _resolve_target_environment_ids,
     _scope_label,
     _scheduled_time_today,
     due_xhs_schedule_task_keys,
     trigger_xhs_scheduled_task,
 )
+
+
+@pytest.mark.asyncio
+async def test_account_schedule_excludes_sync_runners_and_incomplete_accounts(client):
+    async with session_factory() as db:
+        complete = XHSEnvironment(
+            shop_id="creator-complete",
+            account_name="配置完整账号",
+            xhs_account_id="123456789",
+            login_phone_number="+86 190-6712-5562",
+            xhs_account_type="enterprise_professional",
+            is_sync_runner=False,
+            status="active",
+        )
+        legacy_runner = XHSEnvironment(
+            shop_id="legacy-test-runner",
+            account_name="测试2",
+            is_sync_runner=False,
+            status="active",
+        )
+        incomplete = XHSEnvironment(
+            shop_id="creator-incomplete",
+            account_name="配置缺失账号",
+            xhs_account_id="",
+            login_phone_number="",
+            xhs_account_type="enterprise_employee",
+            is_sync_runner=False,
+            status="active",
+        )
+        db.add_all([complete, legacy_runner, incomplete])
+        await db.commit()
+        await db.refresh(complete)
+        await db.refresh(legacy_runner)
+        await db.refresh(incomplete)
+
+        resolved = await _resolve_target_environment_ids(
+            db,
+            {
+                "target_scope": "environment_ids",
+                "target_environment_ids": [complete.id, legacy_runner.id, incomplete.id],
+            },
+        )
+        eligible, skipped, names = await _partition_creator_sync_targets(db, resolved)
+
+    assert int(legacy_runner.id) not in resolved
+    assert eligible == [int(complete.id)]
+    assert names[int(complete.id)] == "配置完整账号"
+    assert len(skipped) == 1
+    assert skipped[0]["environment_id"] == int(incomplete.id)
+    assert "小红书ID" in skipped[0]["reason"]
+    assert "登录手机号" in skipped[0]["reason"]
 
 
 def test_schedule_configuration_normalization_and_helpers(monkeypatch):
@@ -247,11 +301,16 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
     async def load_admin(_db):
         return object()
 
+    async def partition_targets(_db, environment_ids):
+        assert environment_ids == [101, 102]
+        return [101, 102], [], {101: "账号101", 102: "账号102"}
+
     async def tag_batch(*_args, **_kwargs):
         return {"tagged_count": 2, "matched_count": 3}
 
     monkeypatch.setattr(module, "_resolve_target_environment_ids", resolve_ids)
     monkeypatch.setattr(module, "_load_system_admin_user", load_admin)
+    monkeypatch.setattr(module, "_partition_creator_sync_targets", partition_targets)
     monkeypatch.setattr(module, "_run_content_tag_batch", tag_batch)
 
     async with session_factory() as db:
@@ -272,7 +331,7 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
         assert "主页帖子" in result
         assert "补齐 4 条" in result
         assert "待创作者中心建档 3 条" in result
-        assert "创作中心主同步" in result
+        assert "创作者中心首轮成功 2/2" in result
         assert "未同步策略" in result
         assert "内容打标 2/3" in result
         assert _FakeXHSService.observed_calls[:2] == ["engagement", "posts"]
@@ -284,6 +343,70 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
             await _execute_account_data_sync(db, {"post_sync_enabled": True, "post_sync_runner_ids": []})
         with pytest.raises(ValueError, match="未同步策略"):
             await _execute_account_data_sync(db, {"post_sync_enabled": False, "detail_sync_enabled": True, "detail_runner_ids": []})
+
+
+@pytest.mark.asyncio
+async def test_creator_schedule_retries_only_first_pass_failures(client, monkeypatch):
+    class RetryingCreatorService:
+        target_batches: list[list[int]] = []
+
+        def __init__(self, _session):
+            pass
+
+        async def sync_account_note_engagements(self, **kwargs):
+            target_ids = list(kwargs["target_environment_ids"])
+            self.target_batches.append(target_ids)
+            if len(self.target_batches) == 1:
+                return {
+                    "synced_accounts": 1,
+                    "created_notes": 2,
+                    "updated_notes": 3,
+                    "failed_accounts": [
+                        {"environment_id": 102, "account_name": "账号102", "error": "首轮失败"},
+                    ],
+                }
+            return {
+                "synced_accounts": 1,
+                "created_notes": 1,
+                "updated_notes": 4,
+            }
+
+    async def resolve_ids(*_args, **_kwargs):
+        return [101, 102, 103]
+
+    async def partition_targets(_db, environment_ids):
+        assert environment_ids == [101, 102, 103]
+        return (
+            [101, 102],
+            [{"environment_id": 103, "account_name": "配置缺失账号", "reason": "未配置完整：登录手机号"}],
+            {101: "账号101", 102: "账号102", 103: "配置缺失账号"},
+        )
+
+    async def load_admin(_db):
+        return object()
+
+    RetryingCreatorService.target_batches = []
+    monkeypatch.setattr(module, "XHSService", RetryingCreatorService)
+    monkeypatch.setattr(module, "_resolve_target_environment_ids", resolve_ids)
+    monkeypatch.setattr(module, "_partition_creator_sync_targets", partition_targets)
+    monkeypatch.setattr(module, "_load_system_admin_user", load_admin)
+
+    async with session_factory() as db:
+        result = await _execute_account_data_sync(
+            db,
+            {
+                "post_sync_enabled": False,
+                "engagement_sync_enabled": True,
+                "yundeng_sync_concurrency": 5,
+            },
+        )
+
+    assert RetryingCreatorService.target_batches == [[101, 102], [102]]
+    assert "首轮成功 1/2" in result
+    assert "失败重试成功 1/1" in result
+    assert "最终失败 0" in result
+    assert "配置不全跳过 1" in result
+    assert "新增 3 条，更新 7 条" in result
 
 
 @pytest.mark.asyncio

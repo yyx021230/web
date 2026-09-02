@@ -333,16 +333,15 @@ async def _load_system_admin_user(db: AsyncSession) -> User:
 
 async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, Any]) -> list[int]:
     stmt = (
-        select(XHSEnvironment.id)
-        .where(
-            and_(
-                XHSEnvironment.status == "active",
-                or_(XHSEnvironment.is_sync_runner.is_(False), XHSEnvironment.is_sync_runner.is_(None)),
-            )
-        )
-        .order_by(XHSEnvironment.account_name.asc())
+        select(XHSEnvironment)
+        .where(XHSEnvironment.status == "active")
+        .order_by(XHSEnvironment.account_name.asc(), XHSEnvironment.id.asc())
     )
-    all_env_ids = [int(item) for item in (await db.execute(stmt)).scalars().all()]
+    all_env_ids = [
+        int(env.id)
+        for env in (await db.execute(stmt)).scalars().all()
+        if not XHSService._is_sync_runner_environment(env)
+    ]
     scope = str(config.get("target_scope") or "all")
     if scope == "environment_ids":
         selected = {int(item) for item in (config.get("target_environment_ids") or []) if int(item) > 0}
@@ -363,6 +362,125 @@ async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, An
         allowed = set(assigned_env_ids)
         return [env_id for env_id in all_env_ids if env_id in allowed]
     return all_env_ids
+
+
+def _normalize_creator_login_phone(value: object) -> str:
+    digits = "".join(character for character in str(value or "") if character.isdigit())
+    if len(digits) == 13 and digits.startswith("86"):
+        digits = digits[2:]
+    return digits
+
+
+def _creator_sync_configuration_issues(env: XHSEnvironment) -> list[str]:
+    issues: list[str] = []
+    if not str(env.account_name or "").strip():
+        issues.append("账号名称")
+    if not str(env.xhs_account_id or "").strip():
+        issues.append("小红书ID")
+    if len(_normalize_creator_login_phone(env.login_phone_number)) != 11:
+        issues.append("登录手机号")
+    if str(env.xhs_account_type or "").strip() not in {
+        "enterprise_professional",
+        "enterprise_employee",
+        "personal",
+    }:
+        issues.append("账号类型")
+    return issues
+
+
+async def _partition_creator_sync_targets(
+    db: AsyncSession,
+    target_environment_ids: list[int],
+) -> tuple[list[int], list[dict[str, Any]], dict[int, str]]:
+    if not target_environment_ids:
+        return [], [], {}
+    rows = list(
+        (
+            await db.execute(
+                select(XHSEnvironment)
+                .where(XHSEnvironment.id.in_(target_environment_ids))
+                .order_by(XHSEnvironment.account_name.asc(), XHSEnvironment.id.asc())
+            )
+        ).scalars().all()
+    )
+    rows_by_id = {int(row.id): row for row in rows}
+    eligible_ids: list[int] = []
+    skipped: list[dict[str, Any]] = []
+    account_names: dict[int, str] = {}
+    for environment_id in target_environment_ids:
+        env = rows_by_id.get(int(environment_id))
+        if env is None:
+            continue
+        account_names[int(env.id)] = str(env.account_name or "").strip() or f"环境{env.id}"
+        issues = _creator_sync_configuration_issues(env)
+        if issues:
+            skipped.append(
+                {
+                    "environment_id": int(env.id),
+                    "account_name": account_names[int(env.id)],
+                    "reason": f"未配置完整：{'、'.join(issues)}",
+                }
+            )
+            continue
+        eligible_ids.append(int(env.id))
+    return eligible_ids, skipped, account_names
+
+
+def _failed_creator_environment_ids(result: dict[str, Any]) -> list[int]:
+    failed_ids: list[int] = []
+    seen: set[int] = set()
+    for item in result.get("failed_accounts") or []:
+        try:
+            environment_id = int(item.get("environment_id") or 0)
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if environment_id > 0 and environment_id not in seen:
+            seen.add(environment_id)
+            failed_ids.append(environment_id)
+    return failed_ids
+
+
+async def _run_creator_sync_pass(
+    service: XHSService,
+    *,
+    admin_user: User,
+    target_environment_ids: list[int],
+    concurrency: int,
+    account_names: dict[int, str],
+) -> dict[str, Any]:
+    if not target_environment_ids:
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "failed_accounts": [],
+        }
+    try:
+        return await service.sync_account_note_engagements(
+            user=admin_user,
+            environment_id=None,
+            target_environment_ids=target_environment_ids,
+            sync_account_limit=len(target_environment_ids),
+            concurrency=concurrency,
+        )
+    except Exception as exc:
+        logger.exception(
+            "创作者中心批次执行异常，批次内账号统一记为失败: target_environment_ids=%s",
+            target_environment_ids,
+        )
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "failed_accounts": [
+                {
+                    "environment_id": environment_id,
+                    "account_name": account_names.get(environment_id, f"环境{environment_id}"),
+                    "error": str(exc),
+                }
+                for environment_id in target_environment_ids
+            ],
+        }
 
 
 async def _run_content_tag_batch(
@@ -556,19 +674,50 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
     if normalized["engagement_sync_enabled"]:
         if target_env_ids:
             admin_user = await _load_system_admin_user(session)
-            result = await service.sync_account_note_engagements(
-                user=admin_user,
-                environment_id=None,
-                target_environment_ids=target_env_ids,
-                sync_account_limit=len(target_env_ids),
+            eligible_env_ids, skipped_configs, account_names = await _partition_creator_sync_targets(
+                session,
+                target_env_ids,
+            )
+            if skipped_configs:
+                logger.info(
+                    "创作者中心定时同步预检跳过配置不全账号: %s",
+                    json.dumps(skipped_configs, ensure_ascii=False),
+                )
+            first_result = await _run_creator_sync_pass(
+                service,
+                admin_user=admin_user,
+                target_environment_ids=eligible_env_ids,
                 concurrency=int(normalized["yundeng_sync_concurrency"]),
+                account_names=account_names,
+            )
+            first_failed_ids = _failed_creator_environment_ids(first_result)
+            retry_result = await _run_creator_sync_pass(
+                service,
+                admin_user=admin_user,
+                target_environment_ids=first_failed_ids,
+                concurrency=int(normalized["yundeng_sync_concurrency"]),
+                account_names=account_names,
+            )
+            remaining_failed_ids = _failed_creator_environment_ids(retry_result)
+            first_synced = int(first_result.get("synced_accounts") or 0)
+            retry_synced = int(retry_result.get("synced_accounts") or 0)
+            created_notes = int(first_result.get("created_notes") or 0) + int(retry_result.get("created_notes") or 0)
+            updated_notes = int(first_result.get("updated_notes") or 0) + int(retry_result.get("updated_notes") or 0)
+            final_failure_summary = (
+                f"最终异常 {len(remaining_failed_ids)} 个"
+                if remaining_failed_ids
+                else "最终失败 0 个"
             )
             summary_parts.append(
-                f"创作中心主同步 {result.get('synced_accounts', 0)} 个账号，"
-                f"新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
+                f"创作者中心首轮成功 {first_synced}/{len(eligible_env_ids)} 个账号，"
+                f"失败 {len(first_failed_ids)} 个；"
+                f"失败重试成功 {retry_synced}/{len(first_failed_ids)} 个，"
+                f"{final_failure_summary}；"
+                f"配置不全跳过 {len(skipped_configs)} 个；"
+                f"新增 {created_notes} 条，更新 {updated_notes} 条"
             )
         else:
-            summary_parts.append("创作中心主同步 0 个账号")
+            summary_parts.append("创作者中心首轮成功 0/0 个账号，失败重试 0 个")
 
     # Creator-center export owns the post inventory and metrics. Homepage sync
     # follows it only to resolve feed IDs and enrich content-related fields.
