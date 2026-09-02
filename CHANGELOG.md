@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.19] - 2026-09-02
+
+### Fixed
+
+- Release packaging and Windows deployment now reject artifacts that omit the executable Xiaohongshu MCP binary.
+
 ## [0.3.18] - 2026-09-02
 
 ### Fixed

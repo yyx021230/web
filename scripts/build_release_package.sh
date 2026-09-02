@@ -5,6 +5,17 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 version="${1:?usage: build_release_package.sh VERSION [OUTPUT_PATH]}"
 commit="$(git -C "$repo_root" rev-parse --short HEAD)"
 output="${2:-/tmp/web-${version}-${commit}.tar.gz}"
+mcp_binary="${repo_root}/backend/bin/xiaohongshu-mcp"
+
+if [[ ! -x "$mcp_binary" ]]; then
+  echo "release package requires executable ${mcp_binary}; run deploy-to-windows.sh or build the linux/amd64 MCP binary first" >&2
+  exit 1
+fi
+
+if [[ ! -s "$mcp_binary" ]]; then
+  echo "release MCP binary is empty: ${mcp_binary}" >&2
+  exit 1
+fi
 
 export COPYFILE_DISABLE=1
 

@@ -143,6 +143,13 @@ tar -xzf $PackagePath -C $stagingRoot
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract release package" }
 Get-ChildItem $stagingRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction Stop
+$stagedMcpBinary = Join-Path $stagingRoot "backend\bin\xiaohongshu-mcp"
+if (-not (Test-Path $stagedMcpBinary -PathType Leaf)) {
+    throw "Release package is missing backend/bin/xiaohongshu-mcp"
+}
+if ((Get-Item $stagedMcpBinary).Length -lt 1MB) {
+    throw "Release MCP binary is unexpectedly small; refusing deployment"
+}
 
 $rootEnvPath = Join-Path $ProjectRoot ".env"
 $backendEnvPath = Join-Path $ProjectRoot "backend\.env"
@@ -240,6 +247,10 @@ try {
     docker run --rm --entrypoint python $candidateBackendImage -m compileall -q -f /app/app
     if ($LASTEXITCODE -ne 0) {
         throw "Candidate backend image contains invalid Python source"
+    }
+    docker run --rm --entrypoint /bin/sh $candidateBackendImage -c "test -x /app/bin/xiaohongshu-mcp"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Candidate backend image is missing executable /app/bin/xiaohongshu-mcp"
     }
 
     # The candidate is ready. Close the user entrypoint only for the final
