@@ -60,3 +60,12 @@
 
 依据：[Alembic 命名操作](https://alembic.sqlalchemy.org/en/latest/naming.html)、
 [SQLAlchemy 长名称截断](https://docs.sqlalchemy.org/en/20/core/constraints.html#truncation-of-long-names)。
+
+## 已获准的对外图片地址适配
+
+真实 Windows 验收任务 #1 已一次完成，Worker 用 Docker 内部地址下载和 OCR 正常；浏览器无法解析
+`http://backend:8000/uploads/...`。用户批准后，仅在 `serialize_post` 的响应副本中映射成图及母图：
+已知 `backend:8000` / `hermes-api:8000` 的 HTTP `/uploads/` 地址转换为同源路径。
+不写回数据库、不变更内容或版本、不改变 Worker 下载路径，外部车型图地址保持不变。
+新增 16 项边界/不变性检查，与工作流和 API 生命周期回归共 **51 项通过**。
+此修复只需重建及重新加载新 Hermes API；原 API/AI Worker/网页/数据库不重启，不重新生图。

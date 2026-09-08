@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import HTTPException
 from sqlalchemy import String, case, func, or_, select, update
@@ -91,7 +92,34 @@ def text_change(before: str | None, after: str) -> dict[str, Any]:
     return {'before': old, 'after': after, 'segments': segments}
 
 
+def browser_image_url(value: str | None) -> str | None:
+    """Expose known Docker storage URLs through the existing same-origin proxy.
+
+    Leave persisted provenance and Worker download URLs untouched. External
+    image providers, relative URLs and unrelated internal paths are not remapped.
+    """
+    if not value:
+        return value
+    try:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme == "http"
+            and parsed.hostname in {"backend", "hermes-api"}
+            and parsed.port == 8000
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.path.startswith("/uploads/")
+        ):
+            return urlunsplit(("", "", parsed.path, parsed.query, parsed.fragment))
+    except ValueError:
+        pass
+    return value
+
+
 def serialize_post(post: HermesWorkflowPost) -> dict[str, Any]:
+    source_detail = dict(post.source_detail or {})
+    if isinstance(source_detail.get("selected_prompt_image"), str):
+        source_detail["selected_prompt_image"] = browser_image_url(source_detail["selected_prompt_image"])
     return {
         "id": post.id,
         "run_id": post.run_id,
@@ -104,11 +132,11 @@ def serialize_post(post: HermesWorkflowPost) -> dict[str, Any]:
         "status": post.status,
         "title": post.title,
         "content": post.content,
-        "image_url": post.image_url,
+        "image_url": browser_image_url(post.image_url),
         "hard_pass": bool(post.hard_pass),
         "version": post_version(post),
         "revision": int((post.source_detail or {}).get('revision', 1)),
-        "source_detail": post.source_detail or {},
+        "source_detail": source_detail,
         "review_comment": post.review_comment,
         "reviewed_by": post.reviewed_by,
         "reviewed_at": _iso(post.reviewed_at),
