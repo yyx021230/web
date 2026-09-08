@@ -3,14 +3,7 @@
 services:
   hermes-frontend:
     image: ztqc/frontend:0.3.20
-    build:
-      context: ./frontend
-      args:
-        NODE_IMAGE: node:20.19.4-alpine3.22
-        BACKEND_ORIGIN: http://backend:8000
-        HERMES_BACKEND_ORIGIN: http://hermes-api:8000
-        NEXT_PUBLIC_API_BASE: /api/backend
-        NEXT_PUBLIC_APP_VERSION: "0.3.20"
+    # Image-only: never rebuild this service from the unchanged legacy checkout.
     restart: unless-stopped
     ports:
       - "127.0.0.1:3101:3000"
