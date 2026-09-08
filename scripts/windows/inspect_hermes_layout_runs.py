@@ -1,10 +1,12 @@
 """Read-only, credential-free checkpoint summary for two acceptance runs."""
 import argparse
 import json
+import sys
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--content', action='store_true')
+parser.add_argument('--image-status', action='store_true')
 args = parser.parse_args()
 results = []
 for run_id in (2, 3):
@@ -27,6 +29,13 @@ for run_id in (2, 3):
             row.update(title=copy.get('title'), content=copy.get('content'),
                        image_text_blocks=plan.get('text_blocks'), adapted_prompt=plan.get('adapted_prompt'),
                        ocr_lines=image.get('ocr_lines'), copy_validation=copy.get('validation'))
+        if args.image_status and image.get('task_id'):
+            sys.path.insert(0, '/app/web/ops/xhs_hermes')
+            from run_daily_8x5 import OnlineData, request_json
+            online = OnlineData()
+            response = request_json(f"{online.backend}/ai-image/tasks/{image['task_id']}", headers=online.auth)
+            status = response.get('data', response)
+            row['backend_image'] = {key: status.get(key) for key in ('task_id', 'status', 'error', 'created_at', 'updated_at', 'image_url')}
         posts.append(row)
     results.append({'run_id': run_id, 'updated_at': state.get('updated_at'), 'posts': posts})
 print(json.dumps(results))
