@@ -19,7 +19,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("publish_target_environment_id", sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column("scheduled_publish_at", sa.DateTime(), nullable=True))
         batch_op.create_foreign_key(
-            "fk_hermes_workflow_posts_publish_target_environment_id_xhs_environments",
+            op.f("fk_hermes_workflow_posts_publish_target_environment_id_xhs_environments"),
             "xhs_environments",
             ["publish_target_environment_id"],
             ["id"],
@@ -43,7 +43,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_hermes_workflow_posts_publish_target_environment_id"), table_name="hermes_workflow_posts")
     with op.batch_alter_table("hermes_workflow_posts") as batch_op:
         batch_op.drop_constraint(
-            "fk_hermes_workflow_posts_publish_target_environment_id_xhs_environments",
+            op.f("fk_hermes_workflow_posts_publish_target_environment_id_xhs_environments"),
             type_="foreignkey",
         )
         batch_op.drop_column("scheduled_publish_at")

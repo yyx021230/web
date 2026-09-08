@@ -47,3 +47,16 @@
 ## 验收记录
 
 实际构建、恢复、迁移、切换与真实任务结果在执行后补记。此文档不是上线成功声明。
+
+## PostgreSQL 命名兼容修正
+
+恢复副本演练发现 `c3d4e5f6a7b8` 中显式外键名超过 PostgreSQL 的 63 字符限制。
+用户明确允许修正后，创建和删除统一使用 `op.f(...)`：SQLAlchemy 在 PostgreSQL 中生成
+确定的短名称，在 SQLite 中保留原完整名称，避免破坏已经迁移过的本地数据库回退。
+只处理命名，不改变列、外键关系、车型、文案、生图或业务数据。
+
+新增 PG 方言的创建/删除同名及长度校验、SQLite 原名兼容校验；与 SQLite 全量升降迁移
+合计 3 项测试通过。仍必须继续在 Windows 的真实 PostgreSQL 恢复副本完成迁移演练。
+
+依据：[Alembic 命名操作](https://alembic.sqlalchemy.org/en/latest/naming.html)、
+[SQLAlchemy 长名称截断](https://docs.sqlalchemy.org/en/20/core/constraints.html#truncation-of-long-names)。
