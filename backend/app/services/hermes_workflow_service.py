@@ -310,7 +310,7 @@ class HermesWorkflowService:
         commit: bool = True,
     ) -> HermesWorkflowRun:
         account_plans: list[dict[str, Any]] = []
-        from app.services.hermes_reference_types import validate_type, COPY_TYPES, IMAGE_TYPES, TAXONOMY_VERSION
+        from app.services.hermes_reference_types import validate_type, type_requires_quote_data, COPY_TYPES, IMAGE_TYPES, TAXONOMY_VERSION
         try:
             validate_type('copy', copy_type)
             validate_type('image', image_type)
@@ -340,7 +340,7 @@ class HermesWorkflowService:
             raise HTTPException(status_code=400, detail="单次任务最多生成40篇")
         model_names = {model for account in account_plans for model in account['vehicle_models']}
         snapshots = [p for p in policy_summaries() if p['vehicle_model'] in model_names]
-        if image_type in {'多配置报价单', 'quote_table'} and any(
+        if type_requires_quote_data(image_type) and any(
             not any(p['vehicle_model'] == model and p.get('allow_multi_config_quote') and p.get('quote_rows') for p in snapshots)
             for model in model_names
         ):

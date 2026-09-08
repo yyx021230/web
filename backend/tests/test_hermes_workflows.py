@@ -28,7 +28,8 @@ async def test_reference_catalog_preserves_originals_deduplicates_and_hides_priv
     response = await client.get('/api/v1/hermes-workflows/reference-types', headers=make_auth_headers(user_id))
     assert response.status_code == 200, response.text
     catalog = response.json()['data']
-    assert len(catalog['copy_types']) == len(catalog['image_types']) == 7
+    assert len(catalog['copy_types']) == 7
+    assert len(catalog['image_types']) == 9
     copy = next(t for t in catalog['copy_types'] if t['id'] == 'drive_review')
     assert copy['reference_count'] == 1
     assert copy['examples'][0]['content'] == content

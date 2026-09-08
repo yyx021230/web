@@ -14,7 +14,7 @@ from app.core.roles import has_role
 from app.models.copywriting import Copywriting
 from app.models.prompt import PromptCategory, PromptExample
 from app.models.user import User
-from app.services.hermes_reference_types import COPY_TYPES, IMAGE_TYPES, TAXONOMY_VERSION, classify_copy, classify_image
+from app.services.hermes_reference_types import COPY_TYPES, IMAGE_TYPES, TAXONOMY_VERSION, classify_copy, image_layout_analysis, approved_image_section
 
 logger = logging.getLogger(__name__)
 
@@ -79,9 +79,10 @@ async def reference_catalog(db: AsyncSession, user: User) -> dict[str, Any]:
             seen.add(fingerprint)
             groups[category].append(row)
     for item in images + sections:
+        item = approved_image_section(item)
         if not item.get('id') or not (item.get('image_url') or item.get('source_section_title')) or not isinstance(item.get('chinese'), str):
             continue
-        url = str(item.get('image_url') or '')
+        url = '' if item.get('source_image_matches_section') is False else str(item.get('image_url') or '')
         if url.startswith('/'):
             url = str(settings.uploads_public_base_url or '').rstrip('/') + url
         # No arbitrary schemes in an example image/link supplied from the library.
@@ -91,7 +92,9 @@ async def reference_catalog(db: AsyncSession, user: User) -> dict[str, Any]:
         row = {'id': item['id'], 'title': item.get('name') or item.get('title') or f'提示词 #{item["id"]}', 'content': item['chinese'], 'chinese': item['chinese'], 'image_url': url, 'kind': 'image'}
         if item.get('source_section_title'):
             row.update(source_section_title=item['source_section_title'], preview_note=item.get('preview_note'))
-        category = item.get('preview_type') if item.get('preview_type') in {item['id'] for item in IMAGE_TYPES} else classify_image(row)
+        analysis = image_layout_analysis(row)
+        category = analysis['type']
+        row.update(classification_reason=analysis['reason'], style_tags=analysis['style_tags'], requires_quote_data=analysis['requires_quote_data'])
         fingerprint = 'image:' + hashlib.sha256(item['chinese'].strip().encode()).hexdigest()
         if category and fingerprint not in seen:
             seen.add(fingerprint)
@@ -101,13 +104,15 @@ async def reference_catalog(db: AsyncSession, user: User) -> dict[str, Any]:
         for definition in definitions:
             rows = groups[definition['id']]
             available = [row for row in rows if not row.get('image_url') or preview_available(row['image_url'])]
-            result.append({**definition, 'reference_count': len(rows), 'preview_count': len(available), 'examples': available[:3]})
+            result.append({**definition, 'reference_count': len(rows), 'preview_count': len(available),
+                           'requires_quote_data': bool(definition.get('requires_quote_data') or (rows and all(r.get('requires_quote_data') for r in rows))),
+                           'examples': available[:3]})
         return result
     return {
         'version': TAXONOMY_VERSION,
         'source': 'synced_online_library' if snapshot else 'current_web_library',
         'synced_at': snapshot['synced_at'] if snapshot else None,
-        'source_note': ('案例来自线上文案库/提示词库的只读预览缓存。' if snapshot else '案例来自当前 Web 本地文案库/提示词库。') + '按内容去重，仅演示类型，不是当前车型成品，也不代表 Worker 可生产数量；分类依据为原文/提示词，不是图片视觉审核。',
+        'source_note': ('案例来自线上文案库/提示词库的只读预览缓存。' if snapshot else '案例来自当前 Web 文案库/提示词库。') + '预览与生产共用版式分类；按原文去重，数字为归类数量，不是通过生产校验的数量。每例展示归类依据，不代表当前车型成品或逐图视觉验收；旧车型、旧政策不会直接沿用。',
         'copy_types': cards(COPY_TYPES), 'image_types': cards(IMAGE_TYPES),
         'library_counts': {'copy': len(copies), 'image': len(images)},
     }

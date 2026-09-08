@@ -58,6 +58,7 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
     setCounts(old => Object.fromEntries(Object.keys(old).map(id => [id, count])));
   }
   const quoteAllowed = policies.some(p => p.vehicle_model === selectedModels[0] && p.allow_multi_config_quote && p.quote_rows?.length);
+  const imageQuoteBlocked = (catalog?.image_types.find(t => t.id === imageType)?.requires_quote_data || ['quote_table', 'quote_cards'].includes(imageType)) && !quoteAllowed;
   function toggleAccount(id: number) {
     setCounts(old => { const next = { ...old }; if (next[id]) delete next[id]; else { if (Object.keys(next).length >= 8) { toast.error('最多选择8个账号'); return old; } next[id] = uniformCount === 'custom' ? defaultCount : Number(uniformCount); } return next; });
   }
@@ -66,7 +67,7 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
     event.preventDefault(); if (lock.current) return;
     if (!total || !selectedModels.length) return toast.error('请选择账号、篇数与车型');
     if (single && (!copyType || !imageType)) return toast.error('请分别选择文案方向与图片版式');
-    if (single && imageType === 'quote_table' && !quoteAllowed) return toast.error('该车型没有完整配置报价信息');
+    if (single && imageQuoteBlocked) return toast.error('该车型没有完整配置报价信息');
     lock.current = true; setSubmitting(true);
     try {
       const payload = { instruction: instruction.trim() || undefined };
@@ -106,13 +107,13 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
         </div>
         {single && (catalog ? <div className={s.typePair}><HermesTypeChoice kind="copy" type={catalog.copy_types.find(t => t.id === copyType)} onClick={() => setPicker('copy')} /><HermesTypeChoice kind="image" type={catalog.image_types.find(t => t.id === imageType)} onClick={() => setPicker('image')} /></div> : <div className={s.notice}>{catalogError || '正在加载文案方向、图片版式与真实案例…'}{catalogError && <button type="button" className={s.textButton} onClick={loadCatalog}>重试案例</button>}</div>)}
         </div>
-        {single && imageType === 'quote_table' && !quoteAllowed && <p className={`${s.notice} ${s.error}`}>当前车型未提供完整的分配置报价，请更换版式或选择资料完整的车型。</p>}
+        {single && imageQuoteBlocked && <p className={`${s.notice} ${s.error}`}>当前车型未提供完整的分配置报价，请更换版式或选择资料完整的车型。</p>}
         {!single && selectedCounts.length > 0 && <div className={s.accountPlan} aria-label="各账号生产篇数预览">{accounts.filter(a => counts[a.id]).map(a => <span key={a.id} className={s.accountChip}>{a.name}<b>{counts[a.id]} 篇</b></span>)}</div>}
         {advanced && <div className={s.preference}>
           <label className={s.label}>创作偏好（可选）<textarea className={s.input} aria-describedby="hermes-preference-help" rows={2} maxLength={1000} value={instruction} onChange={e => setInstruction(e.target.value)} placeholder="例如：在母文已有内容内侧重通勤；图片光线稍偏傍晚" /></label>
           <p id="hermes-preference-help" className={s.muted}>偏好仅供参考，不改变母文结构与事实依据；车型、篇数和类型以上方选项为准。</p>
         </div>}
-        <div className={s.composerBottom}><div className={s.accountMemoryHint} title="参考所选账号最近 15 条已同步内容，避开高度重复；保留母文结构。"><History size={14} /><span>近 15 篇去重参考</span></div><div className={s.submitGroup}>{!single && <span className={s.small}>{selectedCounts.length} 个账号 · <b>{total}</b> 篇</span>}<button className={s.primary} disabled={submitting || loading || !!error || !total || !selectedModels.length || (single && (!catalog || !copyType || !imageType || (imageType === 'quote_table' && !quoteAllowed)))}>{submitting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}下发 {total || (single ? 1 : 0)} 篇任务</button></div></div>
+        <div className={s.composerBottom}><div className={s.accountMemoryHint} title="参考所选账号最近 15 条已同步内容，避开高度重复；保留母文结构。"><History size={14} /><span>近 15 篇去重参考</span></div><div className={s.submitGroup}>{!single && <span className={s.small}>{selectedCounts.length} 个账号 · <b>{total}</b> 篇</span>}<button className={s.primary} disabled={submitting || loading || !!error || !total || !selectedModels.length || (single && (!catalog || !copyType || !imageType || imageQuoteBlocked))}>{submitting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}下发 {total || (single ? 1 : 0)} 篇任务</button></div></div>
       </>}
     </form>
     <HermesCreationHistory key={single ? 'single' : 'batch'} mode={single ? 'single' : 'batch'} refreshKey={refreshKey} accounts={accounts} />

@@ -56,8 +56,8 @@ export interface HermesPost {
   scheduled_publish_at?: string | null;
 }
 
-export interface HermesReferenceExample { id: number; title: string; content: string; image_url?: string; preview_note?: string; source_section_title?: string; kind: 'copy' | 'image'; }
-export interface HermesReferenceType { id: string; name: string; description: string; structure: string; accent: string; reference_count: number; preview_count: number; examples: HermesReferenceExample[]; }
+export interface HermesReferenceExample { id: number; title: string; content: string; image_url?: string; preview_note?: string; source_section_title?: string; classification_reason?: string; style_tags?: string[]; requires_quote_data?: boolean; kind: 'copy' | 'image'; }
+export interface HermesReferenceType { id: string; name: string; description: string; structure: string; accent: string; reference_count: number; preview_count: number; requires_quote_data?: boolean; examples: HermesReferenceExample[]; }
 export interface HermesReferenceCatalog { version: string; source: string; synced_at?: string | null; source_note: string; copy_types: HermesReferenceType[]; image_types: HermesReferenceType[]; library_counts: { copy: number; image: number }; }
 
 export interface HermesRun {

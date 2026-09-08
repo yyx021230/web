@@ -208,7 +208,7 @@ describe('Hermes creation frontend interactions', () => {
     expect(host.querySelector('[role="dialog"]')?.textContent).toContain('请调整第二段');
   });
 
-  it('provides distinct schematic previews for all 7 copy and 7 image directions', async () => {
+  it('provides distinct schematic previews for all 7 copy and 9 image directions', async () => {
     const signatures = new Set<string>();
     for (const id of PREVIEW_TYPES) {
       await render(React.createElement(HermesTypePreview, { id }));
@@ -216,7 +216,7 @@ describe('Hermes creation frontend interactions', () => {
       expect(preview.getAttribute('aria-hidden')).toBe('true');
       signatures.add(preview.querySelector('svg')!.innerHTML);
     }
-    expect(signatures.size).toBe(14);
+    expect(signatures.size).toBe(16);
   });
 
   it('shows honest empty-case previews and keeps quote-table requirements intact', async () => {
@@ -226,10 +226,40 @@ describe('Hermes creation frontend interactions', () => {
     expect(button('使用多配置报价单')?.disabled).toBe(true);
     expect(host.textContent).toContain('结构示意 · 非母版');
     await click(host.querySelector('[aria-label="手账便签风"]'));
-    expect(host.textContent).toContain('本地暂无此类型案例');
+    expect(host.textContent).toContain('当前库内暂无此类型母版');
     expect(host.querySelectorAll('[data-type-preview="note_poster"]')).toHaveLength(2);
     await click(button('使用手账便签风'));
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'note_poster' }));
+    expect(button('使用手账便签风')?.disabled).toBe(true);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('keeps card quote prices gated and shows actual classification evidence', async () => {
+    const onSelect = vi.fn();
+    const card = { ...reference('quote_cards', '卡片报价单'), requires_quote_data: true, examples: [{ id: 335, kind: 'image' as const, title: '真实报价卡', content: '原始提示词', classification_reason: '四个配置分别放入报价卡，不是便签拼贴', style_tags: ['棚拍 / 渐变'] }] };
+    const catalog = { version: 'reference-types-v3-layout', source: 'test', library_counts: { copy: 0, image: 1 }, copy_types: [], image_types: [card], source_note: '共用分类规则' };
+    await render(React.createElement(HermesTypePicker, { kind: 'image', catalog, value: 'quote_cards', quoteAllowed: false, onSelect, onClose: vi.fn() }));
+    expect(button('使用卡片报价单')?.disabled).toBe(true);
+    expect(host.textContent).toContain('归类依据');
+    expect(host.textContent).toContain('四个配置分别放入报价卡');
+    expect(host.textContent).toContain('3 条归类参考');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('rechecks quote-card policy eligibility when the selected vehicle changes', async () => {
+    vi.mocked(hermesWorkflowApi.bootstrap).mockResolvedValue({ data: { accounts: [{ id: 42, name: '账号甲' }], vehicle_models: ['零跑A05', '零跑B10'], policies: [{ vehicle_model: '零跑A05', allow_multi_config_quote: true, quote_rows: [{}] }] } } as never);
+    vi.mocked(hermesWorkflowApi.referenceTypes).mockResolvedValue({ data: { copy_types: [reference('drive_review', '试驾测评')], image_types: [{ ...reference('quote_cards', '卡片报价单'), requires_quote_data: true }], source_note: '真实案例' } } as never);
+    await render(React.createElement(HermesCreator, { single: true }));
+    await select('创作账号', '42');
+    await select('生产车型', '零跑A05');
+    await click(host.querySelector('[aria-label="选择文案类型与实例"]'));
+    await click(button('使用试驾测评'));
+    await click(host.querySelector('[aria-label="选择图片类型与实例"]'));
+    await click(button('使用卡片报价单'));
+    expect(button('下发 1 篇任务')?.disabled).toBe(false);
+    await select('生产车型', '零跑B10');
+    expect(button('下发 1 篇任务')?.disabled).toBe(true);
+    expect(host.textContent).toContain('当前车型未提供完整的分配置报价');
+    expect(hermesWorkflowApi.createRun).not.toHaveBeenCalled();
   });
 
   it('shows image-load fallback without removing the copy', async () => {
