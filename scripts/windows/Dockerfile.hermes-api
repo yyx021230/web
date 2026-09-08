@@ -1,0 +1,10 @@
+# Dependencies and MCP binary exactly match the verified live 0.3.18 image.
+FROM ztqc/backend:0.3.18
+ARG APP_VERSION=0.3.20
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+ENV APP_VERSION=${APP_VERSION} GIT_COMMIT=${GIT_COMMIT} BUILD_TIME=${BUILD_TIME}
+COPY backend/app /app/app
+COPY backend/pyproject.toml /app/pyproject.toml
+COPY backend/alembic.ini /app/alembic.ini
+CMD ["uvicorn", "app.scripts.hermes_api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

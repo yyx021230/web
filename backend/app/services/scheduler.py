@@ -9,9 +9,26 @@ from app.config import settings
 from app.services.ai_image_service import AIImageService
 from app.services.xhs_schedule_service import due_xhs_schedule_task_keys, trigger_xhs_scheduled_task
 from app.services.xhs_service import XHSService
+from app.services.hermes_workflow_service import enqueue_due_hermes_runs
 from app.utils.timezone import cst_now_naive
 
 logger = logging.getLogger(__name__)
+
+
+async def hermes_workflow_schedule_loop(
+    session_factory: async_sessionmaker,
+    poll_seconds: int = 30,
+):
+    """Enqueue the administrator's daily Hermes 8×5 production batch."""
+    while True:
+        try:
+            async with session_factory() as session:
+                run_ids = await enqueue_due_hermes_runs(session)
+            for run_id in run_ids:
+                logger.info("已创建 Hermes 每日内容批次: run_id=%s", run_id)
+        except Exception:
+            logger.exception("Hermes 定时内容生产轮询失败")
+        await asyncio.sleep(max(15, int(poll_seconds or 30)))
 
 
 async def sync_task_loop(session_factory: async_sessionmaker, interval_hours: int = 12):

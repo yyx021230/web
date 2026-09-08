@@ -13,6 +13,7 @@ from app.models.vehicle_catalog import VehicleCatalog
 
 
 _SEED_CSV_FILE = Path(__file__).resolve().parents[1] / "data" / "cars_data.csv"
+_SEED_REFRESHED = False
 
 
 class VehicleCatalogService:
@@ -20,10 +21,15 @@ class VehicleCatalogService:
         self.db = db
 
     async def ensure_seeded(self) -> int:
+        global _SEED_REFRESHED
         count = await self.db.scalar(select(func.count(VehicleCatalog.id)))
-        if int(count or 0) > 0:
+        # Older databases may have been seeded from an earlier, incomplete CSV.
+        # Refresh once per process so newly added models are upserted as well.
+        if _SEED_REFRESHED and int(count or 0) > 0:
             return int(count or 0)
-        return await self.import_seed_csv(replace=False)
+        refreshed = await self.import_seed_csv(replace=False)
+        _SEED_REFRESHED = True
+        return refreshed
 
     async def import_seed_csv(self, *, replace: bool = False) -> int:
         if not _SEED_CSV_FILE.exists():

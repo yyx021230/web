@@ -11,6 +11,7 @@ TEST_DATABASE_PATH = Path(tempfile.gettempdir()) / f"ztqc-web-test-{os.getpid()}
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DATABASE_PATH}"
 os.environ["STORAGE_TYPE"] = "local"
 os.environ["STORAGE_PATH"] = "./test_uploads"
+os.environ["HERMES_REFERENCE_SNAPSHOT_PATH"] = ""
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing"
 os.environ["APP_ENV"] = "test"
 os.environ["DEPLOYMENT_ENVIRONMENT"] = "test"

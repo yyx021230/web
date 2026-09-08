@@ -20,7 +20,7 @@ const navItems = [
   { id: 'xhs', icon: Send, label: '小红书管理', href: '/admin/xhs' },
   { id: 'xhs-schedules', icon: Clock3, label: '定时任务', href: '/admin/xhs-schedules' },
   { id: 'xhs-buyers', icon: Target, label: '投手分配', href: '/admin/xhs-buyers' },
-  { id: 'workflows', icon: Workflow, label: '工作流与日志', href: '/admin/workflows' },
+  { id: 'workflows', icon: Workflow, label: 'Hermes 工作流', href: '/admin/workflows' },
   { id: 'ai-image', icon: Bot, label: '生图入口', href: '/admin/ai-image' },
   { id: 'tasks', icon: Activity, label: '任务中心', href: '/admin/tasks' },
   { id: 'projects', icon: FolderKanban, label: '项目管理', href: '/admin/projects' },

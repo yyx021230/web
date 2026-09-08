@@ -10,6 +10,7 @@ from app.api.v1.car_models import router as car_models_router
 from app.api.v1.copywritings import router as copywritings_router
 from app.api.v1.prompts import router as prompts_router
 from app.api.v1.xhs import router as xhs_router
+from app.api.v1.hermes_workflows import router as hermes_workflows_router
 from app.api.v1.admin.router import router as admin_router
 
 router = APIRouter()
@@ -20,6 +21,7 @@ router.include_router(materials_router, prefix="/materials", tags=["素材"])
 router.include_router(projects_router, prefix="/projects", tags=["项目"])
 router.include_router(ai_image_router, prefix="/ai-image", tags=["AI 生图"])
 router.include_router(workflows_router, prefix="/workflows", tags=["Dify 工作流"])
+router.include_router(hermes_workflows_router, prefix="/hermes-workflows", tags=["Hermes 内容工作流"])
 router.include_router(car_models_router, prefix="/car-models", tags=["车型库"])
 router.include_router(copywritings_router, prefix="/copywritings", tags=["文案库"])
 router.include_router(prompts_router, prefix="/prompts", tags=["提示词"])

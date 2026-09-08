@@ -1,0 +1,559 @@
+{
+  "a05-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑A05",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "405舒享版",
+        "official_guide_price": "¥63,900",
+        "national_scrappage_after_price": "¥56,232",
+        "provincial_trade_in_after_price": "¥58,788"
+      },
+      {
+        "configuration": "405悦享版",
+        "official_guide_price": "¥67,900",
+        "national_scrappage_after_price": "¥59,752",
+        "provincial_trade_in_after_price": "¥62,468"
+      },
+      {
+        "configuration": "510悦享版",
+        "official_guide_price": "¥75,900",
+        "national_scrappage_after_price": "¥66,792",
+        "provincial_trade_in_after_price": "¥69,828"
+      },
+      {
+        "configuration": "510激光雷达版",
+        "official_guide_price": "¥85,900",
+        "national_scrappage_after_price": "¥75,592",
+        "provincial_trade_in_after_price": "¥79,028"
+      },
+      {
+        "configuration": "510S",
+        "official_guide_price": "¥90,900",
+        "national_scrappage_after_price": "¥79,992",
+        "provincial_trade_in_after_price": "¥83,628"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑A05。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 63,900-90,900 · CLTC续航405/510km · 高通8295座舱芯片 · 6万级激光雷达智驾。厂家综合权益图标注值：¥10,680。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：405舒享版：官方指导价¥63,900；按报废更新12%测算后¥56,232；按置换更新8%测算后¥58,788。405悦享版：官方指导价¥67,900；按报废更新12%测算后¥59,752；按置换更新8%测算后¥62,468。510悦享版：官方指导价¥75,900；按报废更新12%测算后¥66,792；按置换更新8%测算后¥69,828。510激光雷达版：官方指导价¥85,900；按报废更新12%测算后¥75,592；按置换更新8%测算后¥79,028。510S：官方指导价¥90,900；按报废更新12%测算后¥79,992；按置换更新8%测算后¥83,628。外饰：限时免费享价值2,000元个性外饰色（含摩根粉、雾凇米、海苔绿）。选装基金：限时享1,000元黑色悬浮顶选装基金；限时享2,000元悦享套装选装基金（限405悦享版、510悦享版、510激光雷达版可享）。本品增换购补贴：3,000元（本品用户增换购A05，3,000元/台）。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年免费娱乐流量（4G/月）。售后权益：四项终身免费质保（限首任车主且非营运）：终身电池质保、终身电驱质保、终身电控质保、终身整车质保。金融贴息：至高享4.3万2年0息。金融方案：0利息：至高享4.3万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。新车型如涉及综合权益，只能写综合权益或综合权益价值，不能写综合权益优惠。地方补贴可以概括提及；只有引用政策表逐配置测算行并同时写清适用条件时，才允许出现相应测算金额。不能宣传门店有现车可提。"
+  },
+  "a10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑A10",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "403舒享版",
+        "official_guide_price": "¥65,800",
+        "national_scrappage_after_price": "¥57,904",
+        "provincial_trade_in_after_price": "¥60,536"
+      },
+      {
+        "configuration": "403悦享版",
+        "official_guide_price": "¥69,800",
+        "national_scrappage_after_price": "¥61,424",
+        "provincial_trade_in_after_price": "¥64,216"
+      },
+      {
+        "configuration": "505悦享版",
+        "official_guide_price": "¥76,800",
+        "national_scrappage_after_price": "¥67,584",
+        "provincial_trade_in_after_price": "¥70,656"
+      },
+      {
+        "configuration": "505激光雷达版",
+        "official_guide_price": "¥86,800",
+        "national_scrappage_after_price": "¥76,384",
+        "provincial_trade_in_after_price": "¥79,856"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑A10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 65,800-86,800 · CLTC续航403/505km · 100,000内激光雷达智驾。厂家综合权益图标注值：¥24,332。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：403舒享版：官方指导价¥65,800；按报废更新12%测算后¥57,904；按置换更新8%测算后¥60,536。403悦享版：官方指导价¥69,800；按报废更新12%测算后¥61,424；按置换更新8%测算后¥64,216。505悦享版：官方指导价¥76,800；按报废更新12%测算后¥67,584；按置换更新8%测算后¥70,656。505激光雷达版：官方指导价¥86,800；按报废更新12%测算后¥76,384；按置换更新8%测算后¥79,856。外饰：限时免费享价值2,000元个性外饰色（含海苔绿、橡果棕、毒毒蓝）。选装基金：限时赠送券500元18英寸活力运动轮毂选装基金（除505激光雷达版）；选悦享套装发放尾款抵扣券1,000元（仅限403悦享版）。本品增换购补贴：3,000元。等待交付礼：超出交付承诺周期超额的500能量积分/天（50元/天，封顶1000元）。金融贴息：至高2,238元。家充服务包：2,680元充电桩（不含安装，充电权益和交付礼包二选一）。售后权益：整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）、车机权益流量终身免费+2年娱乐流量（4G/月）。金融方案：0利息：至高享4.3万24期0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "b10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑B10",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "540舒享版",
+        "official_guide_price": "¥99,800",
+        "national_scrappage_after_price": "¥87,824",
+        "provincial_trade_in_after_price": "¥91,816"
+      },
+      {
+        "configuration": "540悦享版",
+        "official_guide_price": "¥109,800",
+        "national_scrappage_after_price": "¥96,624",
+        "provincial_trade_in_after_price": "¥101,016"
+      },
+      {
+        "configuration": "610悦享版",
+        "official_guide_price": "¥115,800",
+        "national_scrappage_after_price": "¥101,904",
+        "provincial_trade_in_after_price": "¥106,536"
+      },
+      {
+        "configuration": "540激光雷达版",
+        "official_guide_price": "¥119,800",
+        "national_scrappage_after_price": "¥105,424",
+        "provincial_trade_in_after_price": "¥110,216"
+      },
+      {
+        "configuration": "610激光雷达版",
+        "official_guide_price": "¥125,800",
+        "national_scrappage_after_price": "¥110,704",
+        "provincial_trade_in_after_price": "¥115,736"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑B10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新B10 · 指导价 99,800-125,800 · CLTC续航540/610km · 全域800V+3C快充。厂家综合权益图标注值：¥33,936。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：540舒享版：官方指导价¥99,800；按报废更新12%测算后¥87,824；按置换更新8%测算后¥91,816。540悦享版：官方指导价¥109,800；按报废更新12%测算后¥96,624；按置换更新8%测算后¥101,016。610悦享版：官方指导价¥115,800；按报废更新12%测算后¥101,904；按置换更新8%测算后¥106,536。540激光雷达版：官方指导价¥119,800；按报废更新12%测算后¥105,424；按置换更新8%测算后¥110,216。610激光雷达版：官方指导价¥125,800；按报废更新12%测算后¥110,704；按置换更新8%测算后¥115,736。选装礼：限时享6,000元双零重力舒适套装选装基金。外饰：B10限时免费享价值2,000元个性外饰色（风禾青、液态银）。本品增换购补贴：4,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量，享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）终身免费电池质保 终身免费电驱质保 终身免费电控质保 终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "b01-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑B01",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "590舒享版",
+        "official_guide_price": "¥95,800",
+        "national_scrappage_after_price": "¥84,304",
+        "provincial_trade_in_after_price": "¥88,136"
+      },
+      {
+        "configuration": "590悦享版",
+        "official_guide_price": "¥103,800",
+        "national_scrappage_after_price": "¥91,344",
+        "provincial_trade_in_after_price": "¥95,496"
+      },
+      {
+        "configuration": "670悦享版",
+        "official_guide_price": "¥109,800",
+        "national_scrappage_after_price": "¥96,624",
+        "provincial_trade_in_after_price": "¥101,016"
+      },
+      {
+        "configuration": "590激光雷达版",
+        "official_guide_price": "¥113,800",
+        "national_scrappage_after_price": "¥100,144",
+        "provincial_trade_in_after_price": "¥104,696"
+      },
+      {
+        "configuration": "670激光雷达版",
+        "official_guide_price": "¥119,800",
+        "national_scrappage_after_price": "¥105,424",
+        "provincial_trade_in_after_price": "¥110,216"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑B01。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新B01 · 指导价 95,800-119,800 · CLTC续航590/670km · 全域800V+3C快充。厂家综合权益图标注值：¥33,216。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：590舒享版：官方指导价¥95,800；按报废更新12%测算后¥84,304；按置换更新8%测算后¥88,136。590悦享版：官方指导价¥103,800；按报废更新12%测算后¥91,344；按置换更新8%测算后¥95,496。670悦享版：官方指导价¥109,800；按报废更新12%测算后¥96,624；按置换更新8%测算后¥101,016。590激光雷达版：官方指导价¥113,800；按报废更新12%测算后¥100,144；按置换更新8%测算后¥104,696。670激光雷达版：官方指导价¥119,800；按报废更新12%测算后¥105,424；按置换更新8%测算后¥110,216。选装礼：限时享6,000元双零重力舒适套装选装基金。外饰：B01限时免费享价值2,000元个性外饰色（云黛紫、液态银）。本品增换购补贴：4,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。售后权益：四项终身免费质保（限首任车主且非营运）终身免费电池质保 终身免费电驱质保 终身免费电控质保 终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "c10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C10",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程290智享版",
+        "official_guide_price": "¥125,800",
+        "national_scrappage_after_price": "¥110,704",
+        "provincial_trade_in_after_price": "¥115,736"
+      },
+      {
+        "configuration": "纯电660智享版",
+        "official_guide_price": "¥132,800",
+        "national_scrappage_after_price": "¥116,864",
+        "provincial_trade_in_after_price": "¥122,176"
+      },
+      {
+        "configuration": "增程290激光雷达版",
+        "official_guide_price": "¥135,800",
+        "national_scrappage_after_price": "¥119,504",
+        "provincial_trade_in_after_price": "¥124,936"
+      },
+      {
+        "configuration": "纯电660激光雷达版",
+        "official_guide_price": "¥142,800",
+        "national_scrappage_after_price": "¥125,664",
+        "provincial_trade_in_after_price": "¥131,376"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑C10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 125,800-142,800 · 增程290km/纯电660km · 中欧澳三大五星安全认证。厂家综合权益图标注值：¥36,976。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程290智享版：官方指导价¥125,800；按报废更新12%测算后¥110,704；按置换更新8%测算后¥115,736。纯电660智享版：官方指导价¥132,800；按报废更新12%测算后¥116,864；按置换更新8%测算后¥122,176。增程290激光雷达版：官方指导价¥135,800；按报废更新12%测算后¥119,504；按置换更新8%测算后¥124,936。纯电660激光雷达版：官方指导价¥142,800；按报废更新12%测算后¥125,664；按置换更新8%测算后¥131,376。选装礼：限时免费享6,000元悦境零压全配套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（含云栖金、曦露紫）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "c11-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C11",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程300激光雷达版",
+        "official_guide_price": "¥143,800",
+        "national_scrappage_after_price": "¥126,544",
+        "provincial_trade_in_after_price": "¥132,296"
+      },
+      {
+        "configuration": "纯电640智享版",
+        "official_guide_price": "¥143,800",
+        "national_scrappage_after_price": "¥126,544",
+        "provincial_trade_in_after_price": "¥132,296"
+      },
+      {
+        "configuration": "纯电640激光雷达版",
+        "official_guide_price": "¥149,800",
+        "national_scrappage_after_price": "¥131,824",
+        "provincial_trade_in_after_price": "¥137,816"
+      },
+      {
+        "configuration": "增程300激光雷达智尊版",
+        "official_guide_price": "¥153,800",
+        "national_scrappage_after_price": "¥135,344",
+        "provincial_trade_in_after_price": "¥141,496"
+      },
+      {
+        "configuration": "纯电640激光雷达智尊版",
+        "official_guide_price": "¥159,800",
+        "national_scrappage_after_price": "¥140,624",
+        "provincial_trade_in_after_price": "¥147,016"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑C11。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：C11 Plus · 指导价 143,800-159,800 · 增程300km/纯电640km · 前双叉臂+后五连杆 · 23扬PSS音响。厂家综合权益图标注值：¥38,016。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程300激光雷达版：官方指导价¥143,800；按报废更新12%测算后¥126,544；按置换更新8%测算后¥132,296。纯电640智享版：官方指导价¥143,800；按报废更新12%测算后¥126,544；按置换更新8%测算后¥132,296。纯电640激光雷达版：官方指导价¥149,800；按报废更新12%测算后¥131,824；按置换更新8%测算后¥137,816。增程300激光雷达智尊版：官方指导价¥153,800；按报废更新12%测算后¥135,344；按置换更新8%测算后¥141,496。纯电640激光雷达智尊版：官方指导价¥159,800；按报废更新12%测算后¥140,624；按置换更新8%测算后¥147,016。选装礼：智享版以及激光雷达版限时免费享5,000元悦境零压套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（云栖金）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "c16-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C16",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程280尊享版 5座",
+        "official_guide_price": "¥145,800",
+        "national_scrappage_after_price": "¥128,304",
+        "provincial_trade_in_after_price": "¥134,136"
+      },
+      {
+        "configuration": "增程280尊享版 6座",
+        "official_guide_price": "¥148,800",
+        "national_scrappage_after_price": "¥130,944",
+        "provincial_trade_in_after_price": "¥136,896"
+      },
+      {
+        "configuration": "纯电630尊享版 5座",
+        "official_guide_price": "¥152,800",
+        "national_scrappage_after_price": "¥134,464",
+        "provincial_trade_in_after_price": "¥140,576"
+      },
+      {
+        "configuration": "纯电630尊享版 6座",
+        "official_guide_price": "¥155,800",
+        "national_scrappage_after_price": "¥137,104",
+        "provincial_trade_in_after_price": "¥143,336"
+      },
+      {
+        "configuration": "增程280激光雷达智尊版 5座",
+        "official_guide_price": "¥159,800",
+        "national_scrappage_after_price": "¥140,624",
+        "provincial_trade_in_after_price": "¥147,016"
+      },
+      {
+        "configuration": "增程280激光雷达智尊版 6座",
+        "official_guide_price": "¥162,800",
+        "national_scrappage_after_price": "¥143,264",
+        "provincial_trade_in_after_price": "¥149,776"
+      },
+      {
+        "configuration": "纯电630激光雷达智尊版 5座",
+        "official_guide_price": "¥166,800",
+        "national_scrappage_after_price": "¥146,800",
+        "provincial_trade_in_after_price": "¥153,456"
+      },
+      {
+        "configuration": "纯电630激光雷达智尊版 6座",
+        "official_guide_price": "¥169,800",
+        "national_scrappage_after_price": "¥149,800",
+        "provincial_trade_in_after_price": "¥156,216"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑C16。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：C16 Plus · 指导价 145,800-169,800 · 增程/纯电 · 六座旗舰。厂家综合权益图标注值：¥38,840。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程280尊享版 5座：官方指导价¥145,800；按报废更新12%测算后¥128,304；按置换更新8%测算后¥134,136。增程280尊享版 6座：官方指导价¥148,800；按报废更新12%测算后¥130,944；按置换更新8%测算后¥136,896。纯电630尊享版 5座：官方指导价¥152,800；按报废更新12%测算后¥134,464；按置换更新8%测算后¥140,576。纯电630尊享版 6座：官方指导价¥155,800；按报废更新12%测算后¥137,104；按置换更新8%测算后¥143,336。增程280激光雷达智尊版 5座：官方指导价¥159,800；按报废更新12%测算后¥140,624；按置换更新8%测算后¥147,016。增程280激光雷达智尊版 6座：官方指导价¥162,800；按报废更新12%测算后¥143,264；按置换更新8%测算后¥149,776。纯电630激光雷达智尊版 5座：官方指导价¥166,800；按报废更新12%测算后¥146,800；按置换更新8%测算后¥153,456。纯电630激光雷达智尊版 6座：官方指导价¥169,800；按报废更新12%测算后¥149,800；按置换更新8%测算后¥156,216。选装礼：尊享版限时免费享5,000元全配套装选装基金；激光雷达智尊版限时免费享5,000元悦境零压尊享套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（含云栖金、星煜紫）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：终身免费基础流量；选装全配套装或激光雷达智尊版车型享首年20G/月娱乐流量，次年4G/月娱乐流量；其它车型享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "d19-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑D19",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程400尊享版 6座",
+        "official_guide_price": "¥219,800",
+        "national_scrappage_after_price": "¥199,800",
+        "provincial_trade_in_after_price": "¥204,800"
+      },
+      {
+        "configuration": "增程500智尊版 6座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "¥224,800"
+      },
+      {
+        "configuration": "增程500智尊版 7座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "¥224,800"
+      },
+      {
+        "configuration": "纯电620智尊版 6座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "¥224,800"
+      },
+      {
+        "configuration": "纯电720智尊版 6座",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "¥234,800"
+      },
+      {
+        "configuration": "纯电720智尊版 7座",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "¥234,800"
+      },
+      {
+        "configuration": "纯电680三电机性能版 6座",
+        "official_guide_price": "¥269,800",
+        "national_scrappage_after_price": "¥249,800",
+        "provincial_trade_in_after_price": "¥254,800"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑D19。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 219,800-269,800 · 增程400/500km·纯电620/680/720km · 双电机四驱/三电机 · 6座/7座。厂家综合权益图标注值：¥68,466。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程400尊享版 6座：官方指导价¥219,800；按报废更新12%测算后¥199,800；按置换更新8%测算后¥204,800。增程500智尊版 6座：官方指导价¥239,800；按报废更新12%测算后¥219,800；按置换更新8%测算后¥224,800。增程500智尊版 7座：官方指导价¥239,800；按报废更新12%测算后¥219,800；按置换更新8%测算后¥224,800。纯电620智尊版 6座：官方指导价¥239,800；按报废更新12%测算后¥219,800；按置换更新8%测算后¥224,800。纯电720智尊版 6座：官方指导价¥249,800；按报废更新12%测算后¥229,800；按置换更新8%测算后¥234,800。纯电720智尊版 7座：官方指导价¥249,800；按报废更新12%测算后¥229,800；按置换更新8%测算后¥234,800。纯电680三电机性能版 6座：官方指导价¥269,800；按报废更新12%测算后¥249,800；按置换更新8%测算后¥254,800。选装基金：限时享至高14,000元选装基金优惠（多个选装包可叠加享受，除400尊享版）；智驾版限时免费升级为双8797芯片（价值10,000元）；智尊版和三电机性能版限时免费送UWB钥匙（价值399元）。本品增换购补贴：10,000元。等待交付礼：悦途交付礼：限时享价值1,087元交付礼包（颈枕×6、植绒脚垫×1）。金融贴息：至高7,800元。家充服务包：3,680元的家充服务包（含7kW充电桩和30米内基础安装）。售后权益：整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）、终身免费基础流量+2年免费娱乐流量（20G/月）、赠送4年取送车服务（1年2次，限首任车主）、无忧代步车（整车质保期内因质量问题维修超过24小时享免费代步车服务，限非营运车辆）。金融方案：0利息：至高享15万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "d99-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑D99",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程480尊享版",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "¥234,800"
+      },
+      {
+        "configuration": "纯电700尊享版",
+        "official_guide_price": "¥259,800",
+        "national_scrappage_after_price": "¥239,800",
+        "provincial_trade_in_after_price": "¥244,800"
+      },
+      {
+        "configuration": "增程480智尊版",
+        "official_guide_price": "¥279,800",
+        "national_scrappage_after_price": "¥259,800",
+        "provincial_trade_in_after_price": "¥264,800"
+      },
+      {
+        "configuration": "纯电700智尊版",
+        "official_guide_price": "¥289,800",
+        "national_scrappage_after_price": "¥269,800",
+        "provincial_trade_in_after_price": "¥274,800"
+      },
+      {
+        "configuration": "增程480旗舰版",
+        "official_guide_price": "¥309,800",
+        "national_scrappage_after_price": "¥289,800",
+        "provincial_trade_in_after_price": "¥294,800"
+      },
+      {
+        "configuration": "纯电700旗舰版",
+        "official_guide_price": "¥319,800",
+        "national_scrappage_after_price": "¥299,800",
+        "provincial_trade_in_after_price": "¥304,800"
+      },
+      {
+        "configuration": "增程480领航版",
+        "official_guide_price": "¥329,800",
+        "national_scrappage_after_price": "¥309,800",
+        "provincial_trade_in_after_price": "¥314,800"
+      },
+      {
+        "configuration": "纯电700领航版",
+        "official_guide_price": "¥339,800",
+        "national_scrappage_after_price": "¥319,800",
+        "provincial_trade_in_after_price": "¥324,800"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑D99。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 249,800-339,800 · 增程480km/纯电700km · 7座MPV · 双侧滑门 · 空悬终身质保。厂家综合权益图标注值：¥78,379。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程480尊享版：官方指导价¥249,800；按报废更新12%测算后¥229,800；按置换更新8%测算后¥234,800。纯电700尊享版：官方指导价¥259,800；按报废更新12%测算后¥239,800；按置换更新8%测算后¥244,800。增程480智尊版：官方指导价¥279,800；按报废更新12%测算后¥259,800；按置换更新8%测算后¥264,800。纯电700智尊版：官方指导价¥289,800；按报废更新12%测算后¥269,800；按置换更新8%测算后¥274,800。增程480旗舰版：官方指导价¥309,800；按报废更新12%测算后¥289,800；按置换更新8%测算后¥294,800。纯电700旗舰版：官方指导价¥319,800；按报废更新12%测算后¥299,800；按置换更新8%测算后¥304,800。增程480领航版：官方指导价¥329,800；按报废更新12%测算后¥309,800；按置换更新8%测算后¥314,800。纯电700领航版：官方指导价¥339,800；按报废更新12%测算后¥319,800；按置换更新8%测算后¥324,800。智芯+智感礼：【智芯礼】尊享版、智尊版硬件升级为双8797芯片（价值10,000元）；【智感礼】限时免费送价值399元UWB钥匙。选装礼：选装包5折券，限时享至高25,000元选装基金优惠（多个选装包可叠加享受）。本品增换购补贴：零跑本品用户增换购D99，享10,000元/台尾款抵扣券。家充服务包：免费享价值3,680元的家充服务包（含7kW充电桩和30米内基础安装）。等待交付礼：超出交付承诺周期按照500能量积分/天，至高享受10000能量积分/台（价值1000元）。交付礼：至高价值500元的交付礼包（包含2个颈枕，1套植绒脚垫）。流量礼：终身免费基础流量，享2年免费娱乐流量（20G/月）。售后权益：【质保礼】四项终身免费质保（限首任车主且非营运）1.终身免费电池质保 2.终身免费电驱质保 3.终身免费电控质保 4.终身免费整车质保。金融贴息：至高7,800元。金融方案：0利息：至高享15万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "lafa5-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑Lafa5",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "515 Plus",
+        "official_guide_price": "¥97,800",
+        "national_scrappage_after_price": "¥86,064",
+        "provincial_trade_in_after_price": "¥89,976"
+      },
+      {
+        "configuration": "515 Pro",
+        "official_guide_price": "¥105,800",
+        "national_scrappage_after_price": "¥93,104",
+        "provincial_trade_in_after_price": "¥97,336"
+      },
+      {
+        "configuration": "515 Max",
+        "official_guide_price": "¥115,800",
+        "national_scrappage_after_price": "¥101,904",
+        "provincial_trade_in_after_price": "¥106,536"
+      },
+      {
+        "configuration": "605 Pro",
+        "official_guide_price": "¥111,800",
+        "national_scrappage_after_price": "¥98,384",
+        "provincial_trade_in_after_price": "¥102,856"
+      },
+      {
+        "configuration": "605 Max",
+        "official_guide_price": "¥121,800",
+        "national_scrappage_after_price": "¥107,184",
+        "provincial_trade_in_after_price": "¥112,056"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑Lafa5。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 97,800-121,800 · CLTC续航515/605km · 无边框车门+激光雷达 · 10万级纯电\"卷王\"。厂家综合权益图标注值：¥39,956。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：515 Plus：官方指导价¥97,800；按报废更新12%测算后¥86,064；按置换更新8%测算后¥89,976。515 Pro：官方指导价¥105,800；按报废更新12%测算后¥93,104；按置换更新8%测算后¥97,336。515 Max：官方指导价¥115,800；按报废更新12%测算后¥101,904；按置换更新8%测算后¥106,536。605 Pro：官方指导价¥111,800；按报废更新12%测算后¥98,384；按置换更新8%测算后¥102,856。605 Max：官方指导价¥121,800；按报废更新12%测算后¥107,184；按置换更新8%测算后¥112,056。外饰：2,000元个性外饰色限时免费（电掣黄、风驰灰、摩根粉、星夜蓝、液态银车身外饰色免费）。选装基金：竞速灰内饰选装基金3,000元（除515Plus版、ultra版）。本品增换购补贴：4,000元。限时限量优惠：7,000元。金融贴息：至高4,160元。家充服务包：3,680元家充包（充电权益和交付礼包二选一）。售后权益：整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）、车机基础流量终身免费+2年娱乐流量（4G/月）。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  },
+  "lafa5ultra-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑Lafa5 Ultra",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年8月）",
+    "policy_source_url": "https://workbuddy-space-static.codebuddy.work/page/9Xovnfb5ghSjDlDM7QsVlO/0/_20268.html",
+    "policy_fingerprint": "c0d7d2e990d0ec9f15604bd4698899a5e6e329896dfac689997de9ce2165c559",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "500 Ultra",
+        "official_guide_price": "¥123,800",
+        "national_scrappage_after_price": "¥108,944",
+        "provincial_trade_in_after_price": "¥113,896"
+      },
+      {
+        "configuration": "600 Ultra",
+        "official_guide_price": "¥129,800",
+        "national_scrappage_after_price": "¥114,224",
+        "provincial_trade_in_after_price": "¥119,416"
+      }
+    ],
+    "policy_banned_terms": [],
+    "policy_text": "车型：零跑Lafa5 Ultra。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 123,800-129,800 · CLTC续航500/600km · 180kW后驱·5.9秒破百 · 原厂运动套件+激光雷达。厂家综合权益图标注值：¥35,916。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：500 Ultra：官方指导价¥123,800；按报废更新12%测算后¥108,944；按置换更新8%测算后¥113,896。600 Ultra：官方指导价¥129,800；按报废更新12%测算后¥114,224；按置换更新8%测算后¥119,416。外饰：2,000元个性外饰色限时免费（Ultra版：液态银、雷厉黄、星芒绿车身外饰色免费）。本品增换购补贴：4,000元。限时限量优惠：5,000元。金融贴息：至高4,160元。家充服务包：3,680元家充包（含7kW充电桩和30米内基础安装）。售后权益：车机基础流量终身免费+2年娱乐流量（4G/月）、整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。"
+  }
+}

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.18"
+    app_version: str = "0.3.20"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     storage_type: str = "local"  # local | s3 | minio
     storage_path: str = "./uploads"
     uploads_public_base_url: str = ""
+    # Private, read-only preview cache; not an uploads/public directory.
+    hermes_reference_snapshot_path: str = "./reference_previews/online.json"
     s3_endpoint: str = ""
     s3_access_key: str = ""
     s3_secret_key: str = ""

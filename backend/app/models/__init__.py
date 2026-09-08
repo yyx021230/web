@@ -46,3 +46,9 @@ from app.models.scrape_review import (
     ScrapeCandidate,
     ScrapeCandidateReview,
 )
+from app.models.hermes_workflow import (
+    HermesWorkerState,
+    HermesWorkflowPost,
+    HermesWorkflowRun,
+    HermesWorkflowSchedule,
+)

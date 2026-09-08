@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 
 from app.config import Settings
@@ -9,6 +11,7 @@ from app.db.session import async_session
 from app.models.ai_task import AITask
 from app.models.dify_run_log import DifyRunLog
 from app.models.user import User
+from app.services.ai_task_queue import ai_image_task_queue
 
 
 def auth_headers(user_id: int) -> dict[str, str]:
@@ -97,7 +100,11 @@ async def test_ai_task_status_requires_owner(client):
 
 
 @pytest.mark.asyncio
-async def test_ai_queue_status_requires_admin(client):
+async def test_ai_queue_status_requires_admin(client, monkeypatch):
+    # Test authorization without sharing a live Redis connection across test loops.
+    queue_status = {"pending": 3, "processing_count": 1, "redis_available": True}
+    get_status = AsyncMock(return_value=queue_status)
+    monkeypatch.setattr(ai_image_task_queue, "get_status", get_status)
     await create_user(1, "queue_viewer")
     await create_user(2, "queue_admin", role="admin")
 
@@ -106,9 +113,12 @@ async def test_ai_queue_status_requires_admin(client):
 
     viewer = await client.get("/api/v1/ai-image/queue/status", headers=auth_headers(1))
     assert viewer.status_code == 403
+    get_status.assert_not_awaited()
 
     admin = await client.get("/api/v1/ai-image/queue/status", headers=auth_headers(2))
     assert admin.status_code == 200
+    get_status.assert_awaited_once_with()
+    assert all(admin.json()["data"][key] == value for key, value in queue_status.items())
 
 
 @pytest.mark.asyncio

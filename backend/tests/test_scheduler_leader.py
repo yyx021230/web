@@ -343,6 +343,7 @@ def test_scheduler_loop_specs_and_setting_normalization(monkeypatch):
     names = [spec.name for spec in build_scheduler_loop_specs(async_session)]
     assert names == [
         "xhs-configured-tasks",
+        "hermes-content-production",
         "legacy-post-sync",
         "scheduled-publish",
         "profile-stat-sync",
