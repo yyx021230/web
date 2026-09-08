@@ -1,6 +1,18 @@
 # Install as docker-compose.override.yml beside the existing live Compose file.
 # The original API, AI worker and data services remain on their existing images.
 services:
+  frontend:
+    # Keep the original Windows/LAN :3000 entry on the verified frontend too.
+    image: ztqc/frontend:0.3.20
+    build: !reset null
+    environment:
+      BACKEND_ORIGIN: http://backend:8000
+      HERMES_BACKEND_ORIGIN: http://hermes-api:8000
+      NEXT_PUBLIC_API_BASE: /api/backend
+      NEXT_PUBLIC_APP_VERSION: "0.3.20"
+      NEXT_PUBLIC_GIT_COMMIT: "5bf479400f0891d8f762f5b081bfa2638069bf30"
+      NEXT_PUBLIC_BUILD_TIME: "2026-09-08T06:14:00Z"
+
   hermes-frontend:
     image: ztqc/frontend:0.3.20
     # Image-only: never rebuild this service from the unchanged legacy checkout.
