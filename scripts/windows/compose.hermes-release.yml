@@ -1,15 +1,35 @@
 # Install as docker-compose.override.yml beside the existing live Compose file.
 # The original API, AI worker and data services remain on their existing images.
 services:
-  frontend:
+  hermes-frontend:
     image: ztqc/frontend:0.3.20
     build:
+      context: ./frontend
       args:
+        NODE_IMAGE: node:20.19.4-alpine3.22
+        BACKEND_ORIGIN: http://backend:8000
         HERMES_BACKEND_ORIGIN: http://hermes-api:8000
+        NEXT_PUBLIC_API_BASE: /api/backend
         NEXT_PUBLIC_APP_VERSION: "0.3.20"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3101:3000"
     environment:
+      BACKEND_ORIGIN: http://backend:8000
       NEXT_PUBLIC_APP_VERSION: "0.3.20"
       HERMES_BACKEND_ORIGIN: http://hermes-api:8000
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
 
   hermes-api:
     image: ztqc/hermes-api:0.3.20

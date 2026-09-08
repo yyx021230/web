@@ -9,6 +9,8 @@
 ## 部署结构
 
 - 原 `web-backend-1` / `web-ai-worker-1` / PostgreSQL / Redis / MinIO 不重启。
+- 新网页容器 `hermes-frontend` 在 Windows 回环端口 3101 验证；原网页 3000 也保留运行。
+  最后只将现有 FRP 的 `localPort` 从 3000 改为 3101 并重启入口进程，公网地址不变。
 - 新网页 0.3.20 仅将 `/api/backend/hermes-workflows/*` 和
   `/api/backend/admin/hermes-workflows/*` 转给 `hermes-api:8000`。
 - 认证、素材、生图、账号同步、报表和 `/uploads/*` 仍走原 `backend:8000`。
@@ -24,7 +26,8 @@
 
 ## 回滚边界
 
-- 保留旧前端容器/镜像与原配置。回滚仅恢复网页入口，不恢复旧数据库覆盖上线后产生的任务。
+- 保留旧前端容器/镜像与原配置。回滚把 FRP 入口恢复到原 3000 端口；
+  不恢复旧数据库覆盖上线后产生的任务。
 - 两个迁移仅新增 Hermes 表和字段，数据库迁移应在恢复副本完成演练后执行；上线使用有界锁等待。
 - 新任务开始后不得删除 Hermes 命名卷，不得直接强杀 Worker。需要回滚应先恢复旧入口，
   让已经接收的 Hermes 任务继续完成，再处理后台组件。
