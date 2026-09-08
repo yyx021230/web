@@ -3,25 +3,25 @@
 services:
   frontend:
     # Keep the original Windows/LAN :3000 entry on the verified frontend too.
-    image: ztqc/frontend:0.3.20
+    image: ztqc/frontend:0.3.21
     build: !reset null
     environment:
       BACKEND_ORIGIN: http://backend:8000
       HERMES_BACKEND_ORIGIN: http://hermes-api:8000
       NEXT_PUBLIC_API_BASE: /api/backend
-      NEXT_PUBLIC_APP_VERSION: "0.3.20"
-      NEXT_PUBLIC_GIT_COMMIT: "5bf479400f0891d8f762f5b081bfa2638069bf30"
-      NEXT_PUBLIC_BUILD_TIME: "2026-09-08T06:14:00Z"
+      NEXT_PUBLIC_APP_VERSION: "0.3.21"
+      NEXT_PUBLIC_GIT_COMMIT: "c1d38bac9b743b53f356c95776c706bb71c08364"
+      NEXT_PUBLIC_BUILD_TIME: "2026-09-08T07:53:00Z"
 
   hermes-frontend:
-    image: ztqc/frontend:0.3.20
+    image: ztqc/frontend:0.3.21
     # Image-only: never rebuild this service from the unchanged legacy checkout.
     restart: unless-stopped
     ports:
       - "127.0.0.1:3101:3000"
     environment:
       BACKEND_ORIGIN: http://backend:8000
-      NEXT_PUBLIC_APP_VERSION: "0.3.20"
+      NEXT_PUBLIC_APP_VERSION: "0.3.21"
       HERMES_BACKEND_ORIGIN: http://hermes-api:8000
       HOSTNAME: 0.0.0.0
     healthcheck:
@@ -37,14 +37,14 @@ services:
       options: {max-size: 10m, max-file: "3"}
 
   hermes-api:
-    image: ztqc/hermes-api:0.3.20
+    image: ztqc/hermes-api:0.3.21
     restart: unless-stopped
     init: true
     stop_grace_period: 60s
     env_file:
       - ./.release/hermes/api.env
     environment:
-      APP_VERSION: "0.3.20"
+      APP_VERSION: "0.3.21"
       HERMES_POLICY_CASES_PATH: /app/hermes-config/cases.json
       HERMES_REFERENCE_SNAPSHOT_PATH: ""
     ports:
@@ -65,7 +65,7 @@ services:
       options: {max-size: 10m, max-file: "3"}
 
   hermes-worker:
-    image: ztqc/hermes-worker:0.3.20
+    image: ztqc/hermes-worker:0.3.21
     profiles: [hermes]
     restart: unless-stopped
     init: true
