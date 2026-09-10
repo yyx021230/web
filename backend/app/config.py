@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.16"
+    app_version: str = "0.3.20"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False

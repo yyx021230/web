@@ -2,6 +2,33 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.20] - 2026-09-10
+
+### Added
+
+- Hermes workflow, policy, catalog, image-layout and publishing capabilities are consolidated into the core repository history.
+- Release receipts now bind the Web commit, release package, immutable image ID, MCP source and MCP binary fingerprints.
+
+### Fixed
+
+- Creator Center synchronization includes the scheduled preflight, failed-account retry, login recovery, parallel browser execution and note-identity fixes accumulated after v0.3.16.
+- AI image provider diagnostics distinguish text generation from reference-image editing and preserve administrator capability switches.
+- Production restart and rollback paths can no longer silently rebuild or select an older mutable image tag.
+
+## [0.3.19] - 2026-09-02
+
+### Fixed
+
+- Release packaging and Windows deployment reject artifacts that omit the executable Xiaohongshu MCP binary.
+
+## [0.3.18] - 2026-09-02
+
+### Fixed
+
+- Scheduled Creator Center synchronization excludes browser runner environments with the same rule used by the execution service.
+- Incomplete Xiaohongshu account configurations are skipped during scheduled preflight instead of aborting the entire account batch.
+- Accounts that fail the first Creator Center pass are retried once without rerunning successful accounts.
+
 ## [0.3.16] - 2026-08-24
 
 ### Fixed
