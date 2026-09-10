@@ -1,0 +1,5 @@
+.env
+hermes_home/cache/
+hermes_home/logs/
+hermes_home/state.db*
+state/policy/

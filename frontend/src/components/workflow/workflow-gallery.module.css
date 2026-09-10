@@ -1,0 +1,85 @@
+.container { container-type:inline-size; position:relative; z-index:1; font-family:'Avenir Next','PingFang SC','Hiragino Sans GB',sans-serif; }
+.grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.card { --card-bg:#e7e8f5; --ink:#68669a; position:relative; isolation:isolate; min-width:0; display:flex; flex-direction:column; height:280px; padding:16px 20px 20px; overflow:hidden; background:var(--card-bg); border:1px solid #ffffff75; border-radius:23px; color:#292c39; box-shadow:0 3px 5px #3d455103; transition:transform .22s,box-shadow .22s,border-color .22s; }
+.card[data-workflow=single] { --card-bg:#dfeaf4; --ink:#587d99; }
+.card[data-workflow=publish] { --card-bg:#eae2db; --ink:#957862; }
+.card:hover { transform:translateY(-3px); border-color:#ffffff; box-shadow:0 12px 24px #454f7210; }
+.card:focus-visible { outline:2px solid var(--ink); outline-offset:4px; }
+.art { position:relative; display:grid; place-items:center; align-self:center; width:190px; max-width:100%; height:157px; flex-shrink:0; pointer-events:none; transition:transform .3s; }
+.card:hover .art { transform:translateY(-3px) rotate(-1deg); }
+/* The original stack has transparent top/bottom margins. Size by width rather than fitting its canvas. */
+.stack { position:absolute; top:50%; left:50%; width:100%; height:auto; max-width:none; transform:translate(-50%,-50%); filter:drop-shadow(0 8px 8px #4f5b8620); }
+.single { position:absolute; top:50%; left:50%; height:186px; width:auto; max-width:none; transform:translate(-50%,-50%) rotate(7deg); filter:drop-shadow(0 8px 8px #46647c18); }
+.copy { position:relative; z-index:1; min-width:0; margin-top:auto; padding-right:8px; }
+.eyebrow { display:flex; align-items:center; gap:6px; font-size:10px; font-weight:500; color:var(--ink); margin-bottom:7px; }
+.copy h2 { font-size:17px; line-height:1.5; font-weight:600; letter-spacing:-.025em; }
+.copy p { color:#747985; font-size:11px; line-height:1.75; margin-top:5px; max-width:210px; }
+.arrow { position:absolute; right:16px; top:16px; display:grid; place-items:center; width:27px; height:27px; border:1px solid #ffffff80; border-radius:50%; background:#ffffff40; color:var(--ink); transition:background .2s,transform .2s; }
+.card:hover .arrow { transform:translate(1px,-1px); background:#ffffffc0; }
+.schedule { position:relative; width:175px; max-width:calc(100% - 10px); display:grid; gap:6px; padding-top:11px; transform:rotate(-5deg); }
+.scheduleLabel { position:absolute; right:0; top:-4px; font-size:8px; color:#9b8e83; letter-spacing:.05em; }
+.scheduleItem { display:flex; gap:8px; align-items:center; height:43px; padding:5px 8px; border:1px solid #ffffff; border-radius:11px; background:#ffffffd9; box-shadow:0 5px 9px #7e6c5810; }
+.scheduleItem:nth-of-type(2) { transform:translateX(9px); }
+.scheduleItem>img { width:29px; height:33px; object-fit:cover; border-radius:5px; background:#e4eaf0; }
+.scheduleItem>div { display:grid; gap:1px; }
+.scheduleItem strong { font-size:12px; font-weight:600; letter-spacing:-.025em; font-variant-numeric:tabular-nums; color:#665d55; }
+.scheduleItem div>span { color:#9c9995; font-size:8px; }
+.scheduleState { display:flex; align-items:center; gap:3px; margin-left:auto; color:#83917c; font-size:8px; white-space:nowrap; }
+.scheduleState i { width:3px; height:3px; border-radius:50%; background:currentColor; }
+@container (min-width:1100px) {
+  .card { height:208px; padding:24px; justify-content:center; }
+  .copy { width:calc(100% - 160px); margin:0; padding:0; }
+  .copy h2 { font-size:17px; }
+  .copy p { margin-top:9px; }
+  .eyebrow { margin-bottom:12px; }
+  .art { position:absolute; right:4px; top:50%; width:172px; height:166px; transform:translateY(-50%); }
+  .card:hover .art { transform:translateY(calc(-50% - 3px)) rotate(-1deg); }
+  .single { height:191px; }
+  .arrow { top:auto; bottom:15px; right:16px; width:25px; height:25px; }
+  .schedule { width:151px; gap:7px; }
+  .scheduleItem { gap:5px; padding:5px 6px; }
+}
+@container (min-width:1200px) {
+  .art { right:9px; width:195px; height:174px; }
+  .copy { width:calc(100% - 192px); }
+  .single { height:204px; }
+  .schedule { width:175px; }
+}
+@container (min-width:600px) and (max-width:760px) {
+  .grid { gap:12px; }
+  .card { height:258px; padding:12px 15px 17px; border-radius:20px; }
+  .art { height:150px; width:162px; }
+  .single { height:175px; }
+  .copy h2 { font-size:15px; }
+  .eyebrow { margin-bottom:5px; font-size:9px; }
+  .copy p { font-size:10px; }
+  .arrow { top:12px; right:12px; width:23px; height:23px; }
+  .scheduleItem { gap:5px; padding:5px 6px; }
+}
+@container (max-width:599px) {
+  .grid { grid-template-columns:1fr; gap:12px; }
+  .card { height:172px; padding:20px; justify-content:center; }
+  .copy { width:calc(100% - 148px); margin:0; padding:0; }
+  .copy h2 { font-size:16px; }
+  .art { position:absolute; width:154px; height:148px; top:50%; right:9px; transform:translateY(-50%); }
+  .card:hover .art { transform:translateY(-50%); }
+  .single { height:170px; }
+  .arrow { top:auto; bottom:12px; right:12px; width:23px; height:23px; }
+  .scheduleItem { gap:5px; padding:4px 6px; height:38px; }
+  .scheduleItem>img { width:25px; height:28px; }
+  .schedule { gap:5px; }
+}
+@container (max-width:350px) {
+  .card { padding:17px; }
+  .copy { width:calc(100% - 124px); }
+  .copy h2 { font-size:14px; }
+  .copy p { font-size:10px; }
+  .art { width:129px; right:3px; }
+  .single { height:157px; }
+  .scheduleItem>img { display:none; }
+  .schedule { max-width:calc(100% - 14px); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .card,.art,.arrow { transition:none; }
+  .card:hover { transform:none; }
+}

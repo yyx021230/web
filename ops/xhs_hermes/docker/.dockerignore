@@ -1,0 +1,9 @@
+**/._*
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+**/.git
+**/.venv
+**/.env
+**/.env.*
+**/worker.env

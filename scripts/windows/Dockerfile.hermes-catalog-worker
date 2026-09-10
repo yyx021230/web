@@ -1,0 +1,6 @@
+FROM ztqc/hermes-worker:0.3.21
+ARG REVISION=unknown
+LABEL org.opencontainers.image.version="0.3.22" org.opencontainers.image.revision=${REVISION}
+COPY ops/xhs_hermes/core.py /app/web/ops/xhs_hermes/core.py
+COPY backend/app/services/hermes_reference_types.py /app/web/backend/app/services/hermes_reference_types.py
+COPY backend/app/data/hermes_image_curation.json /app/web/backend/app/data/hermes_image_curation.json

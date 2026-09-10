@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.db.session import async_session
+from app.models.ai_task import AITask
 from app.models.material import Material
 from app.models.user import User
 from app.services.ai_image_provider_service import AIImageProviderService
@@ -159,10 +160,22 @@ async def test_admin_ai_provider_update_health_test_and_missing_paths(client, mo
     submitted = await client.post(
         f"/api/v1/admin/ai-image/providers/{provider_id}/test",
         headers=headers,
-        json={"prompt": "测试汽车图片", "width": 768, "height": 1024, "count": 1, "quality": "high"},
+        json={
+            "prompt": "测试汽车图片",
+            "width": 768,
+            "height": 1024,
+            "count": 1,
+            "quality": "high",
+            "image_data": "data:image/png;base64,aGVsbG8=",
+        },
     )
     assert submitted.status_code == 200
     task_id = submitted.json()["data"]["task_id"]
+    async with async_session() as db:
+        task = await db.get(AITask, int(task_id))
+        assert task is not None
+        assert task.params["image_data"].startswith("data:image/png;base64,")
+        assert task.params["_provider_test_force_image_edit"] is True
     status = await client.get(
         f"/api/v1/admin/ai-image/providers/test-tasks/{task_id}",
         headers=headers,

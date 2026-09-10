@@ -91,6 +91,12 @@ Thumbs.db
 
 # Codex/local audit artifacts and generated Dify verification images
 .codex-tmp/
+/artifacts/
+/output/
+/ad_account_audit_*.json
+/ad_account_db_snapshot_*.json
+/ad_account_mismatch_verify_*.json
+/线上广告账户逐账户核对_*.csv
 dify/test-output/
 dify/recent-deliveries/
 dify/generated/

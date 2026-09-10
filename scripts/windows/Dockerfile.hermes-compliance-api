@@ -1,0 +1,8 @@
+FROM ztqc/hermes-api:0.3.22
+ARG APP_VERSION=0.3.25
+ARG GIT_COMMIT=policy-copy-guard-20260909
+ARG BUILD_TIME=unknown
+ENV APP_VERSION=${APP_VERSION} GIT_COMMIT=${GIT_COMMIT} BUILD_TIME=${BUILD_TIME}
+COPY backend/app/services/hermes_policy_service.py /app/app/services/hermes_policy_service.py
+COPY backend/app/data/hermes_policy_cases.json /app/app/data/hermes_policy_cases.json
+COPY backend/app/data/hermes_policy_display.json /app/app/data/hermes_policy_display.json

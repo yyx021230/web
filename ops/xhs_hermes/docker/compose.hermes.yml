@@ -1,0 +1,48 @@
+# Merge with the existing web compose file. The explicit profile prevents a
+# normal web deployment from silently starting production on this worker.
+services:
+  backend:
+    environment:
+      HERMES_POLICY_CASES_PATH: /app/hermes-config/cases.json
+    volumes:
+      - hermes-config:/app/hermes-config:ro
+
+  hermes-worker:
+    image: ${HERMES_WORKER_IMAGE:?set a verified Hermes worker image tag}
+    profiles: [hermes]
+    restart: unless-stopped
+    init: true
+    command: [worker]
+    stop_grace_period: 45m
+    env_file:
+      - ./ops/xhs_hermes/docker/worker.env
+    environment:
+      HERMES_WEB_BASE_URL: http://backend:8000
+      HERMES_WORKER_ID: windows-docker-hermes
+      XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?existing Web worker token is required}
+      HERMES_OCR_BACKEND: rapidocr
+      HERMES_OCR_THREADS: "2"
+      HERMES_MAX_TEXT_WORKERS: "2"
+      HERMES_MAX_IMAGE_WORKERS: "5"
+    volumes:
+      - hermes-config:/app/web/ops/xhs_hermes/config
+      - hermes-state:/app/web/ops/xhs_hermes/state
+      - hermes-output:/app/web/outputs/xhs_hermes_web
+      - hermes-home:/app/web/ops/xhs_hermes/hermes_home
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: 1536m
+    cpus: 2.0
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  hermes-config:
+  hermes-state:
+  hermes-output:
+  hermes-home:

@@ -81,6 +81,7 @@ class AIImageProviderTestRequest(BaseModel):
     height: int = Field(default=1024, ge=256, le=4096)
     quality: Optional[str] = Field(default=None, max_length=20)
     count: int = Field(default=1, ge=1, le=4)
+    image_data: Optional[str] = Field(default=None, max_length=20_000_000)
 
 
 class AIImageProviderTestResponse(BaseModel):

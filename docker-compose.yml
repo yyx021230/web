@@ -65,14 +65,17 @@ services:
     logging: *default-logging
 
   backend:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.3.16}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_IMAGE_TAG:?set APP_IMAGE_TAG to an immutable release tag}
     build:
       context: ./backend
       args:
         PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11.13-slim-bookworm}
-        APP_VERSION: ${APP_VERSION:-0.3.16}
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
-        BUILD_TIME: ${BUILD_TIME:-unknown}
+        APP_VERSION: ${APP_VERSION:?set APP_VERSION for this release}
+        GIT_COMMIT: ${GIT_COMMIT:?set GIT_COMMIT for this release}
+        BUILD_TIME: ${BUILD_TIME:?set BUILD_TIME for this release}
+        RELEASE_SOURCE_SHA256: ${RELEASE_SOURCE_SHA256:?set RELEASE_SOURCE_SHA256 for this release}
+        MCP_SOURCE_SHA256: ${MCP_SOURCE_SHA256:?set MCP_SOURCE_SHA256 for this release}
+        MCP_BINARY_SHA256: ${MCP_BINARY_SHA256:?set MCP_BINARY_SHA256 for this release}
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -82,9 +85,9 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
       PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
-      APP_VERSION: ${APP_VERSION:-0.3.16}
-      GIT_COMMIT: ${GIT_COMMIT:-unknown}
-      BUILD_TIME: ${BUILD_TIME:-unknown}
+      APP_VERSION: ${APP_VERSION:?set APP_VERSION for this release}
+      GIT_COMMIT: ${GIT_COMMIT:?set GIT_COMMIT for this release}
+      BUILD_TIME: ${BUILD_TIME:?set BUILD_TIME for this release}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
       REDIS_URL: redis://redis:6379/0
       TZ: Asia/Shanghai
@@ -138,7 +141,7 @@ services:
     logging: *default-logging
 
   ai-worker:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_VERSION:-0.3.16}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/backend:${APP_IMAGE_TAG:?set APP_IMAGE_TAG to an immutable release tag}
     command: ["python", "-m", "app.scripts.ai_worker"]
     restart: unless-stopped
     stop_grace_period: 45m
@@ -148,9 +151,9 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
       PRODUCTION_CONFIRMATION: ${PRODUCTION_CONFIRMATION:-}
-      APP_VERSION: ${APP_VERSION:-0.3.16}
-      GIT_COMMIT: ${GIT_COMMIT:-unknown}
-      BUILD_TIME: ${BUILD_TIME:-unknown}
+      APP_VERSION: ${APP_VERSION:?set APP_VERSION for this release}
+      GIT_COMMIT: ${GIT_COMMIT:?set GIT_COMMIT for this release}
+      BUILD_TIME: ${BUILD_TIME:?set BUILD_TIME for this release}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ai_creative}
       REDIS_URL: redis://redis:6379/0
       TZ: Asia/Shanghai
@@ -183,25 +186,26 @@ services:
     logging: *default-logging
 
   frontend:
-    image: ${APP_IMAGE_PREFIX:-ztqc}/frontend:${APP_VERSION:-0.3.16}
+    image: ${APP_IMAGE_PREFIX:-ztqc}/frontend:${APP_IMAGE_TAG:?set APP_IMAGE_TAG to an immutable release tag}
     build:
       context: ./frontend
       args:
         NODE_IMAGE: ${NODE_IMAGE:-node:20.19.4-alpine3.22}
         BACKEND_ORIGIN: http://backend:8000
         NEXT_PUBLIC_API_BASE: /api/backend
-        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.3.16}
-        NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
-        NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:?set APP_VERSION for this release}
+        NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:?set GIT_COMMIT for this release}
+        NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:?set BUILD_TIME for this release}
+        RELEASE_SOURCE_SHA256: ${RELEASE_SOURCE_SHA256:?set RELEASE_SOURCE_SHA256 for this release}
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       BACKEND_ORIGIN: http://backend:8000
       NEXT_PUBLIC_API_BASE: /api/backend
-      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.3.16}
-      NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:-unknown}
-      NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:-unknown}
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:?set APP_VERSION for this release}
+      NEXT_PUBLIC_GIT_COMMIT: ${GIT_COMMIT:?set GIT_COMMIT for this release}
+      NEXT_PUBLIC_BUILD_TIME: ${BUILD_TIME:?set BUILD_TIME for this release}
     depends_on:
       backend:
         condition: service_healthy

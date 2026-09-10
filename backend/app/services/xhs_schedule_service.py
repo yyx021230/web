@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import settings
 from app.db.session import async_session
-from app.models.xhs_report import XHSReportDaily
+from app.models.xhs_report import XHSAdStatsDailyAccount, XHSAdStatsDailyNote, XHSReportDaily
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
@@ -365,6 +365,125 @@ async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, An
     return all_env_ids
 
 
+def _normalize_creator_login_phone(value: object) -> str:
+    digits = "".join(character for character in str(value or "") if character.isdigit())
+    if len(digits) == 13 and digits.startswith("86"):
+        digits = digits[2:]
+    return digits
+
+
+def _creator_sync_configuration_issues(env: XHSEnvironment) -> list[str]:
+    issues: list[str] = []
+    if not str(env.account_name or "").strip():
+        issues.append("账号名称")
+    if not str(env.xhs_account_id or "").strip():
+        issues.append("小红书ID")
+    if len(_normalize_creator_login_phone(env.login_phone_number)) != 11:
+        issues.append("登录手机号")
+    if str(env.xhs_account_type or "").strip() not in {
+        "enterprise_professional",
+        "enterprise_employee",
+        "personal",
+    }:
+        issues.append("账号类型")
+    return issues
+
+
+async def _partition_creator_sync_targets(
+    db: AsyncSession,
+    target_environment_ids: list[int],
+) -> tuple[list[int], list[dict[str, Any]], dict[int, str]]:
+    if not target_environment_ids:
+        return [], [], {}
+    rows = list(
+        (
+            await db.execute(
+                select(XHSEnvironment)
+                .where(XHSEnvironment.id.in_(target_environment_ids))
+                .order_by(XHSEnvironment.account_name.asc(), XHSEnvironment.id.asc())
+            )
+        ).scalars().all()
+    )
+    rows_by_id = {int(row.id): row for row in rows}
+    eligible_ids: list[int] = []
+    skipped: list[dict[str, Any]] = []
+    account_names: dict[int, str] = {}
+    for environment_id in target_environment_ids:
+        env = rows_by_id.get(int(environment_id))
+        if env is None:
+            continue
+        account_names[int(env.id)] = str(env.account_name or "").strip() or f"环境{env.id}"
+        issues = _creator_sync_configuration_issues(env)
+        if issues:
+            skipped.append(
+                {
+                    "environment_id": int(env.id),
+                    "account_name": account_names[int(env.id)],
+                    "reason": f"未配置完整：{'、'.join(issues)}",
+                }
+            )
+            continue
+        eligible_ids.append(int(env.id))
+    return eligible_ids, skipped, account_names
+
+
+def _failed_creator_environment_ids(result: dict[str, Any]) -> list[int]:
+    failed_ids: list[int] = []
+    seen: set[int] = set()
+    for item in result.get("failed_accounts") or []:
+        try:
+            environment_id = int(item.get("environment_id") or 0)
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if environment_id > 0 and environment_id not in seen:
+            seen.add(environment_id)
+            failed_ids.append(environment_id)
+    return failed_ids
+
+
+async def _run_creator_sync_pass(
+    service: XHSService,
+    *,
+    admin_user: User,
+    target_environment_ids: list[int],
+    concurrency: int,
+    account_names: dict[int, str],
+) -> dict[str, Any]:
+    if not target_environment_ids:
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "failed_accounts": [],
+        }
+    try:
+        return await service.sync_account_note_engagements(
+            user=admin_user,
+            environment_id=None,
+            target_environment_ids=target_environment_ids,
+            sync_account_limit=len(target_environment_ids),
+            concurrency=concurrency,
+        )
+    except Exception as exc:
+        logger.exception(
+            "创作者中心批次执行异常，批次内账号统一记为失败: target_environment_ids=%s",
+            target_environment_ids,
+        )
+        return {
+            "synced_accounts": 0,
+            "created_notes": 0,
+            "updated_notes": 0,
+            "failed_accounts": [
+                {
+                    "environment_id": environment_id,
+                    "account_name": account_names.get(environment_id, f"环境{environment_id}"),
+                    "error": str(exc),
+                }
+                for environment_id in target_environment_ids
+            ],
+        }
+
+
 async def _run_content_tag_batch(
     db: AsyncSession,
     *,
@@ -537,9 +656,19 @@ class XHSScheduleService:
         config: dict[str, Any] | None,
     ) -> dict[str, Any]:
         row = await self.get_row(task_key)
+        was_enabled = bool(row.enabled)
+        previous_run_time = _normalize_run_time(row.run_time)
+        normalized_run_time = _normalize_run_time(run_time)
         row.enabled = bool(enabled)
-        row.run_time = _normalize_run_time(run_time)
+        row.run_time = normalized_run_time
         row.config = _normalize_task_config(task_key, config)
+        schedule_changed = not was_enabled or previous_run_time != normalized_run_time
+        if row.enabled and schedule_changed:
+            scheduled_today = _scheduled_time_today(normalized_run_time)
+            if cst_now_naive() >= scheduled_today:
+                # Enabling a time that already passed should schedule tomorrow,
+                # not unexpectedly catch up immediately.
+                row.last_run_at = utc_now_naive()
         await self.db.commit()
         await self.db.refresh(row)
         return self.serialize_row(row)
@@ -556,19 +685,50 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
     if normalized["engagement_sync_enabled"]:
         if target_env_ids:
             admin_user = await _load_system_admin_user(session)
-            result = await service.sync_account_note_engagements(
-                user=admin_user,
-                environment_id=None,
-                target_environment_ids=target_env_ids,
-                sync_account_limit=len(target_env_ids),
+            eligible_env_ids, skipped_configs, account_names = await _partition_creator_sync_targets(
+                session,
+                target_env_ids,
+            )
+            if skipped_configs:
+                logger.info(
+                    "创作者中心定时同步预检跳过配置不全账号: %s",
+                    json.dumps(skipped_configs, ensure_ascii=False),
+                )
+            first_result = await _run_creator_sync_pass(
+                service,
+                admin_user=admin_user,
+                target_environment_ids=eligible_env_ids,
                 concurrency=int(normalized["yundeng_sync_concurrency"]),
+                account_names=account_names,
+            )
+            first_failed_ids = _failed_creator_environment_ids(first_result)
+            retry_result = await _run_creator_sync_pass(
+                service,
+                admin_user=admin_user,
+                target_environment_ids=first_failed_ids,
+                concurrency=int(normalized["yundeng_sync_concurrency"]),
+                account_names=account_names,
+            )
+            remaining_failed_ids = _failed_creator_environment_ids(retry_result)
+            first_synced = int(first_result.get("synced_accounts") or 0)
+            retry_synced = int(retry_result.get("synced_accounts") or 0)
+            created_notes = int(first_result.get("created_notes") or 0) + int(retry_result.get("created_notes") or 0)
+            updated_notes = int(first_result.get("updated_notes") or 0) + int(retry_result.get("updated_notes") or 0)
+            final_failure_summary = (
+                f"最终异常 {len(remaining_failed_ids)} 个"
+                if remaining_failed_ids
+                else "最终失败 0 个"
             )
             summary_parts.append(
-                f"创作中心主同步 {result.get('synced_accounts', 0)} 个账号，"
-                f"新增 {result.get('created_notes', 0)} 条，更新 {result.get('updated_notes', 0)} 条"
+                f"创作者中心首轮成功 {first_synced}/{len(eligible_env_ids)} 个账号，"
+                f"失败 {len(first_failed_ids)} 个；"
+                f"失败重试成功 {retry_synced}/{len(first_failed_ids)} 个，"
+                f"{final_failure_summary}；"
+                f"配置不全跳过 {len(skipped_configs)} 个；"
+                f"新增 {created_notes} 条，更新 {updated_notes} 条"
             )
         else:
-            summary_parts.append("创作中心主同步 0 个账号")
+            summary_parts.append("创作者中心首轮成功 0/0 个账号，失败重试 0 个")
 
     # Creator-center export owns the post inventory and metrics. Homepage sync
     # follows it only to resolve feed IDs and enrich content-related fields.
@@ -676,10 +836,31 @@ async def _execute_ad_data_refresh(
     report_types = report_types or list(AD_REPORT_TYPES)
 
     total_accounts = 0
+    total_attempted_accounts = 0
     total_rows = 0
     total_changed_rows = 0
     errors: list[str] = []
+    skipped_token_accounts: dict[str, str] = {}
+    refreshed_report_types: list[str] = []
     await mark_report_refresh_running_safely(history_run_id)
+    try:
+        token_refresh = await service.refresh_report_token_statuses()
+    except Exception as exc:
+        await finish_report_refresh_run_safely(
+            history_run_id,
+            status="failed",
+            message="广告账户 Token 统一复核失败",
+            error=str(exc),
+        )
+        raise
+    for item in token_refresh.get("failed_accounts") or []:
+        errors.append(
+            f"{item.get('account_id')} {item.get('account_name')}: Token 不可用: {item.get('error')}"
+        )
+    for item in token_refresh.get("transient_errors") or []:
+        errors.append(
+            f"{item.get('account_id')} {item.get('account_name')}: Token 复核暂时失败，继续使用缓存: {item.get('error')}"
+        )
     for report_type in report_types:
         try:
             result = await service.refresh_jg_report_cache(
@@ -687,6 +868,11 @@ async def _execute_ad_data_refresh(
                 start_date=start_d.isoformat(),
                 end_date=end_d.isoformat(),
                 days=days,
+                resilient=True,
+                preserve_existing_on_empty=True,
+                successful_tokens_only=True,
+                use_cached_tokens=True,
+                defer_post_processing=True,
             )
         except Exception as exc:
             await record_report_refresh_result_safely(
@@ -705,23 +891,152 @@ async def _execute_ad_data_refresh(
         await record_report_refresh_result_safely(
             history_run_id,
             report_type=report_type,
-            status="succeeded",
+            status="failed" if result.get("errors") else "succeeded",
             result=result,
         )
         total_accounts += int(result.get("updated_accounts") or 0)
+        total_attempted_accounts += int(result.get("attempted_accounts") or 0)
         total_rows += int(result.get("updated_rows") or 0)
         total_changed_rows += int(result.get("changed_rows") or 0)
+        refreshed_report_types.append(report_type)
+        for skipped in result.get("skipped_token_accounts") or []:
+            skipped_account_id = str(skipped.get("account_id") or "").strip()
+            if skipped_account_id:
+                skipped_token_accounts[skipped_account_id] = str(skipped.get("account_name") or "")
         errors.extend(str(item) for item in (result.get("errors") or []))
+
+    if refreshed_report_types:
+        finalized = await service.finalize_jg_report_refresh(
+            report_types=refreshed_report_types,
+            start_date=start_d,
+            end_date=end_d,
+            account_id=None,
+        )
+        errors.extend(str(item) for item in (finalized.get("errors") or []))
+
+    consistency = await _validate_ad_refresh_consistency(
+        session,
+        start_d=start_d,
+        end_d=end_d,
+        report_types=report_types,
+    )
+    errors.extend(consistency["errors"])
+
+    token_progress = (
+        f"Token 有效 {len(token_refresh.get('valid_accounts') or [])}/"
+        f"{int(token_refresh.get('configured_accounts') or 0)} 个"
+    )
+    progress = f"{token_progress}，成功 {total_accounts}/{total_attempted_accounts} 个账户报表组合"
+    skipped = f"，跳过 Token 不可用账户 {len(skipped_token_accounts)} 个" if skipped_token_accounts else ""
     if errors:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，{progress}{skipped}，读取 {total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
     else:
-        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，读取 {total_accounts} 个账户、{total_rows} 行，实际变更 {total_changed_rows} 行"
+        message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，{progress}{skipped}，读取 {total_rows} 行，实际变更 {total_changed_rows} 行，数据一致性验收通过"
     await finish_report_refresh_run_safely(
         history_run_id,
-        status="succeeded",
+        status="failed" if errors else "succeeded",
         message=message,
+        error=" | ".join(errors[:20]) if errors else None,
     )
     return message
+
+
+async def _validate_ad_refresh_consistency(
+    session: AsyncSession,
+    *,
+    start_d: date,
+    end_d: date,
+    report_types: list[str] | tuple[str, ...] = AD_REPORT_TYPES,
+) -> dict[str, Any]:
+    normalized_types = tuple(
+        report_type
+        for report_type in dict.fromkeys(str(item).strip() for item in report_types)
+        if report_type in AD_REPORT_TYPES
+    )
+    if not normalized_types:
+        return {"errors": []}
+    raw_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSReportDaily.report_type,
+                    XHSReportDaily.account_id,
+                    XHSReportDaily.report_date,
+                )
+                .where(
+                    XHSReportDaily.report_type.in_(normalized_types),
+                    XHSReportDaily.report_date >= start_d,
+                    XHSReportDaily.report_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    raw_dates: dict[str, set[tuple[str, date]]] = {report_type: set() for report_type in normalized_types}
+    for report_type, account_id, report_date in raw_rows:
+        raw_dates.setdefault(str(report_type), set()).add((str(account_id), report_date))
+
+    account_aggregate_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSAdStatsDailyAccount.report_type,
+                    XHSAdStatsDailyAccount.account_id,
+                    XHSAdStatsDailyAccount.stat_date,
+                )
+                .where(
+                    XHSAdStatsDailyAccount.report_type.in_(normalized_types),
+                    XHSAdStatsDailyAccount.stat_date >= start_d,
+                    XHSAdStatsDailyAccount.stat_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    note_aggregate_rows = list(
+        (
+            await session.execute(
+                select(
+                    XHSAdStatsDailyNote.report_type,
+                    XHSAdStatsDailyNote.account_id,
+                    XHSAdStatsDailyNote.stat_date,
+                )
+                .where(
+                    XHSAdStatsDailyNote.report_type.in_(normalized_types),
+                    XHSAdStatsDailyNote.stat_date >= start_d,
+                    XHSAdStatsDailyNote.stat_date <= end_d,
+                )
+                .distinct()
+            )
+        ).all()
+    )
+    aggregate_dates: dict[str, set[tuple[str, date]]] = {report_type: set() for report_type in normalized_types}
+    for report_type, account_id, stat_date in account_aggregate_rows + note_aggregate_rows:
+        aggregate_dates.setdefault(str(report_type), set()).add((str(account_id), stat_date))
+
+    errors: list[str] = []
+    pair_checks = (
+        ("简单投", "simple", "simple_note"),
+        ("标准投", "standard", "standard_note"),
+    )
+    for label, account_report, note_report in pair_checks:
+        if account_report not in normalized_types or note_report not in normalized_types:
+            continue
+        account_only = raw_dates.get(account_report, set()) - raw_dates.get(note_report, set())
+        note_only = raw_dates.get(note_report, set()) - raw_dates.get(account_report, set())
+        if account_only or note_only:
+            errors.append(
+                f"{label}账户/笔记报表日期不一致: 账户侧缺口 {len(note_only)}，笔记侧缺口 {len(account_only)}"
+            )
+
+    for report_type in normalized_types:
+        raw_only = raw_dates.get(report_type, set()) - aggregate_dates.get(report_type, set())
+        aggregate_only = aggregate_dates.get(report_type, set()) - raw_dates.get(report_type, set())
+        if raw_only or aggregate_only:
+            errors.append(
+                f"{report_type}原始/聚合日期不一致: 未聚合 {len(raw_only)}，残留聚合 {len(aggregate_only)}"
+            )
+    return {"errors": errors}
 
 
 async def _execute_ad_report_publish(session: AsyncSession, config: dict[str, Any]) -> str:
@@ -828,16 +1143,21 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
         async with session_factory() as session:
             schedule_service = XHSScheduleService(session)
             row = await schedule_service.get_row(task_key)
+            started_at = utc_now_naive()
             run_log = XHSScheduleRunLog(
                 task_key=task_key,
                 source=source,
                 status="running",
                 message="任务执行中",
-                started_at=utc_now_naive(),
+                started_at=started_at,
             )
             session.add(run_log)
             row.last_status = "running"
             row.last_message = "任务执行中"
+            if source == "schedule":
+                # Claim today's schedule durably before doing any long-running work.
+                # A container restart then cannot start the same task a second time.
+                row.last_run_at = started_at
             await session.commit()
             await session.refresh(run_log)
             run_log_id = int(run_log.id)

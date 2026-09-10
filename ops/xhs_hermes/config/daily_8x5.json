@@ -1,0 +1,32 @@
+{
+  "posts_per_account": 5,
+  "default_case_id": "a05-current",
+  "accounts": [
+    {"id": 6, "name": "薯条会买车"},
+    {"id": 27, "name": "云特曼"},
+    {"id": 11, "name": "零跑情报局"},
+    {"id": 16, "name": "新能源事创资讯"},
+    {"id": 23, "name": "云凌胜"},
+    {"id": 14, "name": "云特曼老油条"},
+    {"id": 22, "name": "本海"},
+    {"id": 18, "name": "云展玉"}
+  ],
+  "copy_workers": 8,
+  "image_plan_workers": 8,
+  "image_workers": 5,
+  "copy_attempts_per_mother": 2,
+  "image_plan_attempts_per_template": 2,
+  "image_plan_extra_templates": 2,
+  "image_attempts": 2,
+  "minimum_free_gb": 5,
+  "mother_reserve_count": 40,
+  "prompt_reserve_count": 40,
+  "mother_history_days": 7,
+  "prompt_history_days": 2,
+  "copy_model": "gpt-5.5",
+  "image_plan_model": "gpt-5.5",
+  "image_model": "gptimage2",
+  "image_width": 1536,
+  "image_height": 2048,
+  "image_quality": "high"
+}

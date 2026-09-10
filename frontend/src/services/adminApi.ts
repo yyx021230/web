@@ -732,6 +732,7 @@ export const adminApi = {
     height?: number;
     quality?: string;
     count?: number;
+    image_data?: string;
   }) =>
     api.post<{
       id: number;

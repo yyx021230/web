@@ -235,7 +235,7 @@ function summarizeSchedule(setting: ScheduleSetting, draft?: ScheduleDraft): str
     const parts = [];
     parts.push(getScopeLabel(current.target_scope));
     if (current.post_sync_enabled) parts.push('主页帖子');
-    if (current.engagement_sync_enabled) parts.push('创作者中心');
+    if (current.engagement_sync_enabled) parts.push('创作者中心（失败重试1次）');
     if (current.detail_sync_enabled) parts.push('未同步策略');
     if (current.content_tag_enabled) parts.push('内容打标');
     if (parts.length === 1) parts.push('未配置具体同步项');
@@ -890,14 +890,19 @@ export default function AdminXhsSchedulesPage() {
 
                   <div className="rounded-[24px] border border-slate-200 bg-white p-4">
                     <div className="grid gap-4 xl:grid-cols-3">
-                      <label className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={!!activeDraft.engagement_sync_enabled}
-                          onChange={(event) => setScheduleDrafts((prev) => ({ ...prev, [activeSetting.task_key]: { ...prev[activeSetting.task_key], engagement_sync_enabled: event.target.checked } }))}
-                          className="h-4 w-4 rounded border-slate-300 text-slate-950"
-                        />
-                        启用创作者中心互动同步
+                      <label className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-700">
+                        <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={!!activeDraft.engagement_sync_enabled}
+                            onChange={(event) => setScheduleDrafts((prev) => ({ ...prev, [activeSetting.task_key]: { ...prev[activeSetting.task_key], engagement_sync_enabled: event.target.checked } }))}
+                            className="h-4 w-4 rounded border-slate-300 text-slate-950"
+                          />
+                          启用创作者中心互动同步
+                        </span>
+                        <span className="mt-2 block text-xs font-normal leading-5 text-slate-500">
+                          首轮同步全部配置完整账号；结束后自动只重试首轮失败账号一次。
+                        </span>
                       </label>
                       <label className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
                         <input

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     storage_type: str = "local"  # local | s3 | minio
     storage_path: str = "./uploads"
     uploads_public_base_url: str = ""
+    # Private, read-only preview cache; not an uploads/public directory.
+    hermes_reference_snapshot_path: str = "./reference_previews/online.json"
     s3_endpoint: str = ""
     s3_access_key: str = ""
     s3_secret_key: str = ""
@@ -168,6 +170,8 @@ class Settings(BaseSettings):
     sms_code_center_admin_password: str = ""
     sms_code_center_wait_timeout_seconds: int = 60
     sms_code_center_activation_ttl_seconds: int = 300
+    # QR confirmation can take several minutes; keep the pre-armed secondary order alive for 7 minutes.
+    sms_code_center_secondary_activation_ttl_seconds: int = 420
     # Bound the first SMS wait; expiry switches the login flow to QR.
     sms_code_center_primary_attempt_timeout_seconds: int = 180
     # The MCP may need up to three minutes for the already-open login page to become interactive.

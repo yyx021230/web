@@ -84,8 +84,12 @@ jobs:
       MINIO_ROOT_USER: ci-minio
       MINIO_ROOT_PASSWORD: ci-minio-password
       APP_VERSION: 0.3.0-ci
+      APP_IMAGE_TAG: 0.3.0-ci-${{ github.sha }}
       GIT_COMMIT: ${{ github.sha }}
       BUILD_TIME: ci
+      RELEASE_SOURCE_SHA256: ci
+      MCP_SOURCE_SHA256: ci
+      MCP_BINARY_SHA256: ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,6 +97,8 @@ jobs:
           python-version: "3.11"
       - name: Scan tracked files for secrets
         run: python scripts/check_tracked_secrets.py
+      - name: Check release contract
+        run: python scripts/check_release_contract.py
       - name: Validate Compose
         run: docker compose config --quiet
       - name: Build release images

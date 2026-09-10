@@ -108,7 +108,8 @@ function SearchableSelect({
 }
 
 export default function GalleryPicker({ open, onClose, onSelect, multiSelect, onMultiSelect, existingIds = [] }: GalleryPickerProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('drafts');
+  // Keep the picker aligned with the AI page's default save destination.
+  const [activeTab, setActiveTab] = useState<TabKey>('templates');
   const [searchQuery, setSearchQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());

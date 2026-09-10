@@ -20,6 +20,7 @@ import {
   publishPostNow,
   recordXhsAccountNoteBrowse,
   refreshXhsReportCache,
+  importXhsCreatorExport,
   syncPostStats,
   syncXhsAccountNoteEngagements,
   syncXhsAccountNotes,
@@ -757,6 +758,12 @@ type AccountEngagementSyncStrategyDraft = {
   accountSearch: string;
 };
 
+type CreatorExportImportDraft = {
+  environmentId: number | null;
+  accountSearch: string;
+  file: File | null;
+};
+
 function buildAccountPostRunnerAssignments(
   overview: XHSSyncRunnerBrowseOverview | null,
   runnerOptions: XHSEnvironment[],
@@ -1198,6 +1205,8 @@ export default function XHSPublishManagePage() {
   const [accountNoteDetailsSyncJob, setAccountNoteDetailsSyncJob] = useState<XHSAccountNoteSyncJob | null>(null);
   const [accountSyncProgressPanel, setAccountSyncProgressPanel] = useState<AccountSyncProgressPanelKind | null>(null);
   const [accountSyncHistoryOpen, setAccountSyncHistoryOpen] = useState(false);
+  const [creatorExportImport, setCreatorExportImport] = useState<CreatorExportImportDraft | null>(null);
+  const [creatorExportImporting, setCreatorExportImporting] = useState(false);
   const [accountSyncHistory, setAccountSyncHistory] = useState<XHSAccountSyncHistoryRun[]>([]);
   const [accountSyncHistoryLoading, setAccountSyncHistoryLoading] = useState(false);
   const [accountSyncHistoryRetryingId, setAccountSyncHistoryRetryingId] = useState<number | null>(null);
@@ -1253,9 +1262,14 @@ export default function XHSPublishManagePage() {
   const accountEnvOptions = useMemo(() => {
     return [...environments].sort((a, b) => a.account_name.localeCompare(b.account_name, 'zh-Hans-CN'));
   }, [environments]);
-  const accountPostTargetEnvOptions = useMemo(() => {
+  const accountBusinessEnvOptions = useMemo(() => {
     return accountEnvOptions.filter((env) => !isAccountSyncRunnerEnv(env));
   }, [accountEnvOptions]);
+  const accountPostTargetEnvOptions = useMemo(() => {
+    return accountBusinessEnvOptions.filter((env) => (
+      env.homepage_sync_eligible ?? Boolean(env.profile_url?.trim())
+    ));
+  }, [accountBusinessEnvOptions]);
   const filteredAccountEnvOptions = useMemo(() => {
     const keyword = accountEnvSearch.trim().toLowerCase();
     if (!keyword) return accountEnvOptions;
@@ -1321,18 +1335,28 @@ export default function XHSPublishManagePage() {
     [accountEngagementSyncStrategy],
   );
   const filteredAccountEngagementTargetEnvOptions = useMemo(() => {
-    if (!accountEngagementSyncStrategy) return accountPostTargetEnvOptions;
+    if (!accountEngagementSyncStrategy) return accountBusinessEnvOptions;
     const keyword = accountEngagementSyncStrategy.accountSearch.trim().toLowerCase();
-    if (!keyword) return accountPostTargetEnvOptions;
-    return accountPostTargetEnvOptions.filter((env) => getEnvironmentSearchText(env).includes(keyword));
-  }, [accountEngagementSyncStrategy, accountPostTargetEnvOptions]);
+    if (!keyword) return accountBusinessEnvOptions;
+    return accountBusinessEnvOptions.filter((env) => getEnvironmentSearchText(env).includes(keyword));
+  }, [accountBusinessEnvOptions, accountEngagementSyncStrategy]);
   const selectedAccountEngagementTargetEnvOptions = useMemo(() => {
     if (!accountEngagementSyncStrategy) return [];
-    const accountById = new Map(accountPostTargetEnvOptions.map((env) => [env.id, env]));
+    const accountById = new Map(accountBusinessEnvOptions.map((env) => [env.id, env]));
     return Array.from(new Set(accountEngagementSyncStrategy.selectedEnvIds))
       .map((envId) => accountById.get(envId))
       .filter((env): env is XHSEnvironment => Boolean(env));
-  }, [accountEngagementSyncStrategy, accountPostTargetEnvOptions]);
+  }, [accountBusinessEnvOptions, accountEngagementSyncStrategy]);
+  const filteredCreatorImportEnvOptions = useMemo(() => {
+    if (!creatorExportImport) return [];
+    const keyword = creatorExportImport.accountSearch.trim().toLowerCase();
+    if (!keyword) return accountBusinessEnvOptions;
+    return accountBusinessEnvOptions.filter((env) => getEnvironmentSearchText(env).includes(keyword));
+  }, [accountBusinessEnvOptions, creatorExportImport]);
+  const selectedCreatorImportEnv = useMemo(() => {
+    if (!creatorExportImport?.environmentId) return null;
+    return accountBusinessEnvOptions.find((env) => env.id === creatorExportImport.environmentId) || null;
+  }, [accountBusinessEnvOptions, creatorExportImport?.environmentId]);
   const reportDateRangeInvalid = useMemo(() => {
     return !!reportStartDate && !!reportEndDate && reportStartDate > reportEndDate;
   }, [reportStartDate, reportEndDate]);
@@ -1752,6 +1776,36 @@ export default function XHSPublishManagePage() {
       setAccountSyncHistoryRetryingId(null);
     }
   }, [loadAccountSyncHistory]);
+
+  const handleImportCreatorExport = useCallback(async () => {
+    if (!creatorExportImport?.environmentId) {
+      toast.error('请先选择表格所属的小红书账号');
+      return;
+    }
+    if (!creatorExportImport.file) {
+      toast.error('请选择创作者中心导出的 Excel 表格');
+      return;
+    }
+    setCreatorExportImporting(true);
+    try {
+      const result = await importXhsCreatorExport(
+        creatorExportImport.environmentId,
+        creatorExportImport.file,
+      );
+      toast.success(
+        `${result.account_name} 导入完成：识别 ${result.exported_rows || 0} 条，新增 ${result.created_notes || 0} 条，更新 ${result.updated_notes || 0} 条`,
+      );
+      setCreatorExportImport(null);
+      await Promise.all([
+        fetchAccountNotes({ page: 1, limit: 20 }),
+        loadAccountSyncHistory(),
+      ]);
+    } catch (err: any) {
+      toast.error(`导入失败: ${err.message}`);
+    } finally {
+      setCreatorExportImporting(false);
+    }
+  }, [creatorExportImport, fetchAccountNotes, loadAccountSyncHistory]);
 
   useEffect(() => {
     if (accountSyncHistoryOpen) loadAccountSyncHistory();
@@ -3464,6 +3518,20 @@ export default function XHSPublishManagePage() {
                         )}
                         {isAdmin && (
                           <button
+                            className="h-9 rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-xs font-semibold text-cyan-700 transition-all hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => setCreatorExportImport({
+                              environmentId: accountEnvId === 'all' ? null : accountEnvId,
+                              accountSearch: '',
+                              file: null,
+                            })}
+                            disabled={creatorExportImporting || accountNotesSyncInProgress || accountEngagementSyncInProgress || accountNoteDetailsSyncInProgress}
+                            title="自动同步失败时，选择对应账号并上传创作者中心导出的 Excel 表格"
+                          >
+                            {creatorExportImporting ? '导入中...' : '手动导入表格'}
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
                             className="h-9 rounded-xl border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100 disabled:opacity-50"
                             onClick={() => {
                               if (accountNotesSyncInProgress) {
@@ -4724,6 +4792,135 @@ export default function XHSPublishManagePage() {
         </div>
       </div>
 
+      {creatorExportImport && (
+        <div
+          className="fixed inset-0 z-[83] grid place-items-center bg-slate-950/48 p-4 backdrop-blur-sm"
+          onClick={() => {
+            if (!creatorExportImporting) setCreatorExportImport(null);
+          }}
+        >
+          <div
+            className="flex max-h-[calc(100vh-32px)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.28)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_10%_0%,rgba(6,182,212,0.16),transparent_32%),linear-gradient(135deg,#f8fafc,#ffffff)] p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-600">Manual Recovery</div>
+                  <h3 className="mt-1 text-2xl font-black tracking-[-0.04em] text-slate-950">手动导入创作者中心表格</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                    自动同步失败时使用。一个文件只对应一个小红书账号，导入后会沿用主同步的匹配规则，新增缺失帖子并刷新标题、发布时间和互动数据。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-lg font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
+                  onClick={() => setCreatorExportImport(null)}
+                  disabled={creatorExportImporting}
+                  aria-label="关闭手动导入"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <section>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-black text-slate-950">1. 选择表格所属账号</div>
+                    <div className="mt-1 text-xs text-slate-500">务必选择导出该表格的账号，避免数据写入错误账号。</div>
+                  </div>
+                  {selectedCreatorImportEnv && (
+                    <span className="max-w-[52%] truncate rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">
+                      已选择：{selectedCreatorImportEnv.account_name}
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="search"
+                  value={creatorExportImport.accountSearch}
+                  onChange={(event) => setCreatorExportImport((current) => current ? { ...current, accountSearch: event.target.value } : current)}
+                  placeholder="搜索小红书账号名称或环境 ID"
+                  className="mt-4 h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-all focus:border-cyan-300 focus:bg-white focus:ring-4 focus:ring-cyan-100"
+                />
+                <div className="mt-3 max-h-64 overflow-y-auto rounded-[20px] border border-slate-200 bg-white">
+                  {filteredCreatorImportEnvOptions.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-slate-400">没有匹配到发布账号</div>
+                  ) : filteredCreatorImportEnvOptions.map((env) => {
+                    const selected = creatorExportImport.environmentId === env.id;
+                    return (
+                      <button
+                        type="button"
+                        key={`creator-import-env-${env.id}`}
+                        className={`flex w-full items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 ${selected ? 'bg-cyan-50' : 'hover:bg-slate-50'}`}
+                        onClick={() => setCreatorExportImport((current) => current ? { ...current, environmentId: env.id } : current)}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-bold text-slate-900">{env.account_name}</div>
+                          <div className="mt-0.5 text-xs text-slate-400">环境 ID {env.id}{env.shop_id ? ` · ${env.shop_id}` : ''}</div>
+                        </div>
+                        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black ${selected ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 text-transparent'}`}>✓</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="mt-5 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-black text-slate-950">2. 上传导出表格</div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">支持 .xlsx / .xls，最大 20MB。导入异常会整次回滚，不会留下半截数据。</p>
+                <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-cyan-300 bg-white px-4 py-4 transition-all hover:border-cyan-500 hover:bg-cyan-50/40">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-slate-800">{creatorExportImport.file?.name || '点击选择创作者中心导出的表格'}</div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {creatorExportImport.file ? `${(creatorExportImport.file.size / 1024).toFixed(1)} KB` : '请选择与上方账号对应的文件'}
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-bold text-white">选择文件</span>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                    className="hidden"
+                    onChange={(event) => {
+                      const nextFile = event.target.files?.[0] || null;
+                      if (nextFile && nextFile.size > 20 * 1024 * 1024) {
+                        toast.error('表格不能超过 20MB');
+                        event.target.value = '';
+                        return;
+                      }
+                      setCreatorExportImport((current) => current ? { ...current, file: nextFile } : current);
+                    }}
+                  />
+                </label>
+              </section>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white p-5">
+              <div className="text-xs text-slate-400">导入记录会进入“同步历史”，可查看成功数量和失败原因。</div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  onClick={() => setCreatorExportImport(null)}
+                  disabled={creatorExportImporting}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="h-10 rounded-xl bg-cyan-600 px-5 text-sm font-bold text-white transition-all hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-45"
+                  onClick={handleImportCreatorExport}
+                  disabled={creatorExportImporting || !creatorExportImport.environmentId || !creatorExportImport.file}
+                >
+                  {creatorExportImporting ? '正在解析并更新...' : '确认导入并更新'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {accountSyncHistoryOpen && (
         <div
           className="fixed inset-0 z-[81] grid place-items-center bg-slate-950/42 p-4 backdrop-blur-sm"
@@ -4736,8 +4933,8 @@ export default function XHSPublishManagePage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Sync History</div>
-                <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-950">账号主页同步历史</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">每一轮会保留账号级成功、失败和错误原因。失败账号可单独重跑，不会重复跑已成功账号。</p>
+                <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-950">账号数据同步历史</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">自动同步与手动表格导入都会保留账号级结果和错误原因。自动同步失败账号可单独重跑。</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -4763,12 +4960,18 @@ export default function XHSPublishManagePage() {
               {accountSyncHistoryLoading && accountSyncHistory.length === 0 ? (
                 <div className="grid min-h-44 place-items-center text-sm text-slate-400">正在读取同步历史...</div>
               ) : accountSyncHistory.length === 0 ? (
-                <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">还没有同步历史。发起一次创作者中心主同步、主页补充或详情补充后会显示在这里。</div>
+                <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">还没有同步历史。发起自动同步或手动导入表格后会显示在这里。</div>
               ) : (
                 <div className="space-y-3">
                   {accountSyncHistory.map((run) => {
-                    const kindLabel = run.sync_kind === 'posts' ? '主页帖子补充' : run.sync_kind === 'engagement' ? '创作中心主同步' : '帖子详情补充';
-                    const canRetry = run.summary.failed > 0;
+                    const kindLabel = run.source === 'manual_import'
+                      ? '创作者中心表格导入'
+                      : run.sync_kind === 'posts'
+                        ? '主页帖子补充'
+                        : run.sync_kind === 'engagement'
+                          ? '创作中心主同步'
+                          : '帖子详情补充';
+                    const canRetry = run.source !== 'manual_import' && run.summary.failed > 0;
                     return (
                       <section key={`account-sync-history-${run.id}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50/70">
                         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
@@ -4777,6 +4980,7 @@ export default function XHSPublishManagePage() {
                               <span className="text-sm font-semibold text-slate-900">{kindLabel}</span>
                               <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getAccountSyncJobStatusTone(run.status)}`}>{getAccountSyncJobStatusLabel(run.status)}</span>
                               {run.source === 'retry_failed' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">失败项重跑</span>}
+                              {run.source === 'manual_import' && <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">手动表格导入</span>}
                             </div>
                             <div className="mt-1 text-xs text-slate-400">{formatAccountSyncJobTime(run.created_at)} · 成功 {run.summary.succeeded} · 失败 {run.summary.failed} · 已取消 {run.summary.cancelled ?? 0} · 进行中 {run.summary.running}</div>
                           </div>
@@ -5415,7 +5619,7 @@ export default function XHSPublishManagePage() {
                   <div>
                     <div className="text-sm font-black text-slate-950">选择本轮发布账号</div>
                     <div className="mt-1 text-xs text-slate-500">
-                      当前共 {accountPostTargetEnvOptions.length} 个发布账号，已勾选 {accountEngagementSelectedCount} 个。
+                      当前共 {accountBusinessEnvOptions.length} 个发布账号，已勾选 {accountEngagementSelectedCount} 个。
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">

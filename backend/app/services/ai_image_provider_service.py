@@ -586,10 +586,7 @@ class AIImageProviderService:
                 )
                 if existing_provider:
                     needs_update = False
-                    for field in ("supports_text_input", "supports_image_input"):
-                        if getattr(existing_provider, field) != item[field]:
-                            setattr(existing_provider, field, item[field])
-                            needs_update = True
+                    # 默认值仅用于首次建档；已有入口的能力开关由管理员维护，不能在启动或列表查询时覆盖。
                     if existing_provider.provider_kind == "mentalout_batch":
                         normalized_api_base = _normalize_legacy_batch_api_base(settings.gpt_image2_api_url)
                         current_config = existing_provider.config or {}
@@ -1145,7 +1142,8 @@ class AIImageProviderService:
         base_url, path = _normalize_base_url(provider.endpoint_url)
         ref_sources = _collect_reference_sources(params)
         has_reference = bool(ref_sources)
-        if has_reference and provider.supports_image_input:
+        force_image_edit = bool(params.get("_provider_test_force_image_edit"))
+        if has_reference and (provider.supports_image_input or force_image_edit):
             path = "/images/edits"
         retry_attempts = max(1, int(provider.config.get("upstream_retry_attempts", 4) or 4))
         retry_delay = float(provider.config.get("upstream_retry_delay", 2) or 2)

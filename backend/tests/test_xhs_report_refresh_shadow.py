@@ -216,6 +216,21 @@ async def test_success_lifecycle_mirrors_progress_results_and_events(client):
                 "updated_accounts": 3,
                 "updated_rows": 40,
                 "errors": ["one account unavailable"],
+                "failed_accounts": [
+                    {
+                        "account_id": "10001",
+                        "account_name": "异常账户",
+                        "stage": "report",
+                        "error": "standard_note timeout",
+                    }
+                ],
+                "preserved_empty_accounts": [
+                    {
+                        "account_id": "10002",
+                        "account_name": "空响应账户",
+                        "preserved_rows": "12",
+                    }
+                ],
             },
         )
         await service.finish(
@@ -236,6 +251,20 @@ async def test_success_lifecycle_mirrors_progress_results_and_events(client):
         assert job.result_summary["updated_accounts"] == 7
         assert job.result_summary["updated_rows"] == 120
         assert job.result_summary["error_count"] == 1
+        standard_result = next(
+            item
+            for item in run.result_summary["reports"]
+            if item["report_type"] == "standard"
+        )
+        assert standard_result["failed_accounts"] == [
+            {
+                "account_id": "10001",
+                "account_name": "异常账户",
+                "stage": "report",
+                "error": "standard_note timeout",
+            }
+        ]
+        assert standard_result["preserved_empty_accounts"][0]["preserved_rows"] == 12
         items = list(
             (
                 await db.execute(

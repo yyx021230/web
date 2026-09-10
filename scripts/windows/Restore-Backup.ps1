@@ -40,6 +40,7 @@ function Resolve-UploadsPath([string]$Root) {
 
 Push-Location $ProjectRoot
 try {
+    $frontendContainer = "$(docker compose ps --all -q frontend | Select-Object -Last 1)".Trim()
     docker compose stop frontend backend ai-worker | Out-Null
     $postgresContainer = "$(docker compose ps --all -q postgres | Select-Object -Last 1)".Trim()
     if (-not $postgresContainer) { throw "PostgreSQL container is unavailable" }
@@ -84,7 +85,11 @@ try {
     }
 
     if ($StartServices) {
-        docker compose up -d --no-deps backend ai-worker frontend | Out-Null
+        & (Join-Path $ProjectRoot "scripts\windows\Start-Production.ps1") -ProjectRoot $ProjectRoot
+        if ($frontendContainer) {
+            docker start $frontendContainer | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Existing frontend container could not be restarted" }
+        }
     }
 }
 finally {

@@ -1,0 +1,6 @@
+# Preserve the verified Linux OCR/Hermes dependency stack; code-only upgrade.
+FROM ztqc/hermes-worker:0.3.20
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.version="0.3.21" org.opencontainers.image.revision=${GIT_COMMIT}
+COPY ops/xhs_hermes/core.py ops/xhs_hermes/selection_types.py ops/xhs_hermes/run_daily_8x5.py ops/xhs_hermes/web_worker.py /app/web/ops/xhs_hermes/
+COPY backend/app/services/hermes_reference_types.py /app/web/backend/app/services/hermes_reference_types.py

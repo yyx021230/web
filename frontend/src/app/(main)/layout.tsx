@@ -24,7 +24,7 @@ const navItems = [
   { id: 'ai', icon: Sparkles, label: 'AI 生图', href: '/ai' },
   { id: 'prompts', icon: BookOpen, label: '提示词宝库', href: '/prompts' },
   { id: 'copywriting', icon: FileText, label: '文案库', href: '/copywriting' },
-  { id: 'workflows', icon: Workflow, label: '工作流', href: '/workflows' },
+  { id: 'workflows', icon: Workflow, label: '内容工作台', href: '/workflows' },
   { id: 'publish', icon: Send, label: '发布管理', href: '/publish' },
   { id: 'insights', icon: BarChart3, label: '数据看板', href: '/insights' },
   { id: 'ad-insights', icon: Target, label: '投流看板', href: '/ad-insights' },

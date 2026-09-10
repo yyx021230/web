@@ -18,6 +18,7 @@ export interface XHSEnvironment {
   group_name?: string;
   labels?: string;
   status: string;
+  homepage_sync_eligible?: boolean;
 }
 
 export interface XHSBrowserEnvironmentStatus {
@@ -244,6 +245,14 @@ export interface XHSAccountNoteSyncResponse {
   unmatched_notes?: number;
   duplicate_title_skips?: number;
   message?: string | null;
+}
+
+export interface XHSCreatorExportImportResponse extends XHSAccountNoteSyncResponse {
+  history_run_id: number;
+  environment_id: number;
+  account_name: string;
+  file_name: string;
+  ambiguous_notes: number;
 }
 
 export interface XHSAccountNoteDetailSyncResponse {
@@ -809,6 +818,19 @@ export async function syncXhsAccountNoteEngagements(
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
   const response = await api.post('/xhs/account-notes/sync-engagement', null, { params });
+  return response.data;
+}
+
+export async function importXhsCreatorExport(
+  environmentId: number,
+  file: File,
+): Promise<XHSCreatorExportImportResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/xhs/account-notes/import-creator-export', formData, {
+    params: { environment_id: environmentId },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 }
 

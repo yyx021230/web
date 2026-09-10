@@ -119,6 +119,27 @@ class ReportRefreshRunService:
         payload = result if isinstance(result, dict) else {}
         raw_errors = payload.get("errors")
         errors: list[Any] = raw_errors if isinstance(raw_errors, list) else []
+        raw_failed_accounts = payload.get("failed_accounts")
+        failed_accounts = [
+            {
+                "account_id": str(item.get("account_id") or "")[:64],
+                "account_name": str(item.get("account_name") or "")[:255],
+                "stage": str(item.get("stage") or "")[:32],
+                "error": str(item.get("error") or "")[:1000],
+            }
+            for item in (raw_failed_accounts if isinstance(raw_failed_accounts, list) else [])
+            if isinstance(item, dict)
+        ][:500]
+        raw_preserved_accounts = payload.get("preserved_empty_accounts")
+        preserved_empty_accounts = [
+            {
+                "account_id": str(item.get("account_id") or "")[:64],
+                "account_name": str(item.get("account_name") or "")[:255],
+                "preserved_rows": _safe_int(item.get("preserved_rows")),
+            }
+            for item in (raw_preserved_accounts if isinstance(raw_preserved_accounts, list) else [])
+            if isinstance(item, dict)
+        ][:500]
         entry = {
             "report_type": normalized_type,
             "status": normalized_status,
@@ -133,6 +154,8 @@ class ReportRefreshRunService:
             "message": _bounded_text(error)
             if error
             else _report_result_message(normalized_type, payload),
+            "failed_accounts": failed_accounts,
+            "preserved_empty_accounts": preserved_empty_accounts,
         }
         summary = _summary_with_entry(run.result_summary, entry)
         run.result_summary = summary

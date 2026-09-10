@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "a1b2c3d4e5f6"
+CURRENT_REVISION = "c3d4e5f6a7b8"
 
 
 def _run_alembic(path: Path, *args: str) -> None:
@@ -94,6 +94,10 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
             "scheduler_leases",
             "xhs_report_refresh_runs",
             "xhs_creator_sync_rows",
+            "hermes_workflow_schedules",
+            "hermes_workflow_runs",
+            "hermes_workflow_posts",
+            "hermes_worker_states",
         }.issubset(tables)
 
         account_note_columns = _columns(connection, "xhs_account_notes")

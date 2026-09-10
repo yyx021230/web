@@ -483,7 +483,10 @@ async def _resolve_sync_history_targets(
     else:
         # 详情同步按帖子选取，无法在提交时可靠预判最终会命中的账号。
         return []
-    return list((await db.execute(stmt.order_by(XHSEnvironment.account_name.asc()))).scalars().all())
+    targets = list((await db.execute(stmt.order_by(XHSEnvironment.account_name.asc()))).scalars().all())
+    if sync_kind == "posts":
+        targets = [env for env in targets if XHSService.is_homepage_sync_eligible(env)]
+    return targets
 
 
 async def _create_sync_history_run(
@@ -1416,6 +1419,7 @@ async def list_environments(
     serialized_envs: list[EnvironmentOut] = []
     for env in envs:
         item = EnvironmentOut.model_validate(env)
+        item.homepage_sync_eligible = XHSService.is_homepage_sync_eligible(env)
         if current_user.role != "admin":
             item.sync_cloud_session_id = None
             item.sync_cloud_api_key = None
@@ -2143,6 +2147,112 @@ async def sync_account_note_details(
     )
     XHS_BACKGROUND_JOB_TASKS[job["job_id"]] = task
     return ApiResponse(data=job, message="账号帖子数据同步任务已开始")
+
+
+@router.post("/account-notes/import-creator-export")
+async def import_creator_export(
+    environment_id: int = Query(..., ge=1),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Manually reconcile one creator-center export with one XHS account."""
+    filename = str(file.filename or "").strip()
+    suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if suffix not in {"xlsx", "xls"}:
+        raise HTTPException(status_code=400, detail="仅支持创作者中心导出的 .xlsx 或 .xls 表格")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="上传的创作者中心表格为空")
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="表格不能超过 20MB")
+
+    env = (
+        await db.execute(select(XHSEnvironment).where(XHSEnvironment.id == environment_id))
+    ).scalar_one_or_none()
+    if env is None:
+        raise HTTPException(status_code=404, detail="未找到要导入的小红书账号")
+    if bool(env.is_sync_runner):
+        raise HTTPException(status_code=400, detail="测试账号不能导入创作者中心数据")
+
+    # Manual import is synchronous. Keep it in durable sync history only and
+    # do not create a queued shadow in either background-job registry.
+    now = datetime.now()
+    history_run = XHSAccountSyncRun(
+        job_id=f"manual-import-{uuid.uuid4().hex}",
+        sync_kind="engagement",
+        source="manual_import",
+        status="running",
+        requested_by_user_id=current_user.id,
+        request_config={
+            "environment_id": environment_id,
+            "file_name": filename,
+            "file_size": len(content),
+        },
+        message="正在解析并导入创作者中心表格",
+        started_at=now,
+    )
+    db.add(history_run)
+    await db.flush()
+    history_item = XHSAccountSyncRunItem(
+        run_id=history_run.id,
+        environment_id=environment_id,
+        account_name=(env.account_name or "").strip(),
+        status="running",
+        message="正在解析表格",
+        started_at=now,
+    )
+    db.add(history_item)
+    await db.commit()
+
+    service = XHSService(db)
+    try:
+        result = await service.import_creator_stats_excel(
+            environment_id,
+            content,
+            sync_run_id=history_run.id,
+        )
+        finished_at = datetime.now()
+        history_run.status = "succeeded"
+        history_run.finished_at = finished_at
+        history_run.message = "创作者中心表格导入完成"
+        history_item.status = "succeeded"
+        history_item.finished_at = finished_at
+        history_item.message = "创作者中心表格导入完成"
+        history_item.error = None
+        history_item.result = {**result, "file_name": filename}
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        history_run = await db.get(XHSAccountSyncRun, history_run.id)
+        history_item = await db.get(XHSAccountSyncRunItem, history_item.id)
+        finished_at = datetime.now()
+        error_message = str(exc).strip() or "创作者中心表格导入失败"
+        if history_run is not None:
+            history_run.status = "failed"
+            history_run.finished_at = finished_at
+            history_run.message = "创作者中心表格导入失败"
+            history_run.error = error_message
+        if history_item is not None:
+            history_item.status = "failed"
+            history_item.finished_at = finished_at
+            history_item.message = "创作者中心表格导入失败"
+            history_item.error = error_message
+        await db.commit()
+        status_code = 400 if isinstance(exc, (ValueError, RuntimeError)) else 500
+        raise HTTPException(status_code=status_code, detail=error_message) from exc
+
+    return ApiResponse(
+        data={
+            **result,
+            "history_run_id": history_run.id,
+            "environment_id": environment_id,
+            "account_name": env.account_name or "",
+            "file_name": filename,
+        },
+        message="创作者中心表格导入完成",
+    )
 
 
 @router.get("/account-notes/sync-history")

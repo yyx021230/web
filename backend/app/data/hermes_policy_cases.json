@@ -1,0 +1,1341 @@
+{
+  "a05-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑A05",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "405舒享版",
+        "official_guide_price": "¥63,900",
+        "national_scrappage_after_price": "¥56,232",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥63,900",
+        "national_scrappage_subsidy": "¥7,668",
+        "estimated_insurance": "¥2,237",
+        "estimated_purchase_tax": "¥2,827.43",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥61,496.43"
+      },
+      {
+        "configuration": "405悦享版",
+        "official_guide_price": "¥67,900",
+        "national_scrappage_after_price": "¥59,752",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥67,900",
+        "national_scrappage_subsidy": "¥8,148",
+        "estimated_insurance": "¥2,377",
+        "estimated_purchase_tax": "¥3,004.42",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥65,333.42"
+      },
+      {
+        "configuration": "510悦享版",
+        "official_guide_price": "¥75,900",
+        "national_scrappage_after_price": "¥66,792",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥75,900",
+        "national_scrappage_subsidy": "¥9,108",
+        "estimated_insurance": "¥2,657",
+        "estimated_purchase_tax": "¥3,358.41",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥73,007.41"
+      },
+      {
+        "configuration": "510激光雷达版",
+        "official_guide_price": "¥85,900",
+        "national_scrappage_after_price": "¥75,592",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥85,900",
+        "national_scrappage_subsidy": "¥10,308",
+        "estimated_insurance": "¥3,007",
+        "estimated_purchase_tax": "¥3,800.88",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥82,599.88"
+      },
+      {
+        "configuration": "510S",
+        "official_guide_price": "¥90,900",
+        "national_scrappage_after_price": "¥79,992",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥90,900",
+        "national_scrappage_subsidy": "¥10,908",
+        "estimated_insurance": "¥3,182",
+        "estimated_purchase_tax": "¥4,022.12",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥87,396.12"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥23,824",
+    "policy_text": "车型：零跑A05。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新A05 · 指导价 63,900-90,900 · CLTC续航405/510km · 高通8295座舱芯片 · 6万级激光雷达智驾。厂家综合权益图标注值：¥23,824。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：405舒享版：官方指导价¥63,900；国补后价格（按政策条件测算）¥56,232。405悦享版：官方指导价¥67,900；国补后价格（按政策条件测算）¥59,752。510悦享版：官方指导价¥75,900；国补后价格（按政策条件测算）¥66,792。510激光雷达版：官方指导价¥85,900；国补后价格（按政策条件测算）¥75,592。510S：官方指导价¥90,900；国补后价格（按政策条件测算）¥79,992。405舒享版报告测算明细：现金优惠¥0；裸车价¥63,900；国补金额测算¥7,668；保险估算¥2,237；购置税估算¥2,827.43；上牌费估算¥200；国补条件下落地价估算¥61,496.43。405悦享版报告测算明细：现金优惠¥0；裸车价¥67,900；国补金额测算¥8,148；保险估算¥2,377；购置税估算¥3,004.42；上牌费估算¥200；国补条件下落地价估算¥65,333.42。510悦享版报告测算明细：现金优惠¥0；裸车价¥75,900；国补金额测算¥9,108；保险估算¥2,657；购置税估算¥3,358.41；上牌费估算¥200；国补条件下落地价估算¥73,007.41。510激光雷达版报告测算明细：现金优惠¥0；裸车价¥85,900；国补金额测算¥10,308；保险估算¥3,007；购置税估算¥3,800.88；上牌费估算¥200；国补条件下落地价估算¥82,599.88。510S报告测算明细：现金优惠¥0；裸车价¥90,900；国补金额测算¥10,908；保险估算¥3,182；购置税估算¥4,022.12；上牌费估算¥200；国补条件下落地价估算¥87,396.12。选装礼：①限时享1,000元黑色悬浮顶选装基金；②限时享2,000元悦享套装选装基金（限405悦享版、510悦享版、510激光雷达版可享）。外饰：限时免费享价值2,000元个性外饰色（含摩根粉、雾凇米、海苔绿）。本品增换购补贴：3,000元/台。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量，享2年免费娱乐流量（4G/月）。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高2,236元。金融方案：0利息：至高享4.3万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。新车型如涉及综合权益，只能写综合权益或综合权益价值，不能写综合权益优惠。不能宣传门店有现车可提。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "a10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑A10",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "403舒享版",
+        "official_guide_price": "¥65,800",
+        "national_scrappage_after_price": "¥57,904",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥65,800",
+        "national_scrappage_subsidy": "¥7,896",
+        "estimated_insurance": "¥2,303",
+        "estimated_purchase_tax": "¥2,911.50",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥63,318.50"
+      },
+      {
+        "configuration": "403悦享版",
+        "official_guide_price": "¥69,800",
+        "national_scrappage_after_price": "¥61,424",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥69,800",
+        "national_scrappage_subsidy": "¥8,376",
+        "estimated_insurance": "¥2,443",
+        "estimated_purchase_tax": "¥3,088.50",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥67,155.50"
+      },
+      {
+        "configuration": "505悦享版",
+        "official_guide_price": "¥76,800",
+        "national_scrappage_after_price": "¥67,584",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥76,800",
+        "national_scrappage_subsidy": "¥9,216",
+        "estimated_insurance": "¥2,688",
+        "estimated_purchase_tax": "¥3,398.23",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥73,870.23"
+      },
+      {
+        "configuration": "505激光雷达版",
+        "official_guide_price": "¥86,800",
+        "national_scrappage_after_price": "¥76,384",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥86,800",
+        "national_scrappage_subsidy": "¥10,416",
+        "estimated_insurance": "¥3,038",
+        "estimated_purchase_tax": "¥3,840.71",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥83,462.71"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": false,
+      "new_vehicle_no_stock": false,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥23,832",
+    "policy_text": "车型：零跑A10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 65,800-86,800 · CLTC续航403/505km · 100,000内激光雷达智驾。厂家综合权益图标注值：¥23,832。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：403舒享版：官方指导价¥65,800；国补后价格（按政策条件测算）¥57,904。403悦享版：官方指导价¥69,800；国补后价格（按政策条件测算）¥61,424。505悦享版：官方指导价¥76,800；国补后价格（按政策条件测算）¥67,584。505激光雷达版：官方指导价¥86,800；国补后价格（按政策条件测算）¥76,384。403舒享版报告测算明细：现金优惠¥0；裸车价¥65,800；国补金额测算¥7,896；保险估算¥2,303；购置税估算¥2,911.50；上牌费估算¥200；国补条件下落地价估算¥63,318.50。403悦享版报告测算明细：现金优惠¥0；裸车价¥69,800；国补金额测算¥8,376；保险估算¥2,443；购置税估算¥3,088.50；上牌费估算¥200；国补条件下落地价估算¥67,155.50。505悦享版报告测算明细：现金优惠¥0；裸车价¥76,800；国补金额测算¥9,216；保险估算¥2,688；购置税估算¥3,398.23；上牌费估算¥200；国补条件下落地价估算¥73,870.23。505激光雷达版报告测算明细：现金优惠¥0；裸车价¥86,800；国补金额测算¥10,416；保险估算¥3,038；购置税估算¥3,840.71；上牌费估算¥200；国补条件下落地价估算¥83,462.71。外饰：限时免费享价值2,000元个性外饰色（含海苔绿、橡果棕、莓莓蓝）。选装基金：限时赠送券500元18英寸活力运动组轮毂选装基金（除505激光雷达版）；选悦享套装发放尾款抵扣券1,000元（仅限403悦享版）。本品增换购补贴：3,000元。等待交付礼：超出交付承诺周期按照500能量积分/天（50元/天，封顶1,000元）。金融贴息：至高2,236元。家充服务包：2,680元充电桩（不含安装，充电权益和交付礼包二选一）。售后权益：整车终身质保（限首任车主且非营运）+三电终身质保+车机基础流量终身免费+2年娱乐流量（4G/月）。金融方案：0利息：至高享4.3万24期0息0首付：0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "b10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑B10",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "540舒享版",
+        "official_guide_price": "¥99,800",
+        "national_scrappage_after_price": "¥87,824",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥99,800",
+        "national_scrappage_subsidy": "¥11,976",
+        "estimated_insurance": "¥3,493",
+        "estimated_purchase_tax": "¥4,415.93",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥95,932.93"
+      },
+      {
+        "configuration": "540悦享版",
+        "official_guide_price": "¥109,800",
+        "national_scrappage_after_price": "¥96,624",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥109,800",
+        "national_scrappage_subsidy": "¥13,176",
+        "estimated_insurance": "¥3,843",
+        "estimated_purchase_tax": "¥4,858.41",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥105,525.41"
+      },
+      {
+        "configuration": "610悦享版",
+        "official_guide_price": "¥115,800",
+        "national_scrappage_after_price": "¥101,904",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥115,800",
+        "national_scrappage_subsidy": "¥13,896",
+        "estimated_insurance": "¥4,053",
+        "estimated_purchase_tax": "¥5,123.89",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥111,280.89"
+      },
+      {
+        "configuration": "540激光雷达版",
+        "official_guide_price": "¥119,800",
+        "national_scrappage_after_price": "¥105,424",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥119,800",
+        "national_scrappage_subsidy": "¥14,376",
+        "estimated_insurance": "¥4,193",
+        "estimated_purchase_tax": "¥5,300.88",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥115,117.88"
+      },
+      {
+        "configuration": "610激光雷达版",
+        "official_guide_price": "¥125,800",
+        "national_scrappage_after_price": "¥110,704",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥125,800",
+        "national_scrappage_subsidy": "¥15,096",
+        "estimated_insurance": "¥4,403",
+        "estimated_purchase_tax": "¥5,566.37",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥120,873.37"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥34,936",
+    "policy_text": "车型：零跑B10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新B10 · 指导价 99,800-125,800 · CLTC续航540/610km · 全域800V+3C快充。厂家综合权益图标注值：¥34,936。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：540舒享版：官方指导价¥99,800；国补后价格（按政策条件测算）¥87,824。540悦享版：官方指导价¥109,800；国补后价格（按政策条件测算）¥96,624。610悦享版：官方指导价¥115,800；国补后价格（按政策条件测算）¥101,904。540激光雷达版：官方指导价¥119,800；国补后价格（按政策条件测算）¥105,424。610激光雷达版：官方指导价¥125,800；国补后价格（按政策条件测算）¥110,704。540舒享版报告测算明细：现金优惠¥0；裸车价¥99,800；国补金额测算¥11,976；保险估算¥3,493；购置税估算¥4,415.93；上牌费估算¥200；国补条件下落地价估算¥95,932.93。540悦享版报告测算明细：现金优惠¥0；裸车价¥109,800；国补金额测算¥13,176；保险估算¥3,843；购置税估算¥4,858.41；上牌费估算¥200；国补条件下落地价估算¥105,525.41。610悦享版报告测算明细：现金优惠¥0；裸车价¥115,800；国补金额测算¥13,896；保险估算¥4,053；购置税估算¥5,123.89；上牌费估算¥200；国补条件下落地价估算¥111,280.89。540激光雷达版报告测算明细：现金优惠¥0；裸车价¥119,800；国补金额测算¥14,376；保险估算¥4,193；购置税估算¥5,300.88；上牌费估算¥200；国补条件下落地价估算¥115,117.88。610激光雷达版报告测算明细：现金优惠¥0；裸车价¥125,800；国补金额测算¥15,096；保险估算¥4,403；购置税估算¥5,566.37；上牌费估算¥200；国补条件下落地价估算¥120,873.37。选装礼：限时享6,000元双零重力舒享套装选装基金（除540舒享版）。外饰：B10限时免费享价值2,000元个性外饰色（风禾青、液态银）。本品增换购补贴：4,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "b01-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑B01",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "590舒享版",
+        "official_guide_price": "¥95,800",
+        "national_scrappage_after_price": "¥84,304",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥95,800",
+        "national_scrappage_subsidy": "¥11,496",
+        "estimated_insurance": "¥3,353",
+        "estimated_purchase_tax": "¥4,238.94",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥92,095.94"
+      },
+      {
+        "configuration": "590悦享版",
+        "official_guide_price": "¥103,800",
+        "national_scrappage_after_price": "¥91,344",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥103,800",
+        "national_scrappage_subsidy": "¥12,456",
+        "estimated_insurance": "¥3,633",
+        "estimated_purchase_tax": "¥4,592.92",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥99,769.92"
+      },
+      {
+        "configuration": "670悦享版",
+        "official_guide_price": "¥109,800",
+        "national_scrappage_after_price": "¥96,624",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥109,800",
+        "national_scrappage_subsidy": "¥13,176",
+        "estimated_insurance": "¥3,843",
+        "estimated_purchase_tax": "¥4,858.41",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥105,525.41"
+      },
+      {
+        "configuration": "590激光雷达版",
+        "official_guide_price": "¥113,800",
+        "national_scrappage_after_price": "¥100,144",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥113,800",
+        "national_scrappage_subsidy": "¥13,656",
+        "estimated_insurance": "¥3,983",
+        "estimated_purchase_tax": "¥5,035.40",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥109,362.40"
+      },
+      {
+        "configuration": "670激光雷达版",
+        "official_guide_price": "¥119,800",
+        "national_scrappage_after_price": "¥105,424",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥119,800",
+        "national_scrappage_subsidy": "¥14,376",
+        "estimated_insurance": "¥4,193",
+        "estimated_purchase_tax": "¥5,300.88",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥115,117.88"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥34,216",
+    "policy_text": "车型：零跑B01。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新B01 · 指导价 95,800-119,800 · CLTC续航590/670km · 全域800V+3C快充。厂家综合权益图标注值：¥34,216。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：590舒享版：官方指导价¥95,800；国补后价格（按政策条件测算）¥84,304。590悦享版：官方指导价¥103,800；国补后价格（按政策条件测算）¥91,344。670悦享版：官方指导价¥109,800；国补后价格（按政策条件测算）¥96,624。590激光雷达版：官方指导价¥113,800；国补后价格（按政策条件测算）¥100,144。670激光雷达版：官方指导价¥119,800；国补后价格（按政策条件测算）¥105,424。590舒享版报告测算明细：现金优惠¥0；裸车价¥95,800；国补金额测算¥11,496；保险估算¥3,353；购置税估算¥4,238.94；上牌费估算¥200；国补条件下落地价估算¥92,095.94。590悦享版报告测算明细：现金优惠¥0；裸车价¥103,800；国补金额测算¥12,456；保险估算¥3,633；购置税估算¥4,592.92；上牌费估算¥200；国补条件下落地价估算¥99,769.92。670悦享版报告测算明细：现金优惠¥0；裸车价¥109,800；国补金额测算¥13,176；保险估算¥3,843；购置税估算¥4,858.41；上牌费估算¥200；国补条件下落地价估算¥105,525.41。590激光雷达版报告测算明细：现金优惠¥0；裸车价¥113,800；国补金额测算¥13,656；保险估算¥3,983；购置税估算¥5,035.40；上牌费估算¥200；国补条件下落地价估算¥109,362.40。670激光雷达版报告测算明细：现金优惠¥0；裸车价¥119,800；国补金额测算¥14,376；保险估算¥4,193；购置税估算¥5,300.88；上牌费估算¥200；国补条件下落地价估算¥115,117.88。选装礼：限时享6,000元双零重力舒享套装选装基金（除590舒享版）。外饰：B01限时免费享价值2,000元个性外饰色（云黛紫、液态银）。本品增换购补贴：4,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "c10-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C10",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程290智享版",
+        "official_guide_price": "¥125,800",
+        "national_scrappage_after_price": "¥110,704",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥125,800",
+        "national_scrappage_subsidy": "¥15,096",
+        "estimated_insurance": "¥4,403",
+        "estimated_purchase_tax": "¥5,566.37",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥120,873.37"
+      },
+      {
+        "configuration": "纯电660智享版",
+        "official_guide_price": "¥132,800",
+        "national_scrappage_after_price": "¥116,864",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥132,800",
+        "national_scrappage_subsidy": "¥15,936",
+        "estimated_insurance": "¥4,648",
+        "estimated_purchase_tax": "¥5,876.11",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥127,588.11"
+      },
+      {
+        "configuration": "增程290激光雷达版",
+        "official_guide_price": "¥135,800",
+        "national_scrappage_after_price": "¥119,504",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥135,800",
+        "national_scrappage_subsidy": "¥16,296",
+        "estimated_insurance": "¥4,753",
+        "estimated_purchase_tax": "¥6,008.85",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥130,465.85"
+      },
+      {
+        "configuration": "纯电660激光雷达版",
+        "official_guide_price": "¥142,800",
+        "national_scrappage_after_price": "¥125,664",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥142,800",
+        "national_scrappage_subsidy": "¥17,136",
+        "estimated_insurance": "¥4,998",
+        "estimated_purchase_tax": "¥6,318.58",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥137,180.58"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥37,976",
+    "policy_text": "车型：零跑C10。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新C10 · 指导价 125,800-142,800 · 增程290km/纯电660km · 中欧澳三大五星安全认证。厂家综合权益图标注值：¥37,976。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程290智享版：官方指导价¥125,800；国补后价格（按政策条件测算）¥110,704。纯电660智享版：官方指导价¥132,800；国补后价格（按政策条件测算）¥116,864。增程290激光雷达版：官方指导价¥135,800；国补后价格（按政策条件测算）¥119,504。纯电660激光雷达版：官方指导价¥142,800；国补后价格（按政策条件测算）¥125,664。增程290智享版报告测算明细：现金优惠¥0；裸车价¥125,800；国补金额测算¥15,096；保险估算¥4,403；购置税估算¥5,566.37；上牌费估算¥200；国补条件下落地价估算¥120,873.37。纯电660智享版报告测算明细：现金优惠¥0；裸车价¥132,800；国补金额测算¥15,936；保险估算¥4,648；购置税估算¥5,876.11；上牌费估算¥200；国补条件下落地价估算¥127,588.11。增程290激光雷达版报告测算明细：现金优惠¥0；裸车价¥135,800；国补金额测算¥16,296；保险估算¥4,753；购置税估算¥6,008.85；上牌费估算¥200；国补条件下落地价估算¥130,465.85。纯电660激光雷达版报告测算明细：现金优惠¥0；裸车价¥142,800；国补金额测算¥17,136；保险估算¥4,998；购置税估算¥6,318.58；上牌费估算¥200；国补条件下落地价估算¥137,180.58。选装礼：限时免费享6,000元悦境零压全配套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（含云栖金、曦露紫）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "c11-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C11",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程300激光雷达版",
+        "official_guide_price": "¥143,800",
+        "national_scrappage_after_price": "¥126,544",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥143,800",
+        "national_scrappage_subsidy": "¥17,256",
+        "estimated_insurance": "¥5,033",
+        "estimated_purchase_tax": "¥6,362.83",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥138,139.83"
+      },
+      {
+        "configuration": "纯电640智享版",
+        "official_guide_price": "¥143,800",
+        "national_scrappage_after_price": "¥126,544",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥143,800",
+        "national_scrappage_subsidy": "¥17,256",
+        "estimated_insurance": "¥5,033",
+        "estimated_purchase_tax": "¥6,362.83",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥138,139.83"
+      },
+      {
+        "configuration": "纯电640激光雷达版",
+        "official_guide_price": "¥149,800",
+        "national_scrappage_after_price": "¥131,824",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥149,800",
+        "national_scrappage_subsidy": "¥17,976",
+        "estimated_insurance": "¥5,243",
+        "estimated_purchase_tax": "¥6,628.32",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥143,895.32"
+      },
+      {
+        "configuration": "增程300激光雷达智尊版",
+        "official_guide_price": "¥153,800",
+        "national_scrappage_after_price": "¥135,344",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥153,800",
+        "national_scrappage_subsidy": "¥18,456",
+        "estimated_insurance": "¥5,383",
+        "estimated_purchase_tax": "¥6,805.31",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥147,732.31"
+      },
+      {
+        "configuration": "纯电640激光雷达智尊版",
+        "official_guide_price": "¥159,800",
+        "national_scrappage_after_price": "¥140,624",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥159,800",
+        "national_scrappage_subsidy": "¥19,176",
+        "estimated_insurance": "¥5,593",
+        "estimated_purchase_tax": "¥7,070.80",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥153,487.80"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥39,016",
+    "policy_text": "车型：零跑C11。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新C11 · 指导价 143,800-159,800 · 增程300km/纯电640km · 前双叉臂+后五连杆 · 23扬PSS音响。厂家综合权益图标注值：¥39,016。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程300激光雷达版：官方指导价¥143,800；国补后价格（按政策条件测算）¥126,544。纯电640智享版：官方指导价¥143,800；国补后价格（按政策条件测算）¥126,544。纯电640激光雷达版：官方指导价¥149,800；国补后价格（按政策条件测算）¥131,824。增程300激光雷达智尊版：官方指导价¥153,800；国补后价格（按政策条件测算）¥135,344。纯电640激光雷达智尊版：官方指导价¥159,800；国补后价格（按政策条件测算）¥140,624。增程300激光雷达版报告测算明细：现金优惠¥0；裸车价¥143,800；国补金额测算¥17,256；保险估算¥5,033；购置税估算¥6,362.83；上牌费估算¥200；国补条件下落地价估算¥138,139.83。纯电640智享版报告测算明细：现金优惠¥0；裸车价¥143,800；国补金额测算¥17,256；保险估算¥5,033；购置税估算¥6,362.83；上牌费估算¥200；国补条件下落地价估算¥138,139.83。纯电640激光雷达版报告测算明细：现金优惠¥0；裸车价¥149,800；国补金额测算¥17,976；保险估算¥5,243；购置税估算¥6,628.32；上牌费估算¥200；国补条件下落地价估算¥143,895.32。增程300激光雷达智尊版报告测算明细：现金优惠¥0；裸车价¥153,800；国补金额测算¥18,456；保险估算¥5,383；购置税估算¥6,805.31；上牌费估算¥200；国补条件下落地价估算¥147,732.31。纯电640激光雷达智尊版报告测算明细：现金优惠¥0；裸车价¥159,800；国补金额测算¥19,176；保险估算¥5,593；购置税估算¥7,070.80；上牌费估算¥200；国补条件下落地价估算¥153,487.80。选装礼：智享版以及激光雷达版限时免费享5,000元悦境零压套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（云栖金）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：享终身免费基础流量；享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "c16-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑C16",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程280尊享版 5座",
+        "official_guide_price": "¥145,800",
+        "national_scrappage_after_price": "¥128,304",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥145,800",
+        "national_scrappage_subsidy": "¥17,496",
+        "estimated_insurance": "¥5,103",
+        "estimated_purchase_tax": "¥6,451.33",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥140,058.33"
+      },
+      {
+        "configuration": "增程280尊享版 6座",
+        "official_guide_price": "¥148,800",
+        "national_scrappage_after_price": "¥130,944",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥148,800",
+        "national_scrappage_subsidy": "¥17,856",
+        "estimated_insurance": "¥5,208",
+        "estimated_purchase_tax": "¥6,584.07",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥142,936.07"
+      },
+      {
+        "configuration": "纯电630尊享版 5座",
+        "official_guide_price": "¥152,800",
+        "national_scrappage_after_price": "¥134,464",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥152,800",
+        "national_scrappage_subsidy": "¥18,336",
+        "estimated_insurance": "¥5,348",
+        "estimated_purchase_tax": "¥6,761.06",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥146,773.06"
+      },
+      {
+        "configuration": "纯电630尊享版 6座",
+        "official_guide_price": "¥155,800",
+        "national_scrappage_after_price": "¥137,104",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥155,800",
+        "national_scrappage_subsidy": "¥18,696",
+        "estimated_insurance": "¥5,453",
+        "estimated_purchase_tax": "¥6,893.81",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥149,650.81"
+      },
+      {
+        "configuration": "增程280激光雷达智尊版 5座",
+        "official_guide_price": "¥159,800",
+        "national_scrappage_after_price": "¥140,624",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥159,800",
+        "national_scrappage_subsidy": "¥19,176",
+        "estimated_insurance": "¥5,593",
+        "estimated_purchase_tax": "¥7,070.80",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥153,487.80"
+      },
+      {
+        "configuration": "增程280激光雷达智尊版 6座",
+        "official_guide_price": "¥162,800",
+        "national_scrappage_after_price": "¥143,264",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥162,800",
+        "national_scrappage_subsidy": "¥19,536",
+        "estimated_insurance": "¥5,698",
+        "estimated_purchase_tax": "¥7,203.54",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥156,365.54"
+      },
+      {
+        "configuration": "纯电630激光雷达智尊版 5座",
+        "official_guide_price": "¥166,800",
+        "national_scrappage_after_price": "¥146,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥166,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥5,838",
+        "estimated_purchase_tax": "¥7,380.53",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥160,218.53"
+      },
+      {
+        "configuration": "纯电630激光雷达智尊版 6座",
+        "official_guide_price": "¥169,800",
+        "national_scrappage_after_price": "¥149,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥169,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥5,943",
+        "estimated_purchase_tax": "¥7,513.27",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥163,456.27"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [
+        {
+          "left": "车展",
+          "right": "下乡"
+        }
+      ],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "车展专项积分与新能源下乡积分二选一，不可相加或同时享受。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥39,840",
+    "policy_text": "车型：零跑C16。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新C16 · 指导价 145,800-169,800 · 增程/纯电 · 六座旗舰。厂家综合权益图标注值：¥39,840。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程280尊享版 5座：官方指导价¥145,800；国补后价格（按政策条件测算）¥128,304。增程280尊享版 6座：官方指导价¥148,800；国补后价格（按政策条件测算）¥130,944。纯电630尊享版 5座：官方指导价¥152,800；国补后价格（按政策条件测算）¥134,464。纯电630尊享版 6座：官方指导价¥155,800；国补后价格（按政策条件测算）¥137,104。增程280激光雷达智尊版 5座：官方指导价¥159,800；国补后价格（按政策条件测算）¥140,624。增程280激光雷达智尊版 6座：官方指导价¥162,800；国补后价格（按政策条件测算）¥143,264。纯电630激光雷达智尊版 5座：官方指导价¥166,800；国补后价格（按政策条件测算）¥146,800。纯电630激光雷达智尊版 6座：官方指导价¥169,800；国补后价格（按政策条件测算）¥149,800。增程280尊享版 5座报告测算明细：现金优惠¥0；裸车价¥145,800；国补金额测算¥17,496；保险估算¥5,103；购置税估算¥6,451.33；上牌费估算¥200；国补条件下落地价估算¥140,058.33。增程280尊享版 6座报告测算明细：现金优惠¥0；裸车价¥148,800；国补金额测算¥17,856；保险估算¥5,208；购置税估算¥6,584.07；上牌费估算¥200；国补条件下落地价估算¥142,936.07。纯电630尊享版 5座报告测算明细：现金优惠¥0；裸车价¥152,800；国补金额测算¥18,336；保险估算¥5,348；购置税估算¥6,761.06；上牌费估算¥200；国补条件下落地价估算¥146,773.06。纯电630尊享版 6座报告测算明细：现金优惠¥0；裸车价¥155,800；国补金额测算¥18,696；保险估算¥5,453；购置税估算¥6,893.81；上牌费估算¥200；国补条件下落地价估算¥149,650.81。增程280激光雷达智尊版 5座报告测算明细：现金优惠¥0；裸车价¥159,800；国补金额测算¥19,176；保险估算¥5,593；购置税估算¥7,070.80；上牌费估算¥200；国补条件下落地价估算¥153,487.80。增程280激光雷达智尊版 6座报告测算明细：现金优惠¥0；裸车价¥162,800；国补金额测算¥19,536；保险估算¥5,698；购置税估算¥7,203.54；上牌费估算¥200；国补条件下落地价估算¥156,365.54。纯电630激光雷达智尊版 5座报告测算明细：现金优惠¥0；裸车价¥166,800；国补金额测算¥20,000；保险估算¥5,838；购置税估算¥7,380.53；上牌费估算¥200；国补条件下落地价估算¥160,218.53。纯电630激光雷达智尊版 6座报告测算明细：现金优惠¥0；裸车价¥169,800；国补金额测算¥20,000；保险估算¥5,943；购置税估算¥7,513.27；上牌费估算¥200；国补条件下落地价估算¥163,456.27。选装礼：尊享版限时免费享5,000元全配套装选装基金；激光雷达智尊版限时免费享5,000元悦境零压尊享套装选装基金。外饰：限时免费享价值2,000元个性外饰色选装基金（含云栖金、星煜紫）。本品增换购补贴：5,000元/台现金补贴。家充服务包：免费享价值2,680元的7kW充电桩（不含安装）。流量礼：终身免费基础流量；选装全配套装或激光雷达智尊版车型享首年20G/月娱乐流量、次年4G/月娱乐流量，其它车型享2年4G/月免费娱乐流量。售后权益：四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保。B/C级车展专项权益：符合车展政策的享能量积分，交付后获10,000能量积分/台（价值1,000元）*注：和新能源下乡补贴权益不同时享受。新能源下乡补贴：符合新能源下乡政策，交付后获5,000能量积分/台（价值500元）*注：和B/C级车展专项权益不同时享受。金融贴息：至高4,160元。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。车展专项积分与新能源下乡积分二选一，不可相加或同时享受。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "d19-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑D19",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程400尊享版 6座",
+        "official_guide_price": "¥219,800",
+        "national_scrappage_after_price": "¥199,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥219,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥7,693",
+        "estimated_purchase_tax": "¥9,725.66",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥217,418.66"
+      },
+      {
+        "configuration": "增程500智尊版 6座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥239,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,393",
+        "estimated_purchase_tax": "¥10,610.62",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥239,003.62"
+      },
+      {
+        "configuration": "增程500智尊版 7座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥239,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,393",
+        "estimated_purchase_tax": "¥10,610.62",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥239,003.62"
+      },
+      {
+        "configuration": "纯电620智尊版 6座",
+        "official_guide_price": "¥239,800",
+        "national_scrappage_after_price": "¥219,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥239,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,393",
+        "estimated_purchase_tax": "¥10,610.62",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥239,003.62"
+      },
+      {
+        "configuration": "纯电720智尊版 6座",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥249,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,743",
+        "estimated_purchase_tax": "¥11,053.10",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥249,796.10"
+      },
+      {
+        "configuration": "纯电720智尊版 7座",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥249,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,743",
+        "estimated_purchase_tax": "¥11,053.10",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥249,796.10"
+      },
+      {
+        "configuration": "纯电680三电机性能版 6座",
+        "official_guide_price": "¥269,800",
+        "national_scrappage_after_price": "¥249,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥269,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥9,443",
+        "estimated_purchase_tax": "¥11,938.05",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥271,381.05"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": false,
+      "new_vehicle_no_stock": false,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥67,966",
+    "policy_text": "车型：零跑D19。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 219,800-269,800 · 增程400/500km·纯电620/680/720km · 双电机四驱/三电机 · 6座/7座。厂家综合权益图标注值：¥67,966。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程400尊享版 6座：官方指导价¥219,800；国补后价格（按政策条件测算）¥199,800。增程500智尊版 6座：官方指导价¥239,800；国补后价格（按政策条件测算）¥219,800。增程500智尊版 7座：官方指导价¥239,800；国补后价格（按政策条件测算）¥219,800。纯电620智尊版 6座：官方指导价¥239,800；国补后价格（按政策条件测算）¥219,800。纯电720智尊版 6座：官方指导价¥249,800；国补后价格（按政策条件测算）¥229,800。纯电720智尊版 7座：官方指导价¥249,800；国补后价格（按政策条件测算）¥229,800。纯电680三电机性能版 6座：官方指导价¥269,800；国补后价格（按政策条件测算）¥249,800。增程400尊享版 6座报告测算明细：现金优惠¥0；裸车价¥219,800；国补金额测算¥20,000；保险估算¥7,693；购置税估算¥9,725.66；上牌费估算¥200；国补条件下落地价估算¥217,418.66。增程500智尊版 6座报告测算明细：现金优惠¥0；裸车价¥239,800；国补金额测算¥20,000；保险估算¥8,393；购置税估算¥10,610.62；上牌费估算¥200；国补条件下落地价估算¥239,003.62。增程500智尊版 7座报告测算明细：现金优惠¥0；裸车价¥239,800；国补金额测算¥20,000；保险估算¥8,393；购置税估算¥10,610.62；上牌费估算¥200；国补条件下落地价估算¥239,003.62。纯电620智尊版 6座报告测算明细：现金优惠¥0；裸车价¥239,800；国补金额测算¥20,000；保险估算¥8,393；购置税估算¥10,610.62；上牌费估算¥200；国补条件下落地价估算¥239,003.62。纯电720智尊版 6座报告测算明细：现金优惠¥0；裸车价¥249,800；国补金额测算¥20,000；保险估算¥8,743；购置税估算¥11,053.10；上牌费估算¥200；国补条件下落地价估算¥249,796.10。纯电720智尊版 7座报告测算明细：现金优惠¥0；裸车价¥249,800；国补金额测算¥20,000；保险估算¥8,743；购置税估算¥11,053.10；上牌费估算¥200；国补条件下落地价估算¥249,796.10。纯电680三电机性能版 6座报告测算明细：现金优惠¥0；裸车价¥269,800；国补金额测算¥20,000；保险估算¥9,443；购置税估算¥11,938.05；上牌费估算¥200；国补条件下落地价估算¥271,381.05。选装基金：限时享至高14,000元选装基金优惠（多个选装包可叠加享受，除400尊享版）；智尊版限时免费升级为双8737芯片价值10,000元；智尊版和三电机性能版限时免费送UWB钥匙价值399元。本品增换购补贴：10,000元。等待交付礼：悦途交付礼：限时享价值1,087元交付礼包（颈枕、植绒脚垫）。金融贴息：至高7,800元。家充服务包：3,680元的家充服务包（含7kW充电桩和30米内基础安装）。售后权益：整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）、终身免费基础流量+2年免费娱乐流量（20G/月）、赠送4年取送车服务（1年2次，限首任车主）、无忧代步车（整车质保期内因质量问题维修超过24小时享免费代步车服务，限非营运车辆）。金融方案：0利息：至高享15万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "d99-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑D99",
+    "vehicle_stage": "new",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "增程480尊享版",
+        "official_guide_price": "¥249,800",
+        "national_scrappage_after_price": "¥229,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥249,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥8,743",
+        "estimated_purchase_tax": "¥11,053.10",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥249,796.10"
+      },
+      {
+        "configuration": "纯电700尊享版",
+        "official_guide_price": "¥259,800",
+        "national_scrappage_after_price": "¥239,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥259,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥9,093",
+        "estimated_purchase_tax": "¥11,495.58",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥260,588.58"
+      },
+      {
+        "configuration": "增程480智尊版",
+        "official_guide_price": "¥279,800",
+        "national_scrappage_after_price": "¥259,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥279,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥9,793",
+        "estimated_purchase_tax": "¥12,380.53",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥282,173.53"
+      },
+      {
+        "configuration": "纯电700智尊版",
+        "official_guide_price": "¥289,800",
+        "national_scrappage_after_price": "¥269,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥289,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥10,143",
+        "estimated_purchase_tax": "¥12,823.01",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥292,966.01"
+      },
+      {
+        "configuration": "增程480旗舰版",
+        "official_guide_price": "¥309,800",
+        "national_scrappage_after_price": "¥289,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥309,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥10,843",
+        "estimated_purchase_tax": "¥13,707.96",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥314,550.96"
+      },
+      {
+        "configuration": "纯电700旗舰版",
+        "official_guide_price": "¥319,800",
+        "national_scrappage_after_price": "¥299,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥319,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥11,193",
+        "estimated_purchase_tax": "¥14,150.44",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥325,343.44"
+      },
+      {
+        "configuration": "增程480领航版",
+        "official_guide_price": "¥329,800",
+        "national_scrappage_after_price": "¥309,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥329,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥11,543",
+        "estimated_purchase_tax": "¥14,592.92",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥336,135.92"
+      },
+      {
+        "configuration": "纯电700领航版",
+        "official_guide_price": "¥339,800",
+        "national_scrappage_after_price": "¥319,800",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥0",
+        "bare_price": "¥339,800",
+        "national_scrappage_subsidy": "¥20,000",
+        "estimated_insurance": "¥11,893",
+        "estimated_purchase_tax": "¥15,035.40",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥346,928.40"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": true,
+      "new_vehicle_no_stock": true,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [
+        {
+          "left": "本品增换购",
+          "right": "超级置换"
+        }
+      ],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "本品增换购与超级置换为二选一，不能相加或宣传同一订单同时享受。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥79,379",
+    "policy_text": "车型：零跑D99。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：全新D99 · 指导价 249,800-339,800 · 增程480km/纯电700km · 7座MPV · 双侧滑门 · 空悬终身质保。厂家综合权益图标注值：¥79,379。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：增程480尊享版：官方指导价¥249,800；国补后价格（按政策条件测算）¥229,800。纯电700尊享版：官方指导价¥259,800；国补后价格（按政策条件测算）¥239,800。增程480智尊版：官方指导价¥279,800；国补后价格（按政策条件测算）¥259,800。纯电700智尊版：官方指导价¥289,800；国补后价格（按政策条件测算）¥269,800。增程480旗舰版：官方指导价¥309,800；国补后价格（按政策条件测算）¥289,800。纯电700旗舰版：官方指导价¥319,800；国补后价格（按政策条件测算）¥299,800。增程480领航版：官方指导价¥329,800；国补后价格（按政策条件测算）¥309,800。纯电700领航版：官方指导价¥339,800；国补后价格（按政策条件测算）¥319,800。增程480尊享版报告测算明细：现金优惠¥0；裸车价¥249,800；国补金额测算¥20,000；保险估算¥8,743；购置税估算¥11,053.10；上牌费估算¥200；国补条件下落地价估算¥249,796.10。纯电700尊享版报告测算明细：现金优惠¥0；裸车价¥259,800；国补金额测算¥20,000；保险估算¥9,093；购置税估算¥11,495.58；上牌费估算¥200；国补条件下落地价估算¥260,588.58。增程480智尊版报告测算明细：现金优惠¥0；裸车价¥279,800；国补金额测算¥20,000；保险估算¥9,793；购置税估算¥12,380.53；上牌费估算¥200；国补条件下落地价估算¥282,173.53。纯电700智尊版报告测算明细：现金优惠¥0；裸车价¥289,800；国补金额测算¥20,000；保险估算¥10,143；购置税估算¥12,823.01；上牌费估算¥200；国补条件下落地价估算¥292,966.01。增程480旗舰版报告测算明细：现金优惠¥0；裸车价¥309,800；国补金额测算¥20,000；保险估算¥10,843；购置税估算¥13,707.96；上牌费估算¥200；国补条件下落地价估算¥314,550.96。纯电700旗舰版报告测算明细：现金优惠¥0；裸车价¥319,800；国补金额测算¥20,000；保险估算¥11,193；购置税估算¥14,150.44；上牌费估算¥200；国补条件下落地价估算¥325,343.44。增程480领航版报告测算明细：现金优惠¥0；裸车价¥329,800；国补金额测算¥20,000；保险估算¥11,543；购置税估算¥14,592.92；上牌费估算¥200；国补条件下落地价估算¥336,135.92。纯电700领航版报告测算明细：现金优惠¥0；裸车价¥339,800；国补金额测算¥20,000；保险估算¥11,893；购置税估算¥15,035.40；上牌费估算¥200；国补条件下落地价估算¥346,928.40。智芯+智感礼：【智芯礼】尊享版、智尊版硬件升级为双8797芯片（价值10,000元）；【智感礼】限时免费赠送价值399元UWB钥匙。选装礼：选装包5折券，限时享至高25,000元选装基金优惠（多个选装包可叠加享受）。本品增换购补贴：10,000元（下定即享超级置换8,000元券 + 本品增换购提报审核后发放2,000元券）。超级置换补贴：8,000元（下定即享，需提报客户名下或亲友名下行驶证）*本品增换购10,000元与超级置换权益8,000元二选一，同一订单不可同享。家充服务包：免费享价值3,680元的家充服务包（含7kW充电桩和30米内基础安装）。等待交付礼：超出交付承诺周期按照500能量积分/天，至高享10,000能量积分/台（价值1,000元）。交付礼：至高价值500元的交付礼包（含2个颈枕、1套编织脚垫）。流量礼：终身免费基础流量，享2年免费娱乐流量（20G/月）。售后权益：【质保礼】四项终身免费质保（限首任车主且非营运）：终身免费电池质保、终身免费电驱质保、终身免费电控质保、终身免费整车质保；【尊享服务】赠送4年取送车服务（1年2次），限首任车主；无忧代步车，整车质保期内因质量问题维修超时享免费代步车服务。金融贴息：至高7,800元。金融方案：0利息：至高享15万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。新车型综合价值只用‘综合权益’或‘综合权益价值’，不包装成优惠；首销期不能宣传门店有现车可提。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。本品增换购与超级置换为二选一，不能相加或宣传同一订单同时享受。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "lafa5-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑Lafa5",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "515 Plus",
+        "official_guide_price": "¥97,800",
+        "national_scrappage_after_price": "¥86,064",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥7,000",
+        "bare_price": "¥90,800",
+        "national_scrappage_subsidy": "¥10,896",
+        "estimated_insurance": "¥3,178",
+        "estimated_purchase_tax": "¥4,017.70",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥87,299.70"
+      },
+      {
+        "configuration": "515 Pro",
+        "official_guide_price": "¥105,800",
+        "national_scrappage_after_price": "¥93,104",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥7,000",
+        "bare_price": "¥98,800",
+        "national_scrappage_subsidy": "¥11,856",
+        "estimated_insurance": "¥3,458",
+        "estimated_purchase_tax": "¥4,371.68",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥94,973.68"
+      },
+      {
+        "configuration": "515 Max",
+        "official_guide_price": "¥115,800",
+        "national_scrappage_after_price": "¥101,904",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥7,000",
+        "bare_price": "¥108,800",
+        "national_scrappage_subsidy": "¥13,056",
+        "estimated_insurance": "¥3,808",
+        "estimated_purchase_tax": "¥4,814.16",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥104,566.16"
+      },
+      {
+        "configuration": "605 Pro",
+        "official_guide_price": "¥111,800",
+        "national_scrappage_after_price": "¥98,384",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥7,000",
+        "bare_price": "¥104,800",
+        "national_scrappage_subsidy": "¥12,576",
+        "estimated_insurance": "¥3,668",
+        "estimated_purchase_tax": "¥4,637.17",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥100,729.17"
+      },
+      {
+        "configuration": "605 Max",
+        "official_guide_price": "¥121,800",
+        "national_scrappage_after_price": "¥107,184",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥7,000",
+        "bare_price": "¥114,800",
+        "national_scrappage_subsidy": "¥13,776",
+        "estimated_insurance": "¥4,018",
+        "estimated_purchase_tax": "¥5,079.65",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥110,321.65"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": false,
+      "new_vehicle_no_stock": false,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": true,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "金融方案与现金优惠能否同享尚需门店确认，不能承诺两项叠加。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥39,456",
+    "policy_text": "车型：零跑Lafa5。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 97,800-121,800 · CLTC续航515/605km · 无边框车门+激光雷达 · 10万级纯电\"卷王\"。厂家综合权益图标注值：¥39,456。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：515 Plus：官方指导价¥97,800；国补后价格（按政策条件测算）¥86,064。515 Pro：官方指导价¥105,800；国补后价格（按政策条件测算）¥93,104。515 Max：官方指导价¥115,800；国补后价格（按政策条件测算）¥101,904。605 Pro：官方指导价¥111,800；国补后价格（按政策条件测算）¥98,384。605 Max：官方指导价¥121,800；国补后价格（按政策条件测算）¥107,184。515 Plus报告测算明细：现金优惠¥7,000；裸车价¥90,800；国补金额测算¥10,896；保险估算¥3,178；购置税估算¥4,017.70；上牌费估算¥200；国补条件下落地价估算¥87,299.70。515 Pro报告测算明细：现金优惠¥7,000；裸车价¥98,800；国补金额测算¥11,856；保险估算¥3,458；购置税估算¥4,371.68；上牌费估算¥200；国补条件下落地价估算¥94,973.68。515 Max报告测算明细：现金优惠¥7,000；裸车价¥108,800；国补金额测算¥13,056；保险估算¥3,808；购置税估算¥4,814.16；上牌费估算¥200；国补条件下落地价估算¥104,566.16。605 Pro报告测算明细：现金优惠¥7,000；裸车价¥104,800；国补金额测算¥12,576；保险估算¥3,668；购置税估算¥4,637.17；上牌费估算¥200；国补条件下落地价估算¥100,729.17。605 Max报告测算明细：现金优惠¥7,000；裸车价¥114,800；国补金额测算¥13,776；保险估算¥4,018；购置税估算¥5,079.65；上牌费估算¥200；国补条件下落地价估算¥110,321.65。外饰：2,000元个性外饰色限时免费（电掣黄、风驰灰、摩根粉、星夜蓝、液态银）。选装基金：竞速灰内饰选装基金3,000元（除515Plus版、ultra版）。本品增换购补贴：4,000元。限时限量优惠：7,000元。金融贴息：至高4,160元。家充服务包：3,680元家充包（含7kW充电桩和30米内基础安装）。售后权益：整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）、车机基础流量终身免费+2年娱乐流量（4G/月）。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。金融方案与现金优惠能否同享尚需门店确认，不能承诺两项叠加。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  },
+  "lafa5ultra-current": {
+    "brand": "零跑汽车",
+    "vehicle_model": "零跑Lafa5 Ultra",
+    "vehicle_stage": "current",
+    "policy_source": "WorkBuddy零跑全系购车政策表（运营确认按2026-09执行）",
+    "policy_source_title": "零跑汽车全系购车政策分析报告（2026年9月）",
+    "policy_source_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+    "policy_fingerprint": "b9b93a750e7a1a581e9b2ef0ce25f502ae95ed9aaefe60fba0c334dc55c4a3fb",
+    "policy_deadline": "2026-09-30",
+    "public_deadline": "9月底前",
+    "allowed_months": [
+      9
+    ],
+    "allow_multi_config_quote": true,
+    "quote_rows": [
+      {
+        "configuration": "500 Ultra",
+        "official_guide_price": "¥123,800",
+        "national_scrappage_after_price": "¥108,944",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥5,000",
+        "bare_price": "¥118,800",
+        "national_scrappage_subsidy": "¥14,256",
+        "estimated_insurance": "¥4,158",
+        "estimated_purchase_tax": "¥5,256.64",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥114,158.64"
+      },
+      {
+        "configuration": "600 Ultra",
+        "official_guide_price": "¥129,800",
+        "national_scrappage_after_price": "¥114,224",
+        "provincial_trade_in_after_price": "不在线上展示金额",
+        "cash_discount": "¥5,000",
+        "bare_price": "¥124,800",
+        "national_scrappage_subsidy": "¥14,976",
+        "estimated_insurance": "¥4,368",
+        "estimated_purchase_tax": "¥5,522.12",
+        "licensing_fee": "¥200",
+        "estimated_national_scrappage_on_road_price": "¥119,914.12"
+      }
+    ],
+    "policy_banned_terms": [
+      "内部价",
+      "底价",
+      "最优惠",
+      "至高可省",
+      "半价理想"
+    ],
+    "publication_constraints": {
+      "version": 1,
+      "hide_local_subsidy_amounts": true,
+      "new_vehicle_no_benefit_discount": false,
+      "new_vehicle_no_stock": false,
+      "no_trial_gift_amount": true,
+      "explicit_banned_terms": [
+        "内部价",
+        "底价",
+        "最优惠",
+        "至高可省",
+        "半价理想"
+      ],
+      "mutually_exclusive_benefits": [],
+      "finance_cash_stacking_unconfirmed": false,
+      "rules": [
+        "地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。",
+        "厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。",
+        "试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。",
+        "往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。",
+        "不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。",
+        "落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。"
+      ],
+      "has_reported_landing_estimates": true
+    },
+    "packaged_benefit_value": "¥35,416",
+    "policy_text": "车型：零跑Lafa5 Ultra。当前运营确认政策期为2026-09，对外时间只写9月底前、近期或本月。车型概览：2026款 · 指导价 123,800-129,800 · CLTC续航500/600km · 180kW后驱·5.9秒破百 · 原厂运动套件+激光雷达。厂家综合权益图标注值：¥35,416。分配置价格（补贴后价格为按报告公式测算，不得表述为无条件成交价或落地价）：500 Ultra：官方指导价¥123,800；国补后价格（按政策条件测算）¥108,944。600 Ultra：官方指导价¥129,800；国补后价格（按政策条件测算）¥114,224。500 Ultra报告测算明细：现金优惠¥5,000；裸车价¥118,800；国补金额测算¥14,256；保险估算¥4,158；购置税估算¥5,256.64；上牌费估算¥200；国补条件下落地价估算¥114,158.64。600 Ultra报告测算明细：现金优惠¥5,000；裸车价¥124,800；国补金额测算¥14,976；保险估算¥4,368；购置税估算¥5,522.12；上牌费估算¥200；国补条件下落地价估算¥119,914.12。外饰：2,000元个性外饰色限时免费（液态银、雷厉灰、星芒绿）。本品增换购补贴：4,000元。限时限量优惠：5,000元。金融贴息：至高4,160元。家充服务包：3,680元家充包（含7kW充电桩和30米内基础安装）。售后权益：车机基础流量终身免费+2年娱乐流量（4G/月）、整车终身质保（限首任车主且非营运）、三电终身质保（限首任车主且非营运）。金融方案：0利息：至高享8万2年0息0首付：最低0首付，至高5年超长贷。涉及补贴后的价格，必须同时表达适用条件或‘按相应条件测算’，不得省略条件。地方性补贴只能概括提及；不在标题、正文或图片中展示其金额、比例、上限或省补后价格，不将其加入综合权益。厂家综合权益值是报告标注总值，不再把国补、贴息、选装等已含项目重复相加；不得超过对应车型报告值。试驾礼可概括提及，不展示具体金额，不计入综合权益；门店自行增加的现金优惠或礼品不能作为线上报价来源。往期车型综合价值可用‘综合权益优惠’或‘综合权益’，保留原文表达，不强行新增权益段。不使用文件明确禁止的误导性表述：内部价、底价、最优惠、至高可省、半价理想。落地价明细仅为报告按指定保险、税费及上牌假设的测算，不是实际成交承诺；引用落地价时必须标注‘报告测算/估算’，不能把只扣补贴的车价当落地价。只在母文或母图对应价格槽需要时使用，不硬加明细或列。",
+    "policy_content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html"
+  }
+}

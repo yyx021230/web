@@ -1,0 +1,102 @@
+# Install as docker-compose.override.yml beside the existing live Compose file.
+# The original API, AI worker and data services remain on their existing images.
+services:
+  frontend:
+    # Keep the original Windows/LAN :3000 entry on the verified frontend too.
+    image: ztqc/frontend:0.3.21
+    build: !reset null
+    environment:
+      BACKEND_ORIGIN: http://backend:8000
+      HERMES_BACKEND_ORIGIN: http://hermes-api:8000
+      NEXT_PUBLIC_API_BASE: /api/backend
+      NEXT_PUBLIC_APP_VERSION: "0.3.21"
+      NEXT_PUBLIC_GIT_COMMIT: "c1d38bac9b743b53f356c95776c706bb71c08364"
+      NEXT_PUBLIC_BUILD_TIME: "2026-09-08T07:53:00Z"
+
+  hermes-frontend:
+    image: ztqc/frontend:0.3.21
+    # Image-only: never rebuild this service from the unchanged legacy checkout.
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3101:3000"
+    environment:
+      BACKEND_ORIGIN: http://backend:8000
+      NEXT_PUBLIC_APP_VERSION: "0.3.21"
+      HERMES_BACKEND_ORIGIN: http://hermes-api:8000
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+  hermes-api:
+    image: ztqc/hermes-api:0.3.21
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    env_file:
+      - ./.release/hermes/api.env
+    environment:
+      APP_VERSION: "0.3.21"
+      HERMES_POLICY_CASES_PATH: /app/hermes-config/cases.json
+      HERMES_REFERENCE_SNAPSHOT_PATH: ""
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ${UPLOADS_HOST_PATH:-./uploads}:/app/uploads
+      - hermes-config:/app/hermes-config:ro
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=4).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+  hermes-worker:
+    image: ztqc/hermes-worker:0.3.21
+    profiles: [hermes]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45m
+    command: [worker]
+    env_file:
+      - ./.release/hermes/worker.env
+    environment:
+      HERMES_WEB_BASE_URL: http://hermes-api:8000
+      HERMES_WORKER_ID: windows-docker-hermes
+      XHS_BACKEND_BASE_URL: http://backend:8000/api/v1
+      HERMES_OCR_BACKEND: rapidocr
+      HERMES_OCR_THREADS: "2"
+      HERMES_MAX_TEXT_WORKERS: "2"
+      HERMES_MAX_IMAGE_WORKERS: "5"
+    volumes:
+      - hermes-config:/app/web/ops/xhs_hermes/config
+      - hermes-state:/app/web/ops/xhs_hermes/state
+      - hermes-output:/app/web/outputs/xhs_hermes_web
+      - hermes-home:/app/web/ops/xhs_hermes/hermes_home
+    depends_on:
+      hermes-api: {condition: service_healthy}
+    mem_limit: 1536m
+    cpus: 2.0
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+
+volumes:
+  hermes-config:
+  hermes-state:
+  hermes-output:
+  hermes-home:

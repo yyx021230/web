@@ -858,6 +858,62 @@ async def test_admin_sync_all_requires_admin_role(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_can_manually_import_creator_export_and_records_history(client, monkeypatch):
+    await _seed_users_and_envs()
+
+    async def fake_import_creator_stats_excel(
+        self: XHSService,
+        environment_id: int,
+        content: bytes,
+        *,
+        sync_run_id: int | None = None,
+    ):
+        assert environment_id == 101
+        assert content == b"creator-workbook"
+        assert sync_run_id is not None
+        return {
+            "created_notes": 2,
+            "updated_notes": 3,
+            "ambiguous_notes": 0,
+            "metric_synced_notes": 5,
+            "total_notes": 12,
+            "exported_rows": 5,
+        }
+
+    monkeypatch.setattr(XHSService, "import_creator_stats_excel", fake_import_creator_stats_excel)
+
+    response = await client.post(
+        "/api/v1/xhs/account-notes/import-creator-export?environment_id=101",
+        headers=make_auth_headers(1),
+        files={
+            "file": (
+                "账号A-创作者中心.xlsx",
+                b"creator-workbook",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["account_name"] == "账号A"
+    assert payload["exported_rows"] == 5
+    assert payload["created_notes"] == 2
+    async with async_session() as db:
+        run = await db.get(XHSAccountSyncRun, payload["history_run_id"])
+        assert run is not None
+        assert run.source == "manual_import"
+        assert run.status == "succeeded"
+        item = (
+            await db.execute(
+                select(XHSAccountSyncRunItem).where(XHSAccountSyncRunItem.run_id == run.id)
+            )
+        ).scalar_one()
+        assert item.status == "succeeded"
+        assert item.result["metric_synced_notes"] == 5
+
+
+@pytest.mark.asyncio
 async def test_admin_assign_and_unassign_flow(client):
     await _seed_users_and_envs()
     async with async_session() as db:
@@ -2156,12 +2212,22 @@ async def test_create_open_sms_code_request_uses_signed_open_api_payload(monkeyp
     monkeypatch.setattr(xhs_service_module.httpx, "AsyncClient", _FakeClient)
 
     result = await service._create_open_sms_code_request("17570049665", "xhs-login-1")
+    secondary_result = await service._create_open_sms_code_request(
+        "17570049665",
+        "xhs-login-secondary-1",
+        ttl_seconds=420,
+    )
 
     assert result == {"requestId": "request-1", "status": "waiting"}
+    assert secondary_result == {"requestId": "request-1", "status": "waiting"}
     assert calls[0]["url"] == "https://sms.example.test/api/v1/open/sms-code-requests"
     assert calls[0]["content"] == b'{"phoneNumber":"17570049665","platform":"\xe5\xb0\x8f\xe7\xba\xa2\xe4\xb9\xa6"}'
     assert calls[0]["headers"]["X-Client-Id"] == "xhs-backend"  # type: ignore[index]
     assert calls[0]["headers"]["Idempotency-Key"] == "xhs-login-1"  # type: ignore[index]
+    assert calls[1]["content"] == (
+        b'{"phoneNumber":"17570049665","platform":"\xe5\xb0\x8f\xe7\xba\xa2\xe4\xb9\xa6","ttlSeconds":420}'
+    )
+    assert calls[1]["headers"]["Idempotency-Key"] == "xhs-login-secondary-1"  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -2782,6 +2848,78 @@ async def test_creator_export_retries_destroyed_browser_context_without_relogin(
 
     assert rows == [{"title": "恢复后的导出记录"}]
     assert events == ["ensure-login", "download-1", "sleep-1.0", "download-2"]
+
+
+@pytest.mark.asyncio
+async def test_manual_creator_export_import_reuses_canonical_importer(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(
+        id=918,
+        shop_id="shop_918",
+        account_name="手动导入账号",
+        status="active",
+        is_sync_runner=False,
+    )
+
+    async def fake_get_environment(self: XHSService, env_id: int):
+        assert env_id == 918
+        return env
+
+    def fake_parse(self: XHSService, content: bytes):
+        assert content == b"creator-export"
+        return [{"title": "新帖子", "published_at_raw": "2026-08-28 09:30"}]
+
+    async def fake_import(self: XHSService, target_env, rows, *, sync_run_id=None):
+        assert target_env is env
+        assert rows == [{"title": "新帖子", "published_at_raw": "2026-08-28 09:30"}]
+        assert sync_run_id == 1234
+        return {
+            "created_notes": 1,
+            "updated_notes": 0,
+            "ambiguous_notes": 0,
+            "metric_synced_notes": 1,
+            "total_notes": 8,
+        }
+
+    monkeypatch.setattr(XHSService, "get_environment", fake_get_environment)
+    monkeypatch.setattr(XHSService, "_parse_creator_stats_excel", fake_parse)
+    monkeypatch.setattr(XHSService, "_import_creator_note_stats_rows", fake_import)
+
+    result = await service.import_creator_stats_excel(
+        918,
+        b"creator-export",
+        sync_run_id=1234,
+    )
+
+    assert result == {
+        "created_notes": 1,
+        "updated_notes": 0,
+        "ambiguous_notes": 0,
+        "metric_synced_notes": 1,
+        "total_notes": 8,
+        "exported_rows": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_manual_creator_export_import_rejects_empty_parsed_workbook(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    env = XHSEnvironment(
+        id=919,
+        shop_id="shop_919",
+        account_name="空表账号",
+        status="active",
+        is_sync_runner=False,
+    )
+
+    async def fake_get_environment(self: XHSService, env_id: int):
+        return env
+
+    monkeypatch.setattr(XHSService, "get_environment", fake_get_environment)
+    monkeypatch.setattr(XHSService, "_parse_creator_stats_excel", lambda self, content: [])
+
+    with pytest.raises(ValueError, match="没有识别到笔记数据"):
+        await service.import_creator_stats_excel(919, b"empty-workbook")
 
 
 @pytest.mark.asyncio
@@ -3606,9 +3744,16 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
         events.append(("get-qr", api_base))
         return {"is_logged_in": False, "img": "cXItYnl0ZXM="}
 
-    async def fake_create_request(self: XHSService, phone_number: str, client_request_id: str):
+    async def fake_create_request(
+        self: XHSService,
+        phone_number: str,
+        client_request_id: str,
+        *,
+        ttl_seconds: int | None = None,
+    ):
         events.append(("arm-sms", phone_number))
         assert client_request_id.startswith("xhs-login-secondary-902-")
+        assert ttl_seconds == 420
         return {"requestId": "secondary-902", "status": "waiting"}
 
     async def fake_create_qr_task(
@@ -3627,12 +3772,21 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
     async def fake_wait_sms(self: XHSService, request_id: str, **kwargs):
         events.append(("listen-both-sims", request_id))
         assert kwargs["initial_request"]["status"] == "waiting"
+        assert kwargs["timeout_seconds"] == 420
         listener_started.set()
         await asyncio.Event().wait()
 
     async def fake_wait_qr(self: XHSService, task_id: str, admin_token: str):
         events.append(("qr-succeeded", task_id))
         return {"taskId": task_id, "status": "succeeded"}
+
+    async def fake_request_post_qr_code(
+        self: XHSService,
+        api_base: str,
+        phone_number: str,
+    ):
+        events.append(("request-secondary", phone_number))
+        return {"is_logged_in": False, "message": "扫码后二次验证码已发送"}
 
     async def fake_finish_secondary(
         self: XHSService,
@@ -3652,6 +3806,7 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
     monkeypatch.setattr(XHSService, "_wait_open_sms_code_request", fake_wait_sms)
     monkeypatch.setattr(XHSService, "_create_phone_cloud_xhs_qr_task", fake_create_qr_task)
     monkeypatch.setattr(XHSService, "_wait_phone_cloud_xhs_qr_task", fake_wait_qr)
+    monkeypatch.setattr(XHSService, "_request_mcp_post_qr_phone_code", fake_request_post_qr_code)
     monkeypatch.setattr(XHSService, "_complete_xhs_post_qr_verification", fake_finish_secondary)
     monkeypatch.setattr(XHSService, "_cancel_open_sms_code_request", fake_cancel)
 
@@ -3668,6 +3823,7 @@ async def test_qr_login_arms_secondary_sms_before_phone_task(monkeypatch):
         ("listen-both-sims", "secondary-902"),
         ("dispatch-qr", "测试账号"),
         ("qr-succeeded", "qr-902"),
+        ("request-secondary", "17570049665"),
         ("check-secondary", "secondary-902"),
         ("cancel-unused", "secondary-902"),
     ]

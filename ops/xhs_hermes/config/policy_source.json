@@ -1,0 +1,8 @@
+{
+  "share_url": "https://www.workbuddy.cn/space/d/VKyTsAlwWQ0CreCr881p3z?ext2=copy_link",
+  "content_url": "https://workbuddy-space-static.codebuddy.work/page/VKyTsAlwWQ0CreCr881p3z/1/_20269.html",
+  "overrides_path": "policy_overrides.json",
+  "minimum_case_count": 11,
+  "required_case_ids": ["a05-current", "a10-current", "b01-current", "b10-current", "c10-current", "c11-current", "c16-current", "d19-current", "d99-current", "lafa5-current", "lafa5ultra-current"],
+  "timeout_seconds": 45
+}

@@ -1,0 +1,372 @@
+{
+  "a05-current": [
+    {
+      "configuration": "405舒享版",
+      "official_guide_price": "¥63,900",
+      "national_scrappage_after_price": "¥56,232",
+      "provincial_trade_in_after_price": "¥58,788"
+    },
+    {
+      "configuration": "405悦享版",
+      "official_guide_price": "¥67,900",
+      "national_scrappage_after_price": "¥59,752",
+      "provincial_trade_in_after_price": "¥62,468"
+    },
+    {
+      "configuration": "510悦享版",
+      "official_guide_price": "¥75,900",
+      "national_scrappage_after_price": "¥66,792",
+      "provincial_trade_in_after_price": "¥69,828"
+    },
+    {
+      "configuration": "510激光雷达版",
+      "official_guide_price": "¥85,900",
+      "national_scrappage_after_price": "¥75,592",
+      "provincial_trade_in_after_price": "¥79,028"
+    },
+    {
+      "configuration": "510S",
+      "official_guide_price": "¥90,900",
+      "national_scrappage_after_price": "¥79,992",
+      "provincial_trade_in_after_price": "¥83,628"
+    }
+  ],
+  "a10-current": [
+    {
+      "configuration": "403舒享版",
+      "official_guide_price": "¥65,800",
+      "national_scrappage_after_price": "¥57,904",
+      "provincial_trade_in_after_price": "¥60,536"
+    },
+    {
+      "configuration": "403悦享版",
+      "official_guide_price": "¥69,800",
+      "national_scrappage_after_price": "¥61,424",
+      "provincial_trade_in_after_price": "¥64,216"
+    },
+    {
+      "configuration": "505悦享版",
+      "official_guide_price": "¥76,800",
+      "national_scrappage_after_price": "¥67,584",
+      "provincial_trade_in_after_price": "¥70,656"
+    },
+    {
+      "configuration": "505激光雷达版",
+      "official_guide_price": "¥86,800",
+      "national_scrappage_after_price": "¥76,384",
+      "provincial_trade_in_after_price": "¥79,856"
+    }
+  ],
+  "b10-current": [
+    {
+      "configuration": "540舒享版",
+      "official_guide_price": "¥99,800",
+      "national_scrappage_after_price": "¥87,824",
+      "provincial_trade_in_after_price": "¥91,816"
+    },
+    {
+      "configuration": "540悦享版",
+      "official_guide_price": "¥109,800",
+      "national_scrappage_after_price": "¥96,624",
+      "provincial_trade_in_after_price": "¥101,016"
+    },
+    {
+      "configuration": "610悦享版",
+      "official_guide_price": "¥115,800",
+      "national_scrappage_after_price": "¥101,904",
+      "provincial_trade_in_after_price": "¥106,536"
+    },
+    {
+      "configuration": "540激光雷达版",
+      "official_guide_price": "¥119,800",
+      "national_scrappage_after_price": "¥105,424",
+      "provincial_trade_in_after_price": "¥110,216"
+    },
+    {
+      "configuration": "610激光雷达版",
+      "official_guide_price": "¥125,800",
+      "national_scrappage_after_price": "¥110,704",
+      "provincial_trade_in_after_price": "¥115,736"
+    }
+  ],
+  "b01-current": [
+    {
+      "configuration": "590舒享版",
+      "official_guide_price": "¥95,800",
+      "national_scrappage_after_price": "¥84,304",
+      "provincial_trade_in_after_price": "¥88,136"
+    },
+    {
+      "configuration": "590悦享版",
+      "official_guide_price": "¥103,800",
+      "national_scrappage_after_price": "¥91,344",
+      "provincial_trade_in_after_price": "¥95,496"
+    },
+    {
+      "configuration": "670悦享版",
+      "official_guide_price": "¥109,800",
+      "national_scrappage_after_price": "¥96,624",
+      "provincial_trade_in_after_price": "¥101,016"
+    },
+    {
+      "configuration": "590激光雷达版",
+      "official_guide_price": "¥113,800",
+      "national_scrappage_after_price": "¥100,144",
+      "provincial_trade_in_after_price": "¥104,696"
+    },
+    {
+      "configuration": "670激光雷达版",
+      "official_guide_price": "¥119,800",
+      "national_scrappage_after_price": "¥105,424",
+      "provincial_trade_in_after_price": "¥110,216"
+    }
+  ],
+  "c10-current": [
+    {
+      "configuration": "增程290智享版",
+      "official_guide_price": "¥125,800",
+      "national_scrappage_after_price": "¥110,704",
+      "provincial_trade_in_after_price": "¥115,736"
+    },
+    {
+      "configuration": "纯电660智享版",
+      "official_guide_price": "¥132,800",
+      "national_scrappage_after_price": "¥116,864",
+      "provincial_trade_in_after_price": "¥122,176"
+    },
+    {
+      "configuration": "增程290激光雷达版",
+      "official_guide_price": "¥135,800",
+      "national_scrappage_after_price": "¥119,504",
+      "provincial_trade_in_after_price": "¥124,936"
+    },
+    {
+      "configuration": "纯电660激光雷达版",
+      "official_guide_price": "¥142,800",
+      "national_scrappage_after_price": "¥125,664",
+      "provincial_trade_in_after_price": "¥131,376"
+    }
+  ],
+  "c11-current": [
+    {
+      "configuration": "增程300激光雷达版",
+      "official_guide_price": "¥143,800",
+      "national_scrappage_after_price": "¥126,544",
+      "provincial_trade_in_after_price": "¥132,296"
+    },
+    {
+      "configuration": "纯电640智享版",
+      "official_guide_price": "¥143,800",
+      "national_scrappage_after_price": "¥126,544",
+      "provincial_trade_in_after_price": "¥132,296"
+    },
+    {
+      "configuration": "纯电640激光雷达版",
+      "official_guide_price": "¥149,800",
+      "national_scrappage_after_price": "¥131,824",
+      "provincial_trade_in_after_price": "¥137,816"
+    },
+    {
+      "configuration": "增程300激光雷达智尊版",
+      "official_guide_price": "¥153,800",
+      "national_scrappage_after_price": "¥135,344",
+      "provincial_trade_in_after_price": "¥141,496"
+    },
+    {
+      "configuration": "纯电640激光雷达智尊版",
+      "official_guide_price": "¥159,800",
+      "national_scrappage_after_price": "¥140,624",
+      "provincial_trade_in_after_price": "¥147,016"
+    }
+  ],
+  "c16-current": [
+    {
+      "configuration": "增程280尊享版 5座",
+      "official_guide_price": "¥145,800",
+      "national_scrappage_after_price": "¥128,304",
+      "provincial_trade_in_after_price": "¥134,136"
+    },
+    {
+      "configuration": "增程280尊享版 6座",
+      "official_guide_price": "¥148,800",
+      "national_scrappage_after_price": "¥130,944",
+      "provincial_trade_in_after_price": "¥136,896"
+    },
+    {
+      "configuration": "纯电630尊享版 5座",
+      "official_guide_price": "¥152,800",
+      "national_scrappage_after_price": "¥134,464",
+      "provincial_trade_in_after_price": "¥140,576"
+    },
+    {
+      "configuration": "纯电630尊享版 6座",
+      "official_guide_price": "¥155,800",
+      "national_scrappage_after_price": "¥137,104",
+      "provincial_trade_in_after_price": "¥143,336"
+    },
+    {
+      "configuration": "增程280激光雷达智尊版 5座",
+      "official_guide_price": "¥159,800",
+      "national_scrappage_after_price": "¥140,624",
+      "provincial_trade_in_after_price": "¥147,016"
+    },
+    {
+      "configuration": "增程280激光雷达智尊版 6座",
+      "official_guide_price": "¥162,800",
+      "national_scrappage_after_price": "¥143,264",
+      "provincial_trade_in_after_price": "¥149,776"
+    },
+    {
+      "configuration": "纯电630激光雷达智尊版 5座",
+      "official_guide_price": "¥166,800",
+      "national_scrappage_after_price": "¥146,800",
+      "provincial_trade_in_after_price": "¥153,456"
+    },
+    {
+      "configuration": "纯电630激光雷达智尊版 6座",
+      "official_guide_price": "¥169,800",
+      "national_scrappage_after_price": "¥149,800",
+      "provincial_trade_in_after_price": "¥156,216"
+    }
+  ],
+  "d19-current": [
+    {
+      "configuration": "增程400尊享版 6座",
+      "official_guide_price": "¥219,800",
+      "national_scrappage_after_price": "¥199,800",
+      "provincial_trade_in_after_price": "¥204,800"
+    },
+    {
+      "configuration": "增程500智尊版 6座",
+      "official_guide_price": "¥239,800",
+      "national_scrappage_after_price": "¥219,800",
+      "provincial_trade_in_after_price": "¥224,800"
+    },
+    {
+      "configuration": "增程500智尊版 7座",
+      "official_guide_price": "¥239,800",
+      "national_scrappage_after_price": "¥219,800",
+      "provincial_trade_in_after_price": "¥224,800"
+    },
+    {
+      "configuration": "纯电620智尊版 6座",
+      "official_guide_price": "¥239,800",
+      "national_scrappage_after_price": "¥219,800",
+      "provincial_trade_in_after_price": "¥224,800"
+    },
+    {
+      "configuration": "纯电720智尊版 6座",
+      "official_guide_price": "¥249,800",
+      "national_scrappage_after_price": "¥229,800",
+      "provincial_trade_in_after_price": "¥234,800"
+    },
+    {
+      "configuration": "纯电720智尊版 7座",
+      "official_guide_price": "¥249,800",
+      "national_scrappage_after_price": "¥229,800",
+      "provincial_trade_in_after_price": "¥234,800"
+    },
+    {
+      "configuration": "纯电680三电机性能版 6座",
+      "official_guide_price": "¥269,800",
+      "national_scrappage_after_price": "¥249,800",
+      "provincial_trade_in_after_price": "¥254,800"
+    }
+  ],
+  "d99-current": [
+    {
+      "configuration": "增程480尊享版",
+      "official_guide_price": "¥249,800",
+      "national_scrappage_after_price": "¥229,800",
+      "provincial_trade_in_after_price": "¥234,800"
+    },
+    {
+      "configuration": "纯电700尊享版",
+      "official_guide_price": "¥259,800",
+      "national_scrappage_after_price": "¥239,800",
+      "provincial_trade_in_after_price": "¥244,800"
+    },
+    {
+      "configuration": "增程480智尊版",
+      "official_guide_price": "¥279,800",
+      "national_scrappage_after_price": "¥259,800",
+      "provincial_trade_in_after_price": "¥264,800"
+    },
+    {
+      "configuration": "纯电700智尊版",
+      "official_guide_price": "¥289,800",
+      "national_scrappage_after_price": "¥269,800",
+      "provincial_trade_in_after_price": "¥274,800"
+    },
+    {
+      "configuration": "增程480旗舰版",
+      "official_guide_price": "¥309,800",
+      "national_scrappage_after_price": "¥289,800",
+      "provincial_trade_in_after_price": "¥294,800"
+    },
+    {
+      "configuration": "纯电700旗舰版",
+      "official_guide_price": "¥319,800",
+      "national_scrappage_after_price": "¥299,800",
+      "provincial_trade_in_after_price": "¥304,800"
+    },
+    {
+      "configuration": "增程480领航版",
+      "official_guide_price": "¥329,800",
+      "national_scrappage_after_price": "¥309,800",
+      "provincial_trade_in_after_price": "¥314,800"
+    },
+    {
+      "configuration": "纯电700领航版",
+      "official_guide_price": "¥339,800",
+      "national_scrappage_after_price": "¥319,800",
+      "provincial_trade_in_after_price": "¥324,800"
+    }
+  ],
+  "lafa5-current": [
+    {
+      "configuration": "515 Plus",
+      "official_guide_price": "¥97,800",
+      "national_scrappage_after_price": "¥86,064",
+      "provincial_trade_in_after_price": "¥89,976"
+    },
+    {
+      "configuration": "515 Pro",
+      "official_guide_price": "¥105,800",
+      "national_scrappage_after_price": "¥93,104",
+      "provincial_trade_in_after_price": "¥97,336"
+    },
+    {
+      "configuration": "515 Max",
+      "official_guide_price": "¥115,800",
+      "national_scrappage_after_price": "¥101,904",
+      "provincial_trade_in_after_price": "¥106,536"
+    },
+    {
+      "configuration": "605 Pro",
+      "official_guide_price": "¥111,800",
+      "national_scrappage_after_price": "¥98,384",
+      "provincial_trade_in_after_price": "¥102,856"
+    },
+    {
+      "configuration": "605 Max",
+      "official_guide_price": "¥121,800",
+      "national_scrappage_after_price": "¥107,184",
+      "provincial_trade_in_after_price": "¥112,056"
+    }
+  ],
+  "lafa5ultra-current": [
+    {
+      "configuration": "500 Ultra",
+      "official_guide_price": "¥123,800",
+      "national_scrappage_after_price": "¥108,944",
+      "provincial_trade_in_after_price": "¥113,896"
+    },
+    {
+      "configuration": "600 Ultra",
+      "official_guide_price": "¥129,800",
+      "national_scrappage_after_price": "¥114,224",
+      "provincial_trade_in_after_price": "¥119,416"
+    }
+  ]
+}

@@ -179,7 +179,9 @@ function SearchableSelect({ options, value, onChange, placeholder = '请选择..
 
 // ===== Main Component =====
 export default function GalleryPage() {
-  const [activeFolder, setActiveFolder] = useState<FolderKey>('drafts');
+  // AI images are saved to the template library by default, so open the same
+  // destination here instead of showing an apparently empty drafts folder.
+  const [activeFolder, setActiveFolder] = useState<FolderKey>('templates');
   const [templateSubFolder, setTemplateSubFolder] = useState<TemplateSubKey>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -295,18 +297,25 @@ export default function GalleryPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      try {
-        // Drafts: exclude template category
-        const res = await editorApi.getMaterials(undefined, 1, MATERIALS_PAGE_SIZE, true, 'ai-template');
+      const [draftResult, templateResult] = await Promise.allSettled([
+        editorApi.getMaterials(undefined, 1, MATERIALS_PAGE_SIZE, true, 'ai-template'),
+        editorApi.getMaterials('ai-template', 1, MATERIALS_PAGE_SIZE, true),
+      ]);
+
+      if (draftResult.status === 'fulfilled') {
+        const res = draftResult.value;
         const drafts = (res.data.items || []).map(mapDraftMaterial);
         setDraftImages(drafts);
         setDraftTotalCount(res.data.total || drafts.length);
         setDraftHasMore(drafts.length < (res.data.total || drafts.length));
         setDraftPage(1);
         void loadRemainingDraftPages(2, drafts, res.data.total || drafts.length);
+      } else {
+        console.error('Failed to fetch gallery drafts:', draftResult.reason);
+      }
 
-        // Templates: first page of user's templates
-        const tRes = await editorApi.getMaterials('ai-template', 1, MATERIALS_PAGE_SIZE, true);
+      if (templateResult.status === 'fulfilled') {
+        const tRes = templateResult.value;
         const tItems = (tRes.data.items || []).filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design');
         const templates = tItems.map(mapTemplateMaterial);
         setTemplateImages(templates);
@@ -314,8 +323,12 @@ export default function GalleryPage() {
         setTemplateHasMore(templates.length < (tRes.data.total || templates.length));
         setTemplatePage(1);
         void loadRemainingTemplatePages(2, templates, tRes.data.total || templates.length);
+      } else {
+        console.error('Failed to fetch gallery templates:', templateResult.reason);
+      }
 
-        // Car models: fetch brands and initialize
+      try {
+        // Car model failures must not hide the user's saved materials.
         const brandsRes = await carModelsApi.getBrands();
         const brands = brandsRes.data.sort();
         setCarBrands(brands);
@@ -327,7 +340,7 @@ export default function GalleryPage() {
           await fetchCarImages(brands[0]);
         }
       } catch (e) {
-        console.error('Failed to fetch gallery data:', e);
+        console.error('Failed to fetch car model gallery:', e);
       } finally {
         setLoading(false);
       }

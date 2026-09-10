@@ -162,6 +162,39 @@ async def test_ensure_default_providers_normalizes_mentalout_batch_api_base(clie
         assert provider.config["api_base_url"] == "https://chunfeng.mentalout.top"
 
 
+@pytest.mark.asyncio
+async def test_ensure_default_providers_preserves_admin_capability_flags(client, monkeypatch):
+    monkeypatch.setattr("app.services.ai_image_provider_service.settings.duckcoding_gpt_image2_api_key", "sk-test")
+    monkeypatch.setattr(
+        "app.services.ai_image_provider_service.settings.duckcoding_gpt_image2_api_url",
+        "https://provider.test/v1",
+    )
+    monkeypatch.setattr("app.services.ai_image_provider_service.settings.gpt_image2_api_key", "")
+    monkeypatch.setattr("app.services.ai_image_provider_service.settings.gpt_image2_api_url", "")
+
+    async with async_session() as db:
+        provider = AIImageProvider(
+            name="Existing provider",
+            model_name="gptimage2",
+            provider_kind="openai_images",
+            provider_model="gpt-image-2",
+            endpoint_url="https://provider.test/v1",
+            api_key="sk-test",
+            is_enabled=True,
+            is_default=True,
+            supports_text_input=True,
+            supports_image_input=False,
+            config={"send_size": True, "send_n": False},
+        )
+        db.add(provider)
+        await db.commit()
+
+        await AIImageProviderService(db).ensure_default_providers()
+
+        await db.refresh(provider)
+        assert provider.supports_image_input is False
+
+
 def test_batch_task_image_url_accepts_multiple_field_shapes():
     api_base = "https://image.mentalout.top"
     assert _batch_task_image_url({"image_url": "/generated/foo.png"}, api_base) == f"{api_base}/generated/foo.png"
@@ -404,6 +437,72 @@ async def test_openai_images_retries_gateway_error(monkeypatch):
     assert result["image_urls"] == ["/uploads/ai-images/final.png"]
     assert requests[0]["json"]["size"] == "2160x3840"
     assert requests[0]["json"]["quality"] == "high"
+
+
+@pytest.mark.asyncio
+async def test_provider_diagnostic_can_force_image_edit_when_routing_is_disabled(monkeypatch):
+    provider = AIImageProvider(
+        id=8,
+        name="Temporarily disabled image provider",
+        model_name="gptimage2",
+        provider_kind="openai_images",
+        provider_model="gpt-image-2",
+        endpoint_url="https://provider.test/v1",
+        api_key="sk-test",
+        is_enabled=True,
+        is_default=False,
+        supports_text_input=True,
+        supports_image_input=False,
+        config={"send_size": True, "send_n": False, "timeout": 180},
+    )
+    service = AIImageProviderService(None)  # type: ignore[arg-type]
+    requests: list[dict] = []
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        text = '{"created": 123}'
+
+        @staticmethod
+        def json():
+            return {"created": 123}
+
+    class DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    async def fake_request_with_retries(client, method, url, **kwargs):
+        requests.append({"method": method, "url": url, **kwargs})
+        return FakeResponse()
+
+    async def fake_extract_image_urls(self, provider, data, seed):
+        return ["/uploads/ai-images/provider-test.png"]
+
+    monkeypatch.setattr("app.services.ai_image_provider_service.httpx.AsyncClient", DummyClient)
+    monkeypatch.setattr("app.services.ai_image_provider_service._request_with_retries", fake_request_with_retries)
+    monkeypatch.setattr(AIImageProviderService, "_extract_image_urls", fake_extract_image_urls)
+
+    result = await service._call_openai_images(
+        provider,
+        "diagnose edit endpoint",
+        {
+            "width": 768,
+            "height": 1024,
+            "image_data": "data:image/png;base64,aGVsbG8=",
+            "_provider_test_force_image_edit": True,
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert requests[0]["url"] == "https://provider.test/v1/images/edits"
+    assert requests[0]["data"]["size"] == "768x1024"
+    assert requests[0]["files"][0][0] == "image"
 
 
 @pytest.mark.asyncio

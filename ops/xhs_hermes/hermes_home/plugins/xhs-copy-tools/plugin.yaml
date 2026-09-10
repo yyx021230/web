@@ -1,0 +1,7 @@
+name: xhs-copy-tools
+version: "1.0.0"
+description: Full-library mother-copy loading and objective hard-error validation
+provides_tools:
+  - xhs_get_copy_case
+  - xhs_sanitize_copy
+  - xhs_validate_copy

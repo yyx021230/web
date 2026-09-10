@@ -147,6 +147,13 @@ SMS_CODE_CENTER_ADMIN_USERNAME = (getattr(settings, "sms_code_center_admin_usern
 SMS_CODE_CENTER_ADMIN_PASSWORD = getattr(settings, "sms_code_center_admin_password", "") or ""
 SMS_CODE_CENTER_WAIT_TIMEOUT_SECONDS = max(5, int(getattr(settings, "sms_code_center_wait_timeout_seconds", 60) or 60))
 SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS = max(30, int(getattr(settings, "sms_code_center_activation_ttl_seconds", 300) or 300))
+SMS_CODE_CENTER_SECONDARY_ACTIVATION_TTL_SECONDS = min(
+    900,
+    max(
+        30,
+        int(getattr(settings, "sms_code_center_secondary_activation_ttl_seconds", 420) or 420),
+    ),
+)
 # The first primary SMS is the only phone-login attempt. If it does not arrive,
 # the flow switches to QR login, whose secondary SMS listener is armed first.
 SMS_CODE_CENTER_PRIMARY_SEND_ATTEMPTS = 1
@@ -409,6 +416,11 @@ class XHSService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def is_homepage_sync_eligible(env: XHSEnvironment) -> bool:
+        """Return whether an account has everything required by homepage sync."""
+        return bool(str(getattr(env, "profile_url", "") or "").strip())
 
     @staticmethod
     async def _emit_progress(progress_callback: ProgressCallback | None, payload: dict[str, Any]) -> None:
@@ -2067,6 +2079,221 @@ class XHSService:
         await self.db.commit()
         return result
 
+    @staticmethod
+    def _is_report_authorization_error(error: object) -> bool:
+        message = str(error or "").strip().lower()
+        return any(
+            marker in message
+            for marker in (
+                "没有获取该账号授权",
+                "unauthorized",
+                "forbidden",
+                "invalid token",
+                "token expired",
+                "鉴权失败",
+            )
+        )
+
+    @classmethod
+    def _is_retryable_report_error(cls, error: object) -> bool:
+        if cls._is_report_authorization_error(error):
+            return False
+        message = str(error or "").strip().lower()
+        return any(
+            marker in message
+            for marker in (
+                "timeout",
+                "timed out",
+                "rpc server",
+                "internal server error",
+                "connection",
+                "temporar",
+                "too many requests",
+                "rate limit",
+                "502",
+                "503",
+                "504",
+            )
+        )
+
+    async def _fetch_report_rows_resilient(
+        self,
+        *,
+        token: str,
+        advertiser_id: str,
+        api_path: str,
+        start_date: str,
+        end_date: str,
+        max_day_attempts: int = 3,
+    ) -> tuple[list[dict], int]:
+        start_d = date.fromisoformat(start_date)
+        end_d = date.fromisoformat(end_date)
+
+        async def fetch_range(range_start: date, range_end: date) -> list[dict]:
+            try:
+                rows, _ = await self._fetch_report_rows(
+                    token=token,
+                    advertiser_id=advertiser_id,
+                    api_path=api_path,
+                    start_date=range_start.isoformat(),
+                    end_date=range_end.isoformat(),
+                )
+                return rows
+            except Exception as exc:
+                if not self._is_retryable_report_error(exc):
+                    raise
+                if range_start < range_end:
+                    midpoint = range_start + timedelta(days=(range_end - range_start).days // 2)
+                    logger.warning(
+                        "投流报表范围请求失败，自动拆分: account=%s path=%s range=%s..%s error=%s",
+                        advertiser_id,
+                        api_path,
+                        range_start,
+                        range_end,
+                        exc,
+                    )
+                    left_rows = await fetch_range(range_start, midpoint)
+                    right_rows = await fetch_range(midpoint + timedelta(days=1), range_end)
+                    return left_rows + right_rows
+
+                last_error = exc
+                for attempt in range(2, max(2, int(max_day_attempts)) + 1):
+                    await asyncio.sleep(min(6, attempt * 2))
+                    try:
+                        rows, _ = await self._fetch_report_rows(
+                            token=token,
+                            advertiser_id=advertiser_id,
+                            api_path=api_path,
+                            start_date=range_start.isoformat(),
+                            end_date=range_end.isoformat(),
+                        )
+                        return rows
+                    except Exception as retry_exc:
+                        last_error = retry_exc
+                        if not self._is_retryable_report_error(retry_exc):
+                            raise
+                        logger.warning(
+                            "投流报表单日重试失败: account=%s path=%s date=%s attempt=%s error=%s",
+                            advertiser_id,
+                            api_path,
+                            range_start,
+                            attempt,
+                            retry_exc,
+                        )
+                raise last_error
+
+        rows = await fetch_range(start_d, end_d)
+        return rows, len(rows)
+
+    async def finalize_jg_report_refresh(
+        self,
+        *,
+        report_types: list[str] | tuple[str, ...] | set[str],
+        start_date: date,
+        end_date: date,
+        account_id: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_types = [
+            report_type
+            for report_type in dict.fromkeys(str(item).strip() for item in report_types)
+            if report_type in REPORT_API_PATHS
+        ]
+        result: dict[str, Any] = {"promoted": None, "aggregates": {}, "errors": []}
+        if not normalized_types:
+            return result
+
+        if set(normalized_types).intersection({"creative", "simple", "simple_note", "standard_note"}):
+            try:
+                result["promoted"] = await self.backfill_promoted_flags_from_reports(
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except Exception as exc:
+                result["errors"].append(f"投流标记刷新失败: {exc}")
+                logger.exception("投流标记统一刷新失败: start=%s end=%s", start_date, end_date)
+
+        for report_type in normalized_types:
+            try:
+                result["aggregates"][report_type] = await self.refresh_xhs_ad_aggregates(
+                    report_type=report_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    account_id=account_id,
+                )
+            except Exception as exc:
+                result["errors"].append(f"{report_type} 聚合刷新失败: {exc}")
+                logger.exception(
+                    "投流聚合表统一刷新失败: report_type=%s start=%s end=%s account_id=%s",
+                    report_type,
+                    start_date,
+                    end_date,
+                    account_id,
+                )
+
+        try:
+            from app.services.xhs_ad_dashboard_service import invalidate_ad_dashboard_caches
+
+            invalidate_ad_dashboard_caches()
+        except Exception as exc:
+            result["errors"].append(f"投流看板内存缓存清理失败: {exc}")
+            logger.warning("投流看板缓存清理失败: %s", exc)
+        return result
+
+    async def refresh_report_token_statuses(self, *, concurrency: int = 8) -> dict[str, Any]:
+        token_rows = list(
+            (
+                await self.db.execute(
+                    select(XHSReportToken).order_by(XHSReportToken.account_name.asc())
+                )
+            ).scalars().all()
+        )
+        semaphore = asyncio.Semaphore(max(1, min(20, int(concurrency))))
+
+        async def fetch_token(row: XHSReportToken) -> dict[str, Any]:
+            async with semaphore:
+                try:
+                    token = await self._fetch_report_token(row.account_id)
+                    return {"row": row, "token": token, "error": None}
+                except Exception as exc:
+                    return {"row": row, "token": None, "error": str(exc)}
+
+        fetched = await asyncio.gather(*(fetch_token(row) for row in token_rows))
+        valid_accounts: list[dict[str, str]] = []
+        failed_accounts: list[dict[str, str]] = []
+        transient_errors: list[dict[str, str]] = []
+        for result in fetched:
+            row = result["row"]
+            error = str(result.get("error") or "").strip()
+            token = str(result.get("token") or "").strip()
+            if token:
+                row.token = token
+                row.token_status = "成功"
+                row.token_message = None
+                valid_accounts.append(
+                    {"account_id": str(row.account_id), "account_name": str(row.account_name or "")}
+                )
+                continue
+
+            detail = {
+                "account_id": str(row.account_id),
+                "account_name": str(row.account_name or ""),
+                "error": error or "Token 接口未返回有效 Token",
+            }
+            if self._is_retryable_report_error(error) and row.token_status == "成功" and row.token:
+                transient_errors.append(detail)
+                continue
+            row.token_status = "失败"
+            row.token_message = detail["error"]
+            failed_accounts.append(detail)
+
+        await self.db.commit()
+        return {
+            "configured_accounts": len(token_rows),
+            "valid_accounts": valid_accounts,
+            "failed_accounts": failed_accounts,
+            "transient_errors": transient_errors,
+        }
+
     async def refresh_jg_report_cache(
         self,
         report_type: str,
@@ -2075,6 +2302,11 @@ class XHSService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         days: int = 30,
+        resilient: bool = False,
+        preserve_existing_on_empty: bool = False,
+        successful_tokens_only: bool = False,
+        use_cached_tokens: bool = False,
+        defer_post_processing: bool = False,
     ) -> dict:
         api_path = REPORT_API_PATHS.get(report_type)
         if not api_path:
@@ -2089,12 +2321,22 @@ class XHSService:
             tokens_stmt = tokens_stmt.where(XHSReportToken.account_id == account_id)
         elif account_name:
             tokens_stmt = tokens_stmt.where(XHSReportToken.account_name == account_name)
-        token_rows = (await self.db.execute(tokens_stmt.order_by(XHSReportToken.account_name.asc()))).scalars().all()
+        configured_token_rows = list(
+            (await self.db.execute(tokens_stmt.order_by(XHSReportToken.account_name.asc()))).scalars().all()
+        )
+        skipped_token_rows = [
+            tk for tk in configured_token_rows if successful_tokens_only and tk.token_status != "成功"
+        ]
+        token_rows = [
+            tk for tk in configured_token_rows if not successful_tokens_only or tk.token_status == "成功"
+        ]
 
         updated_accounts = 0
         updated_rows = 0
         changed_rows = 0
         errors: list[str] = []
+        failed_accounts: list[dict[str, str]] = []
+        preserved_empty_accounts: list[dict[str, str]] = []
         start_d = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_d = datetime.strptime(end_date, "%Y-%m-%d").date()
         semaphore = asyncio.Semaphore(4)
@@ -2102,8 +2344,21 @@ class XHSService:
         async def fetch_account_report(tk: XHSReportToken) -> dict:
             async with semaphore:
                 try:
-                    token = await self._fetch_report_token(tk.account_id)
-                    rows, _ = await self._fetch_report_rows(
+                    token = str(tk.token or "").strip() if use_cached_tokens else ""
+                    if not token:
+                        token = await self._fetch_report_token(tk.account_id)
+                except Exception as exc:
+                    return {
+                        "account_id": tk.account_id,
+                        "account_name": tk.account_name,
+                        "token": None,
+                        "rows": [],
+                        "error": str(exc),
+                        "error_stage": "token",
+                    }
+                try:
+                    fetcher = self._fetch_report_rows_resilient if resilient else self._fetch_report_rows
+                    rows, _ = await fetcher(
                         token=token,
                         advertiser_id=tk.account_id,
                         api_path=api_path,
@@ -2116,14 +2371,16 @@ class XHSService:
                         "token": token,
                         "rows": rows,
                         "error": None,
+                        "error_stage": None,
                     }
-                except Exception as e:
+                except Exception as exc:
                     return {
                         "account_id": tk.account_id,
                         "account_name": tk.account_name,
-                        "token": None,
+                        "token": token,
                         "rows": [],
-                        "error": str(e),
+                        "error": str(exc),
+                        "error_stage": "report",
                     }
 
         fetched_results = await asyncio.gather(*(fetch_account_report(tk) for tk in token_rows))
@@ -2136,9 +2393,20 @@ class XHSService:
 
             error = result.get("error")
             if error:
-                tk.token_status = "失败"
-                tk.token_message = str(error)
-                errors.append(f"{tk.account_name}: {error}")
+                error_stage = str(result.get("error_stage") or "report")
+                if error_stage == "token" or self._is_report_authorization_error(error):
+                    tk.token_status = "失败"
+                    tk.token_message = str(error)
+                error_message = f"{tk.account_id} {tk.account_name}: {error}"
+                errors.append(error_message)
+                failed_accounts.append(
+                    {
+                        "account_id": str(tk.account_id),
+                        "account_name": str(tk.account_name or ""),
+                        "stage": error_stage,
+                        "error": str(error),
+                    }
+                )
                 continue
 
             token = str(result.get("token") or "")
@@ -2205,6 +2473,21 @@ class XHSService:
                 for row in insert_rows
             }
 
+            if preserve_existing_on_empty and existing_rows and not incoming_by_key:
+                warning = (
+                    f"{tk.account_id} {tk.account_name}: 接口返回空数据，"
+                    f"已保留 {len(existing_rows)} 行现有数据"
+                )
+                errors.append(warning)
+                preserved_empty_accounts.append(
+                    {
+                        "account_id": str(tk.account_id),
+                        "account_name": str(tk.account_name or ""),
+                        "preserved_rows": str(len(existing_rows)),
+                    }
+                )
+                continue
+
             stale_ids = [
                 row.id
                 for key, row in existing_by_key.items()
@@ -2232,41 +2515,40 @@ class XHSService:
             updated_rows += len(insert_rows)
             updated_accounts += 1
         await self.db.commit()
-        if changed_rows and report_type in {"creative", "simple", "simple_note", "standard_note"}:
-            await self.backfill_promoted_flags_from_reports(start_date=start_d, end_date=end_d)
         aggregate_result: dict[str, int] | None = None
         aggregate_error: str | None = None
-        if changed_rows:
-            try:
-                aggregate_result = await self.refresh_xhs_ad_aggregates(
-                    report_type=report_type,
-                    start_date=start_d,
-                    end_date=end_d,
-                    account_id=account_id,
-                )
-                try:
-                    from app.services.xhs_ad_dashboard_service import invalidate_ad_dashboard_caches
-
-                    invalidate_ad_dashboard_caches()
-                except Exception as cache_exc:
-                    logger.warning("投流看板缓存清理失败: %s", cache_exc)
-            except Exception as exc:
-                aggregate_error = str(exc)
-                logger.exception(
-                    "投流聚合表刷新失败: report_type=%s start=%s end=%s account_id=%s",
-                    report_type,
-                    start_d,
-                    end_d,
-                    account_id,
-                )
+        if changed_rows and not defer_post_processing:
+            finalized = await self.finalize_jg_report_refresh(
+                report_types=[report_type],
+                start_date=start_d,
+                end_date=end_d,
+                account_id=account_id,
+            )
+            aggregate_result = finalized.get("aggregates", {}).get(report_type)
+            if finalized.get("errors"):
+                aggregate_error = " | ".join(str(item) for item in finalized["errors"])
         return {
             "report_type": report_type,
             "start_date": start_date,
             "end_date": end_date,
             "account_id": account_id,
             "updated_accounts": updated_accounts,
+            "attempted_accounts": len(token_rows),
+            "configured_accounts": len(configured_token_rows),
+            "skipped_token_accounts": [
+                {
+                    "account_id": str(tk.account_id),
+                    "account_name": str(tk.account_name or ""),
+                    "token_status": str(tk.token_status or ""),
+                    "token_message": str(tk.token_message or ""),
+                }
+                for tk in skipped_token_rows
+            ],
             "updated_rows": updated_rows,
             "changed_rows": changed_rows,
+            "failed_accounts": failed_accounts,
+            "preserved_empty_accounts": preserved_empty_accounts,
+            "post_processing_deferred": bool(defer_post_processing and changed_rows),
             "aggregate_result": aggregate_result,
             "aggregate_error": aggregate_error,
             "errors": errors,
@@ -4191,25 +4473,76 @@ class XHSService:
             raise ValueError("云登环境不存在或无权限")
         if environment_id is None:
             envs = [env for env in envs if not self._is_sync_runner_environment(env)]
-        envs_by_id = {int(env.id): env for env in envs}
+        all_envs_by_id = {int(env.id): env for env in envs}
+        skipped_unconfigured_envs = [env for env in envs if not self.is_homepage_sync_eligible(env)]
+        envs_by_id = {
+            int(env.id): env
+            for env in envs
+            if self.is_homepage_sync_eligible(env)
+        }
         if normalized_runner_assignments:
             explicit_env_ids = [env_id for env_ids in normalized_runner_assignments.values() for env_id in env_ids]
-            missing_env_ids = [env_id for env_id in explicit_env_ids if env_id not in envs_by_id]
+            missing_env_ids = [env_id for env_id in explicit_env_ids if env_id not in all_envs_by_id]
             if missing_env_ids:
                 raise ValueError(f"部分发布账号不存在、不可用，或当前不在可同步范围内: {missing_env_ids[0]}")
-            envs = [envs_by_id[env_id] for env_id in explicit_env_ids]
+            normalized_runner_assignments = {
+                runner_id: [env_id for env_id in env_ids if env_id in envs_by_id]
+                for runner_id, env_ids in normalized_runner_assignments.items()
+            }
+            normalized_runner_assignments = {
+                runner_id: env_ids
+                for runner_id, env_ids in normalized_runner_assignments.items()
+                if env_ids
+            }
+            normalized_runner_ids = list(normalized_runner_assignments.keys())
+            eligible_explicit_env_ids = [
+                env_id
+                for env_ids in normalized_runner_assignments.values()
+                for env_id in env_ids
+            ]
+            envs = [envs_by_id[env_id] for env_id in eligible_explicit_env_ids]
+            explicit_env_id_set = set(explicit_env_ids)
+            skipped_unconfigured_envs = [
+                env for env in skipped_unconfigured_envs if int(env.id) in explicit_env_id_set
+            ]
         else:
-            envs = self._humanize_environment_sync_order(envs, persona)
+            envs = self._humanize_environment_sync_order(list(envs_by_id.values()), persona)
             if normalized_account_limit is not None:
                 envs = envs[:normalized_account_limit]
+
+        skipped_unconfigured_accounts = [
+            {
+                "environment_id": int(env.id),
+                "account_name": str(env.account_name or "").strip(),
+                "reason": "未配置个人主页链接",
+            }
+            for env in skipped_unconfigured_envs
+        ]
+
+        def with_skipped_accounts(result: dict) -> dict:
+            if skipped_unconfigured_accounts:
+                result = dict(result)
+                result["skipped_unconfigured_accounts"] = skipped_unconfigured_accounts
+            return result
 
         # Environment discovery is read-only. Release that transaction before
         # delegating to a worker, which can wait on YunDeng for several minutes.
         await self.db.commit()
 
+        if not envs:
+            return with_skipped_accounts({
+                "synced_accounts": 0,
+                "created_notes": 0,
+                "updated_notes": 0,
+                "metric_synced_notes": 0,
+                "total_notes": 0,
+                "deferred_homepage_notes": 0,
+                "deferred_homepage_items": [],
+            })
+
         if self._should_delegate_browser_ops():
             if len(normalized_runner_ids) > 1 and len(envs) > 1:
-                return await self._delegate_account_note_sync_by_runner(
+                result = await self._delegate_account_note_sync_by_runner(
                     envs=envs,
                     runner_ids=normalized_runner_ids,
                     runner_assignments=normalized_runner_assignments,
@@ -4217,14 +4550,16 @@ class XHSService:
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
                 )
+                return with_skipped_accounts(result)
             if environment_id is not None or user is None or getattr(user, "role", "") == "admin":
-                return await self.trigger_worker_sync_account_notes(
+                result = await self.trigger_worker_sync_account_notes(
                     environment_id,
                     scrape_environment_id,
                     ",".join(str(item) for item in normalized_runner_ids) or None,
                     normalized_account_limit,
                     json.dumps(normalized_runner_assignments, ensure_ascii=False) if normalized_runner_assignments else None,
                 )
+                return with_skipped_accounts(result)
 
             synced_accounts = 0
             created_notes = 0
@@ -4266,7 +4601,7 @@ class XHSService:
                 result["failed_accounts"] = failed_accounts
             if failed_runners:
                 result["failed_runners"] = failed_runners
-            return result
+            return with_skipped_accounts(result)
 
         self._require_local_browser_ops("同步账号帖子")
         synced_accounts = 0
@@ -4278,17 +4613,6 @@ class XHSService:
         deferred_homepage_items: list[dict[str, Any]] = []
         failed_accounts: list[dict[str, Any]] = []
         failed_runners: list[dict[str, Any]] = []
-
-        if not envs:
-            return {
-                "synced_accounts": 0,
-                "created_notes": 0,
-                "updated_notes": 0,
-                "metric_synced_notes": 0,
-                "total_notes": 0,
-                "deferred_homepage_notes": 0,
-                "deferred_homepage_items": [],
-            }
 
         scrape_envs = await self._resolve_account_scrape_environments(
             scrape_environment_id=scrape_environment_id,
@@ -4408,7 +4732,7 @@ class XHSService:
             result["failed_accounts"] = failed_accounts
         if failed_runners:
             result["failed_runners"] = failed_runners
-        return result
+        return with_skipped_accounts(result)
 
     async def _sync_account_notes_for_environment(
         self,
@@ -7624,6 +7948,36 @@ class XHSService:
             "total_notes": total_notes,
         }
 
+    async def import_creator_stats_excel(
+        self,
+        environment_id: int,
+        content: bytes,
+        *,
+        sync_run_id: int | None = None,
+    ) -> dict[str, int]:
+        """Import a creator-center workbook through the canonical note importer."""
+        env = await self.get_environment(int(environment_id))
+        if env is None:
+            raise ValueError("未找到要导入的小红书账号")
+        if bool(getattr(env, "is_sync_runner", False)):
+            raise ValueError("测试账号不能导入创作者中心数据")
+        if not content:
+            raise ValueError("上传的创作者中心表格为空")
+
+        stats_rows = self._parse_creator_stats_excel(content)
+        if not stats_rows:
+            raise ValueError("表格中没有识别到笔记数据，请确认上传的是创作者中心导出表")
+
+        result = await self._import_creator_note_stats_rows(
+            env,
+            stats_rows,
+            sync_run_id=sync_run_id,
+        )
+        return {
+            **result,
+            "exported_rows": len(stats_rows),
+        }
+
     async def _fetch_creator_note_stats(
         self,
         *,
@@ -8424,6 +8778,31 @@ class XHSService:
         data = payload.get("data") or {}
         return data if isinstance(data, dict) else {}
 
+    async def _request_mcp_post_qr_phone_code(
+        self,
+        api_base: str,
+        phone_number: str,
+    ) -> dict[str, Any]:
+        async with httpx.AsyncClient(
+            **self._httpx_client_kwargs(api_base, timeout=30.0)
+        ) as client:
+            resp = await client.post(
+                f"{api_base}/api/v1/login/phone/request-code",
+                json={"phone_number": phone_number, "post_qr": True},
+            )
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"触发小红书扫码后二次验证码失败: HTTP {resp.status_code} "
+                f"{self._mcp_error_detail(payload)}"
+            )
+        if not isinstance(payload, dict) or not (payload.get("success") or payload.get("code") == 0):
+            raise RuntimeError(
+                str(payload.get("message") or payload.get("error") or "触发小红书扫码后二次验证码失败")
+            )
+        data = payload.get("data") or {}
+        return data if isinstance(data, dict) else {}
+
     @staticmethod
     def _mcp_error_detail(payload: Any) -> str:
         if not isinstance(payload, dict):
@@ -8463,9 +8842,18 @@ class XHSService:
             headers["Idempotency-Key"] = idempotency_key
         return headers
 
-    async def _create_open_sms_code_request(self, phone_number: str, client_request_id: str) -> dict[str, Any]:
+    async def _create_open_sms_code_request(
+        self,
+        phone_number: str,
+        client_request_id: str,
+        *,
+        ttl_seconds: int | None = None,
+    ) -> dict[str, Any]:
         path = "/api/v1/open/sms-code-requests"
-        raw_body = self._compact_json({"phoneNumber": phone_number, "platform": "小红书"})
+        request_body: dict[str, Any] = {"phoneNumber": phone_number, "platform": "小红书"}
+        if ttl_seconds is not None:
+            request_body["ttlSeconds"] = min(900, max(30, int(ttl_seconds)))
+        raw_body = self._compact_json(request_body)
         headers = self._open_sms_api_headers("POST", path, raw_body, idempotency_key=client_request_id)
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(f"{SMS_CODE_CENTER_BASE_URL}{path}", headers=headers, content=raw_body.encode("utf-8"))
@@ -8499,9 +8887,13 @@ class XHSService:
         timeout_seconds: float | None = None,
         login_api_base: str | None = None,
     ) -> dict[str, Any]:
-        wait_seconds = min(
-            float(SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS),
-            max(1.0, float(timeout_seconds or SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS)),
+        wait_seconds = max(
+            1.0,
+            float(
+                SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+                if timeout_seconds is None
+                else timeout_seconds
+            ),
         )
         deadline = asyncio.get_running_loop().time() + wait_seconds
         request_context = dict(initial_request or {})
@@ -8734,6 +9126,7 @@ class XHSService:
             secondary_request = await self._create_open_sms_code_request(
                 phone_number,
                 f"xhs-login-secondary-{getattr(env, 'id', 'env')}-{uuid.uuid4().hex}",
+                ttl_seconds=SMS_CODE_CENTER_SECONDARY_ACTIVATION_TTL_SECONDS,
             )
             secondary_request_id = str(
                 secondary_request.get("requestId") or secondary_request.get("request_id") or ""
@@ -8756,6 +9149,7 @@ class XHSService:
                 self._wait_open_sms_code_request(
                     secondary_request_id,
                     initial_request=secondary_request,
+                    timeout_seconds=SMS_CODE_CENTER_SECONDARY_ACTIVATION_TTL_SECONDS,
                 )
             )
             await asyncio.sleep(0)
@@ -8785,6 +9179,18 @@ class XHSService:
                 task_id,
                 round((time.monotonic() - qr_started_at) * 1000),
                 self._summarize_phone_cloud_qr_task(qr_task),
+            )
+            post_qr_send_result = await self._request_mcp_post_qr_phone_code(
+                api_base,
+                phone_number,
+            )
+            logger.info(
+                "小红书扫码后二次验证码发送状态已确认: env_id=%s request_id=%s task_id=%s logged_in=%s message=%s",
+                getattr(env, "id", None),
+                secondary_request_id,
+                task_id,
+                bool(post_qr_send_result.get("is_logged_in")),
+                str(post_qr_send_result.get("message") or ""),
             )
             secondary_code_consumed = await self._complete_xhs_post_qr_verification(
                 api_base,
@@ -8816,7 +9222,10 @@ class XHSService:
         sms_wait_task: asyncio.Task[dict[str, Any]] | None = None,
     ) -> bool:
         """Finish either direct QR login or the automatically sent second SMS."""
-        deadline = asyncio.get_running_loop().time() + SMS_CODE_CENTER_ACTIVATION_TTL_SECONDS
+        deadline = (
+            asyncio.get_running_loop().time()
+            + SMS_CODE_CENTER_SECONDARY_ACTIVATION_TTL_SECONDS
+        )
         sms_request = initial_request
         last_sms_status = ""
         while True:

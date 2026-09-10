@@ -2,6 +2,8 @@ param(
     [Parameter(Mandatory = $true)][string]$PackagePath,
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string]$Commit,
+    [Parameter(Mandatory = $true)][string]$McpSourceSha256,
+    [Parameter(Mandatory = $true)][string]$McpBinarySha256,
     [string]$BuildTime = "unknown",
     [string]$ProjectRoot = "C:\projects\web",
     [string]$BackupRoot = "D:\ztqc-backups\web",
@@ -12,7 +14,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 $releaseRoot = Join-Path $ProjectRoot ".release"
-$stagingRoot = Join-Path $releaseRoot "staging\$Version-$Commit"
+$packageSha = (Get-FileHash $PackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$packageShaShort = $packageSha.Substring(0, 12)
+$imageTag = "${Version}-${Commit}-${packageShaShort}"
+$stagingRoot = Join-Path $releaseRoot "staging\$imageTag"
 $packageRoot = Join-Path $releaseRoot "packages"
 $historyPath = Join-Path $releaseRoot "history.ndjson"
 $currentPath = Join-Path $releaseRoot "current.json"
@@ -26,11 +31,25 @@ $originalBackendImageId = ""
 $originalFrontendImageId = ""
 $candidateBackendImage = ""
 $candidateFrontendImage = ""
+$rollbackImageTag = ""
+$rollbackBackendImage = ""
+$rollbackFrontendImage = ""
 $migrationAttempted = $false
 $preMigrationRevision = ""
 $originalAppVersion = ""
 $originalGitCommit = ""
 $originalBuildTime = ""
+$rootEnvBackupPath = Join-Path $releaseRoot "predeploy-root.env"
+$candidateReceiptPath = Join-Path $releaseRoot "candidate-$imageTag.json"
+
+foreach ($fingerprint in @($McpSourceSha256, $McpBinarySha256)) {
+    if ($fingerprint -notmatch '^[0-9a-fA-F]{64}$') {
+        throw "MCP source and binary fingerprints must be SHA256 values"
+    }
+}
+if ($Commit -notmatch '^[0-9a-fA-F]{7,40}$') {
+    throw "Release commit must be a 7-40 character Git SHA"
+}
 
 function Resolve-ComposeProjectName([string]$RequestedName) {
     if ($RequestedName) { return $RequestedName }
@@ -69,6 +88,48 @@ function Read-ContainerEnvValue([string]$ContainerId, [string]$Name, [string]$De
     $entry = @($inspection.Config.Env | Where-Object { $_.StartsWith($prefix) } | Select-Object -Last 1)
     if ($entry.Count -eq 0) { return $DefaultValue }
     return "$($entry[0].Substring($prefix.Length))".Trim()
+}
+
+function Read-ImageEnvValue([string]$ImageId, [string]$Name, [string]$DefaultValue) {
+    if (-not $ImageId) { return $DefaultValue }
+    $inspection = @(docker image inspect $ImageId | ConvertFrom-Json)[0]
+    $prefix = "${Name}="
+    $entry = @($inspection.Config.Env | Where-Object { $_.StartsWith($prefix) } | Select-Object -Last 1)
+    if ($entry.Count -eq 0) { return $DefaultValue }
+    return "$($entry[0].Substring($prefix.Length))".Trim()
+}
+
+function Read-ImageLabelValue([string]$ImageRef, [string]$Name) {
+    $inspection = @(docker image inspect $ImageRef | ConvertFrom-Json)[0]
+    if (-not $inspection.Config.Labels) { return "" }
+    $property = $inspection.Config.Labels.PSObject.Properties[$Name]
+    if (-not $property) { return "" }
+    return "$($property.Value)".Trim()
+}
+
+function Convert-ReleaseVersion([string]$Value) {
+    $normalized = "$Value".Trim().TrimStart("v")
+    if ($normalized -notmatch '^\d+\.\d+\.\d+$') {
+        throw "Release version must use numeric SemVer (x.y.z): $Value"
+    }
+    return [version]$normalized
+}
+
+function Set-EnvValue([string]$Path, [string]$Name, [string]$Value) {
+    $lines = @((Get-Content $Path -ErrorAction Stop))
+    $pattern = "^\s*$([regex]::Escape($Name))\s*="
+    $replacement = "${Name}=${Value}"
+    $found = $false
+    $updated = foreach ($line in $lines) {
+        if ($line -match $pattern) {
+            if (-not $found) { $replacement }
+            $found = $true
+        } else {
+            $line
+        }
+    }
+    if (-not $found) { $updated += $replacement }
+    $updated | Set-Content -Encoding UTF8 $Path
 }
 
 function Assert-ExistingBackup([string]$Path, [string]$PostgresImage) {
@@ -136,11 +197,27 @@ if (Test-Path $currentPath) {
     $previousRelease = Get-Content $currentPath -Raw | ConvertFrom-Json
 }
 
+$targetVersion = Convert-ReleaseVersion $Version
+if ($previousRelease -and $previousRelease.version) {
+    $recordedVersion = Convert-ReleaseVersion "$($previousRelease.version)"
+    if ($targetVersion -le $recordedVersion) {
+        throw "Release $Version is not newer than recorded production $recordedVersion. Version reuse and downgrade are blocked."
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $stagingRoot, $packageRoot | Out-Null
-Copy-Item -Force (Join-Path $ProjectRoot "scripts\windows\Restore-Backup.ps1") $rollbackRestoreScript
-Copy-Item -Force $PackagePath (Join-Path $packageRoot "$Version-$Commit.tar.gz")
+Copy-Item -Force (Join-Path $PSScriptRoot "Restore-Backup.ps1") $rollbackRestoreScript
+Copy-Item -Force $PackagePath (Join-Path $packageRoot "$imageTag.tar.gz")
 tar -xzf $PackagePath -C $stagingRoot
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract release package" }
+$stagedMcpPath = Join-Path $stagingRoot "backend\bin\xiaohongshu-mcp"
+if (-not (Test-Path $stagedMcpPath -PathType Leaf)) {
+    throw "Release package is missing backend/bin/xiaohongshu-mcp"
+}
+$observedMcpBinarySha256 = (Get-FileHash $stagedMcpPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($observedMcpBinarySha256 -ne $McpBinarySha256.ToLowerInvariant()) {
+    throw "Release package MCP binary does not match the declared fingerprint"
+}
 Get-ChildItem $stagingRoot -Recurse -Force -Filter '._*' -ErrorAction SilentlyContinue |
     Remove-Item -Force -ErrorAction Stop
 
@@ -148,13 +225,18 @@ $rootEnvPath = Join-Path $ProjectRoot ".env"
 $backendEnvPath = Join-Path $ProjectRoot "backend\.env"
 if (-not (Test-Path $rootEnvPath)) { throw "Missing production environment file: $rootEnvPath" }
 if (-not (Test-Path $backendEnvPath)) { throw "Missing backend environment file: $backendEnvPath" }
+Copy-Item -Force $rootEnvPath $rootEnvBackupPath
 # Compose resolves service env_file relative to the staged compose file. The
 # backend .dockerignore excludes this temporary copy from image layers.
 Copy-Item -Force $backendEnvPath (Join-Path $stagingRoot "backend\.env")
 
 $env:APP_VERSION = $Version
+$env:APP_IMAGE_TAG = $imageTag
 $env:GIT_COMMIT = $Commit
 $env:BUILD_TIME = $BuildTime
+$env:RELEASE_SOURCE_SHA256 = $packageSha
+$env:MCP_SOURCE_SHA256 = $McpSourceSha256
+$env:MCP_BINARY_SHA256 = $McpBinarySha256
 $ComposeProjectName = Resolve-ComposeProjectName $ComposeProjectName
 $env:COMPOSE_PROJECT_NAME = $ComposeProjectName
 
@@ -182,6 +264,13 @@ try {
     $originalAppVersion = Read-ContainerEnvValue $currentBackendId "APP_VERSION" "unknown"
     $originalGitCommit = Read-ContainerEnvValue $currentBackendId "GIT_COMMIT" "unknown"
     $originalBuildTime = Read-ContainerEnvValue $currentBackendId "BUILD_TIME" "unknown"
+    $observedImageVersion = Read-ImageEnvValue $originalBackendImageId "APP_VERSION" "unknown"
+    if ($observedImageVersion -ne "unknown") {
+        $runningVersion = Convert-ReleaseVersion $observedImageVersion
+        if ($targetVersion -le $runningVersion) {
+            throw "Release $Version is not newer than the running image $runningVersion"
+        }
+    }
 
     # Application-only releases must not upgrade, pull, or recreate stateful
     # infrastructure. Preserve the exact image references already in service.
@@ -209,8 +298,15 @@ try {
     $pythonImage = Read-EnvValue $rootEnvPath "PYTHON_IMAGE" "python:3.11.13-slim-bookworm"
     $nodeImage = Read-EnvValue $rootEnvPath "NODE_IMAGE" "node:20.19.4-alpine3.22"
     $appImagePrefix = Read-EnvValue $rootEnvPath "APP_IMAGE_PREFIX" "ztqc"
-    $candidateBackendImage = "${appImagePrefix}/backend:${Version}"
-    $candidateFrontendImage = "${appImagePrefix}/frontend:${Version}"
+    $candidateBackendImage = "${appImagePrefix}/backend:${imageTag}"
+    $candidateFrontendImage = "${appImagePrefix}/frontend:${imageTag}"
+    $rollbackImageTag = "rollback-$((Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmss'))-$($originalBackendImageId.Replace('sha256:', '').Substring(0, 12))"
+    $rollbackBackendImage = "${appImagePrefix}/backend:${rollbackImageTag}"
+    $rollbackFrontendImage = "${appImagePrefix}/frontend:${rollbackImageTag}"
+    docker tag $originalBackendImageId $rollbackBackendImage
+    if ($LASTEXITCODE -ne 0) { throw "Unable to pin the exact rollback backend image" }
+    docker tag $originalFrontendImageId $rollbackFrontendImage
+    if ($LASTEXITCODE -ne 0) { throw "Unable to pin the exact rollback frontend image" }
     foreach ($baseImage in @($pythonImage, $nodeImage)) {
         docker image inspect $baseImage | Out-Null
         if ($LASTEXITCODE -ne 0) {
@@ -235,11 +331,33 @@ try {
 
     docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") config --quiet
     if ($LASTEXITCODE -ne 0) { throw "Compose validation failed" }
-    docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build backend frontend
-    if ($LASTEXITCODE -ne 0) { throw "Release image build failed" }
+    $existingBackend = "$(docker image ls -q $candidateBackendImage | Select-Object -First 1)".Trim()
+    $existingFrontend = "$(docker image ls -q $candidateFrontendImage | Select-Object -First 1)".Trim()
+    if ($existingBackend -or $existingFrontend) {
+        if (-not $existingBackend -or -not $existingFrontend) {
+            throw "Immutable release image pair is incomplete: $imageTag"
+        }
+        if ((Read-ImageLabelValue $candidateBackendImage "com.ztqc.release.source-sha256") -ne $packageSha -or
+            (Read-ImageLabelValue $candidateFrontendImage "com.ztqc.release.source-sha256") -ne $packageSha -or
+            (Read-ImageLabelValue $candidateBackendImage "com.ztqc.mcp.source-sha256") -ne $McpSourceSha256 -or
+            (Read-ImageLabelValue $candidateBackendImage "com.ztqc.mcp.binary-sha256") -ne $McpBinarySha256) {
+            throw "Immutable release tag already exists with different source: $imageTag"
+        }
+    } else {
+        docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build --pull=false backend frontend
+        if ($LASTEXITCODE -ne 0) { throw "Release image build failed" }
+    }
     docker run --rm --entrypoint python $candidateBackendImage -m compileall -q -f /app/app
     if ($LASTEXITCODE -ne 0) {
         throw "Candidate backend image contains invalid Python source"
+    }
+    $candidateMcpHashLine = "$(docker run --rm --entrypoint sha256sum $candidateBackendImage /app/bin/xiaohongshu-mcp | Select-Object -Last 1)".Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $candidateMcpHashLine) {
+        throw "Unable to hash MCP binary inside candidate backend image"
+    }
+    $candidateMcpHash = ($candidateMcpHashLine -split '\s+', 2)[0].ToLowerInvariant()
+    if ($candidateMcpHash -ne $McpBinarySha256.ToLowerInvariant()) {
+        throw "Candidate image contains an unexpected MCP binary"
     }
 
     # The candidate is ready. Close the user entrypoint only for the final
@@ -306,6 +424,17 @@ try {
             Remove-Item -Force -ErrorAction Stop
     }
 
+    # Persist immutable release pins before Compose evaluates the newly
+    # extracted production file. A later plain `docker compose up` can no
+    # longer fall back to a stale version baked into the YAML.
+    Set-EnvValue $rootEnvPath "APP_VERSION" $Version
+    Set-EnvValue $rootEnvPath "APP_IMAGE_TAG" $imageTag
+    Set-EnvValue $rootEnvPath "GIT_COMMIT" $Commit
+    Set-EnvValue $rootEnvPath "BUILD_TIME" $BuildTime
+    Set-EnvValue $rootEnvPath "RELEASE_SOURCE_SHA256" $packageSha
+    Set-EnvValue $rootEnvPath "MCP_SOURCE_SHA256" $McpSourceSha256
+    Set-EnvValue $rootEnvPath "MCP_BINARY_SHA256" $McpBinarySha256
+
     $migrationAttempted = $true
     docker compose run --rm --no-deps backend alembic upgrade head
     $migrationExitCode = $LASTEXITCODE
@@ -337,10 +466,16 @@ try {
 
     $newPostgresId = "$(docker compose ps -q postgres)".Trim()
     $newBackendId = "$(docker compose ps -q backend)".Trim()
+    $newWorkerId = "$(docker compose ps -q ai-worker)".Trim()
     $newPgMount = Resolve-MountSource $newPostgresId "/var/lib/postgresql/data"
     $newUploadsMount = Resolve-MountSource $newBackendId "/app/uploads"
     if ($newPgMount -ne $originalPgMount -or $newUploadsMount -ne $originalUploadsMount) {
         throw "Production data mount changed during deployment; refusing to accept the release"
+    }
+    $newBackendImageId = "$(docker inspect --format '{{.Image}}' $newBackendId)".Trim()
+    $newWorkerImageId = "$(docker inspect --format '{{.Image}}' $newWorkerId)".Trim()
+    if ($newBackendImageId -ne $newWorkerImageId) {
+        throw "Backend and AI worker are running different image IDs"
     }
 
     if ($InstallDailyBackup) {
@@ -354,10 +489,27 @@ try {
         buildTime = $BuildTime
         deployedAt = (Get-Date).ToUniversalTime().ToString("o")
         backupDir = $backupDir
-        package = (Join-Path $packageRoot "$Version-$Commit.tar.gz")
+        package = (Join-Path $packageRoot "$imageTag.tar.gz")
+        packageSha256 = $packageSha
+        core = [ordered]@{
+            version = $Version
+            commit = $Commit
+            buildTime = $BuildTime
+            sourceSha256 = $packageSha
+            imageTag = $imageTag
+            backendImageRef = $candidateBackendImage
+            backendImageId = $newBackendImageId
+            mcpSourceSha256 = $McpSourceSha256
+            mcpBinarySha256 = $McpBinarySha256
+        }
     }
     $releaseJson = $release | ConvertTo-Json -Depth 6
-    $releaseJson | Set-Content -Encoding UTF8 $currentPath
+    $releaseJson | Set-Content -Encoding UTF8 $candidateReceiptPath
+    & (Join-Path $ProjectRoot "scripts\windows\Assert-ReleaseState.ps1") `
+        -ProjectRoot $ProjectRoot `
+        -ComposeProjectName $ComposeProjectName `
+        -ReceiptPath $candidateReceiptPath | Out-Null
+    Move-Item -Force $candidateReceiptPath $currentPath
     ($release | ConvertTo-Json -Compress) | Add-Content -Encoding UTF8 $historyPath
     Write-Host "Release $Version ($Commit) deployed successfully"
 }
@@ -367,6 +519,9 @@ catch {
     Write-Warning "Deployment failed: $deploymentError"
     if ($servicesStopped) {
         Write-Warning "Restoring previous source, images, and database state..."
+        if (Test-Path $rootEnvBackupPath) {
+            Copy-Item -Force $rootEnvBackupPath $rootEnvPath
+        }
         if (Test-Path $sourceSnapshot) {
             try {
                 tar -xzf $sourceSnapshot -C $ProjectRoot
@@ -387,6 +542,10 @@ catch {
             $env:GIT_COMMIT = $originalGitCommit
             $env:BUILD_TIME = $originalBuildTime
         }
+        $env:APP_IMAGE_TAG = $rollbackImageTag
+        $env:RELEASE_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "RELEASE_SOURCE_SHA256" "unknown"
+        $env:MCP_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_SOURCE_SHA256" "unknown"
+        $env:MCP_BINARY_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_BINARY_SHA256" "unknown"
         if ($backupDir -and $migrationAttempted) {
             try {
                 & $rollbackRestoreScript -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
@@ -396,12 +555,6 @@ catch {
         }
         try {
             if ($applicationServicesStopped) {
-                if ($originalBackendImageId -and $candidateBackendImage) {
-                    docker tag $originalBackendImageId $candidateBackendImage
-                }
-                if ($originalFrontendImageId -and $candidateFrontendImage) {
-                    docker tag $originalFrontendImageId $candidateFrontendImage
-                }
                 docker compose up -d --no-build --no-deps backend ai-worker frontend
                 if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
             } else {
@@ -423,4 +576,5 @@ catch {
 finally {
     Pop-Location
     if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }
+    if (Test-Path $candidateReceiptPath) { Remove-Item -Force $candidateReceiptPath }
 }

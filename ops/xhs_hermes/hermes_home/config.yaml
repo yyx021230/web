@@ -1,0 +1,15 @@
+plugins:
+  enabled:
+    - xhs-copy-tools
+  disabled: []
+  entries:
+    xhs-copy-tools:
+      allow_tool_override: false
+tools:
+  # This worker exposes exactly three private copy tools. Keep their schemas
+  # visible directly: newer Hermes releases otherwise hide plugin tools behind
+  # tool_search, while the production prompt deliberately requires an exact
+  # get -> sanitize -> validate call sequence.
+  tool_search:
+    enabled: off
+_config_version: 39

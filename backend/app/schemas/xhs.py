@@ -25,6 +25,7 @@ class EnvironmentOut(BaseModel):
     labels: Optional[str] = None
     department: str = "xhs"
     status: str
+    homepage_sync_eligible: bool = False
 
     model_config = {"from_attributes": True}
 

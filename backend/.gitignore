@@ -10,6 +10,7 @@ softdelete_test.db
 
 # Uploads
 uploads/
+reference_previews/
 
 # Python
 __pycache__/

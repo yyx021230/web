@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const backendOrigin = process.env.BACKEND_ORIGIN || 'http://localhost:8000';
+const hermesBackendOrigin = process.env.HERMES_BACKEND_ORIGIN || backendOrigin;
 
 const defaultImageOrigins = [
   'https://cdn.dancf.com',
@@ -72,6 +73,14 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      {
+        source: '/api/backend/hermes-workflows/:path*',
+        destination: `${hermesBackendOrigin}/api/v1/hermes-workflows/:path*`,
+      },
+      {
+        source: '/api/backend/admin/hermes-workflows/:path*',
+        destination: `${hermesBackendOrigin}/api/v1/admin/hermes-workflows/:path*`,
+      },
       {
         source: '/api/backend/:path*',
         destination: `${backendOrigin}/api/v1/:path*`,

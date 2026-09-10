@@ -241,6 +241,7 @@ def build_scheduler_loop_specs(
     session_factory: async_sessionmaker,
 ) -> list[SchedulerLoopSpec]:
     from app.services.scheduler import (
+        hermes_workflow_schedule_loop,
         scheduled_publish_loop,
         sync_task_loop,
         xhs_configured_task_loop,
@@ -251,7 +252,11 @@ def build_scheduler_loop_specs(
         SchedulerLoopSpec(
             "xhs-configured-tasks",
             lambda: xhs_configured_task_loop(session_factory),
-        )
+        ),
+        SchedulerLoopSpec(
+            "hermes-content-production",
+            lambda: hermes_workflow_schedule_loop(session_factory),
+        ),
     ]
     if settings.xhs_enable_sync_task_loop:
         specs.append(

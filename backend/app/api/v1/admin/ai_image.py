@@ -162,6 +162,10 @@ async def admin_test_ai_image_provider(
     }
     if req.quality:
         params["quality"] = req.quality
+    if req.image_data:
+        params["image_data"] = req.image_data
+        # 管理员诊断要能测试被临时停用分流的图片编辑接口。
+        params["_provider_test_force_image_edit"] = True
     result = await service.submit_provider_test(provider_id, req.prompt, params, user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="生图入口不存在")

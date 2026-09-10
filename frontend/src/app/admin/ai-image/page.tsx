@@ -12,6 +12,7 @@ import {
   Play,
   RefreshCw,
   Trash2,
+  Upload,
   X,
   XCircle,
 } from 'lucide-react';
@@ -334,12 +335,40 @@ function ProviderTestModal({
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<ProviderTestResult | null>(null);
   const [taskId, setTaskId] = useState('');
+  const [referenceImageData, setReferenceImageData] = useState('');
+  const [referenceImageName, setReferenceImageName] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setResult(null);
     setTaskId('');
+    setReferenceImageData('');
+    setReferenceImageName('');
   }, [open, provider?.id]);
+
+  const handleReferenceImage = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('请选择图片文件');
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error('参考图不能超过 12MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = typeof reader.result === 'string' ? reader.result : '';
+      if (!value.startsWith('data:image/')) {
+        toast.error('参考图读取失败');
+        return;
+      }
+      setReferenceImageData(value);
+      setReferenceImageName(file.name);
+    };
+    reader.onerror = () => toast.error('参考图读取失败');
+    reader.readAsDataURL(file);
+  };
 
   const runTest = async () => {
     if (!provider) return;
@@ -357,6 +386,7 @@ function ProviderTestModal({
         height,
         quality: quality || undefined,
         count,
+        image_data: referenceImageData || undefined,
       });
       setResult(res.data);
       setTaskId(res.data.task_id || '');
@@ -457,10 +487,10 @@ function ProviderTestModal({
         >
           <X className="h-4 w-4" />
         </button>
-        <div className="border-b p-5 md:border-b-0 md:border-r">
+        <div className="overflow-y-auto border-b p-5 md:border-b-0 md:border-r">
           <div className="flex items-start justify-between gap-4 pr-10">
             <div>
-              <h2 className="text-base font-semibold text-gray-950">真实测试生图</h2>
+              <h2 className="text-base font-semibold text-gray-950">Provider 接口诊断</h2>
               <p className="mt-1 text-xs leading-5 text-gray-500">{provider.name} · {provider.provider_kind}</p>
             </div>
           </div>
@@ -475,6 +505,40 @@ function ProviderTestModal({
                 placeholder="输入要真实发送到上游的提示词"
               />
             </label>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-medium text-gray-600">参考图（可选）</span>
+                <span className={cn(
+                  'rounded-full px-2 py-1 text-[10px] font-medium',
+                  referenceImageData ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700',
+                )}>
+                  {referenceImageData ? '图片编辑 /images/edits' : '文字直出 /images/generations'}
+                </span>
+              </div>
+              {referenceImageData ? (
+                <div className="flex items-center gap-3 rounded-lg border bg-gray-50 p-2">
+                  <img src={referenceImageData} alt="测试参考图" className="h-14 w-14 rounded-md object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-medium text-gray-700">{referenceImageName}</div>
+                    <div className="mt-1 text-[11px] text-gray-400">将真实测试用户带参考图时使用的接口</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setReferenceImageData(''); setReferenceImageName(''); }}
+                    className="rounded-md border bg-white px-2 py-1 text-xs text-gray-500 hover:text-gray-900"
+                  >
+                    移除
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed bg-gray-50 px-3 py-4 text-xs text-gray-500 transition hover:border-gray-400 hover:bg-gray-100">
+                  <Upload className="h-4 w-4" />
+                  上传参考图，验证用户实际链路
+                  <input type="file" accept="image/*" className="hidden" onChange={event => handleReferenceImage(event.target.files?.[0])} />
+                </label>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <label className="space-y-1">
@@ -506,9 +570,9 @@ function ProviderTestModal({
               className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
             >
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {testing ? '测试任务执行中...' : '发送真实测试'}
+              {testing ? '测试任务执行中...' : `测试${referenceImageData ? '图片编辑' : '文字直出'}接口`}
             </button>
-            <p className="text-[11px] leading-5 text-gray-400">会真实消耗上游额度；遇到 202/openai_error 会按当前重试策略继续等待。</p>
+            <p className="text-[11px] leading-5 text-gray-400">会真实消耗上游额度。本功能诊断指定 Provider 接口，不代表用户队列、文件存储和去水印链路均已完成。</p>
           </div>
         </div>
 

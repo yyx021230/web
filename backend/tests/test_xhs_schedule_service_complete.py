@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from app.db.session import async_session as session_factory
+from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_report import XHSReportDaily
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.services import xhs_schedule_service as module
@@ -23,6 +24,7 @@ from app.services.xhs_schedule_service import (
     _is_due,
     _normalize_run_time,
     _normalize_task_config,
+    _partition_creator_sync_targets,
     _report_conversion_value,
     _report_metric_value,
     _resolve_ad_refresh_date_range,
@@ -31,6 +33,43 @@ from app.services.xhs_schedule_service import (
     due_xhs_schedule_task_keys,
     trigger_xhs_scheduled_task,
 )
+
+
+@pytest.mark.asyncio
+async def test_creator_schedule_preflight_excludes_incomplete_accounts(client):
+    async with session_factory() as db:
+        complete = XHSEnvironment(
+            shop_id="creator-complete",
+            account_name="配置完整账号",
+            xhs_account_id="123456789",
+            login_phone_number="+86 190-6712-5562",
+            xhs_account_type="enterprise_professional",
+            status="active",
+        )
+        incomplete = XHSEnvironment(
+            shop_id="creator-incomplete",
+            account_name="配置缺失账号",
+            xhs_account_id="",
+            login_phone_number="",
+            xhs_account_type="enterprise_employee",
+            status="active",
+        )
+        db.add_all([complete, incomplete])
+        await db.commit()
+        await db.refresh(complete)
+        await db.refresh(incomplete)
+
+        eligible, skipped, names = await _partition_creator_sync_targets(
+            db,
+            [int(complete.id), int(incomplete.id)],
+        )
+
+    assert eligible == [int(complete.id)]
+    assert names[int(complete.id)] == "配置完整账号"
+    assert len(skipped) == 1
+    assert skipped[0]["environment_id"] == int(incomplete.id)
+    assert "小红书ID" in skipped[0]["reason"]
+    assert "登录手机号" in skipped[0]["reason"]
 
 
 def test_schedule_configuration_normalization_and_helpers(monkeypatch):
@@ -150,6 +189,27 @@ async def test_schedule_settings_and_logs_round_trip(client):
 
 
 @pytest.mark.asyncio
+async def test_enabling_past_schedule_defers_until_tomorrow(client, monkeypatch):
+    now_cst = datetime(2026, 8, 26, 17, 45)
+    now_utc = datetime(2026, 8, 26, 9, 45)
+    monkeypatch.setattr(module, "cst_now_naive", lambda: now_cst)
+    monkeypatch.setattr(module, "utc_now_naive", lambda: now_utc)
+
+    async with session_factory() as db:
+        service = XHSScheduleService(db)
+        updated = await service.update_setting(
+            ACCOUNT_DATA_SYNC_TASK,
+            enabled=True,
+            run_time="03:00",
+            config={"engagement_sync_enabled": True},
+        )
+        row = await service.get_row(ACCOUNT_DATA_SYNC_TASK)
+
+        assert row.last_run_at == now_utc
+        assert updated["next_run_at"] == "2026-08-27T03:00:00"
+
+
+@pytest.mark.asyncio
 async def test_due_schedule_reconciles_stale_running_logs(client):
     async with session_factory() as db:
         service = XHSScheduleService(db)
@@ -180,6 +240,18 @@ class _FakeXHSService:
     def __init__(self, _session):
         self.calls = []
 
+    async def refresh_report_token_statuses(self):
+        self.calls.append(("refresh_tokens", {}))
+        return {
+            "configured_accounts": 2,
+            "valid_accounts": [
+                {"account_id": "a", "account_name": "账户A"},
+                {"account_id": "b", "account_name": "账户B"},
+            ],
+            "failed_accounts": [],
+            "transient_errors": [],
+        }
+
     async def sync_account_notes(self, **kwargs):
         self.observed_calls.append("posts")
         self.calls.append(("posts", kwargs))
@@ -203,8 +275,24 @@ class _FakeXHSService:
     async def refresh_jg_report_cache(self, **kwargs):
         self.calls.append(("report", kwargs))
         if kwargs["report_type"] == "creative":
-            return {"updated_accounts": 1, "updated_rows": 2, "changed_rows": 1, "errors": ["one"]}
-        return {"updated_accounts": 2, "updated_rows": 3, "changed_rows": 2, "errors": []}
+            return {
+                "updated_accounts": 1,
+                "attempted_accounts": 2,
+                "updated_rows": 2,
+                "changed_rows": 1,
+                "errors": ["one"],
+            }
+        return {
+            "updated_accounts": 2,
+            "attempted_accounts": 2,
+            "updated_rows": 3,
+            "changed_rows": 2,
+            "errors": [],
+        }
+
+    async def finalize_jg_report_refresh(self, **kwargs):
+        self.calls.append(("finalize_reports", kwargs))
+        return {"promoted": {}, "aggregates": {}, "errors": []}
 
 
 @pytest.mark.asyncio
@@ -219,11 +307,16 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
     async def load_admin(_db):
         return object()
 
+    async def partition_targets(_db, environment_ids):
+        assert environment_ids == [101, 102]
+        return [101, 102], [], {101: "账号101", 102: "账号102"}
+
     async def tag_batch(*_args, **_kwargs):
         return {"tagged_count": 2, "matched_count": 3}
 
     monkeypatch.setattr(module, "_resolve_target_environment_ids", resolve_ids)
     monkeypatch.setattr(module, "_load_system_admin_user", load_admin)
+    monkeypatch.setattr(module, "_partition_creator_sync_targets", partition_targets)
     monkeypatch.setattr(module, "_run_content_tag_batch", tag_batch)
 
     async with session_factory() as db:
@@ -244,7 +337,7 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
         assert "主页帖子" in result
         assert "补齐 4 条" in result
         assert "待创作者中心建档 3 条" in result
-        assert "创作中心主同步" in result
+        assert "创作者中心首轮成功 2/2" in result
         assert "未同步策略" in result
         assert "内容打标 2/3" in result
         assert _FakeXHSService.observed_calls[:2] == ["engagement", "posts"]
@@ -256,6 +349,70 @@ async def test_execute_account_data_sync_all_steps(client, monkeypatch):
             await _execute_account_data_sync(db, {"post_sync_enabled": True, "post_sync_runner_ids": []})
         with pytest.raises(ValueError, match="未同步策略"):
             await _execute_account_data_sync(db, {"post_sync_enabled": False, "detail_sync_enabled": True, "detail_runner_ids": []})
+
+
+@pytest.mark.asyncio
+async def test_creator_schedule_retries_only_first_pass_failures(client, monkeypatch):
+    class RetryingCreatorService:
+        target_batches: list[list[int]] = []
+
+        def __init__(self, _session):
+            pass
+
+        async def sync_account_note_engagements(self, **kwargs):
+            target_ids = list(kwargs["target_environment_ids"])
+            self.target_batches.append(target_ids)
+            if len(self.target_batches) == 1:
+                return {
+                    "synced_accounts": 1,
+                    "created_notes": 2,
+                    "updated_notes": 3,
+                    "failed_accounts": [
+                        {"environment_id": 102, "account_name": "账号102", "error": "首轮失败"},
+                    ],
+                }
+            return {
+                "synced_accounts": 1,
+                "created_notes": 1,
+                "updated_notes": 4,
+            }
+
+    async def resolve_ids(*_args, **_kwargs):
+        return [101, 102, 103]
+
+    async def partition_targets(_db, environment_ids):
+        assert environment_ids == [101, 102, 103]
+        return (
+            [101, 102],
+            [{"environment_id": 103, "account_name": "配置缺失账号", "reason": "未配置完整：登录手机号"}],
+            {101: "账号101", 102: "账号102", 103: "配置缺失账号"},
+        )
+
+    async def load_admin(_db):
+        return object()
+
+    RetryingCreatorService.target_batches = []
+    monkeypatch.setattr(module, "XHSService", RetryingCreatorService)
+    monkeypatch.setattr(module, "_resolve_target_environment_ids", resolve_ids)
+    monkeypatch.setattr(module, "_partition_creator_sync_targets", partition_targets)
+    monkeypatch.setattr(module, "_load_system_admin_user", load_admin)
+
+    async with session_factory() as db:
+        result = await _execute_account_data_sync(
+            db,
+            {
+                "post_sync_enabled": False,
+                "engagement_sync_enabled": True,
+                "yundeng_sync_concurrency": 5,
+            },
+        )
+
+    assert RetryingCreatorService.target_batches == [[101, 102], [102]]
+    assert "首轮成功 1/2" in result
+    assert "失败重试成功 1/1" in result
+    assert "最终失败 0" in result
+    assert "配置不全跳过 1" in result
+    assert "新增 3 条，更新 7 条" in result
 
 
 @pytest.mark.asyncio
@@ -275,7 +432,8 @@ async def test_ad_refresh_records_success_and_failure(client, monkeypatch):
             {"date_range_mode": "fixed", "start_date": "2026-06-01", "end_date": "2026-06-01", "report_types": ["simple", "creative"]},
             history_run_id=9,
         )
-        assert "读取 3 个账户、5 行，实际变更 3 行，异常 1 条" in message
+        assert "成功 3/4 个账户报表组合" in message
+        assert "读取 5 行，实际变更 3 行，异常 1 条" in message
         assert events
 
     class _Failing(_FakeXHSService):
@@ -290,6 +448,107 @@ async def test_ad_refresh_records_success_and_failure(client, monkeypatch):
                 {"date_range_mode": "fixed", "start_date": "2026-06-01", "end_date": "2026-06-01", "report_types": ["simple"]},
                 history_run_id=10,
             )
+
+
+@pytest.mark.asyncio
+async def test_ad_refresh_rebuilds_aggregates_even_when_raw_rows_are_unchanged(client, monkeypatch):
+    class UnchangedReportService:
+        finalize_calls: list[dict] = []
+
+        def __init__(self, _session):
+            pass
+
+        async def refresh_report_token_statuses(self):
+            return {
+                "configured_accounts": 1,
+                "valid_accounts": [{"account_id": "a", "account_name": "账户A"}],
+                "failed_accounts": [],
+                "transient_errors": [],
+            }
+
+        async def refresh_jg_report_cache(self, **kwargs):
+            return {
+                "updated_accounts": 1,
+                "attempted_accounts": 1,
+                "updated_rows": 1,
+                "changed_rows": 0,
+                "errors": [],
+            }
+
+        async def finalize_jg_report_refresh(self, **kwargs):
+            self.finalize_calls.append(kwargs)
+            return {"promoted": {}, "aggregates": {}, "errors": []}
+
+    UnchangedReportService.finalize_calls = []
+    monkeypatch.setattr(module, "XHSService", UnchangedReportService)
+    async with session_factory() as db:
+        message = await _execute_ad_data_refresh(
+            db,
+            {
+                "date_range_mode": "fixed",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-01",
+                "report_types": ["simple"],
+            },
+        )
+
+    assert "数据一致性验收通过" in message
+    assert len(UnchangedReportService.finalize_calls) == 1
+    assert UnchangedReportService.finalize_calls[0]["report_types"] == ["simple"]
+
+
+@pytest.mark.asyncio
+async def test_schedule_claim_is_persisted_before_long_task_starts(client, monkeypatch):
+    observed_last_run_at: list[datetime | None] = []
+
+    async with session_factory() as db:
+        await XHSScheduleService(db).update_setting(
+            AD_DATA_REFRESH_TASK,
+            enabled=True,
+            run_time="06:30",
+            config={
+                "date_range_mode": "fixed",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-01",
+                "report_types": ["simple"],
+            },
+        )
+
+    async def inspect_durable_claim(_session, _config, *, history_run_id=None):
+        async with session_factory() as verification_db:
+            row = await XHSScheduleService(verification_db).get_row(AD_DATA_REFRESH_TASK)
+            observed_last_run_at.append(row.last_run_at)
+        return "刷新完成，数据一致性验收通过"
+
+    monkeypatch.setattr(module, "_execute_ad_data_refresh", inspect_durable_claim)
+    await module._run_task(AD_DATA_REFRESH_TASK, "schedule", session_factory)
+
+    assert len(observed_last_run_at) == 1
+    assert observed_last_run_at[0] is not None
+
+
+@pytest.mark.asyncio
+async def test_consistency_check_ignores_reports_not_selected_for_refresh(client):
+    async with session_factory() as db:
+        db.add(
+            XHSReportDaily(
+                report_type="creative",
+                account_id="creative-only",
+                account_name="不在本次范围",
+                report_date=date(2026, 6, 1),
+                campaign_id="creative-1",
+                payload={"time": "2026-06-01", "creative_id": "creative-1"},
+            )
+        )
+        await db.commit()
+        result = await module._validate_ad_refresh_consistency(
+            db,
+            start_d=date(2026, 6, 1),
+            end_d=date(2026, 6, 1),
+            report_types=["simple"],
+        )
+
+    assert result["errors"] == []
 
 
 @pytest.mark.asyncio

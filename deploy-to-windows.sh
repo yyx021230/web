@@ -12,20 +12,29 @@ WIN_PATH="${WIN_PATH:-C:/projects/web}"
 WIN_PS_PATH="${WIN_PATH//\//\\}"
 WIN_PASS="${WIN_PASS:-}"
 EXISTING_BACKUP_DIR="${EXISTING_BACKUP_DIR:-}"
-ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-false}"
-REQUIRE_RELEASE_TAG="${REQUIRE_RELEASE_TAG:-true}"
 GO_TOOLCHAIN="${GO_TOOLCHAIN:-go1.24.6}"
 
 cd "$PROJECT"
-VERSION="${APP_VERSION:-$(node -p "require('./frontend/package.json').version")}"
+PACKAGE_VERSION="$(node -p "require('./frontend/package.json').version")"
+VERSION="${APP_VERSION:-$PACKAGE_VERSION}"
 COMMIT="$(git rev-parse --short=12 HEAD)"
 BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+MCP_SOURCE_SHA256="$(
+  cd "$MCP_PROJECT"
+  find . -type f ! -name 'xiaohongshu-mcp' ! -path './.git/*' -print0 \
+    | LC_ALL=C sort -z \
+    | xargs -0 shasum -a 256 \
+    | shasum -a 256 \
+    | awk '{print $1}'
+)"
 RELEASE_TAG="v${VERSION}"
 PACKAGE_NAME="web-${VERSION}-${COMMIT}.tar.gz"
 TARBALL="/tmp/${PACKAGE_NAME}"
 REMOTE_INCOMING="${WIN_PATH}/.release/incoming"
+REMOTE_SCRIPT_DIR="${REMOTE_INCOMING}/scripts"
 REMOTE_PACKAGE="${REMOTE_INCOMING}/${PACKAGE_NAME}"
 REMOTE_PS_PACKAGE="${WIN_PS_PATH}\\.release\\incoming\\${PACKAGE_NAME}"
+REMOTE_PS_DEPLOY_SCRIPT="${WIN_PS_PATH}\\.release\\incoming\\scripts\\Deploy-Release.ps1"
 RELEASE_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/web-release-stage.XXXXXX")"
 SOURCE_ARCHIVE="${RELEASE_STAGE}/tracked-source.tar.gz"
 
@@ -34,12 +43,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [[ "$ALLOW_DIRTY_DEPLOY" != "true" ]] && [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
-  echo "Refusing to deploy a dirty working tree. Commit the release or set ALLOW_DIRTY_DEPLOY=true." >&2
+if [[ "$VERSION" != "$PACKAGE_VERSION" ]]; then
+  echo "APP_VERSION ${VERSION} does not match frontend/package.json ${PACKAGE_VERSION}." >&2
   exit 1
 fi
 
-if [[ "$REQUIRE_RELEASE_TAG" == "true" ]] && ! git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"; then
+if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+  echo "Refusing to deploy a dirty working tree. Commit the complete release first." >&2
+  exit 1
+fi
+
+if ! git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"; then
   echo "HEAD must have release tag ${RELEASE_TAG} before production deployment." >&2
   exit 1
 fi
@@ -55,6 +69,7 @@ TARGET="${WIN_USER}@${WIN_IP}"
 echo "[1/6] Build xiaohongshu-mcp for linux/amd64"
 cd "$MCP_PROJECT"
 GOTOOLCHAIN="$GO_TOOLCHAIN" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$MCP_BIN_TARGET" .
+MCP_BINARY_SHA256="$(shasum -a 256 "$MCP_BIN_TARGET" | awk '{print $1}')"
 
 echo "[2/6] Create release package ${PACKAGE_NAME}"
 cd "$PROJECT"
@@ -68,12 +83,12 @@ rm -f "$SOURCE_ARCHIVE"
 COPYFILE_DISABLE=1 tar czf "$TARBALL" -C "$RELEASE_STAGE" .
 
 echo "[3/6] Prepare remote release directories"
-"${SSH[@]}" "$TARGET" "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '${REMOTE_INCOMING}','${WIN_PATH}/scripts/windows' | Out-Null\""
+"${SSH[@]}" "$TARGET" "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '${REMOTE_INCOMING}','${REMOTE_SCRIPT_DIR}' | Out-Null\""
 
 echo "[4/6] Upload release package and deployment scripts"
 "${SCP[@]}" "$TARBALL" "${TARGET}:${REMOTE_PACKAGE}"
 for script in "$PROJECT"/scripts/windows/*.ps1; do
-  "${SCP[@]}" "$script" "${TARGET}:${WIN_PATH}/scripts/windows/$(basename "$script")"
+  "${SCP[@]}" "$script" "${TARGET}:${REMOTE_SCRIPT_DIR}/$(basename "$script")"
 done
 
 echo "[5/6] Deploy with backup, migration, health check, and automatic rollback"
@@ -82,7 +97,7 @@ if [[ -n "$EXISTING_BACKUP_DIR" ]]; then
   BACKUP_ARG=" -ExistingBackupDir '${EXISTING_BACKUP_DIR}'"
 fi
 "${SSH[@]}" "$TARGET" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${WIN_PS_PATH}\\scripts\\windows\\Deploy-Release.ps1' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'${BACKUP_ARG}; if (-not \$?) { exit 1 }\""
+  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${REMOTE_PS_DEPLOY_SCRIPT}' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -McpSourceSha256 '${MCP_SOURCE_SHA256}' -McpBinarySha256 '${MCP_BINARY_SHA256}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'${BACKUP_ARG}; if (-not \$?) { exit 1 }\""
 
 echo "[6/6] Verify deployed version"
 DEPLOYED_JSON="$("${SSH[@]}" "$TARGET" \
@@ -94,3 +109,5 @@ if [[ "$DEPLOYED_VERSION" != "$VERSION" || "$DEPLOYED_COMMIT" != "$COMMIT" ]]; t
   echo "Deployment verification failed: expected ${VERSION}/${COMMIT}, got ${DEPLOYED_VERSION}/${DEPLOYED_COMMIT}" >&2
   exit 1
 fi
+"${SSH[@]}" "$TARGET" \
+  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${WIN_PS_PATH}\\scripts\\windows\\Assert-ReleaseState.ps1' -ProjectRoot '${WIN_PS_PATH}' | Out-Null; if (-not \$?) { exit 1 }\""

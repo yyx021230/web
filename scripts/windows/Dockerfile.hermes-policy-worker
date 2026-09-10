@@ -1,0 +1,5 @@
+FROM ztqc/hermes-worker:0.3.22
+ARG REVISION=unknown
+LABEL org.opencontainers.image.version="0.3.23" org.opencontainers.image.revision=${REVISION}
+COPY ops/xhs_hermes/core.py ops/xhs_hermes/run_daily_8x5.py ops/xhs_hermes/policy_sync.py ops/xhs_hermes/policy_constraints.py /app/web/ops/xhs_hermes/
+COPY artifacts/hermes-policy-20260909/cases.json artifacts/hermes-policy-20260909/policy_source.json artifacts/hermes-policy-20260909/policy_overrides.json /opt/hermes-seed/config/

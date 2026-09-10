@@ -1,0 +1,7 @@
+FROM ztqc/hermes-api:0.3.21
+ARG REVISION=unknown
+ENV APP_VERSION=0.3.22 GIT_COMMIT=${REVISION}
+LABEL org.opencontainers.image.version="0.3.22" org.opencontainers.image.revision=${REVISION}
+COPY backend/app/services/hermes_reference_types.py backend/app/services/hermes_reference_service.py backend/app/services/hermes_workflow_service.py /app/app/services/
+COPY backend/app/data/hermes_image_curation.json /app/app/data/
+COPY scripts/windows/import_hermes_catalog.py /app/scripts/import_hermes_catalog.py
