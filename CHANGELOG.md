@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.21] - 2026-09-10
+
+### Fixed
+
+- Backend release images use the available binary Python wheels directly instead of downloading an unused C/C++ and PostgreSQL build toolchain during every Windows deployment.
+
 ## [0.3.20] - 2026-09-10
 
 ### Added

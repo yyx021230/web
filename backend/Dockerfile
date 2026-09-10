@@ -1,7 +1,7 @@
 ARG PYTHON_IMAGE=python:3.11.13-slim-bookworm
 FROM ${PYTHON_IMAGE}
 
-ARG APP_VERSION=0.3.20
+ARG APP_VERSION=0.3.21
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME=unknown
 ARG RELEASE_SOURCE_SHA256=unknown
@@ -25,11 +25,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MCP_BINARY_SHA256=${MCP_BINARY_SHA256}
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml /app/pyproject.toml
 RUN pip install --no-cache-dir \
