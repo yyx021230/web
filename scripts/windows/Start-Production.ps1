@@ -57,7 +57,29 @@ try {
     }
     docker compose --project-name $ComposeProjectName --env-file $envPath -f docker-compose.yml up -d --no-build --no-deps backend ai-worker | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Failed to start pinned production core services" }
+
+    # Frontend is released independently by the Hermes bundle. Recover the
+    # existing Compose container in place so this command never replaces that
+    # image with the core release tag.
+    $frontendIds = @(
+        docker ps -aq `
+            --filter "label=com.docker.compose.project=$ComposeProjectName" `
+            --filter "label=com.docker.compose.service=frontend" |
+            Where-Object { $_ -and $_.Trim() }
+    )
+    if ($frontendIds.Count -ne 1) {
+        throw "Expected one existing production frontend container, found $($frontendIds.Count)"
+    }
+    $frontendRunning = docker inspect -f "{{.State.Running}}" $frontendIds[0]
+    if ($LASTEXITCODE -ne 0) { throw "Failed to inspect production frontend" }
+    if ($frontendRunning.Trim().ToLowerInvariant() -ne "true") {
+        docker start $frontendIds[0] | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to start existing production frontend" }
+    }
+
     & (Join-Path $ProjectRoot "scripts\windows\Assert-ReleaseState.ps1") -ProjectRoot $ProjectRoot -ComposeProjectName $ComposeProjectName
+    $frontendResponse = Invoke-WebRequest -UseBasicParsing -TimeoutSec 20 -Uri "http://127.0.0.1:3000/"
+    if ($frontendResponse.StatusCode -ne 200) { throw "Production frontend did not return HTTP 200" }
 }
 finally {
     Pop-Location

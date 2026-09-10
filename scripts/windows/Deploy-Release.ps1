@@ -14,6 +14,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 $releaseRoot = Join-Path $ProjectRoot ".release"
+New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
+$deploymentLockPath = Join-Path $releaseRoot "deploy.lock"
+$deploymentLock = $null
+try {
+    $deploymentLock = [System.IO.File]::Open(
+        $deploymentLockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+    )
+} catch [System.IO.IOException] {
+    throw "Another production deployment is still running. Wait for it or terminate that exact deployment process before retrying."
+}
 $packageSha = (Get-FileHash $PackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $packageShaShort = $packageSha.Substring(0, 12)
 $imageTag = "${Version}-${Commit}-${packageShaShort}"
@@ -21,7 +34,7 @@ $stagingRoot = Join-Path $releaseRoot "staging\$imageTag"
 $packageRoot = Join-Path $releaseRoot "packages"
 $historyPath = Join-Path $releaseRoot "history.ndjson"
 $currentPath = Join-Path $releaseRoot "current.json"
-$sourceSnapshot = Join-Path $releaseRoot "predeploy-source.tar.gz"
+$sourceSnapshot = Join-Path $releaseRoot "predeploy-source-$imageTag.tar.gz"
 $rollbackRestoreScript = Join-Path $releaseRoot "rollback-Restore-Backup.ps1"
 $previousRelease = $null
 $backupDir = $null
@@ -39,7 +52,7 @@ $preMigrationRevision = ""
 $originalAppVersion = ""
 $originalGitCommit = ""
 $originalBuildTime = ""
-$rootEnvBackupPath = Join-Path $releaseRoot "predeploy-root.env"
+$rootEnvBackupPath = Join-Path $releaseRoot "predeploy-root-$imageTag.env"
 $candidateReceiptPath = Join-Path $releaseRoot "candidate-$imageTag.json"
 
 foreach ($fingerprint in @($McpSourceSha256, $McpBinarySha256)) {
@@ -360,6 +373,19 @@ try {
         throw "Candidate image contains an unexpected MCP binary"
     }
 
+    # A disconnected SSH client does not necessarily terminate the remote
+    # PowerShell process. Re-read the receipt immediately before touching live
+    # services so an older, slow build cannot cut over after a newer release.
+    if (Test-Path $currentPath) {
+        $latestRelease = Get-Content $currentPath -Raw | ConvertFrom-Json
+        if ($latestRelease.version) {
+            $latestRecordedVersion = Convert-ReleaseVersion "$($latestRelease.version)"
+            if ($targetVersion -le $latestRecordedVersion) {
+                throw "A newer or equal release $latestRecordedVersion became active while $Version was building; refusing stale cutover."
+            }
+        }
+    }
+
     # The candidate is ready. Close the user entrypoint only for the final
     # queue gate and switch. Existing API and worker processes stay alive until
     # all accepted work has finished; a non-empty queue aborts and reopens the
@@ -577,4 +603,5 @@ finally {
     Pop-Location
     if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }
     if (Test-Path $candidateReceiptPath) { Remove-Item -Force $candidateReceiptPath }
+    if ($deploymentLock) { $deploymentLock.Dispose() }
 }

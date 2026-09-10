@@ -18,6 +18,9 @@ def require(condition: bool, message: str) -> None:
 compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 deploy = (ROOT / "scripts/windows/Deploy-Release.ps1").read_text(encoding="utf-8")
 rollback = (ROOT / "scripts/windows/Rollback-Release.ps1").read_text(encoding="utf-8")
+start_production = (ROOT / "scripts/windows/Start-Production.ps1").read_text(
+    encoding="utf-8"
+)
 entrypoint = (ROOT / "deploy-to-windows.sh").read_text(encoding="utf-8")
 
 require(
@@ -47,6 +50,27 @@ require(
 require(
     "McpSourceSha256" in deploy and "McpBinarySha256" in deploy,
     "Deploy-Release.ps1 must record the exact MCP source and binary",
+)
+require(
+    'Join-Path $releaseRoot "deploy.lock"' in deploy
+    and "[System.IO.FileShare]::None" in deploy,
+    "Deploy-Release.ps1 must hold an exclusive cross-process deployment lock",
+)
+require(
+    '"predeploy-source-$imageTag.tar.gz"' in deploy
+    and '"predeploy-root-$imageTag.env"' in deploy,
+    "deployment rollback inputs must be isolated by immutable release identity",
+)
+require(
+    "A newer or equal release" in deploy
+    and "refusing stale cutover" in deploy,
+    "Deploy-Release.ps1 must reject a stale candidate immediately before cutover",
+)
+require(
+    "com.docker.compose.service=frontend" in start_production
+    and "docker start $frontendIds[0]" in start_production
+    and "http://127.0.0.1:3000/" in start_production,
+    "Start-Production.ps1 must recover and verify the existing frontend without rebuilding it",
 )
 require(
     "AllowDowngrade" not in deploy,
