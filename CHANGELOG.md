@@ -2,6 +2,15 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.22] - 2026-09-11
+
+### Fixed
+
+- Scheduled Xiaohongshu tasks interrupted by a service restart are reconciled and requeued instead of remaining in a false running state for 12 hours.
+- Overdue heavy Xiaohongshu tasks execute sequentially so catch-up runs cannot exhaust the database and Docker host together.
+- Advertising report downloads persist in bounded account batches, and promoted-note finalization streams report rows instead of loading the full reporting window into backend memory.
+- Promoted-note matching now uses actual Xiaohongshu note IDs rather than collecting unrelated creative, material and ad identifiers.
+
 ## [0.3.21] - 2026-09-10
 
 ### Fixed
