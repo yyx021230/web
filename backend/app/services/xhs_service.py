@@ -21,7 +21,7 @@ import shutil
 from collections import deque
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Any, Optional, Awaitable, Callable
+from typing import Any, Optional, Awaitable, Callable, AsyncIterator
 from datetime import date, datetime, timedelta
 from urllib.parse import parse_qs, urlparse, unquote
 from sqlalchemy import select, func, and_, delete, or_, insert, inspect as sa_inspect
@@ -74,6 +74,8 @@ from app.utils.timezone import (
 )
 
 logger = logging.getLogger(__name__)
+
+_AD_AGGREGATE_STREAM_BATCH_SIZE = 500
 
 
 class SmsCodeWaitFailure(RuntimeError):
@@ -1803,6 +1805,52 @@ class XHSService:
                 }
         return note_map
 
+    async def _iter_xhs_ad_normalized_report_rows(
+        self,
+        *,
+        report_type: str,
+        conditions: list[Any],
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream normalized report rows without retaining wide JSON payloads."""
+        batch_size = max(1, int(_AD_AGGREGATE_STREAM_BATCH_SIZE))
+        statement = (
+            select(
+                XHSReportDaily.payload,
+                XHSReportDaily.report_date,
+                XHSReportDaily.account_id,
+                XHSReportDaily.account_name,
+            )
+            .where(and_(*conditions))
+            .order_by(XHSReportDaily.report_date.asc(), XHSReportDaily.id.asc())
+            .execution_options(yield_per=batch_size)
+        )
+        stream = await self.db.stream(statement)
+        try:
+            async for partition in stream.partitions(batch_size):
+                for payload, report_date, row_account_id, row_account_name in partition:
+                    normalized = self._normalize_jg_report_row(
+                        report_type,
+                        payload or {},
+                        account_id=str(row_account_id or ""),
+                        account_name=str(row_account_name or ""),
+                    )
+                    normalized["report_type"] = report_type
+                    normalized["report_date"] = report_date
+                    normalized["account_id"] = str(row_account_id or "")
+                    normalized["account_name"] = str(row_account_name or "")
+                    yield normalized
+        finally:
+            await stream.close()
+
+    async def _insert_xhs_ad_aggregate_rows(
+        self,
+        model: Any,
+        rows: list[dict[str, Any]],
+    ) -> None:
+        batch_size = max(1, int(_AD_AGGREGATE_STREAM_BATCH_SIZE))
+        for offset in range(0, len(rows), batch_size):
+            await self.db.execute(insert(model), rows[offset : offset + batch_size])
+
     @staticmethod
     def _xhs_ad_metric_bucket() -> dict[str, float]:
         return {
@@ -1850,37 +1898,21 @@ class XHSService:
         if account_id:
             conditions.append(XHSReportDaily.account_id == account_id)
 
-        rows = (
-            await self.db.execute(
-                select(
-                    XHSReportDaily.payload,
-                    XHSReportDaily.report_date,
-                    XHSReportDaily.account_id,
-                    XHSReportDaily.account_name,
-                ).where(and_(*conditions))
-            )
-        ).all()
         assignments = await self._xhs_ad_buyer_assignments()
-        brand_catalog = tuple(set(_AD_FALLBACK_BRANDS) | set(await VehicleCatalogService(self.db).brands()))
-        normalized_rows: list[dict[str, Any]] = []
-        note_ids: set[str] = set()
-        for payload, report_date, row_account_id, row_account_name in rows:
-            normalized = self._normalize_jg_report_row(
-                report_type,
-                payload or {},
-                account_id=str(row_account_id or ""),
-                account_name=str(row_account_name or ""),
-            )
-            normalized["report_type"] = report_type
-            normalized["report_date"] = report_date
-            normalized["account_id"] = str(row_account_id or "")
-            normalized["account_name"] = str(row_account_name or "")
-            normalized_rows.append(normalized)
-            note_id = _ad_note_id(normalized)
-            if note_id:
-                note_ids.add(note_id)
-
-        note_metadata = await self._xhs_ad_note_metadata(note_ids)
+        brand_catalog: tuple[str, ...] = ()
+        note_metadata: dict[str, dict[str, str]] = {}
+        if report_type in {"simple", "standard"}:
+            brand_catalog = tuple(set(_AD_FALLBACK_BRANDS) | set(await VehicleCatalogService(self.db).brands()))
+        else:
+            note_ids: set[str] = set()
+            async for row in self._iter_xhs_ad_normalized_report_rows(
+                report_type=report_type,
+                conditions=conditions,
+            ):
+                note_id = _ad_note_id(row)
+                if note_id:
+                    note_ids.add(note_id)
+            note_metadata = await self._xhs_ad_note_metadata(note_ids)
         delete_conditions = [
             lambda model: model.report_type == report_type,
             lambda model: model.stat_date >= start_date,
@@ -1905,9 +1937,57 @@ class XHSService:
             account_buckets: dict[tuple, dict[str, Any]] = {}
             buyer_buckets: dict[tuple, dict[str, Any]] = {}
             brand_buckets: dict[tuple, dict[str, Any]] = {}
+            current_date: date | None = None
 
-            for row in normalized_rows:
+            async def flush_summary_buckets() -> None:
+                if account_buckets:
+                    await self._insert_xhs_ad_aggregate_rows(
+                        XHSAdStatsDailyAccount,
+                        [
+                            {**bucket, "row_count": int(bucket["row_count"])}
+                            for bucket in account_buckets.values()
+                        ],
+                    )
+                    result["account"] += len(account_buckets)
+                    account_buckets.clear()
+                if buyer_buckets and not account_id:
+                    await self._insert_xhs_ad_aggregate_rows(
+                        XHSAdStatsDailyBuyer,
+                        [
+                            {
+                                **{key: value for key, value in bucket.items() if key != "account_ids"},
+                                "account_count": len(bucket["account_ids"]),
+                                "row_count": int(bucket["row_count"]),
+                            }
+                            for bucket in buyer_buckets.values()
+                        ],
+                    )
+                    result["buyer"] += len(buyer_buckets)
+                buyer_buckets.clear()
+                if brand_buckets:
+                    await self._insert_xhs_ad_aggregate_rows(
+                        XHSAdStatsDailyBrand,
+                        [
+                            {**bucket, "row_count": int(bucket["row_count"])}
+                            for bucket in brand_buckets.values()
+                        ],
+                    )
+                    result["brand"] += len(brand_buckets)
+                    brand_buckets.clear()
+
+            await delete_for(XHSAdStatsDailyAccount)
+            if not account_id:
+                await delete_for(XHSAdStatsDailyBuyer, scoped_account=False)
+            await delete_for(XHSAdStatsDailyBrand)
+
+            async for row in self._iter_xhs_ad_normalized_report_rows(
+                report_type=report_type,
+                conditions=conditions,
+            ):
                 stat_date = row["report_date"]
+                if current_date is not None and stat_date != current_date:
+                    await flush_summary_buckets()
+                current_date = stat_date
                 row_account_id = str(row.get("account_id") or "")
                 assignment = assignments.get(row_account_id) or {}
                 buyer_user_id = assignment.get("buyer_user_id")
@@ -1961,42 +2041,49 @@ class XHSService:
                 brand_bucket["conversion"] += _ad_conversion(row)
                 brand_bucket["interaction"] += _ad_interaction(row)
                 brand_bucket["row_count"] += 1
-
-            await delete_for(XHSAdStatsDailyAccount)
-            if not account_id:
-                await delete_for(XHSAdStatsDailyBuyer, scoped_account=False)
-            await delete_for(XHSAdStatsDailyBrand)
-            if account_buckets:
-                await self.db.execute(insert(XHSAdStatsDailyAccount), [
-                    {**bucket, "row_count": int(bucket["row_count"])}
-                    for bucket in account_buckets.values()
-                ])
-            if buyer_buckets and not account_id:
-                await self.db.execute(insert(XHSAdStatsDailyBuyer), [
-                    {
-                        **{key: value for key, value in bucket.items() if key != "account_ids"},
-                        "account_count": len(bucket["account_ids"]),
-                        "row_count": int(bucket["row_count"]),
-                    }
-                    for bucket in buyer_buckets.values()
-                ])
-            if brand_buckets:
-                await self.db.execute(insert(XHSAdStatsDailyBrand), [
-                    {**bucket, "row_count": int(bucket["row_count"])}
-                    for bucket in brand_buckets.values()
-                ])
-            result["account"] = len(account_buckets)
-            result["buyer"] = len(buyer_buckets) if not account_id else 0
-            result["brand"] = len(brand_buckets)
+            await flush_summary_buckets()
 
         if report_type in {"simple_note", "standard_note", "creative"}:
             note_buckets: dict[tuple, dict[str, Any]] = {}
             tag_buckets: dict[tuple, dict[str, Any]] = {}
-            for row in normalized_rows:
+            current_date = None
+
+            async def flush_note_buckets() -> None:
+                if note_buckets:
+                    await self._insert_xhs_ad_aggregate_rows(
+                        XHSAdStatsDailyNote,
+                        [
+                            {**bucket, "row_count": int(bucket["row_count"])}
+                            for bucket in note_buckets.values()
+                        ],
+                    )
+                    result["note"] += len(note_buckets)
+                    note_buckets.clear()
+                if tag_buckets:
+                    await self._insert_xhs_ad_aggregate_rows(
+                        XHSAdStatsDailyContentTag,
+                        [
+                            {**bucket, "row_count": int(bucket["row_count"])}
+                            for bucket in tag_buckets.values()
+                        ],
+                    )
+                    result["content_tag"] += len(tag_buckets)
+                    tag_buckets.clear()
+
+            await delete_for(XHSAdStatsDailyNote)
+            await delete_for(XHSAdStatsDailyContentTag)
+
+            async for row in self._iter_xhs_ad_normalized_report_rows(
+                report_type=report_type,
+                conditions=conditions,
+            ):
                 note_id = _ad_note_id(row)
                 if not note_id:
                     continue
                 stat_date = row["report_date"]
+                if current_date is not None and stat_date != current_date:
+                    await flush_note_buckets()
+                current_date = stat_date
                 row_account_id = str(row.get("account_id") or "")
                 assignment = assignments.get(row_account_id) or {}
                 buyer_user_id = assignment.get("buyer_user_id")
@@ -2060,21 +2147,7 @@ class XHSService:
                     tag_bucket["click"] += _ad_metric(row, "click")
                     tag_bucket["interaction"] += _ad_interaction(row)
                     tag_bucket["row_count"] += 1
-
-            await delete_for(XHSAdStatsDailyNote)
-            await delete_for(XHSAdStatsDailyContentTag)
-            if note_buckets:
-                await self.db.execute(insert(XHSAdStatsDailyNote), [
-                    {**bucket, "row_count": int(bucket["row_count"])}
-                    for bucket in note_buckets.values()
-                ])
-            if tag_buckets:
-                await self.db.execute(insert(XHSAdStatsDailyContentTag), [
-                    {**bucket, "row_count": int(bucket["row_count"])}
-                    for bucket in tag_buckets.values()
-                ])
-            result["note"] = len(note_buckets)
-            result["content_tag"] = len(tag_buckets)
+            await flush_note_buckets()
 
         await self.db.commit()
         return result

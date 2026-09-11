@@ -2,6 +2,13 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.23] - 2026-09-11
+
+### Fixed
+
+- Advertising aggregate refreshes stream raw report payloads instead of retaining the full reporting window in memory.
+- Daily account, buyer, brand, note and content-tag aggregates are flushed by date in bounded batches, preventing 30-day refreshes from exhausting the backend container.
+
 ## [0.3.22] - 2026-09-11
 
 ### Fixed

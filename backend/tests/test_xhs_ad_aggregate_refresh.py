@@ -198,6 +198,86 @@ async def test_refresh_note_and_content_tag_aggregates(client, monkeypatch, repo
 
 
 @pytest.mark.asyncio
+async def test_refresh_note_aggregates_streams_batches_and_flushes_each_day(client, monkeypatch):
+    monkeypatch.setattr(module, "_AD_AGGREGATE_STREAM_BATCH_SIZE", 1)
+    first_day = date(2026, 6, 2)
+    second_day = date(2026, 6, 3)
+    async with session_factory() as db:
+        db.add_all(
+            [
+                XHSReportDaily(
+                    report_type="simple_note",
+                    account_id="a1",
+                    account_name="广告账户一",
+                    report_date=first_day,
+                    campaign_id="row1",
+                    payload={"note_id": "note-1", "fee": 10, "msg_leads_num": 1},
+                ),
+                XHSReportDaily(
+                    report_type="simple_note",
+                    account_id="a1",
+                    account_name="广告账户一",
+                    report_date=first_day,
+                    campaign_id="row2",
+                    payload={"note_id": "note-1", "fee": 5, "msg_leads_num": 2},
+                ),
+                XHSReportDaily(
+                    report_type="simple_note",
+                    account_id="a1",
+                    account_name="广告账户一",
+                    report_date=second_day,
+                    campaign_id="row3",
+                    payload={"note_id": "note-1", "fee": 7, "msg_leads_num": 1},
+                ),
+                XHSReportDaily(
+                    report_type="simple_note",
+                    account_id="a1",
+                    account_name="广告账户一",
+                    report_date=second_day,
+                    campaign_id="row4",
+                    payload={"note_id": "note-2", "fee": 3, "msg_leads_num": 1},
+                ),
+            ]
+        )
+        await db.commit()
+        service = XHSService(db)
+
+        async def assignments():
+            return {"a1": {"buyer_user_id": 8, "buyer_name": "投手乙"}}
+
+        async def metadata(note_ids):
+            assert note_ids == {"note-1", "note-2"}
+            return {
+                "note-1": {"primary": "价格政策", "secondary": "降价", "owner_name": "专业号甲"},
+                "note-2": {"primary": "车型介绍", "secondary": "空间", "owner_name": "专业号乙"},
+            }
+
+        monkeypatch.setattr(service, "_xhs_ad_buyer_assignments", assignments)
+        monkeypatch.setattr(service, "_xhs_ad_note_metadata", metadata)
+        result = await service.refresh_xhs_ad_aggregates(
+            report_type="simple_note",
+            start_date=first_day,
+            end_date=second_day,
+        )
+
+        assert result["note"] == 3
+        assert result["content_tag"] == 3
+        notes = (
+            await db.execute(
+                select(XHSAdStatsDailyNote).order_by(
+                    XHSAdStatsDailyNote.stat_date,
+                    XHSAdStatsDailyNote.note_id,
+                )
+            )
+        ).scalars().all()
+        assert [(row.stat_date, row.note_id, row.fee, row.conversion) for row in notes] == [
+            (first_day, "note-1", 15, 3),
+            (second_day, "note-1", 7, 1),
+            (second_day, "note-2", 3, 1),
+        ]
+
+
+@pytest.mark.asyncio
 async def test_refresh_aggregates_rejects_unknown_report_without_writes(client):
     async with session_factory() as db:
         result = await XHSService(db).refresh_xhs_ad_aggregates(
