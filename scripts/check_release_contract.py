@@ -21,6 +21,12 @@ rollback = (ROOT / "scripts/windows/Rollback-Release.ps1").read_text(encoding="u
 start_production = (ROOT / "scripts/windows/Start-Production.ps1").read_text(
     encoding="utf-8"
 )
+ensure_production = (
+    ROOT / "scripts/windows/Ensure-ProductionRunning.ps1"
+).read_text(encoding="utf-8")
+install_recovery = (
+    ROOT / "scripts/windows/Install-ProductionRecovery.ps1"
+).read_text(encoding="utf-8")
 entrypoint = (ROOT / "deploy-to-windows.sh").read_text(encoding="utf-8")
 
 require(
@@ -71,6 +77,20 @@ require(
     and "docker start $frontendIds[0]" in start_production
     and "http://127.0.0.1:3000/" in start_production,
     "Start-Production.ps1 must recover and verify the existing frontend without rebuilding it",
+)
+require(
+    "Test-DeploymentInProgress" in ensure_production
+    and "Start-ScheduledTask -TaskName $DockerTaskName" in ensure_production
+    and "Start-Production.ps1" in ensure_production,
+    "production recovery must respect the deploy lock and restore Docker plus the pinned application",
+)
+require(
+    "New-ScheduledTaskTrigger -AtStartup" in install_recovery
+    and "RepetitionInterval" in install_recovery
+    and "LogonType Password" in install_recovery
+    and 'TaskName "ZTQC Docker Desktop"' in install_recovery
+    and 'UserId "SYSTEM"' in install_recovery,
+    "production recovery must run after boot and without an interactive user login",
 )
 require(
     "AllowDowngrade" not in deploy,

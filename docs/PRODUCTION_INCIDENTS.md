@@ -3,6 +3,24 @@
 本文档记录已经确认根因的生产故障。每次修复必须同时记录现象、特征日志、根因、
 永久修复和发布后验证，避免同类问题在后续部署中复发。
 
+## 2026-09-11 Windows 更新重启后 Docker 未自动启动
+
+### 影响与根因
+
+- Windows 主机可访问，但局域网 3000/8000 和公网业务入口不可用，Docker 命名管道不存在。
+- 系统事件 `1074` 显示 2026-09-10 19:07 由 `NT AUTHORITY\SYSTEM` 发起计划内系统更新重启；
+  19:08 完成开机，排除应用崩溃、磁盘占满和异常断电。
+- Docker Desktop 仅存在用户注册表 `Run` 自启动项，必须在图形用户登录后才执行；重启后无人
+  登录，`com.docker.service`、Docker Desktop 进程和 `docker-desktop` WSL 实例一直停止。
+
+### 永久修复
+
+- 新增 `Ensure-ProductionRunning.ps1`：先检查发布锁，再检测 Docker Engine 和 3000/8000；
+  必要时启动 Docker Desktop，并通过 `Start-Production.ps1` 恢复可信发布回执中的固定版本。
+- 新增 `ZTQC Docker Desktop` 任务，以生产 Windows 用户的非交互密码登录类型在系统启动时
+  启动 Docker；`ZTQC Production Recovery` 以 SYSTEM 身份每 5 分钟检查并触发前者。
+- 使用全局互斥锁避免恢复任务重叠；发布锁被占用时跳过，防止自愈逻辑干扰正常发布。
+
 ## 2026-09-10 中断的旧发布进程晚到并停止新版本
 
 ### 影响
