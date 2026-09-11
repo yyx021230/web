@@ -2383,13 +2383,13 @@ class XHSService:
                         "error_stage": "report",
                     }
 
-        fetched_results = await asyncio.gather(*(fetch_account_report(tk) for tk in token_rows))
         token_row_by_account_id = {tk.account_id: tk for tk in token_rows}
 
-        for result in fetched_results:
+        async def persist_account_result(result: dict[str, Any]) -> None:
+            nonlocal changed_rows, updated_accounts, updated_rows
             tk = token_row_by_account_id.get(str(result.get("account_id") or ""))
             if not tk:
-                continue
+                return
 
             error = result.get("error")
             if error:
@@ -2407,7 +2407,7 @@ class XHSService:
                         "error": str(error),
                     }
                 )
-                continue
+                return
 
             token = str(result.get("token") or "")
             rows = result.get("rows") or []
@@ -2486,7 +2486,7 @@ class XHSService:
                         "preserved_rows": str(len(existing_rows)),
                     }
                 )
-                continue
+                return
 
             stale_ids = [
                 row.id
@@ -2514,7 +2514,18 @@ class XHSService:
                 changed_rows += len(new_rows)
             updated_rows += len(insert_rows)
             updated_accounts += 1
-        await self.db.commit()
+
+        # Keep only a small bounded set of report payloads in memory. Some note
+        # reports contain tens of thousands of wide JSON rows across all accounts.
+        fetch_batch_size = 4
+        for offset in range(0, len(token_rows), fetch_batch_size):
+            token_batch = token_rows[offset : offset + fetch_batch_size]
+            fetched_results = await asyncio.gather(
+                *(fetch_account_report(tk) for tk in token_batch)
+            )
+            for result in fetched_results:
+                await persist_account_result(result)
+            await self.db.commit()
         aggregate_result: dict[str, int] | None = None
         aggregate_error: str | None = None
         if changed_rows and not defer_post_processing:
@@ -3156,6 +3167,17 @@ class XHSService:
                 keys.add(url_match.group(1))
         return keys
 
+    @staticmethod
+    def _paid_report_note_ids(payload: dict | None) -> set[str]:
+        """Return only identifiers that can be matched to XHSAccountNote.feed_id."""
+        source = payload if isinstance(payload, dict) else {}
+        note_ids: set[str] = set()
+        for key in ("feed_id", "note_id", "noteId"):
+            value = str(source.get(key) or "").strip()
+            if value:
+                note_ids.add(value)
+        return note_ids
+
     async def _attach_paid_report_flags(
         self,
         items: list[XHSAccountNote],
@@ -3246,11 +3268,19 @@ class XHSService:
         if end_date is not None:
             conditions.append(XHSReportDaily.report_date <= end_date)
 
-        stmt = select(XHSReportDaily.report_type, XHSReportDaily.report_date, XHSReportDaily.payload).where(and_(*conditions))
-        result = await self.db.execute(stmt)
+        stmt = (
+            select(
+                XHSReportDaily.report_type,
+                XHSReportDaily.report_date,
+                XHSReportDaily.payload,
+            )
+            .where(and_(*conditions))
+            .execution_options(yield_per=1000)
+        )
+        result = await self.db.stream(stmt)
         note_sources: dict[str, dict[str, Any]] = {}
-        for report_type, report_date, payload in result.all():
-            for note_id in self._paid_report_note_keys(str(report_type or ""), payload):
+        async for report_type, report_date, payload in result:
+            for note_id in self._paid_report_note_ids(payload):
                 value = note_sources.setdefault(note_id, {
                     "first_seen": report_date,
                     "last_seen": report_date,
@@ -3265,25 +3295,41 @@ class XHSService:
         if not note_sources:
             return {"promoted_note_ids": 0, "updated_notes": 0}
 
-        existing_rows = await self.db.execute(
-            select(XHSAccountNote).where(XHSAccountNote.feed_id.in_(list(note_sources.keys())))
-        )
-        notes = list(existing_rows.scalars().all())
         source_labels = {
             "simple": "简单投",
             "simple_note": "简单投笔记报表",
             "standard_note": "标准投笔记报表",
             "creative": "创意报表",
         }
-        for note in notes:
-            info = note_sources.get(str(note.feed_id or "").strip()) or {}
-            sources = sorted(info.get("sources") or [])
-            note.is_promoted = True
-            note.promoted_first_seen_at = datetime.combine(info["first_seen"], datetime.min.time()) if info.get("first_seen") else note.promoted_first_seen_at
-            note.promoted_last_seen_at = datetime.combine(info["last_seen"], datetime.min.time()) if info.get("last_seen") else note.promoted_last_seen_at
-            note.promoted_source = "、".join(source_labels.get(source, source) for source in sources) or note.promoted_source
-        await self.db.commit()
-        return {"promoted_note_ids": len(note_sources), "updated_notes": len(notes)}
+        updated_notes = 0
+        note_ids = list(note_sources)
+        for offset in range(0, len(note_ids), 500):
+            chunk = note_ids[offset : offset + 500]
+            existing_rows = await self.db.execute(
+                select(XHSAccountNote).where(XHSAccountNote.feed_id.in_(chunk))
+            )
+            notes = list(existing_rows.scalars().all())
+            for note in notes:
+                info = note_sources.get(str(note.feed_id or "").strip()) or {}
+                sources = sorted(info.get("sources") or [])
+                note.is_promoted = True
+                note.promoted_first_seen_at = (
+                    datetime.combine(info["first_seen"], datetime.min.time())
+                    if info.get("first_seen")
+                    else note.promoted_first_seen_at
+                )
+                note.promoted_last_seen_at = (
+                    datetime.combine(info["last_seen"], datetime.min.time())
+                    if info.get("last_seen")
+                    else note.promoted_last_seen_at
+                )
+                note.promoted_source = (
+                    "、".join(source_labels.get(source, source) for source in sources)
+                    or note.promoted_source
+                )
+            updated_notes += len(notes)
+            await self.db.commit()
+        return {"promoted_note_ids": len(note_sources), "updated_notes": updated_notes}
 
     @staticmethod
     def _insights_note_number(note: XHSAccountNote, field: str) -> float:

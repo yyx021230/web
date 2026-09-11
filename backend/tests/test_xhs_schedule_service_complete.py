@@ -234,6 +234,87 @@ async def test_due_schedule_reconciles_stale_running_logs(client):
         assert row.last_status == "failed"
 
 
+@pytest.mark.asyncio
+async def test_due_schedule_requeues_run_interrupted_by_process_restart(client, monkeypatch):
+    process_started_at = datetime(2026, 9, 11, 1, 5)
+    now_utc = datetime(2026, 9, 11, 1, 8)
+    now_cst = datetime(2026, 9, 11, 9, 8)
+    monkeypatch.setattr(module, "_PROCESS_STARTED_AT_UTC", process_started_at)
+    monkeypatch.setattr(module, "utc_now_naive", lambda: now_utc)
+    monkeypatch.setattr(module, "cst_now_naive", lambda: now_cst)
+
+    async with session_factory() as db:
+        service = XHSScheduleService(db)
+        row = await service.get_row(AD_DATA_REFRESH_TASK)
+        row.enabled = True
+        row.run_time = "08:30"
+        row.last_status = "running"
+        row.last_run_at = datetime(2026, 9, 11, 1, 2)
+        interrupted_log = XHSScheduleRunLog(
+            task_key=AD_DATA_REFRESH_TASK,
+            source="schedule",
+            status="running",
+            message="任务执行中",
+            started_at=datetime(2026, 9, 11, 1, 2),
+        )
+        db.add(interrupted_log)
+        await db.flush()
+        refresh_run = module.XHSReportRefreshRun(
+            job_id="schedule-restart-test",
+            source="schedule",
+            status="running",
+            schedule_run_id=int(interrupted_log.id),
+            request_config={"report_types": ["simple"]},
+            result_summary={"reports": []},
+            started_at=datetime(2026, 9, 11, 1, 2),
+        )
+        db.add(refresh_run)
+        await db.commit()
+
+        due_keys = await due_xhs_schedule_task_keys(db)
+        await db.refresh(row)
+        await db.refresh(interrupted_log)
+        await db.refresh(refresh_run)
+
+        assert due_keys[0] == AD_DATA_REFRESH_TASK
+        assert interrupted_log.status == "failed"
+        assert "服务重启" in interrupted_log.message
+        assert row.last_status == "failed"
+        assert row.last_run_at is None
+        assert refresh_run.status == "failed"
+        assert refresh_run.finished_at == now_utc
+
+
+@pytest.mark.asyncio
+async def test_due_schedule_keeps_current_process_run_active(client, monkeypatch):
+    monkeypatch.setattr(module, "_PROCESS_STARTED_AT_UTC", datetime(2026, 9, 11, 1, 5))
+    monkeypatch.setattr(module, "utc_now_naive", lambda: datetime(2026, 9, 11, 1, 10))
+    monkeypatch.setattr(module, "cst_now_naive", lambda: datetime(2026, 9, 11, 9, 10))
+
+    async with session_factory() as db:
+        service = XHSScheduleService(db)
+        row = await service.get_row(AD_DATA_REFRESH_TASK)
+        row.enabled = True
+        row.run_time = "08:30"
+        row.last_status = "running"
+        row.last_run_at = datetime(2026, 9, 11, 1, 6)
+        active_log = XHSScheduleRunLog(
+            task_key=AD_DATA_REFRESH_TASK,
+            source="schedule",
+            status="running",
+            message="任务执行中",
+            started_at=datetime(2026, 9, 11, 1, 6),
+        )
+        db.add(active_log)
+        await db.commit()
+
+        due_keys = await due_xhs_schedule_task_keys(db)
+        await db.refresh(active_log)
+
+        assert due_keys == []
+        assert active_log.status == "running"
+
+
 class _FakeXHSService:
     observed_calls: list[str] = []
 
@@ -525,6 +606,51 @@ async def test_schedule_claim_is_persisted_before_long_task_starts(client, monke
 
     assert len(observed_last_run_at) == 1
     assert observed_last_run_at[0] is not None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_schedule_run_is_closed_and_requeued(client, monkeypatch):
+    entered = module.asyncio.Event()
+    never_finishes = module.asyncio.Event()
+
+    async with session_factory() as db:
+        await XHSScheduleService(db).update_setting(
+            ACCOUNT_DATA_SYNC_TASK,
+            enabled=True,
+            run_time="03:00",
+            config={"post_sync_enabled": True},
+        )
+
+    async def blocked_sync(_session, _config):
+        entered.set()
+        await never_finishes.wait()
+        return "不会执行到这里"
+
+    monkeypatch.setattr(module, "_execute_account_data_sync", blocked_sync)
+    task = module.asyncio.create_task(
+        module._run_task(ACCOUNT_DATA_SYNC_TASK, "schedule", session_factory)
+    )
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(module.asyncio.CancelledError):
+        await task
+
+    async with session_factory() as db:
+        row = await XHSScheduleService(db).get_row(ACCOUNT_DATA_SYNC_TASK)
+        run_log = (
+            await db.execute(
+                module.select(XHSScheduleRunLog)
+                .where(XHSScheduleRunLog.task_key == ACCOUNT_DATA_SYNC_TASK)
+                .order_by(XHSScheduleRunLog.id.desc())
+                .limit(1)
+            )
+        ).scalar_one()
+
+        assert row.last_status == "failed"
+        assert row.last_run_at is None
+        assert run_log.status == "failed"
+        assert run_log.finished_at is not None
+        assert "执行中断" in run_log.message
 
 
 @pytest.mark.asyncio

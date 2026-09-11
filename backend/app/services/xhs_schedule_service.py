@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.config import settings
 from app.db.session import async_session
 from app.models.xhs_report import XHSAdStatsDailyAccount, XHSAdStatsDailyNote, XHSReportDaily
+from app.models.xhs_report_refresh_run import XHSReportRefreshRun
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
@@ -38,6 +39,8 @@ AD_REPORT_TYPES = ("simple", "standard", "creative", "simple_note", "standard_no
 AD_SUMMARY_REPORT_TYPES = ("simple", "standard")
 _RUNNING_TASK_KEYS: set[str] = set()
 STALE_SCHEDULE_RUN_HOURS = 12
+RESTART_RECONCILE_GRACE_SECONDS = 120
+_PROCESS_STARTED_AT_UTC = utc_now_naive()
 
 
 def _normalize_run_time(value: object) -> str:
@@ -1204,6 +1207,23 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
                     run_log.finished_at = finished_at
             await session.commit()
             logger.info("XHS scheduled task finished: task_key=%s source=%s message=%s", task_key, source, message)
+    except asyncio.CancelledError:
+        try:
+            await asyncio.shield(
+                _mark_interrupted_task(
+                    task_key,
+                    source,
+                    run_log_id,
+                    session_factory,
+                )
+            )
+        except Exception:
+            logger.exception(
+                "XHS scheduled task cancellation cleanup failed: task_key=%s source=%s",
+                task_key,
+                source,
+            )
+        raise
     except Exception as exc:
         logger.exception("XHS scheduled task failed: task_key=%s source=%s", task_key, source)
         async with session_factory() as session:
@@ -1224,6 +1244,53 @@ async def _run_task(task_key: str, source: str, session_factory: async_sessionma
         _RUNNING_TASK_KEYS.discard(task_key)
 
 
+async def _mark_interrupted_task(
+    task_key: str,
+    source: str,
+    run_log_id: int | None,
+    session_factory: async_sessionmaker,
+) -> None:
+    finished_at = utc_now_naive()
+    refresh_run_ids: list[int] = []
+    async with session_factory() as session:
+        row = await XHSScheduleService(session).get_row(task_key)
+        if row.last_status == "running":
+            row.last_status = "failed"
+            row.last_message = f"{source}执行中断：服务停止或调度权切换"
+            row.last_run_at = None if source == "schedule" else finished_at
+        if run_log_id:
+            run_log = await session.get(XHSScheduleRunLog, run_log_id)
+            if run_log and run_log.status == "running":
+                run_log.status = "failed"
+                run_log.message = f"{source}执行中断：服务停止或调度权切换"
+                run_log.finished_at = finished_at
+            refresh_rows = list(
+                (
+                    await session.execute(
+                        select(XHSReportRefreshRun).where(
+                            XHSReportRefreshRun.schedule_run_id == run_log_id,
+                            XHSReportRefreshRun.status.in_(("queued", "running")),
+                        )
+                    )
+                ).scalars().all()
+            )
+            for refresh_row in refresh_rows:
+                refresh_row.status = "failed"
+                refresh_row.message = "服务停止或调度权切换导致报表刷新中断"
+                refresh_row.error = "报表刷新被中断"
+                refresh_row.finished_at = finished_at
+                refresh_run_ids.append(int(refresh_row.id))
+        await session.commit()
+
+    for refresh_run_id in refresh_run_ids:
+        await finish_report_refresh_run_safely(
+            refresh_run_id,
+            status="failed",
+            message="服务停止或调度权切换导致报表刷新中断",
+            error="报表刷新被中断",
+        )
+
+
 async def trigger_xhs_scheduled_task(
     task_key: str,
     *,
@@ -1239,27 +1306,68 @@ async def trigger_xhs_scheduled_task(
     return True
 
 
+def has_running_xhs_scheduled_task() -> bool:
+    return bool(_RUNNING_TASK_KEYS)
+
+
+async def run_xhs_scheduled_task(
+    task_key: str,
+    *,
+    source: str = "schedule",
+    session_factory: async_sessionmaker | None = None,
+) -> bool:
+    """Run one configured task inline so scheduler cancellation reaches the work."""
+    if task_key not in ALL_SCHEDULE_TASK_KEYS:
+        raise ValueError("不支持的定时任务")
+    if task_key in _RUNNING_TASK_KEYS:
+        return False
+    await _run_task(task_key, source, session_factory or async_session)
+    return True
+
+
 async def due_xhs_schedule_task_keys(db: AsyncSession) -> list[str]:
-    cutoff = utc_now_naive() - timedelta(hours=STALE_SCHEDULE_RUN_HOURS)
-    stale_rows = list(
+    now = utc_now_naive()
+    stale_cutoff = now - timedelta(hours=STALE_SCHEDULE_RUN_HOURS)
+    restart_reconcile_ready = now >= _PROCESS_STARTED_AT_UTC + timedelta(
+        seconds=RESTART_RECONCILE_GRACE_SECONDS
+    )
+    running_rows = list(
         (
             await db.execute(
                 select(XHSScheduleRunLog).where(
-                    XHSScheduleRunLog.status == "running",
-                    XHSScheduleRunLog.started_at < cutoff,
+                    XHSScheduleRunLog.status == "running"
                 )
             )
         ).scalars().all()
     )
+    stale_rows: list[XHSScheduleRunLog] = []
+    restart_interrupted_ids: set[int] = set()
+    for running_row in running_rows:
+        exceeded_stale_limit = running_row.started_at < stale_cutoff
+        belongs_to_previous_process = (
+            restart_reconcile_ready
+            and running_row.source == "schedule"
+            and running_row.started_at < _PROCESS_STARTED_AT_UTC
+            and running_row.task_key not in _RUNNING_TASK_KEYS
+        )
+        if exceeded_stale_limit or belongs_to_previous_process:
+            stale_rows.append(running_row)
+        if belongs_to_previous_process:
+            restart_interrupted_ids.add(int(running_row.id))
+
+    interrupted_refresh_run_ids: list[int] = []
     if stale_rows:
-        finished_at = utc_now_naive()
+        finished_at = now
         task_keys = {row.task_key for row in stale_rows}
         for stale_row in stale_rows:
             stale_row.status = "failed"
             stale_row.finished_at = finished_at
-            stale_row.message = (
-                f"任务运行记录超过 {STALE_SCHEDULE_RUN_HOURS} 小时未收尾，已自动标记失败"
-            )
+            if int(stale_row.id) in restart_interrupted_ids:
+                stale_row.message = "服务重启导致任务中断，已自动重新排队"
+            else:
+                stale_row.message = (
+                    f"任务运行记录超过 {STALE_SCHEDULE_RUN_HOURS} 小时未收尾，已自动标记失败"
+                )
         settings_rows = list(
             (
                 await db.execute(
@@ -1272,14 +1380,56 @@ async def due_xhs_schedule_task_keys(db: AsyncSession) -> list[str]:
         )
         for settings_row in settings_rows:
             settings_row.last_status = "failed"
-            settings_row.last_run_at = finished_at
-            settings_row.last_message = "上一次任务未正常收尾，已自动标记失败"
+            if any(
+                row.task_key == settings_row.task_key
+                and int(row.id) in restart_interrupted_ids
+                for row in stale_rows
+            ):
+                # Clear the durable daily claim so this interrupted run remains due.
+                settings_row.last_run_at = None
+                settings_row.last_message = "服务重启导致任务中断，等待自动补跑"
+            else:
+                settings_row.last_run_at = finished_at
+                settings_row.last_message = "上一次任务未正常收尾，已自动标记失败"
+
+        if restart_interrupted_ids:
+            refresh_rows = list(
+                (
+                    await db.execute(
+                        select(XHSReportRefreshRun).where(
+                            XHSReportRefreshRun.schedule_run_id.in_(restart_interrupted_ids),
+                            XHSReportRefreshRun.status.in_(("queued", "running")),
+                        )
+                    )
+                ).scalars().all()
+            )
+            for refresh_row in refresh_rows:
+                refresh_row.status = "failed"
+                refresh_row.message = "服务重启导致报表刷新中断，已自动重新排队"
+                refresh_row.error = "服务重启导致报表刷新中断"
+                refresh_row.finished_at = finished_at
+                interrupted_refresh_run_ids.append(int(refresh_row.id))
         await db.commit()
+
+        for refresh_run_id in interrupted_refresh_run_ids:
+            await finish_report_refresh_run_safely(
+                refresh_run_id,
+                status="failed",
+                message="服务重启导致报表刷新中断，已自动重新排队",
+                error="服务重启导致报表刷新中断",
+            )
 
     service = XHSScheduleService(db)
     rows = await service._ensure_rows()
-    return [
+    due_keys = [
         task_key
         for task_key, row in rows.items()
         if _is_due(bool(row.enabled), _normalize_run_time(row.run_time), row.last_run_at)
     ]
+    return sorted(
+        due_keys,
+        key=lambda task_key: _scheduled_time_today(
+            _normalize_run_time(rows[task_key].run_time)
+        ),
+        reverse=True,
+    )

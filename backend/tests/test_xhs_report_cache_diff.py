@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.db.session import async_session
 from app.models.xhs_report import XHSReportDaily, XHSReportToken
@@ -323,3 +323,81 @@ async def test_scheduled_reports_reuse_token_from_preflight(client, monkeypatch)
     assert token_fetch_calls == []
     assert result["attempted_accounts"] == 1
     assert result["updated_accounts"] == 1
+
+
+@pytest.mark.asyncio
+async def test_report_refresh_persists_each_bounded_fetch_batch(client, monkeypatch):
+    rows_seen_before_fifth_fetch: list[int] = []
+
+    async def fetch_token(_account_id: str) -> str:
+        return "token"
+
+    async def fetch_rows(**kwargs):
+        account_id = str(kwargs["advertiser_id"])
+        if account_id == "batch-5":
+            row_count = await db.scalar(
+                select(func.count(XHSReportDaily.id)).where(
+                    XHSReportDaily.report_type == "simple"
+                )
+            )
+            rows_seen_before_fifth_fetch.append(int(row_count or 0))
+        return [
+            {
+                "time": "2026-08-16",
+                "campaign_id": f"campaign-{account_id}",
+                "fee": 1,
+            }
+        ], 1
+
+    monkeypatch.setattr(
+        XHSService,
+        "_fetch_report_token",
+        lambda self, account_id: fetch_token(account_id),
+    )
+    monkeypatch.setattr(
+        XHSService,
+        "_fetch_report_rows",
+        lambda self, **kwargs: fetch_rows(**kwargs),
+    )
+    monkeypatch.setattr(
+        XHSService,
+        "_normalize_jg_report_row",
+        lambda self, _report_type, row, **_kwargs: dict(row),
+    )
+    monkeypatch.setattr(
+        XHSService,
+        "_report_row_campaign_key",
+        lambda self, _report_type, payload: str(payload["campaign_id"]),
+    )
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                XHSReportToken(
+                    account_id=f"batch-{index}",
+                    account_name=f"批次账户{index}",
+                )
+                for index in range(1, 6)
+            ]
+        )
+        await db.commit()
+        result = await XHSService(db).refresh_jg_report_cache(
+            "simple",
+            start_date="2026-08-16",
+            end_date="2026-08-16",
+            defer_post_processing=True,
+        )
+
+    assert result["updated_accounts"] == 5
+    assert rows_seen_before_fifth_fetch == [4]
+
+
+def test_promoted_note_matching_ignores_creative_and_material_ids():
+    assert XHSService._paid_report_note_ids(
+        {
+            "note_id": "note-1",
+            "creative_id": "creative-1",
+            "material_id": "material-1",
+            "ad_id": "ad-1",
+        }
+    ) == {"note-1"}

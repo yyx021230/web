@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.config import settings
 from app.services.ai_image_service import AIImageService
-from app.services.xhs_schedule_service import due_xhs_schedule_task_keys, trigger_xhs_scheduled_task
+from app.services.xhs_schedule_service import (
+    due_xhs_schedule_task_keys,
+    has_running_xhs_scheduled_task,
+    run_xhs_scheduled_task,
+)
 from app.services.xhs_service import XHSService
 from app.services.hermes_workflow_service import enqueue_due_hermes_runs
 from app.utils.timezone import cst_now_naive
@@ -153,16 +157,21 @@ async def xhs_configured_task_loop(
     """按后台配置轮询执行账户数据/投流数据定时任务。"""
     while True:
         try:
-            async with session_factory() as session:
-                due_task_keys = await due_xhs_schedule_task_keys(session)
-            for task_key in due_task_keys:
-                launched = await trigger_xhs_scheduled_task(
+            if has_running_xhs_scheduled_task():
+                due_task_keys = []
+            else:
+                async with session_factory() as session:
+                    due_task_keys = await due_xhs_schedule_task_keys(session)
+            if due_task_keys:
+                task_key = due_task_keys[0]
+                logger.info("开始执行后台定时任务: %s", task_key)
+                launched = await run_xhs_scheduled_task(
                     task_key,
                     source="schedule",
                     session_factory=session_factory,
                 )
                 if launched:
-                    logger.info("已触发后台定时任务: %s", task_key)
+                    logger.info("后台定时任务已结束: %s", task_key)
         except Exception as e:
             logger.error(f"后台定时任务轮询失败: {e}", exc_info=True)
         await asyncio.sleep(max(15, int(poll_seconds or 30)))

@@ -136,17 +136,22 @@ async def test_account_notes_sync_loop_handles_list_and_detail_errors(monkeypatc
 
 @pytest.mark.asyncio
 async def test_configured_task_loop_launches_due_tasks(monkeypatch):
+    launched = []
+
     async def due(_session):
         return ["account_data_sync", "ad_report_refresh"]
 
-    async def trigger(task_key, **kwargs):
+    async def run(task_key, **kwargs):
+        launched.append(task_key)
         return task_key == "account_data_sync"
 
     monkeypatch.setattr(scheduler, "due_xhs_schedule_task_keys", due)
-    monkeypatch.setattr(scheduler, "trigger_xhs_scheduled_task", trigger)
+    monkeypatch.setattr(scheduler, "has_running_xhs_scheduled_task", lambda: False)
+    monkeypatch.setattr(scheduler, "run_xhs_scheduled_task", run)
     monkeypatch.setattr(scheduler.asyncio, "sleep", _sleep_after(0))
     with pytest.raises(_StopLoop):
         await scheduler.xhs_configured_task_loop(_session_factory, poll_seconds=1)
+    assert launched == ["account_data_sync"]
 
 
 @pytest.mark.asyncio
