@@ -64,6 +64,11 @@ def _user_run_payload(run: Any, user_id: int) -> dict[str, Any]:
         "assigned_rejected": sum(post.status == "rejected" for post in posts),
         "accounts": sorted({post.account_name for post in posts}),
         "vehicles": sorted({post.vehicle_model for post in posts}),
+        "can_delete": run.requested_by == user_id
+        and run.status not in {"queued", "claimed", "running", "generating"}
+        and not any(
+            post.status in {"queued", "claimed", "running", "generating"} for post in run.posts
+        ),
     })
     return payload
 
@@ -248,6 +253,12 @@ async def edit_post(post_id: int, request: HermesPostEdit, db: AsyncSession = De
 async def cancel_run(run_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     run = await HermesWorkflowService(db).cancel_queued(run_id, current_user, is_admin=has_role(current_user, 'admin'))
     return ApiResponse(data=_user_run_payload(run, current_user.id), message='已取消尚未开始的任务')
+
+
+@router.delete('/runs/{run_id}')
+async def delete_run(run_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    await HermesWorkflowService(db).delete_run(run_id, current_user)
+    return ApiResponse(data={"id": run_id}, message="任务已删除")
 
 
 @router.get("/publish-candidates")

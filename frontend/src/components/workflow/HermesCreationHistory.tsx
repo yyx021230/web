@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, FilePenLine, ImageIcon, Loader2, RefreshCw, Search, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, FilePenLine, ImageIcon, Loader2, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { hermesWorkflowApi, type HermesAccount, type HermesPost, type HermesRun, type HermesRunQuery } from '@/services/hermesWorkflowApi';
 import HermesPostInspector, { type HermesInspectorTab } from './HermesPostInspector';
@@ -94,10 +94,25 @@ export function HermesRunGroup({ run, admin = false, onRefresh, compact = false 
     if (!window.confirm('取消这个尚未执行的任务？不会删除历史记录。')) return;
     setBusy(true); try { await hermesWorkflowApi.cancelRun(run.id); await reload(); toast.success('已取消排队任务'); } catch (e) { toast.error(e instanceof Error ? e.message : '取消失败'); } finally { setBusy(false); }
   }
+  async function remove() {
+    if (!window.confirm('确定删除这个任务及其全部图文记录吗？删除后无法恢复。')) return;
+    setBusy(true);
+    try {
+      await (admin ? hermesWorkflowApi.adminDeleteRun : hermesWorkflowApi.deleteRun)(run.id);
+      toast.success('任务已删除');
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '删除失败');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const canDelete = !producing && (admin || current.can_delete === true);
   return <section ref={root} id={`run-${run.id}`} className={s.task} data-compact={compact}>
     <header className={s.taskHead}><div className={s.taskHeadMain}><span className={s.taskNumber}>#{run.id}</span><div><h3>{run.name || run.parameters?.name || '图文创作任务'}</h3><div className={s.small}><span>{SOURCE[run.source] || run.source}</span><span>{hermesDate(run.created_at)}</span><span>{total} 篇 · {(run.accounts || []).length || accounts.length} 个账号</span></div></div></div>
       <div className={s.row}><HermesStatusBadge status={current.assigned_status || current.status} /><span className={s.small} aria-live="polite" title="已完成的帖子可先编辑、审核">已生成 {generated}/{total}{failed > 0 && <span className={s.danger}> · 失败 {failed}</span>}{producing && generated > 0 && <span> · 剩余 {Math.max(0, total - generated - failed)} 篇</span>}</span>
         {run.status === 'queued' && <button className={s.textButton} disabled={busy} onClick={cancel}>取消排队</button>}
+        {canDelete && <button className={`${s.iconButton} ${s.deleteButton}`} disabled={busy} onClick={remove} aria-label={`删除任务 #${run.id}`} title="删除任务"><Trash2 size={14} /></button>}
         <button className={s.iconButton} onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? '展开任务' : '收起任务'}><ChevronDown size={14} style={{ transform: collapsed ? 'rotate(-90deg)' : undefined }} /></button>
       </div>
     </header>

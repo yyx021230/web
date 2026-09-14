@@ -44,6 +44,13 @@ beforeEach(() => {
     disconnect() { /* no-op */ }
     unobserve() { /* no-op */ }
   });
+  vi.stubGlobal('Image', class {
+    naturalWidth = 960;
+    naturalHeight = 640;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    set src(_value: string) { queueMicrotask(() => this.onload?.()); }
+  });
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   host = document.createElement('div');
   document.body.append(host);

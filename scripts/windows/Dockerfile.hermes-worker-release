@@ -1,0 +1,16 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG APP_VERSION
+ARG GIT_COMMIT
+ARG BUILD_TIME
+
+LABEL org.opencontainers.image.version=${APP_VERSION} \
+      org.opencontainers.image.revision=${GIT_COMMIT} \
+      org.opencontainers.image.created=${BUILD_TIME}
+
+ENV APP_VERSION=${APP_VERSION} \
+    GIT_COMMIT=${GIT_COMMIT} \
+    BUILD_TIME=${BUILD_TIME}
+
+COPY ops/xhs_hermes/run_daily_8x5.py /app/web/ops/xhs_hermes/run_daily_8x5.py

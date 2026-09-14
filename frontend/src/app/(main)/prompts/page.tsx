@@ -41,6 +41,49 @@ const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
   { value: 'internal', label: '内部' },
 ];
 
+const promptImageSizeCache = new Map<string, { width: number; height: number }>();
+
+function fallbackImageSize(id: number) {
+  const ratios = [
+    { width: 3, height: 4 },
+    { width: 1, height: 1 },
+    { width: 4, height: 5 },
+    { width: 3, height: 2 },
+  ];
+  return ratios[Math.abs(id) % ratios.length];
+}
+
+async function preparePromptImages(items: PromptItem[]): Promise<PromptItem[]> {
+  return Promise.all(items.map(item => new Promise<PromptItem>(resolve => {
+    if (!item.image_url || typeof window === 'undefined') {
+      const size = fallbackImageSize(item.id);
+      resolve({ ...item, image_width: size.width, image_height: size.height });
+      return;
+    }
+    const cached = promptImageSizeCache.get(item.image_url);
+    if (cached) {
+      resolve({ ...item, image_width: cached.width, image_height: cached.height });
+      return;
+    }
+    const image = new window.Image();
+    let settled = false;
+    const finish = (size: { width: number; height: number }) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      promptImageSizeCache.set(item.image_url, size);
+      resolve({ ...item, image_width: size.width, image_height: size.height });
+    };
+    const timeout = window.setTimeout(() => finish(fallbackImageSize(item.id)), 5000);
+    image.onload = () => finish({
+      width: Math.max(1, image.naturalWidth),
+      height: Math.max(1, image.naturalHeight),
+    });
+    image.onerror = () => finish(fallbackImageSize(item.id));
+    image.src = item.image_url;
+  })));
+}
+
 export default function PromptsPage() {
   const authSession = useOptionalAuthSession();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
@@ -111,10 +154,12 @@ export default function PromptsPage() {
       const sourceKind = activeSource === 'all' ? undefined : activeSource;
       const res = await promptsApi.getPrompts('', undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind);
       if (requestId !== requestIdRef.current) return;
+      const preparedItems = await preparePromptImages(res.data.items);
+      if (requestId !== requestIdRef.current) return;
       setPrompts(current => {
-        if (!append) return res.data.items;
+        if (!append) return preparedItems;
         const loadedIds = new Set(current.map(item => item.id));
-        return [...current, ...res.data.items.filter(item => !loadedIds.has(item.id))];
+        return [...current, ...preparedItems.filter(item => !loadedIds.has(item.id))];
       });
       setTotal(res.data.total);
       setPage(res.data.page);
@@ -687,7 +732,11 @@ function PromptCover({ prompt }: { prompt: PromptItem }) {
       <span>{failed ? '图片暂不可用 · 查看提示词' : '文字也能开启灵感 · 查看提示词'}</span>
     </div>
   );
-  return <img src={prompt.image_url} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+  const width = prompt.image_width || fallbackImageSize(prompt.id).width;
+  const height = prompt.image_height || fallbackImageSize(prompt.id).height;
+  return <span className={styles.coverFrame} style={{ aspectRatio: `${width} / ${height}` }}>
+    <img src={prompt.image_url} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+  </span>;
 }
 
 function PromptModal({

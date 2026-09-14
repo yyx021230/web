@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.29] - 2026-09-14
+
+### Fixed
+
+- Stabilized prompt-gallery masonry while image dimensions load.
+- Kept Hermes generation on the complete internal prompt catalog and added terminal run deletion.
+- Gated core releases on active Hermes work and added an auditable Worker-only release path.
+
 ## [0.3.26] - 2026-09-14
 
 ### Added

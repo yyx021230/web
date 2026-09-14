@@ -25,6 +25,7 @@
 .button:disabled,.primary:disabled { opacity:.5; cursor:not-allowed; }
 .iconButton { display:inline-flex; align-items:center; justify-content:center; width:31px; height:31px; flex-shrink:0; border:1px solid transparent; border-radius:9px; color:#77848b; transition:background .16s; }
 .iconButton:hover { background:#e9edef; color:#3f565f; }
+.deleteButton:hover { background:#f8e9e8; color:#aa4e59; }
 .danger { color:#b34547; }
 .shell :is(button,a,input,textarea,select,summary):focus-visible,.dialog :is(button,a,input,textarea,select):focus-visible { outline:2px solid #759bd9; outline-offset:3px; }
 .input { border:1px solid #e0e3dc; border-radius:9px; padding:9px 12px; min-height:38px; background:#fff; color:#454c41; font:inherit; min-width:0; }

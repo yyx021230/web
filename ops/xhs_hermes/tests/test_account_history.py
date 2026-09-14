@@ -64,6 +64,35 @@ def online_stub():
     return online
 
 
+def test_prompt_catalog_reads_every_internal_page_without_external_material(monkeypatch):
+    seen = []
+
+    def request(url, **kwargs):
+        query = parse_qs(urlparse(url).query)
+        seen.append(query)
+        page = int(query['page'][0])
+        start = (page - 1) * 1000 + 1
+        count = 1000 if page == 1 else 205
+        return {'data': {
+            'items': [{'id': item_id, 'source_kind': 'internal'} for item_id in range(start, start + count)],
+            'total': 1205,
+        }}
+
+    monkeypatch.setattr(runner, 'request_json', request)
+    rows = online_stub().prompts()
+    assert len(rows) == 1205
+    assert [query['page'] for query in seen] == [['1'], ['2']]
+    assert all(query['source_kind'] == ['internal'] for query in seen)
+
+
+def test_prompt_catalog_rejects_incomplete_pagination(monkeypatch):
+    monkeypatch.setattr(runner, 'request_json', lambda *a, **kw: {
+        'data': {'items': [], 'total': 3},
+    })
+    with pytest.raises(RuntimeError, match='pagination stopped'):
+        online_stub().prompts()
+
+
 def test_api_queries_only_selected_accounts_and_no_date_filter(monkeypatch):
     seen = []
     def request(url, **kwargs):

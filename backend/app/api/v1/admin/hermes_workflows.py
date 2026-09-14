@@ -186,6 +186,16 @@ async def get_run(
     return ApiResponse(data=serialize_run(run, include_posts=True))
 
 
+@router.delete("/runs/{run_id}")
+async def delete_run(
+    run_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    await HermesWorkflowService(db).delete_run(run_id, current_user, is_admin=True)
+    return ApiResponse(data={"id": run_id}, message="任务已删除")
+
+
 @router.post("/posts/{post_id}/review")
 async def review_post(
     post_id: int,

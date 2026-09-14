@@ -349,14 +349,56 @@ class OnlineData:
                 unique[item_id] = row
         return list(unique.values())
 
+    def _all_rows(
+        self,
+        path: str,
+        *,
+        page_size: int = 1000,
+        params: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Read a complete paginated catalog without silently truncating it."""
+        page = 1
+        total: int | None = None
+        rows: list[dict[str, Any]] = []
+        while total is None or len(rows) < total:
+            query = urllib.parse.urlencode({
+                **(params or {}),
+                "page": page,
+                "limit": page_size,
+            })
+            batch, reported_total = normalize_api_rows(request_json(
+                f"{self.backend}/{path}?{query}", headers=self.auth, timeout=120,
+            ))
+            if total is None:
+                total = reported_total
+            elif reported_total != total:
+                raise RuntimeError(
+                    f"{path} total changed during pagination: {total} -> {reported_total}"
+                )
+            if not batch:
+                raise RuntimeError(
+                    f"{path} pagination stopped at {len(rows)} rows but total is {total}"
+                )
+            rows.extend(batch)
+            page += 1
+
+        unique: dict[int, dict[str, Any]] = {}
+        for row in rows:
+            item_id = int(row.get("id") or 0)
+            if item_id <= 0:
+                raise RuntimeError(f"{path} returned a row without a valid id")
+            unique[item_id] = row
+        if total is not None and len(unique) != total:
+            raise RuntimeError(
+                f"{path} returned {len(unique)} unique rows but total is {total}"
+            )
+        return list(unique.values())
+
     def prompts(self) -> list[dict[str, Any]]:
-        query = urllib.parse.urlencode({"page": 1, "limit": 1000})
-        rows, total = normalize_api_rows(request_json(
-            f"{self.backend}/prompts?{query}", headers=self.auth, timeout=120,
-        ))
-        if len(rows) < total:
-            raise RuntimeError(f"prompt library returned {len(rows)} rows but total is {total}")
-        return rows
+        # External homepage inspiration is intentionally excluded from both
+        # batch and single-post production. Only the curated internal library
+        # may be selected as a generation reference.
+        return self._all_rows("prompts", params={"source_kind": "internal"})
 
     def recent_posts(self, account_ids: list[int]) -> list[dict[str, Any]]:
         """Use the existing date-descending account list, not a 14-day window."""

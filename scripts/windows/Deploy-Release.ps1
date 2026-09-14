@@ -194,7 +194,8 @@ function Assert-BackgroundQueuesDrained(
 SELECT
   (SELECT count(*) FROM dify_tasks WHERE status IN ('pending','running'))
   + (SELECT count(*) FROM xhs_account_sync_runs WHERE status IN ('queued','running','cancelling'))
-  + (SELECT count(*) FROM xhs_schedule_run_logs WHERE status = 'running' AND started_at >= now() - interval '12 hours');
+  + (SELECT count(*) FROM xhs_schedule_run_logs WHERE status = 'running' AND started_at >= now() - interval '12 hours')
+  + (SELECT count(*) FROM hermes_workflow_runs WHERE status IN ('queued','claimed','running','generating'));
 "@
     $otherTasksRaw = docker exec $PostgresId psql -U $DatabaseUser -d $DatabaseName -Atc $otherTasksSql
     if ($LASTEXITCODE -ne 0) { throw "Unable to verify active Dify/XHS tasks during $Phase" }
@@ -202,7 +203,7 @@ SELECT
     $pendingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:pending | Select-Object -Last 1) } else { 0 }
     $processingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:processing | Select-Object -Last 1) } else { 0 }
     if ($activeTasks -gt 0 -or $pendingTasks -gt 0 -or $processingTasks -gt 0 -or $otherActiveTasks -gt 0) {
-        throw "Background tasks are active during $Phase (ai_database=$activeTasks ai_pending=$pendingTasks ai_processing=$processingTasks dify_xhs=$otherActiveTasks)"
+        throw "Background tasks are active during $Phase (ai_database=$activeTasks ai_pending=$pendingTasks ai_processing=$processingTasks dify_xhs_hermes=$otherActiveTasks)"
     }
 }
 

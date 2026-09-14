@@ -606,6 +606,24 @@ class HermesWorkflowService:
             return run
         raise HTTPException(status_code=403, detail="无权查看该任务")
 
+    async def delete_run(self, run_id: int, user: User, *, is_admin: bool = False) -> None:
+        run = await self.db.scalar(
+            select(HermesWorkflowRun)
+            .options(selectinload(HermesWorkflowRun.posts))
+            .where(HermesWorkflowRun.id == run_id)
+            .with_for_update()
+        )
+        if run is None:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        if not is_admin and run.requested_by != user.id:
+            raise HTTPException(status_code=403, detail="只能删除自己创建的任务")
+        if run.status in ACTIVE_GENERATION_STATUSES or any(
+            post.status in ACTIVE_GENERATION_STATUSES for post in run.posts
+        ):
+            raise HTTPException(status_code=409, detail="任务仍在排队或生产中，请先等待结束或取消排队")
+        await self.db.delete(run)
+        await self.db.commit()
+
     async def review_post(
         self,
         *,

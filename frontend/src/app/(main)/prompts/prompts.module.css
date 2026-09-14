@@ -40,17 +40,13 @@
 .manageButton:hover, .manageButton[data-state='open'] { background: #eeedea; }
 .scrollArea { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 118px; scroll-padding-bottom: 118px; background: transparent; scrollbar-width: thin; scrollbar-color: #dcdce5 transparent; }
 .gallery { column-width: 300px; column-gap: 12px; }
-.card { position: relative; display: inline-block; width: 100%; min-width: 0; margin: 0 0 12px; isolation: isolate; overflow: hidden; break-inside: avoid; vertical-align: top; border: 0; border-radius: 14px; background: #eef0f3; box-shadow: none; animation: cardArrive 460ms cubic-bezier(.22,.75,.18,1) both; }
+.card { position: relative; display: inline-block; width: 100%; min-width: 0; margin: 0 0 12px; isolation: isolate; overflow: hidden; break-inside: avoid; vertical-align: top; border: 0; border-radius: 14px; background: #eef0f3; box-shadow: none; animation: cardArrive 180ms ease-out both; }
 .card::after { content: ''; position: absolute; z-index: 1; inset: 24% 0 0; pointer-events: none; background: linear-gradient(180deg, transparent 0%, #11131a1f 35%, #0b0c11c7 100%); opacity: 0; transition: opacity 360ms ease; }
-.card:nth-child(5n + 1) { animation-delay: 20ms; }
-.card:nth-child(5n + 2) { animation-delay: 65ms; }
-.card:nth-child(5n + 3) { animation-delay: 110ms; }
-.card:nth-child(5n + 4) { animation-delay: 155ms; }
-.card:nth-child(5n) { animation-delay: 200ms; }
 .card:hover { z-index: 2; }
 .card:hover::after, .card:focus-within::after { opacity: 1; }
 .coverButton { display: block; width: 100%; height: auto; overflow: hidden; cursor: zoom-in; }
-.coverButton img { display: block; width: 100%; height: auto; object-fit: cover; object-position: center; image-rendering: auto; transform: scale(1.001); transition: transform 500ms cubic-bezier(.2,.7,.2,1), filter 260ms ease; }
+.coverFrame { display: block; width: 100%; overflow: hidden; background: #eef0f3; }
+.coverButton img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: auto; transform: scale(1.001); transition: transform 500ms cubic-bezier(.2,.7,.2,1), filter 260ms ease; }
 .card:hover .coverButton img { transform: scale(1.026); filter: saturate(1.045) contrast(1.018); }
 .cardMenu { z-index: 4; display: grid; place-items: center; position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: #17181d70; box-shadow: inset 0 0 0 1px #ffffff28, 0 4px 12px #0002; backdrop-filter: blur(14px); transform: translateY(-4px) scale(.94); }
 .cardDetails { position: absolute; z-index: 3; bottom: 0; left: 0; right: 0; padding: 84px 16px 16px; color: white; pointer-events: none; transform: translateY(10px); transition: opacity 220ms ease, transform 420ms cubic-bezier(.22,1,.36,1); }
@@ -80,7 +76,7 @@
 .skeleton:nth-child(5n + 2), .skeleton:nth-child(5n + 5) { aspect-ratio: 1 / 1; }
 .skeleton:nth-child(5n + 3) { aspect-ratio: 4 / 5; }
 @keyframes shimmer { to { background-position: -220% 0; } }
-@keyframes cardArrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes cardArrive { from { opacity: 0; } to { opacity: 1; } }
 @keyframes toolbarEnter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes favoritePop { 45% { transform: scale(1.35) rotate(-8deg); } }
 .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 58vh; gap: 12px; text-align: center; color: #999cab; }
@@ -97,7 +93,8 @@
 .menu { z-index: 100; min-width: 180px; max-width: calc(100vw - 24px); padding: 5px; border: 1px solid #e8e8ef; border-radius: 12px; background: white; box-shadow: 0 8px 35px #282c451a, 0 2px 6px #282c4508; }
 .menuLabel { padding: 7px 9px; font-size: 10px; color: #a0a2ae; }
 .detailCover { display: grid; place-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: clamp(46px, 6vh, 82px) clamp(34px, 6vw, 110px); }
-.detailCover > img { display: block; width: auto; max-width: 100%; height: auto; max-height: 100%; min-width: 0; min-height: 0; object-fit: contain; image-rendering: auto; border-radius: 16px; box-shadow: 0 20px 60px #33384212; }
+.detailCover > .coverFrame { width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: auto !important; border-radius: 16px; background: transparent; box-shadow: 0 20px 60px #33384212; }
+.detailCover > .coverFrame img { object-fit: contain; }
 .detailCover > .missingCover { width: min(520px, 72%); max-height: 82%; border-radius: 16px; }
 .menuItem { display: flex; align-items: center; gap: 9px; padding: 9px; outline: none; border-radius: 7px; color: #555969; font-size: 12px; cursor: pointer; }
 .menuItem[data-highlighted] { background: #f1f2f8; color: #3d4460; }
@@ -216,6 +213,7 @@
 .relatedSection h3 { margin-bottom: 13px; color: #26282d; font-size: 13px; font-weight: 650; }
 .relatedGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .relatedGrid > button { overflow: hidden; aspect-ratio: 4 / 5; border-radius: 12px; background: #eff0ed; transition: transform 300ms cubic-bezier(.22,1,.36,1), box-shadow 300ms; }
+.relatedGrid .coverFrame { height: 100%; aspect-ratio: auto !important; }
 .relatedGrid > button:nth-child(3n + 2) { aspect-ratio: 1 / 1; }
 .relatedGrid > button:hover { transform: translateY(-2px); box-shadow: 0 10px 24px #2528311a; }
 .relatedGrid img { width: 100%; height: 100%; object-fit: cover; transition: transform 500ms cubic-bezier(.22,.8,.2,1); }

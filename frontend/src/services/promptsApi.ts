@@ -7,6 +7,8 @@ export interface PromptItem {
   chinese: string;
   english: string;
   image_url: string;
+  image_width?: number;
+  image_height?: number;
   category: string;
   param_type: string;
   source_kind?: 'internal' | 'external';

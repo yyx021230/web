@@ -104,6 +104,7 @@ export interface HermesRun {
   vehicles?: string[];
   worker_id?: string | null;
   error?: string | null;
+  can_delete?: boolean;
   created_at: string;
   updated_at?: string | null;
   posts?: HermesPost[];
@@ -166,6 +167,7 @@ export const hermesWorkflowApi = {
   }) => api.post<HermesRun>('/hermes-workflows/runs/batch', payload),
   listRuns: (query?: HermesRunQuery | string) => read<{ items: HermesRun[]; total: number }>('/hermes-workflows/runs', { params: { limit: 8, ...(typeof query === 'string' ? { status: query } : query) } }),
   getRun: (runId: number) => read<HermesRun>(`/hermes-workflows/runs/${runId}`),
+  deleteRun: (runId: number) => api.delete(`/hermes-workflows/runs/${runId}`),
   reviewPost: (postId: number, action: 'approve' | 'reject', comment?: string, expected_version?: string, regenerate = false) =>
     api.post<HermesReviewResult>(`/hermes-workflows/posts/${postId}/review`, { action, comment, expected_version, ...(regenerate ? { regenerate: true } : {}) }),
   editPost: (postId: number, payload: { title: string; content: string; comment: string; expected_version: string }) =>
@@ -199,6 +201,7 @@ export const hermesWorkflowApi = {
   runScheduleNow: () => api.post<HermesRun>('/admin/hermes-workflows/schedule/run-now'),
   adminListRuns: (query?: HermesRunQuery | string) => read<{ items: HermesRun[]; total: number }>('/admin/hermes-workflows/runs', { params: { limit: 8, ...(typeof query === 'string' ? { status: query } : query) } }),
   adminGetRun: (runId: number) => read<HermesRun>(`/admin/hermes-workflows/runs/${runId}`),
+  adminDeleteRun: (runId: number) => api.delete(`/admin/hermes-workflows/runs/${runId}`),
   adminReviewPost: (postId: number, action: 'approve' | 'reject', comment?: string, expected_version?: string, regenerate = false) =>
     api.post<HermesReviewResult>(`/admin/hermes-workflows/posts/${postId}/review`, { action, comment, expected_version, ...(regenerate ? { regenerate: true } : {}) }),
   adminPublishCandidates: (query?: HermesPublishQuery) => read<{ items: HermesPost[]; total: number }>('/admin/hermes-workflows/publish-candidates', { params: query }),

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 
 from app.config import settings
 from app.db.session import async_session
-from app.models.hermes_workflow import HermesWorkflowPost
+from app.models.hermes_workflow import HermesWorkflowPost, HermesWorkflowRun
 from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
 from app.models.xhs_environment import XHSEnvironment
@@ -826,6 +827,38 @@ async def test_other_user_cannot_edit_review_or_read_owner_posts(client):
     regenerated = await client.post(f"/api/v1/hermes-workflows/posts/{post['id']}/review", headers=headers, json={'action': 'reject', 'comment': '不能越权重生', 'expected_version': post['version'], 'regenerate': True})
     assert regenerated.status_code == 403
     assert (await client.get('/api/v1/hermes-workflows/publish-candidates', headers=headers)).json()['data']['total'] == 0
+
+
+@pytest.mark.asyncio
+async def test_user_history_is_private_and_owner_can_delete_terminal_run(client):
+    user_id, env_id = await seed_owner()
+    owner_headers = make_auth_headers(user_id)
+    created = await client.post('/api/v1/hermes-workflows/runs', headers=owner_headers, json={
+        'account_id': env_id, 'vehicle_model': '零跑A05', 'post_count': 1,
+    })
+    run_id = created.json()['data']['id']
+    assert created.json()['data']['can_delete'] is False
+
+    async with async_session() as db:
+        other = User(username='private_history_user', email='private-history@example.test', hashed_password='unused', role='xhs_ops', is_active=True)
+        db.add(other)
+        run = await db.get(HermesWorkflowRun, run_id)
+        post = (await db.execute(select(HermesWorkflowPost).where(HermesWorkflowPost.run_id == run_id))).scalar_one()
+        run.status = 'failed'
+        post.status = 'generation_failed'
+        await db.commit()
+        other_id = int(other.id)
+
+    other_list = await client.get('/api/v1/hermes-workflows/runs', headers=make_auth_headers(other_id))
+    assert other_list.status_code == 200
+    assert all(item['id'] != run_id for item in other_list.json()['data']['items'])
+    assert (await client.delete(f'/api/v1/hermes-workflows/runs/{run_id}', headers=make_auth_headers(other_id))).status_code == 403
+
+    owner_detail = await client.get(f'/api/v1/hermes-workflows/runs/{run_id}', headers=owner_headers)
+    assert owner_detail.json()['data']['can_delete'] is True
+    deleted = await client.delete(f'/api/v1/hermes-workflows/runs/{run_id}', headers=owner_headers)
+    assert deleted.status_code == 200, deleted.text
+    assert (await client.get(f'/api/v1/hermes-workflows/runs/{run_id}', headers=owner_headers)).status_code == 404
 
 
 @pytest.mark.asyncio

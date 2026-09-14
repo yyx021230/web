@@ -7,6 +7,7 @@ vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/services/hermesWorkflowApi', () => ({ hermesWorkflowApi: {
   bootstrap: vi.fn(), referenceTypes: vi.fn(), listRuns: vi.fn(), getRun: vi.fn(),
   createBatchRun: vi.fn(), createRun: vi.fn(), reviewPost: vi.fn(), adminReviewPost: vi.fn(), editPost: vi.fn(),
+  deleteRun: vi.fn(), adminDeleteRun: vi.fn(),
 } }));
 vi.mock('./HermesFrame', () => ({
   HermesFrame: ({ children }: { children: React.ReactNode }) => React.createElement('main', null, children),
@@ -46,6 +47,8 @@ beforeEach(() => {
   vi.mocked(hermesWorkflowApi.reviewPost).mockResolvedValue({ data: { ...run, regenerated_run_id: 9 } } as never);
   vi.mocked(hermesWorkflowApi.adminReviewPost).mockResolvedValue({ data: { ...run, regenerated_run_id: 9 } } as never);
   vi.mocked(hermesWorkflowApi.editPost).mockResolvedValue({ data: { ...post, revision: 2 } } as never);
+  vi.mocked(hermesWorkflowApi.deleteRun).mockResolvedValue({ data: { id: run.id } } as never);
+  vi.mocked(hermesWorkflowApi.adminDeleteRun).mockResolvedValue({ data: { id: run.id } } as never);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
@@ -65,6 +68,15 @@ async function fill(label: string, value: string) {
 }
 
 describe('Hermes creation frontend interactions', () => {
+  it('lets the owner delete a finished failed task after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const failed = { ...run, status: 'failed', assigned_status: 'failed', can_delete: true, error: '生产失败' };
+    vi.mocked(hermesWorkflowApi.getRun).mockResolvedValue({ data: failed } as never);
+    await render(React.createElement(HermesRunGroup, { run: failed, onRefresh: vi.fn() }));
+    await click(host.querySelector('[aria-label="删除任务 #8"]'));
+    expect(hermesWorkflowApi.deleteRun).toHaveBeenCalledWith(8);
+  });
+
   it('uses separate server-side scopes and record headings for both creators', async () => {
     await render(React.createElement(HermesCreator));
     expect(host.querySelector('[aria-label="批量创作记录"]')).not.toBeNull();
