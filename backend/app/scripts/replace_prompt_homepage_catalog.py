@@ -217,6 +217,7 @@ def _load_manifest(path: Path, upload_root: Path) -> list[dict[str, Any]]:
 
     normalized: list[dict[str, Any]] = []
     external_ids: set[str] = set()
+    image_urls: set[str] = set()
     prompt_fingerprints: set[str] = set()
     for index, raw in enumerate(rows, start=1):
         if not isinstance(raw, dict):
@@ -228,7 +229,11 @@ def _load_manifest(path: Path, upload_root: Path) -> list[dict[str, Any]]:
         if not external_id or not prompt or not image_url.startswith("/uploads/"):
             raise ValueError(f"catalog manifest item {index} is incomplete")
         fingerprint = hashlib.sha256(prompt.lower().encode("utf-8")).hexdigest()
-        if external_id in external_ids or fingerprint in prompt_fingerprints:
+        if (
+            external_id in external_ids
+            or image_url in image_urls
+            or fingerprint in prompt_fingerprints
+        ):
             raise ValueError(f"catalog manifest item {index} is duplicated")
 
         relative = Path(image_url.removeprefix("/uploads/") or ".")
@@ -257,6 +262,7 @@ def _load_manifest(path: Path, upload_root: Path) -> list[dict[str, Any]]:
         )
         normalized.append(row)
         external_ids.add(external_id)
+        image_urls.add(image_url)
         prompt_fingerprints.add(fingerprint)
     return normalized
 

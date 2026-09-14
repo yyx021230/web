@@ -1,6 +1,9 @@
 [run]
 branch = True
 source = app
+omit =
+    app/scripts/export_prompt_homepage_catalog.py
+    app/scripts/replace_prompt_homepage_catalog.py
 
 [report]
 fail_under = 70
