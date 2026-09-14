@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
@@ -110,3 +111,75 @@ async def test_catalog_database_replace_is_atomic_and_idempotent(client):
         total_count = await session.scalar(select(func.count(PromptExample.id)))
     assert active_count == 2
     assert total_count == 3
+
+
+@pytest.mark.asyncio
+async def test_catalog_database_add_is_idempotent_and_preserves_internal_content(client):
+    async with async_session() as session:
+        internal_category = PromptCategory(name="内部分类")
+        session.add(internal_category)
+        await session.flush()
+        internal = PromptExample(
+            category_id=internal_category.id,
+            param_type="内部类型",
+            chinese_example="现有内部提示词",
+            english_example="",
+            image_url="/uploads/internal.webp",
+            source_kind="internal",
+        )
+        session.add(internal)
+        await session.commit()
+        internal_id = internal.id
+
+    rows = [
+        _catalog_row(index, f"/uploads/catalog/{index}.webp", "")
+        for index in range(2)
+    ]
+    first = await _replace_database(rows, replace=False)
+    second = await _replace_database(rows, replace=False)
+
+    assert first == {
+        "active_before": 1,
+        "active_after": 3,
+        "imported": 2,
+        "created": 2,
+        "reused": 0,
+    }
+    assert second == {
+        "active_before": 3,
+        "active_after": 3,
+        "imported": 2,
+        "created": 0,
+        "reused": 2,
+    }
+    async with async_session() as session:
+        preserved = await session.get(PromptExample, internal_id)
+        source_counts = dict(
+            (
+                await session.execute(
+                    select(PromptExample.source_kind, func.count(PromptExample.id))
+                    .where(PromptExample.deleted_at.is_(None))
+                    .group_by(PromptExample.source_kind)
+                )
+            ).all()
+        )
+    assert preserved is not None
+    assert preserved.deleted_at is None
+    assert preserved.chinese_example == "现有内部提示词"
+    assert source_counts == {"external": 2, "internal": 1}
+
+
+def test_windows_catalog_installer_uses_additive_mode():
+    installer = (
+        Path(__file__).resolve().parents[2]
+        / "scripts"
+        / "windows"
+        / "Install-PromptHomepageCatalog.ps1"
+    ).read_text(encoding="utf-8")
+
+    install_command = installer.split("python -m app.scripts.replace_prompt_homepage_catalog", 1)[1]
+    install_command = install_command.split("} 'Prompt catalog database installation failed'", 1)[0]
+    assert "--replace" not in install_command
+    assert "source_kind = 'internal'" in installer
+    assert "source_kind = 'external'" in installer
+    assert "Prompt catalog installation changed internal content" in installer
