@@ -2,6 +2,13 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.31] - 2026-09-14
+
+### Fixed
+
+- Released stable prompt-gallery masonry, private workflow history and terminal task deletion through an isolated frontend and Hermes API rollout.
+- Kept the core backend and AI image worker running during the creative UI cutover.
+
 ## [0.3.30] - 2026-09-14
 
 ### Fixed
