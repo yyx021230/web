@@ -47,7 +47,8 @@ function WaitHealthy([string]$Name, [string]$Image) {
 if (-not (Test-Path $Archive -PathType Leaf)) { throw "Missing archive: $Archive" }
 if (-not (Test-Path $live -PathType Leaf)) { throw "Missing production override: $live" }
 if (Test-Path $receiptPath) { throw "Hermes release is already complete: $receiptPath" }
-if (docker image inspect $workerTag 2>$null) { throw "Immutable worker image already exists: $workerTag" }
+$existingWorkerImage = "$(docker image ls -q $workerTag | Select-Object -First 1)".Trim()
+if ($existingWorkerImage) { throw "Immutable worker image already exists: $workerTag" }
 
 $active = docker exec web-postgres-1 psql -U postgres -d ai_creative -At -c "SELECT count(*) FROM hermes_workflow_runs WHERE status IN ('queued','claimed','running','generating');"
 if ($LASTEXITCODE -ne 0 -or [int]($active.Trim()) -ne 0) { throw 'Hermes has active work; deployment stopped' }

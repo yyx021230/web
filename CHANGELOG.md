@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.30] - 2026-09-14
+
+### Fixed
+
+- Made the Hermes Worker release preflight check a missing candidate image without triggering PowerShell's stop-on-error behavior.
+
 ## [0.3.29] - 2026-09-14
 
 ### Fixed
