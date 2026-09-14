@@ -2,6 +2,25 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.26] - 2026-09-14
+
+### Added
+
+- Added Team GPT Image 2.5 generation with user-facing fast and quality modes.
+- Added prompt source metadata and a checksummed, idempotent 1000-item homepage catalog installer.
+- Added in-context authentication, persistent creative navigation and responsive creative workspaces.
+
+### Changed
+
+- Rebuilt the AI image, prompt homepage, gallery, copywriting, workflow and publishing experiences around the unified creative workspace.
+- Failed AI tasks now restore their original prompt, reference images and settings for editing before resubmission.
+- Removed the retired template, editor and project surfaces together with their static template payload.
+
+### Fixed
+
+- Publish queue workers are created from real queued and active work so different environments can publish concurrently without losing a worker during a near-simultaneous enqueue.
+- Included the bounded advertising aggregate implementation from `v0.3.23` to prevent large dashboard refreshes from exhausting backend memory.
+
 ## [0.3.23] - 2026-09-11
 
 ### Fixed
