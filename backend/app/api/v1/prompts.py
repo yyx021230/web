@@ -5,7 +5,7 @@ import csv
 import io
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
-from sqlalchemy import select, func, or_
+from sqlalchemy import BigInteger, cast, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_optional_current_user
@@ -123,7 +123,7 @@ async def get_prompts(
         modulus = 2_147_483_647
         multiplier = ((random_seed * 1_103_515_245 + 12_345) % (modulus - 1)) + 1
         offset = (random_seed * 48_271) % modulus
-        order_key = (PromptExample.id * multiplier + offset) % modulus
+        order_key = (cast(PromptExample.id, BigInteger) * multiplier + offset) % modulus
         ordered_stmt = ordered_stmt.order_by(order_key.asc(), PromptExample.id.asc())
     else:
         ordered_stmt = ordered_stmt.order_by(PromptExample.created_at.desc(), PromptExample.id.desc())

@@ -128,6 +128,7 @@ async def test_prompt_discovery_seed_is_randomized_but_stable_across_pages(clien
     assert not set(seed_one_first).intersection(seed_one_second)
     assert len(set(seed_one_first + seed_one_second)) == 12
     assert seed_one_first != await listed(2, 1)
+    assert len(await listed(2_147_483_646, 1)) == 6
 
 
 @pytest.mark.asyncio
