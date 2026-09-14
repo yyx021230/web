@@ -148,7 +148,7 @@ try {
         if ($response.StatusCode -ne 200) { throw "Homepage verification failed: $url" }
     }
     Exec {
-        docker exec web-frontend-1 sh -lc "grep -R -q '个不重复灵感' /app/.next/server /app/.next/static"
+        docker exec web-frontend-1 sh -lc "grep -R -q 'creative-studio.local' /app/.next/server /app/.next/static"
     } 'Homepage deduplication marker is absent from the candidate frontend'
 
     foreach ($old in $untouched) {

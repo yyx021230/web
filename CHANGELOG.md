@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.33] - 2026-09-14
+
+### Fixed
+
+- Validated the homepage patch against a stable compiled-code marker after Next.js minification; the failed `v0.3.32` rollout was automatically rolled back before this release.
+
 ## [0.3.32] - 2026-09-14
 
 ### Fixed
