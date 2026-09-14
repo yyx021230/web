@@ -41,6 +41,11 @@ _UPSTREAM_RESPONSE_PREVIEW_LIMIT = 1024
 _UPSTREAM_DEBUG_BODY_LIMIT = 60000
 _PROVIDER_TEST_TASK_MODEL = "gptimage2_provider_test"
 _PROVIDER_TEST_PROVIDER_ID_PARAM = "_provider_test_provider_id"
+_GPT_IMAGE_25_MODEL_NAME = "gptimage25"
+_GPT_IMAGE_25_MODELS = {
+    "fast": "gpt-image-2.5-flare",
+    "precision": "gpt-image-2.5-sunburst",
+}
 logger = logging.getLogger("app")
 
 
@@ -73,6 +78,45 @@ def _choose_weighted_provider(providers: list[AIImageProvider]) -> AIImageProvid
     for provider in providers:
         population.extend([provider] * max(1, int(provider.weight or 1)))
     return random.choice(population)
+
+
+def _normalize_generation_mode(value: Any) -> str:
+    mode = str(value or "fast").strip().lower()
+    if mode not in _GPT_IMAGE_25_MODELS:
+        raise ValueError("GPT Image 2.5 创作模式必须是 fast 或 precision")
+    return mode
+
+
+def _provider_supports_generation_mode(provider: AIImageProvider, mode: str | None) -> bool:
+    if not mode:
+        return True
+    configured = (provider.config or {}).get("generation_modes")
+    if not isinstance(configured, list) or not configured:
+        return True
+    supported = {str(item).strip().lower() for item in configured}
+    return mode in supported
+
+
+def _resolve_provider_request_model(provider: AIImageProvider, params: dict) -> str:
+    if provider.model_name != _GPT_IMAGE_25_MODEL_NAME:
+        return provider.provider_model
+    mode = _normalize_generation_mode(params.get("generation_mode"))
+    return _GPT_IMAGE_25_MODELS[mode]
+
+
+def _validate_provider_family(data: dict, existing: AIImageProvider | None = None) -> None:
+    model_name = str(data.get("model_name") or (existing.model_name if existing else "gptimage2")).strip()
+    provider_model = str(data.get("provider_model") or (existing.provider_model if existing else "")).strip().lower()
+    provider_kind = str(data.get("provider_kind") or (existing.provider_kind if existing else "openai_images")).strip().lower()
+
+    is_image_25_model = provider_model.startswith("gpt-image-2.5-")
+    if model_name == _GPT_IMAGE_25_MODEL_NAME:
+        if provider_model not in _GPT_IMAGE_25_MODELS.values():
+            raise ValueError("GPT Image 2.5 入口的上游模型必须是 Flare 或 Sunburst")
+        if provider_kind != "openai_images":
+            raise ValueError("GPT Image 2.5 当前仅支持 OpenAI Images 兼容入口")
+    elif model_name == "gptimage2" and is_image_25_model:
+        raise ValueError("GPT Image 2.5 上游模型不能放入 GPT Image 2 入口池")
 
 
 def _normalize_base_url(endpoint_url: str) -> tuple[str, str]:
@@ -650,6 +694,7 @@ class AIImageProviderService:
         return result.scalar_one_or_none()
 
     async def create_provider(self, data: dict, created_by: int | None = None) -> AIImageProvider:
+        _validate_provider_family(data)
         provider = AIImageProvider(**data, created_by=created_by)
         self.db.add(provider)
         await self.db.commit()
@@ -662,6 +707,7 @@ class AIImageProviderService:
         provider = await self.get_provider(provider_id)
         if not provider:
             return None
+        _validate_provider_family(data, provider)
         for key, value in data.items():
             setattr(provider, key, value)
         await self.db.commit()
@@ -685,6 +731,7 @@ class AIImageProviderService:
         self,
         providers: list[AIImageProvider],
         has_reference: bool,
+        generation_mode: str | None = None,
     ) -> list[AIImageProvider]:
         eligible = []
         for provider in providers:
@@ -694,6 +741,8 @@ class AIImageProviderService:
                 continue
             if has_reference and not provider.supports_image_input:
                 continue
+            if not _provider_supports_generation_mode(provider, generation_mode):
+                continue
             eligible.append(provider)
         return eligible
 
@@ -702,12 +751,13 @@ class AIImageProviderService:
         *,
         model_name: str,
         has_reference: bool,
+        generation_mode: str | None = None,
         wait_interval: float = 0.5,
     ) -> AIImageProvider | None:
         """按启用状态、任务类型、并发容量和权重选择一个 provider，并占用一个运行槽。"""
         while True:
             providers = await self.list_providers(model_name)
-            eligible = self._eligible_providers(providers, has_reference)
+            eligible = self._eligible_providers(providers, has_reference, generation_mode)
             if not eligible:
                 return None
 
@@ -765,7 +815,12 @@ class AIImageProviderService:
     ) -> dict:
         providers = await self.list_providers(model_name)
         has_reference = bool(params.get("image_data") or params.get("image_url") or params.get("images_data"))
-        eligible = self._eligible_providers(providers, has_reference)
+        generation_mode = (
+            _normalize_generation_mode(params.get("generation_mode"))
+            if model_name == _GPT_IMAGE_25_MODEL_NAME
+            else None
+        )
+        eligible = self._eligible_providers(providers, has_reference, generation_mode)
 
         if not eligible:
             # 没配置 provider 时，直接返回失败，让上层走老适配器兜底。
@@ -773,12 +828,20 @@ class AIImageProviderService:
                 "task_id": "",
                 "status": "failed",
                 "image_urls": [],
-                "error": "未找到可用的生图入口配置",
+                "error": (
+                    f"未找到支持{'快速出图' if generation_mode == 'fast' else '精细创作'}的 GPT Image 2.5 入口"
+                    if generation_mode
+                    else "未找到可用的生图入口配置"
+                ),
                 "provider_configured": bool(providers),
                 "provider": None,
             }
 
-        provider = await self._acquire_provider_slot(model_name=model_name, has_reference=has_reference)
+        provider = await self._acquire_provider_slot(
+            model_name=model_name,
+            has_reference=has_reference,
+            generation_mode=generation_mode,
+        )
         if not provider:
             return {
                 "task_id": "",
@@ -790,11 +853,12 @@ class AIImageProviderService:
             }
 
         start = time.time()
+        request_model = _resolve_provider_request_model(provider, params)
         provider_meta = {
             "id": provider.id,
             "name": provider.name,
             "provider_kind": provider.provider_kind,
-            "provider_model": provider.provider_model,
+            "provider_model": request_model,
         }
         if on_provider_selected:
             try:
@@ -964,7 +1028,7 @@ class AIImageProviderService:
             "id": provider.id,
             "name": provider.name,
             "provider_kind": provider.provider_kind,
-            "provider_model": provider.provider_model,
+            "provider_model": _resolve_provider_request_model(provider, params),
         }
         await self._acquire_specific_provider_slot(provider)
         start = time.time()
@@ -1011,7 +1075,7 @@ class AIImageProviderService:
             "id": provider.id,
             "name": provider.name,
             "provider_kind": provider.provider_kind,
-            "provider_model": provider.provider_model,
+            "provider_model": _resolve_provider_request_model(provider, params),
         }
         task = AITask(
             user_id=user_id or 0,
@@ -1152,8 +1216,9 @@ class AIImageProviderService:
         tool_choice_delay = _tool_choice_retry_delay(provider)
         pending_attempts = _pending_retry_attempts(provider)
         pending_delay = _pending_retry_delay(provider)
+        request_model = _resolve_provider_request_model(provider, params)
         payload: dict[str, Any] = {
-            "model": provider.provider_model,
+            "model": request_model,
             "prompt": prompt,
         }
 
@@ -1176,7 +1241,7 @@ class AIImageProviderService:
                         request_kind = "image_edit" if path == "/images/edits" else "image_generation"
                         if path == "/images/edits":
                             data: dict[str, str] = {
-                                "model": provider.provider_model,
+                                "model": request_model,
                                 "prompt": prompt,
                             }
                             if provider.config.get("send_size", False) and params.get("width") and params.get("height"):

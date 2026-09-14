@@ -45,6 +45,7 @@ async def test_prompt_community_crud_visibility_and_permissions(client):
     )
     assert created.status_code == 200
     prompt_id = created.json()["data"]["id"]
+    assert created.json()["data"]["source_kind"] == "internal"
     private = await client.post(
         "/api/v1/prompts",
         headers=owner,
@@ -61,6 +62,18 @@ async def test_prompt_community_crud_visibility_and_permissions(client):
     assert admin_list.json()["data"]["total"] == 2
     categories = await client.get("/api/v1/prompts/categories", headers=other)
     assert categories.json()["data"]["categories"] == [{"name": "汽车", "count": 1}]
+    guest_list = await client.get("/api/v1/prompts")
+    assert guest_list.status_code == 200
+    assert [item["id"] for item in guest_list.json()["data"]["items"]] == [prompt_id]
+    assert guest_list.json()["data"]["items"][0]["can_edit"] is False
+    internal_list = await client.get("/api/v1/prompts", params={"source_kind": "internal"})
+    assert [item["id"] for item in internal_list.json()["data"]["items"]] == [prompt_id]
+    external_list = await client.get("/api/v1/prompts", params={"source_kind": "external"})
+    assert external_list.json()["data"]["total"] == 0
+    assert (await client.get("/api/v1/prompts", params={"source_kind": "unknown"})).status_code == 422
+    guest_categories = await client.get("/api/v1/prompts/categories")
+    assert guest_categories.json()["data"]["categories"] == [{"name": "汽车", "count": 1}]
+    assert (await client.get("/api/v1/prompts", params={"owner": True})).status_code == 401
 
     forbidden = await client.put(f"/api/v1/prompts/{prompt_id}", headers=other, json={"name": "越权"})
     assert forbidden.status_code == 403
@@ -87,6 +100,34 @@ async def test_prompt_community_crud_visibility_and_permissions(client):
     assert (await client.delete(f"/api/v1/prompts/{private_id}", headers=other)).status_code == 403
     assert (await client.delete(f"/api/v1/prompts/{private_id}", headers=owner)).status_code == 200
     assert (await client.delete("/api/v1/prompts/99999", headers=owner)).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_prompt_discovery_seed_is_randomized_but_stable_across_pages(client):
+    await _seed_prompt_users()
+    owner = make_auth_headers(2)
+    for index in range(12):
+        created = await client.post(
+            "/api/v1/prompts",
+            headers=owner,
+            json={"name": f"发现内容 {index}", "chinese": f"提示词 {index}", "category": "发现测试"},
+        )
+        assert created.status_code == 200
+
+    async def listed(seed: int, page: int):
+        response = await client.get(
+            "/api/v1/prompts",
+            params={"random_seed": seed, "page": page, "limit": 6},
+        )
+        assert response.status_code == 200
+        return [item["id"] for item in response.json()["data"]["items"]]
+
+    seed_one_first = await listed(1, 1)
+    seed_one_second = await listed(1, 2)
+    assert seed_one_first == await listed(1, 1)
+    assert not set(seed_one_first).intersection(seed_one_second)
+    assert len(set(seed_one_first + seed_one_second)) == 12
+    assert seed_one_first != await listed(2, 1)
 
 
 @pytest.mark.asyncio

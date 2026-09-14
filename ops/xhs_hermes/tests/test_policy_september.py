@@ -174,7 +174,7 @@ def test_provincial_amount_is_rejected_by_copy_image_plan_and_ocr():
     assert image_ocr_errors(['省补58777元'],copy=copy,case=case,allow_policy_facts=True)
 
 
-@pytest.mark.parametrize('lead', ['留言【城市＋车型】获取报价', '咨询最新政策', '扫码领取资料', '了解本月方案'])
+@pytest.mark.parametrize('lead', ['留言【城市＋车型】获取报价', '咨询最新政策', '扫码领取资料', '了解本月方案', '点击下方查看'])
 def test_image_lead_language_is_blocked_before_and_after_generation(lead, case):
     plan = {'adapted_prompt': f'零跑A05海报，文字“零跑A05”“{lead}”',
             'text_blocks': ['零跑A05', lead],

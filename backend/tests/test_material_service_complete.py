@@ -4,6 +4,7 @@ import pytest
 
 from app.db.session import async_session as session_factory
 from app.services.material_service import MaterialService
+from app.models.material import Material
 
 
 @pytest.mark.asyncio
@@ -22,14 +23,13 @@ async def test_material_creation_listing_and_lookup(client):
             user_id=1,
         )
         await service.create("other", "image", "data:image/png;base64,AA", category="other", user_id=2)
-        design = await service.create_design(
-            "design",
-            {"objects": []},
-            "data:image/png;base64,BB",
-            900,
-            1200,
-            1,
+        design = Material(
+            name="legacy design", type="design", design_json={"objects": []},
+            url="data:image/png;base64,BB", width=900, height=1200,
+            category="editor-design", created_by=1,
         )
+        db.add(design)
+        await db.commit()
         template = await service.create_template(
             "template",
             "/uploads/template.png",
@@ -62,18 +62,17 @@ async def test_material_creation_listing_and_lookup(client):
 
 
 @pytest.mark.asyncio
-async def test_update_design_enforces_ownership_and_updates_every_field(client):
+async def test_update_material_enforces_ownership_and_updates_every_field(client):
     async with session_factory() as db:
         service = MaterialService(db)
-        design = await service.create_design("old", {"v": 1}, "old", 1, 2, 7)
+        design = await service.create("old", "image", "old", width=1, height=2, user_id=7)
 
-        assert await service.update_design(9999, name="missing", user_id=7) is None
-        assert await service.update_design(design.id, name="blocked", user_id=8) is None
+        assert await service.update_material(9999, name="missing", user_id=7) is None
+        assert await service.update_material(design.id, name="blocked", user_id=8) is None
 
-        updated = await service.update_design(
+        updated = await service.update_material(
             design.id,
             name="new",
-            design_json={"v": 2},
             thumbnail="new-thumb",
             width=100,
             height=200,
@@ -82,7 +81,7 @@ async def test_update_design_enforces_ownership_and_updates_every_field(client):
         )
 
         assert updated is not None
-        assert (updated.name, updated.design_json, updated.url) == ("new", {"v": 2}, "new-thumb")
+        assert (updated.name, updated.url) == ("new", "new-thumb")
         assert (updated.width, updated.height, updated.tags) == (100, 200, ["ready"])
 
 

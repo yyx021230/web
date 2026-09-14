@@ -95,48 +95,17 @@ class MaterialService:
         await self.db.refresh(material)
         return material
 
-    async def create_design(
-        self,
-        name: str,
-        design_json: dict | None = None,
-        thumbnail: str | None = None,
-        width: int | None = None,
-        height: int | None = None,
-        user_id: int | None = None,
-    ) -> Material:
-        """创建编辑器设计稿素材
-
-        - design_json: 完整的 Fabric JSON，包含所有图层/位置/样式关系
-        - thumbnail: 设计缩略图（base64 或 URL），用于草稿箱预览
-        """
-        material = Material(
-            name=name,
-            type="design",
-            url=thumbnail,  # 缩略图放在 url 字段
-            width=width,
-            height=height,
-            category="editor-design",
-            tags=[],
-            design_json=design_json,
-            created_by=user_id,
-        )
-        self.db.add(material)
-        await self.db.commit()
-        await self.db.refresh(material)
-        return material
-
-    async def update_design(
+    async def update_material(
         self,
         material_id: int,
         name: str | None = None,
-        design_json: dict | None = None,
         thumbnail: str | None = None,
         width: int | None = None,
         height: int | None = None,
         tags: list | None = None,
         user_id: int | None = None,
     ) -> Material | None:
-        """更新已有的设计稿（覆盖）"""
+        """更新素材元数据，不修改历史设计内容。"""
         result = await self.db.execute(
             select(Material).where(
                 Material.id == material_id,
@@ -154,8 +123,6 @@ class MaterialService:
 
         if name is not None:
             material.name = name
-        if design_json is not None:
-            material.design_json = design_json
         if thumbnail is not None:
             material.url = thumbnail
         if width is not None:

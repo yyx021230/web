@@ -101,29 +101,20 @@ async def test_fresh_migrated_release_cross_module_smoke(
             assert me.status_code == 200
             assert me.json()["roles"] == ["admin"]
 
-            templates = await client.get("/api/v1/templates?limit=100")
-            materials = await client.get(
-                "/api/v1/materials?limit=100",
-                headers=headers,
-            )
-            assert templates.status_code == 200
-            assert templates.json()["data"]["total"] == 5
+            assert (await client.get("/api/v1/templates")).status_code == 404
+            assert (await client.get("/api/v1/projects", headers=headers)).status_code == 404
+            materials = await client.get("/api/v1/materials?limit=100", headers=headers)
             assert materials.status_code == 200
-            assert materials.json()["data"]["total"] == 46
-
-            create_project = await client.post(
-                "/api/v1/projects",
-                headers=headers,
-                json={"name": "发布冒烟项目"},
+            assert materials.json()["data"]["total"] == 0
+            draft = await client.post(
+                "/api/v1/materials/draft-ai", headers=headers,
+                json={"name": "发布冒烟草稿", "url": "/uploads/smoke.png",
+                      "ai_meta": {"prompt": "car"}},
             )
-            assert create_project.status_code == 200
-            project_id = create_project.json()["data"]["id"]
-            project = await client.get(
-                f"/api/v1/projects/{project_id}",
-                headers=headers,
-            )
-            assert project.status_code == 200
-            assert project.json()["data"]["name"] == "发布冒烟项目"
+            assert draft.status_code == 200
+            assert (await client.get(
+                f"/api/v1/materials/{draft.json()['data']['id']}", headers=headers
+            )).status_code == 200
 
             surface_paths = [
                 "/api/v1/ai-image/active",

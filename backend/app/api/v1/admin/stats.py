@@ -10,7 +10,6 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.core.deps import require_admin
 from app.models.user import User
-from app.models.project import Project
 from app.models.material import Material
 from app.models.ai_task import AITask
 from app.models.dify_workflow import DifyWorkflowConfig
@@ -119,7 +118,6 @@ async def get_overview_stats(
     if username and filter_user_id is None:
         return ApiResponse(data={
             "user_count": 0,
-            "project_count": 0,
             "material_count": 0,
             "ai_task_count": 0,
             "workflow_count": 0,
@@ -137,11 +135,6 @@ async def get_overview_stats(
     else:
         user_count_res = await db.execute(select(func.count()).select_from(User))
         user_count = user_count_res.scalar() or 0
-
-    project_stmt = select(func.count()).select_from(Project).where(Project.deleted_at.is_(None))
-    if filter_user_id is not None:
-        project_stmt = project_stmt.where(Project.user_id == filter_user_id)
-    project_count = (await db.execute(project_stmt)).scalar() or 0
 
     material_stmt = select(func.count()).select_from(Material).where(Material.deleted_at.is_(None))
     if filter_user_id is not None:
@@ -197,7 +190,6 @@ async def get_overview_stats(
 
     return ApiResponse(data={
         "user_count": user_count,
-        "project_count": project_count,
         "material_count": material_count,
         "ai_task_count": ai_task_count,
         "workflow_count": workflow_count,

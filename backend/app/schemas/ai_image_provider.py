@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -82,6 +82,7 @@ class AIImageProviderTestRequest(BaseModel):
     quality: Optional[str] = Field(default=None, max_length=20)
     count: int = Field(default=1, ge=1, le=4)
     image_data: Optional[str] = Field(default=None, max_length=20_000_000)
+    generation_mode: Literal["fast", "precision"] = "fast"
 
 
 class AIImageProviderTestResponse(BaseModel):

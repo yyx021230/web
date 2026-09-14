@@ -1,12 +1,13 @@
-from __future__ import annotations
 """全局异步请求队列 - 控制并发和速率"""
 
+from __future__ import annotations
+
 import asyncio
-import time
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional
+import time
 from collections import deque
+from dataclasses import dataclass
+from typing import Any
 
 from app.config import settings
 
@@ -63,7 +64,15 @@ class RateLimitedQueue:
             raise RuntimeError(f"排队超时（>{_QUEUE_WAIT_TIMEOUT_SECONDS // 60}分钟），请稍后重试")
 
     def _ensure_workers(self):
-        while len(self._workers) < self._max_concurrent:
+        # Only create workers for work that actually exists. Starting the full
+        # pool for a single item lets idle workers exit before a near-simultaneous
+        # enqueue, while their done callbacks still make the pool look full.
+        self._workers = {task for task in self._workers if not task.done()}
+        desired_workers = min(
+            self._max_concurrent,
+            len(self._queue) + self._processing_count,
+        )
+        while len(self._workers) < desired_workers:
             task = asyncio.create_task(self._worker_loop())
             self._workers.add(task)
             task.add_done_callback(self._workers.discard)

@@ -115,7 +115,7 @@ async def test_username_filter_applies_to_overview_active_rankings_and_usage(cli
     assert overview_resp.status_code == 200
     overview = overview_resp.json()["data"]
     assert overview["user_count"] == 1
-    assert overview["project_count"] == 1
+    assert "project_count" not in overview
     assert overview["material_count"] == 1
     assert overview["ai_task_count"] == 1
     assert overview["run_log_count"] == 1

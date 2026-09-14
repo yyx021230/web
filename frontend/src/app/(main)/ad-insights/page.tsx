@@ -25,6 +25,7 @@ import {
 } from '@/services/xhsApi';
 import { AccountMultiSelect } from '@/components/ui/account-multi-select';
 import { toast } from '@/lib/toast';
+import adaptive from '@/components/layout/adaptive-dashboard.module.css';
 
 declare global {
   interface Window {
@@ -718,14 +719,16 @@ function OwnerRankingPanel({ rows, notes, notesLoading = false, accountMode = fa
   );
   if (!rows.length) return <div className="grid h-[300px] place-items-center text-sm font-medium text-slate-500">当前范围暂无负责人数据</div>;
   return (
-    <div className="grid h-full min-h-0 gap-4 overflow-hidden px-3 pb-3 pt-1 lg:grid-cols-2">
+    <div className={cn(adaptive.innerContainer, 'h-full min-h-0 overflow-hidden px-3 pb-3 pt-1')}>
+      <div className={adaptive.innerSplit}>
       <div className="flex min-h-0 flex-col overflow-hidden">
         <div className="mb-1.5 flex shrink-0 items-center justify-between px-1 text-[11px] font-bold text-slate-400"><span>{accountMode ? '投流账号排行' : '转化:消耗排行'}</span><span>{accountMode ? '柱长=消耗' : '柱长=每千元转化'}</span></div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">{renderRows(displayRows)}</div>
       </div>
-      <div className="flex min-h-0 flex-col overflow-hidden border-l border-slate-200 pl-4">
+      <div className={cn(adaptive.innerSplitSecondary, 'flex min-h-0 flex-col overflow-hidden')}>
         <div className="mb-0.5 flex shrink-0 items-center justify-between px-1 text-[11px] font-bold text-slate-400"><span>笔记排行</span><span>TOP 维度</span></div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"><TopNotesBoard notes={notes} loading={notesLoading} /></div>
+      </div>
       </div>
     </div>
   );
@@ -980,23 +983,38 @@ function DataTable({ title, eyebrow, rows, columns, onExport }: { title: string;
   };
 
   return (
-    <div className={`${PANEL_CLASS} overflow-hidden`}>
+    <div className={`${PANEL_CLASS} min-w-0 overflow-hidden`}>
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><PanelTitle eyebrow={eyebrow} title={title} /><button onClick={onExport} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] hover:bg-slate-50"><Download className="h-4 w-4" />导出表格</button></div>
-      <div className="max-h-[460px] overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-slate-50 text-xs text-slate-400">
+      <div className="max-h-[460px] min-w-0 overflow-y-auto overflow-x-hidden">
+        <table className="w-full table-fixed text-[11px]">
+          <colgroup>
+            {columns.map(([, key], index) => (
+              <col
+                key={key}
+                style={{
+                  width: index === 0
+                    ? (columns.length >= 9 ? '20%' : '18%')
+                    : index === 1 && columns.length >= 9
+                      ? '14%'
+                      : undefined,
+                }}
+              />
+            ))}
+          </colgroup>
+          <thead className={cn('sticky top-0 bg-slate-50 text-slate-400', columns.length >= 9 ? 'text-[10px]' : 'text-[11px]')}>
             <tr>
               {columns.map(([label, key]) => {
                 const active = sortKey === key;
                 return (
-                  <th key={label} className="px-4 py-3 text-left font-bold">
+                  <th key={label} className="px-2 py-3 text-left font-bold">
                     <button
                       type="button"
                       onClick={() => toggleSort(key)}
-                      className={cn('inline-flex items-center gap-1.5 transition', active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900')}
+                      title={label}
+                      className={cn('flex w-full min-w-0 items-center gap-0.5 text-left leading-tight transition', active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900')}
                     >
-                      <span>{label}</span>
-                      <ChevronDown className={cn('h-3.5 w-3.5 transition', active && sortDirection === 'asc' ? 'rotate-180' : '')} />
+                      <span className="min-w-0 break-words">{label}</span>
+                      <ChevronDown className={cn('h-3 w-3 shrink-0 transition', active && sortDirection === 'asc' ? 'rotate-180' : '')} />
                     </button>
                   </th>
                 );
@@ -1007,7 +1025,7 @@ function DataTable({ title, eyebrow, rows, columns, onExport }: { title: string;
             {sortedRows.length === 0 ? <tr><td colSpan={columns.length} className="px-4 py-12 text-center text-slate-400">暂无数据</td></tr> : sortedRows.map((row, index) => <tr key={`${row.note_id || row.brand || index}`} className="hover:bg-slate-50/70">{columns.map(([label, key]) => {
               const value = row[key];
               const displayValue = Array.isArray(value) ? value.join('、') : key === 'ctr' || key.endsWith('_rate') ? `${value}%` : typeof value === 'number' ? compact(value) : String(value || '-');
-              return <td key={key} className={cn('px-4 py-3', label.includes('笔记') ? 'max-w-[260px] truncate font-semibold text-slate-900' : 'text-slate-600')}>{displayValue}</td>;
+              return <td key={key} title={displayValue} className={cn('truncate px-2 py-3 tabular-nums', label.includes('笔记') ? 'font-semibold text-slate-900' : 'text-slate-600')}>{displayValue}</td>;
             })}</tr>)}
           </tbody>
         </table>
@@ -1265,19 +1283,19 @@ export default function XhsAdInsightsPage() {
   const isDashboardRefreshing = loading && Boolean(data);
 
   return (
-    <div className="relative h-full overflow-y-auto bg-white text-slate-900">
+    <div className={cn(adaptive.page, 'relative h-full overflow-y-auto bg-white text-slate-900')}>
       <Script src="/vendor/echarts.min.js" strategy="afterInteractive" onLoad={() => setEchartsReady(true)} />
       <div className="pointer-events-none absolute inset-0 bg-white" />
       <main className="relative min-h-full p-3 lg:p-4">
-        <div className="mx-auto w-full max-w-none space-y-4">
+        <div className={cn(adaptive.dashboardCanvas, 'mx-auto max-w-none space-y-4')}>
           <section className={cn('relative z-40 overflow-visible rounded-[28px] p-4', CARD_CLASS)}>
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className={adaptive.headerRow}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-slate-700">投流数据看板</span><span className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold tracking-[0.08em]', loadError ? 'border-rose-200 bg-rose-50 text-rose-700' : loading ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-emerald-200 bg-emerald-50 text-emerald-800')}>{loading ? <Loader2 className="h-3 w-3 animate-spin" /> : null}{dataStatusLabel}</span></div>
                 <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1"><h1 className="text-[30px] font-semibold leading-tight tracking-[-0.045em] text-slate-950 lg:text-[36px]">小红书投流数据面板</h1></div>
               </div>
-              <div className="flex flex-col gap-2 xl:min-w-[680px]">
-                <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className={cn(adaptive.filterPanel, 'flex flex-col gap-2')}>
+                <div className={adaptive.filterRow}>
                   <DateRangePicker range={range} onChange={setRange} />
                   <select
                     value={buyerUserId}
@@ -1319,16 +1337,16 @@ export default function XhsAdInsightsPage() {
             <div className={cn('grid min-h-[520px] place-items-center rounded-[32px]', CARD_CLASS)}><div className="flex items-center gap-3 text-sm font-medium text-slate-500"><Loader2 className="h-5 w-5 animate-spin text-slate-700" />正在加载投流看板数据...</div></div>
           ) : data ? (
             <>
-              <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">{kpis.map((metric) => <div key={metric.key} className={cn('group relative min-h-[138px] overflow-hidden rounded-[22px] p-3 transition hover:-translate-y-0.5', PANEL_CLASS)}><div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" /><div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-slate-100/70 blur-2xl transition group-hover:bg-slate-200/80" /><div className="relative grid h-full grid-rows-[auto_1fr] gap-1"><div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><div className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.04em] text-slate-400">{metric.label}</div><span className="group/help relative grid h-4 w-4 shrink-0 place-items-center rounded-full text-slate-300 transition hover:text-slate-700"><HelpCircle className="h-3.5 w-3.5" /><span className="pointer-events-none absolute left-1/2 top-6 z-20 w-48 -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-left text-[11px] font-medium leading-relaxed tracking-normal text-white opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.22)] transition group-hover/help:translate-y-1 group-hover/help:opacity-100">对比上一周期：{formatDelta(metric.delta, metric.value_type)}</span></span></div><span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', num(metric.delta) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600')}>{formatDelta(metric.delta, metric.value_type)}</span></div><div className="grid min-w-0 grid-cols-[minmax(0,1fr)_88px] items-center gap-3"><div className="min-w-0 whitespace-nowrap text-left text-[28px] font-semibold leading-none tracking-[-0.05em] text-slate-950 tabular-nums">{fmt(metric.value, metric.value_type)}</div><div className="w-[88px] shrink-0 justify-self-end opacity-90"><MiniSparkline id={metric.key} values={kpiSparkValues(metric.key, data.trend)} /></div></div></div></div>)}</section>
+              <section className={adaptive.kpiGridSix}>{kpis.map((metric) => <div key={metric.key} className={cn('group relative min-h-[138px] overflow-hidden rounded-[22px] p-3 transition hover:-translate-y-0.5', PANEL_CLASS)}><div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" /><div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-slate-100/70 blur-2xl transition group-hover:bg-slate-200/80" /><div className="relative grid h-full grid-rows-[auto_1fr] gap-1"><div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><div className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.04em] text-slate-400">{metric.label}</div><span className="group/help relative grid h-4 w-4 shrink-0 place-items-center rounded-full text-slate-300 transition hover:text-slate-700"><HelpCircle className="h-3.5 w-3.5" /><span className="pointer-events-none absolute left-1/2 top-6 z-20 w-48 -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-left text-[11px] font-medium leading-relaxed tracking-normal text-white opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.22)] transition group-hover/help:translate-y-1 group-hover/help:opacity-100">对比上一周期：{formatDelta(metric.delta, metric.value_type)}</span></span></div><span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', num(metric.delta) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600')}>{formatDelta(metric.delta, metric.value_type)}</span></div><div className="grid min-w-0 grid-cols-[minmax(0,1fr)_88px] items-center gap-3"><div className="min-w-0 whitespace-nowrap text-left text-[28px] font-semibold leading-none tracking-[-0.05em] text-slate-950 tabular-nums">{fmt(metric.value, metric.value_type)}</div><div className="w-[88px] shrink-0 justify-self-end opacity-90"><MiniSparkline id={metric.key} values={kpiSparkValues(metric.key, data.trend)} /></div></div></div></div>)}</section>
 
-              <section className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.16fr)_minmax(0,0.84fr)]">
-                <section className={cn('relative h-[620px] overflow-hidden p-5', PANEL_CLASS)}>
+              <section className={adaptive.pairGridWide}>
+                <section className={cn(adaptive.heroPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <PanelTitle eyebrow={isBuyerScoped ? '账号排行' : '负责人排行'} title={isBuyerScoped ? '投流账号排行条' : '投手排行条'} suffix={isBuyerScoped ? '左=账号 · 右=笔记' : '左=效率 · 右=笔记'} icon={<Filter className="h-4 w-4" />} />
                   <div className="mt-2 h-[calc(100%-54px)] min-h-0 overflow-hidden">
                     <OwnerRankingPanel rows={data.owner_rows} notes={data.top_notes} notesLoading={contentLoading} accountMode={isBuyerScoped} />
                   </div>
                 </section>
-                <section className={cn('relative h-[620px] overflow-hidden p-4', PANEL_CLASS)}>
+                <section className={cn(adaptive.heroPanel, 'relative overflow-hidden p-4', PANEL_CLASS)}>
                   <PanelTitle eyebrow="内容标签" title="内容标签分析" suffix={selectedPrimaryTag ? '二级下钻 · 右=矩阵' : '一级总览 · 右=矩阵'} icon={<PieChart className="h-4 w-4" />} />
                   {contentLoading ? (
                     <div className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-500 shadow-sm">
@@ -1379,7 +1397,7 @@ export default function XhsAdInsightsPage() {
                 </section>
               </section>
 
-              <section className="grid gap-4 xl:grid-cols-[430px_minmax(0,1fr)]">
+              <section className={adaptive.pairGridNarrow}>
                 <div className="space-y-4">
                   <section className={cn('relative h-[300px] overflow-hidden p-5', PANEL_CLASS)}>
                     <div className="relative flex h-full flex-col">
@@ -1392,7 +1410,7 @@ export default function XhsAdInsightsPage() {
                     <FunnelPanel rows={data.funnel} />
                   </section>
                 </div>
-                <section className={cn('relative h-[816px] overflow-hidden p-5', PANEL_CLASS)}>
+                <section className={cn(adaptive.trendPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <div className="relative flex h-full flex-col">
                     <PanelTitle eyebrow="经营趋势" title="消耗转化趋势" suffix="柱=消耗 · 线=转化/转化成本" />
                     <div className="mt-3 min-h-0 flex-1">
@@ -1402,12 +1420,12 @@ export default function XhsAdInsightsPage() {
                 </section>
               </section>
 
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                <section className={cn('relative h-[430px] overflow-hidden p-5', PANEL_CLASS)}>
+              <section className={adaptive.pairGrid}>
+                <section className={cn(adaptive.comparisonPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <PanelTitle eyebrow="周期对比" title={isBuyerScoped ? '账号环比数据' : '环比数据'} />
                   <ComparisonList rows={data.comparison_rows} accountMode={isBuyerScoped} />
                 </section>
-                <section className={cn('relative h-[430px] overflow-hidden p-5', PANEL_CLASS)}>
+                <section className={cn(adaptive.comparisonPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <div className="relative flex h-full flex-col">
                     <PanelTitle eyebrow="趋势表现" title="核心指标趋势" suffix="单次最多展示 2 条" />
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -1437,7 +1455,7 @@ export default function XhsAdInsightsPage() {
                   </div>
                 </section>
               </section>
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]"><DataTable title="品牌消耗转化表" eyebrow="明细导出" rows={data.brand_rows.slice(0, 80)} columns={[['品牌', 'brand'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['转化', 'conversion'], ['转化成本', 'conversion_cost']]} onExport={() => exportTable('brand')} /><DataTable title="笔记消耗转化表" eyebrow="明细导出" rows={data.note_rows.slice(0, 80)} columns={[['笔记/素材', 'note_title'], ['小红书账号', 'xhs_account_name'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['开口数', 'openings'], ['转化', 'conversion'], ['转化成本', 'conversion_cost'], ['开口转化率', 'opening_conversion_rate']]} onExport={() => exportTable('note')} /></section>
+              <section className={adaptive.pairGridNarrow}><DataTable title="品牌消耗转化表" eyebrow="明细导出" rows={data.brand_rows.slice(0, 80)} columns={[['品牌', 'brand'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['转化', 'conversion'], ['转化成本', 'conversion_cost']]} onExport={() => exportTable('brand')} /><DataTable title="笔记消耗转化表" eyebrow="明细导出" rows={data.note_rows.slice(0, 80)} columns={[['笔记/素材', 'note_title'], ['小红书账号', 'xhs_account_name'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['开口数', 'openings'], ['转化', 'conversion'], ['转化成本', 'conversion_cost'], ['开口转化率', 'opening_conversion_rate']]} onExport={() => exportTable('note')} /></section>
             </>
           ) : (
             <div className={cn('grid min-h-[520px] place-items-center rounded-[32px]', CARD_CLASS)}><div className="text-sm font-medium text-slate-500">暂无投流看板数据</div></div>

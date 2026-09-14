@@ -77,7 +77,10 @@ async def admin_create_ai_image_provider(
     current_user: User = Depends(require_admin),
 ):
     service = AIImageProviderService(db)
-    provider = await service.create_provider(req.model_dump(), created_by=current_user.id)
+    try:
+        provider = await service.create_provider(req.model_dump(), created_by=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return ApiResponse(data=_serialize_provider(provider).model_dump())
 
 
@@ -89,7 +92,10 @@ async def admin_update_ai_image_provider(
     current_user: User = Depends(require_admin),
 ):
     service = AIImageProviderService(db)
-    provider = await service.update_provider(provider_id, req.model_dump(exclude_unset=True))
+    try:
+        provider = await service.update_provider(provider_id, req.model_dump(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not provider:
         raise HTTPException(status_code=404, detail="生图入口不存在")
     return ApiResponse(data=_serialize_provider(provider).model_dump())
@@ -166,6 +172,9 @@ async def admin_test_ai_image_provider(
         params["image_data"] = req.image_data
         # 管理员诊断要能测试被临时停用分流的图片编辑接口。
         params["_provider_test_force_image_edit"] = True
+    if provider := await service.get_provider(provider_id):
+        if provider.model_name == "gptimage25":
+            params["generation_mode"] = req.generation_mode
     result = await service.submit_provider_test(provider_id, req.prompt, params, user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="生图入口不存在")

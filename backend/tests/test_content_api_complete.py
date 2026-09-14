@@ -81,11 +81,11 @@ async def test_material_api_full_lifecycle_and_validation(client, monkeypatch):
     assert "文件大小" in oversized.json()["detail"]
 
     design = await client.post(
-        "/api/v1/materials/design",
+        "/api/v1/materials/draft-ai",
         json={
             "name": "设计稿",
-            "design_json": {"objects": []},
-            "thumbnail": "/thumb.png",
+            "url": "/thumb.png",
+            "ai_meta": {"prompt": "car"},
             "width": 1080,
             "height": 1440,
         },

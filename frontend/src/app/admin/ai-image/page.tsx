@@ -77,21 +77,42 @@ type ProviderTestResult = {
   };
 };
 
-const emptyForm: ProviderForm = {
+type ModelGroup = 'gptimage2' | 'gptimage25';
+
+const modelGroupMeta: Record<ModelGroup, { label: string; description: string; defaultProviderModel: string }> = {
+  gptimage2: {
+    label: 'GPT Image 2',
+    description: '仅承接 GPT Image 2 任务，未提供 2.5 的入口继续保留在这里。',
+    defaultProviderModel: 'gpt-image-2',
+  },
+  gptimage25: {
+    label: 'GPT Image 2.5',
+    description: '承接快速出图与精细创作，两种模式共享同一个入口并发额度。',
+    defaultProviderModel: 'gpt-image-2.5-flare',
+  },
+};
+
+const createEmptyForm = (modelName: ModelGroup): ProviderForm => ({
   name: '',
-  model_name: 'gptimage2',
+  model_name: modelName,
   provider_kind: 'openai_images',
-  provider_model: 'gpt-image-2',
-  endpoint_url: 'https://api.duckcoding.ai/v1',
+  provider_model: modelGroupMeta[modelName].defaultProviderModel,
+  endpoint_url: modelName === 'gptimage25' ? 'https://api.teamorouter.cn/v1' : 'https://api.duckcoding.ai/v1',
   api_key: '',
   is_enabled: true,
   is_default: false,
   priority: 100,
   weight: 1,
   supports_text_input: true,
-  supports_image_input: false,
-  configText: JSON.stringify({ send_size: true, send_n: false, timeout: 180, max_concurrent: 3 }, null, 2),
-};
+  supports_image_input: modelName === 'gptimage25',
+  configText: JSON.stringify({
+    send_size: true,
+    send_n: false,
+    timeout: 180,
+    max_concurrent: 3,
+    ...(modelName === 'gptimage25' ? { generation_modes: ['fast', 'precision'] } : {}),
+  }, null, 2),
+});
 
 const statusMeta: Record<string, { label: string; icon: typeof CheckCircle2; cls: string; dot: string }> = {
   healthy: { label: '正常', icon: CheckCircle2, cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
@@ -130,15 +151,17 @@ function fmtTime(v: string | null) {
 function ProviderModal({
   open,
   editing,
+  initialModelName,
   onClose,
   onSaved,
 }: {
   open: boolean;
   editing: Provider | null;
+  initialModelName: ModelGroup;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState<ProviderForm>(emptyForm);
+  const [form, setForm] = useState<ProviderForm>(() => createEmptyForm(initialModelName));
   const [saving, setSaving] = useState(false);
   const endpointHelp = form.provider_kind === 'openai_images'
     ? '填写 OpenAI Images API base，例如 http://192.168.10.51:48731/v1 或完整生图路径 http://192.168.10.51:48731/v1/images/generations；不要填站点首页 /'
@@ -147,7 +170,7 @@ function ProviderModal({
   useEffect(() => {
     if (!open) return;
     if (!editing) {
-      setForm(emptyForm);
+      setForm(createEmptyForm(initialModelName));
       return;
     }
     setForm({
@@ -165,12 +188,25 @@ function ProviderModal({
       supports_image_input: editing.supports_image_input,
       configText: JSON.stringify(editing.config || {}, null, 2),
     });
-  }, [editing, open]);
+  }, [editing, initialModelName, open]);
 
   if (!open) return null;
 
   const update = <K extends keyof ProviderForm>(key: K, value: ProviderForm[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateModelGroup = (modelName: ModelGroup) => {
+    const defaults = createEmptyForm(modelName);
+    setForm(prev => ({
+      ...prev,
+      model_name: modelName,
+      provider_kind: modelName === 'gptimage25' ? 'openai_images' : prev.provider_kind,
+      provider_model: defaults.provider_model,
+      endpoint_url: defaults.endpoint_url,
+      supports_image_input: defaults.supports_image_input,
+      configText: defaults.configText,
+    }));
   };
 
   const save = async () => {
@@ -245,22 +281,33 @@ function ProviderModal({
         <div className="grid max-h-[72vh] grid-cols-1 gap-4 overflow-auto p-5 md:grid-cols-2">
           <label className="space-y-1">
             <span className="text-xs font-medium text-gray-600">入口名称</span>
-            <input value={form.name} onChange={e => update('name', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="DuckCoding GPT Image 2" />
+            <input value={form.name} onChange={e => update('name', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder={`${modelGroupMeta[form.model_name as ModelGroup]?.label || 'GPT Image'} 入口`} />
           </label>
           <label className="space-y-1">
             <span className="text-xs font-medium text-gray-600">内部模型</span>
-            <input value={form.model_name} onChange={e => update('model_name', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100" />
+            <select value={form.model_name} onChange={e => updateModelGroup(e.target.value as ModelGroup)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100">
+              <option value="gptimage2">GPT Image 2</option>
+              <option value="gptimage25">GPT Image 2.5</option>
+            </select>
           </label>
           <label className="space-y-1">
             <span className="text-xs font-medium text-gray-600">入口类型</span>
-            <select value={form.provider_kind} onChange={e => update('provider_kind', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100">
+            <select value={form.provider_kind} disabled={form.model_name === 'gptimage25'} onChange={e => update('provider_kind', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50 disabled:text-gray-500">
               <option value="openai_images">OpenAI Images 兼容</option>
               <option value="mentalout_batch">MentalOut Batch</option>
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-gray-600">上游模型名</span>
-            <input value={form.provider_model} onChange={e => update('provider_model', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="gpt-image-2" />
+            <span className="text-xs font-medium text-gray-600">{form.model_name === 'gptimage25' ? '默认检测模型' : '上游模型名'}</span>
+            {form.model_name === 'gptimage25' ? (
+              <select value={form.provider_model} onChange={e => update('provider_model', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100">
+                <option value="gpt-image-2.5-flare">快速出图（Flare）</option>
+                <option value="gpt-image-2.5-sunburst">精细创作（Sunburst）</option>
+              </select>
+            ) : (
+              <input value={form.provider_model} onChange={e => update('provider_model', e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="gpt-image-2" />
+            )}
+            {form.model_name === 'gptimage25' && <span className="text-[11px] text-gray-400">这里只决定健康检测默认使用哪个模型；用户按钮会按任务动态切换实际模型。</span>}
           </label>
           <label className="space-y-1 md:col-span-2">
             <span className="text-xs font-medium text-gray-600">接口地址</span>
@@ -300,7 +347,7 @@ function ProviderModal({
           <label className="space-y-1 md:col-span-2">
             <span className="text-xs font-medium text-gray-600">高级配置 JSON</span>
             <textarea value={form.configText} onChange={e => update('configText', e.target.value)} className="h-28 w-full rounded-md border px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-indigo-100" />
-            <span className="text-[11px] text-gray-400">可配置 max_concurrent 控制单入口并发；DuckCoding 建议 send_size=true，send_n=false。</span>
+            <span className="text-[11px] text-gray-400">可配置 max_concurrent 控制单入口并发；2.5 的 generation_modes 可限制该入口支持快速出图或精细创作。</span>
           </label>
         </div>
 
@@ -332,6 +379,7 @@ function ProviderTestModal({
   const [height, setHeight] = useState(1024);
   const [quality, setQuality] = useState('low');
   const [count, setCount] = useState(1);
+  const [generationMode, setGenerationMode] = useState<'fast' | 'precision'>('fast');
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<ProviderTestResult | null>(null);
   const [taskId, setTaskId] = useState('');
@@ -344,6 +392,7 @@ function ProviderTestModal({
     setTaskId('');
     setReferenceImageData('');
     setReferenceImageName('');
+    setGenerationMode('fast');
   }, [open, provider?.id]);
 
   const handleReferenceImage = (file: File | undefined) => {
@@ -387,6 +436,7 @@ function ProviderTestModal({
         quality: quality || undefined,
         count,
         image_data: referenceImageData || undefined,
+        ...(provider.model_name === 'gptimage25' ? { generation_mode: generationMode } : {}),
       });
       setResult(res.data);
       setTaskId(res.data.task_id || '');
@@ -564,6 +614,31 @@ function ProviderTestModal({
               </label>
             </div>
 
+            {provider.model_name === 'gptimage25' && (
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-gray-600">2.5 创作模式</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['fast', '快速出图', 'Flare'],
+                    ['precision', '精细创作', 'Sunburst'],
+                  ] as const).map(([value, label, technicalName]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setGenerationMode(value)}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-left transition',
+                        generationMode === value ? 'border-indigo-400 bg-indigo-50 text-indigo-700' : 'bg-white text-gray-600 hover:border-indigo-200',
+                      )}
+                    >
+                      <span className="block text-xs font-semibold">{label}</span>
+                      <span className="mt-0.5 block text-[10px] opacity-60">{technicalName}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={runTest}
               disabled={testing}
@@ -632,6 +707,7 @@ function ProviderTestModal({
 };
 
 export default function AdminAIImageProvidersPage() {
+  const [selectedModelGroup, setSelectedModelGroup] = useState<ModelGroup>('gptimage2');
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingId, setCheckingId] = useState<'all' | null>(null);
@@ -644,7 +720,7 @@ export default function AdminAIImageProvidersPage() {
   const load = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const res = await adminApi.getAiImageProviders('gptimage2');
+      const res = await adminApi.getAiImageProviders(selectedModelGroup);
       setProviders(res.data);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '加载失败');
@@ -655,7 +731,7 @@ export default function AdminAIImageProvidersPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [selectedModelGroup]);
 
   const summary = useMemo(() => {
     const enabled = providers.filter(p => p.is_enabled).length;
@@ -667,7 +743,7 @@ export default function AdminAIImageProvidersPage() {
   const checkAll = async () => {
     setCheckingId('all');
     try {
-      await adminApi.checkAllAiImageProviders('gptimage2');
+      await adminApi.checkAllAiImageProviders(selectedModelGroup);
       await load();
       toast.success('全部检测完成');
     } catch (e) {
@@ -730,7 +806,7 @@ export default function AdminAIImageProvidersPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-xl font-semibold">生图入口</h1>
-          <p className="mt-1 text-xs text-gray-500">管理 GPT Image 2 上游入口。启用多个入口时，生成任务会按健康状态、任务类型、优先级和权重自动路由并失败切换。</p>
+          <p className="mt-1 text-xs text-gray-500">Image 2 与 Image 2.5 使用独立入口池，未支持 2.5 的提供商不会接到 2.5 任务。</p>
         </div>
         <div className="flex gap-2">
           <button onClick={checkAll} disabled={checkingId === 'all'} className="inline-flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
@@ -746,6 +822,25 @@ export default function AdminAIImageProvidersPage() {
             新增入口
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex w-fit rounded-lg bg-slate-100 p-1">
+          {(Object.keys(modelGroupMeta) as ModelGroup[]).map(modelName => (
+            <button
+              key={modelName}
+              type="button"
+              onClick={() => setSelectedModelGroup(modelName)}
+              className={cn(
+                'rounded-md px-4 py-2 text-sm font-medium transition',
+                selectedModelGroup === modelName ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800',
+              )}
+            >
+              {modelGroupMeta[modelName].label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">{modelGroupMeta[selectedModelGroup].description}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -784,7 +879,7 @@ export default function AdminAIImageProvidersPage() {
               {loading ? (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
               ) : providers.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">暂无入口，请新增 DuckCoding 或其他 OpenAI Images 兼容地址。</td></tr>
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">暂无 {modelGroupMeta[selectedModelGroup].label} 入口，请新增支持该版本的提供商。</td></tr>
               ) : providers.map(provider => {
                 const meta = statusMeta[provider.last_health_status] || statusMeta.unknown;
                 const StatusIcon = meta.icon;
@@ -792,7 +887,7 @@ export default function AdminAIImageProvidersPage() {
                   <tr key={provider.id} className={cn(!provider.is_enabled && 'bg-gray-50 text-gray-400')}>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{provider.name}</div>
-                      <div className="mt-1 text-xs text-gray-500">{provider.model_name} / {provider.provider_model}</div>
+                      <div className="mt-1 text-xs text-gray-500">{modelGroupMeta[provider.model_name as ModelGroup]?.label || provider.model_name} / {provider.provider_model}</div>
                       <div className="mt-1 text-xs text-gray-400">Key: {provider.api_key_prefix || '-'}</div>
                     </td>
                     <td className="max-w-[360px] px-4 py-3">
@@ -878,12 +973,15 @@ export default function AdminAIImageProvidersPage() {
       </div>
 
       <div className="rounded-lg border bg-gray-50 px-4 py-3 text-xs leading-6 text-gray-600">
-        推荐新增 DuckCoding：类型选 OpenAI Images 兼容，接口地址填 <span className="font-mono">https://api.duckcoding.ai/v1</span>，上游模型填 <span className="font-mono">gpt-image-2</span>，高级配置保持 <span className="font-mono">{'{ "send_size": true, "send_n": false, "max_concurrent": 3 }'}</span>。像 <span className="font-mono">http://192.168.10.51:48731/</span> 这种站点首页地址不要直接填，应该填 API base <span className="font-mono">http://192.168.10.51:48731/v1</span> 或完整路径 <span className="font-mono">http://192.168.10.51:48731/v1/images/generations</span>。
+        {selectedModelGroup === 'gptimage25'
+          ? <>2.5 入口必须同时支持 <span className="font-mono">gpt-image-2.5-flare</span> 与 <span className="font-mono">gpt-image-2.5-sunburst</span>；用户端显示为“快速出图 / 精细创作”，两种模式共享这里设置的并发额度。</>
+          : <>旧版入口继续填写其真实上游模型，例如 <span className="font-mono">gpt-image-2</span>；不支持 2.5 的提供商无需修改，也不会承接 2.5 任务。</>}
       </div>
 
       <ProviderModal
         open={modalOpen}
         editing={editing}
+        initialModelName={selectedModelGroup}
         onClose={() => setModalOpen(false)}
         onSaved={load}
       />

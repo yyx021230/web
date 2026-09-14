@@ -9,92 +9,12 @@ from sqlalchemy import select
 from app.db.session import async_session
 from app.models.dashboard_snapshot import DashboardSnapshot
 from app.models.vehicle_catalog import VehicleCatalog
-from app.schemas.template import TemplateCreate, TemplateUpdate
 from app.services.copywriting_service import CopywritingService
 from app.services.dashboard_snapshot_service import (
     DashboardSnapshotService,
     stable_dashboard_cache_key,
 )
-from app.services.project_service import ProjectService
-from app.services.template_service import TemplateService
 from app.services.vehicle_catalog_service import VehicleCatalogService
-
-
-@pytest.mark.asyncio
-async def test_project_service_full_lifecycle(client):
-    async with async_session() as db:
-        service = ProjectService(db)
-        first = await service.create(7, "首个项目", status=None)
-        second = await service.create(7, "第二项目", fabric_json="{}", status="published")
-        await service.create(8, "其他用户项目")
-
-        assert first.status == "draft"
-        assert second.status == "published"
-        items, total = await service.get_list(7, page=1, limit=1)
-        assert total == 2
-        assert len(items) == 1
-        assert await service.get_by_id(first.id, 8) is None
-
-        updated = await service.update(
-            first.id,
-            7,
-            name="已更新",
-            fabric_json='{"objects": []}',
-            thumbnail="cover.png",
-            status="published",
-        )
-        assert updated is not None
-        assert (updated.name, updated.thumbnail, updated.status) == (
-            "已更新",
-            "cover.png",
-            "published",
-        )
-        assert await service.update(99999, 7, name="missing") is None
-        assert await service.delete(99999, 7) is False
-        assert await service.delete(first.id, 7) is True
-        assert await service.get_by_id(first.id, 7) is None
-
-
-@pytest.mark.asyncio
-async def test_template_service_crud_and_owner_rules(client):
-    async with async_session() as db:
-        service = TemplateService(db)
-        created = await service.create(
-            TemplateCreate(
-                name="海报模板",
-                description="描述",
-                fabric_json="{}",
-                category="汽车",
-                tags=["封面"],
-            ),
-            user_id=11,
-        )
-        other = await service.create(
-            TemplateCreate(name="其他", fabric_json="{}", category="生活"),
-            user_id=None,
-        )
-        other.is_public = False
-        await db.commit()
-
-        items, total = await service.get_list(category="汽车")
-        assert total == 1
-        assert [item.id for item in items] == [created.id]
-        assert await service.get_by_id(created.id) is not None
-        assert await service.update(created.id, TemplateUpdate(name="越权"), user_id=12) is None
-
-        updated = await service.update(
-            created.id,
-            TemplateUpdate(name="新模板", tags=["新版"]),
-            user_id=11,
-        )
-        assert updated is not None
-        assert updated.name == "新模板"
-        assert updated.tags == ["新版"]
-        assert await service.update(99999, TemplateUpdate(name="无"), user_id=11) is None
-        assert await service.delete(created.id, user_id=12) is False
-        assert await service.delete(99999, user_id=11) is False
-        assert await service.delete(created.id, user_id=11) is True
-        assert await service.get_by_id(created.id) is None
 
 
 @pytest.mark.asyncio

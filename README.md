@@ -1,20 +1,20 @@
 # AI Creative Studio v0.3.0
 
-AI 创意工作台 — 基于 Fabric.js 的在线设计编辑器，集成 AI 生图和 Dify 工作流。
+AI 创意工作台，集成 AI 生图、内容资源库、小红书运营与投流看板和 Dify 工作流。
+
+独立模板库和在线编辑器已下线；图库、提示词库、AI 图片保存不受影响。历史数据保留，详见 [模块下线说明](docs/EDITOR_TEMPLATE_RETIREMENT.md)。
 
 ## 功能特性
 
-- 🎨 **在线编辑器** — 基于 Fabric.js 的强大图形编辑能力
 - 🤖 **AI 生图** — 支持 Seedream 等多种 AI 图像生成模型
 - 🔄 **Dify 工作流** — 可添加和管理 Dify 工作流，支持阻塞和流式运行
-- 📋 **模板管理** — 丰富的模板库，快速开始设计
 - 📁 **素材管理** — 上传图片素材，支持分类和搜索
 
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
-| 前端 | Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui + Zustand + Fabric.js |
+| 前端 | Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui + Zustand |
 | 后端 | FastAPI + Python 3.11+ + SQLAlchemy 2.0 + Pydantic v2 |
 | 数据库 | PostgreSQL + Redis |
 | 存储 | MinIO / S3 / 本地存储 |
@@ -76,7 +76,7 @@ web/
 │   │   ├── components/  # UI 组件
 │   │   ├── stores/    # Zustand 状态管理
 │   │   ├── services/  # API 服务
-│   │   ├── lib/       # 工具库 (fabric, dify, ai)
+│   │   ├── lib/       # 工具库 (dify, ai)
 │   │   └── types/     # TypeScript 类型
 │   └── CLAUDE.md      # AI 编码规则
 ├── backend/           # FastAPI 后端

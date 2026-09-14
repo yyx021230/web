@@ -9,6 +9,12 @@ export interface PromptItem {
   image_url: string;
   category: string;
   param_type: string;
+  source_kind?: 'internal' | 'external';
+  source_name?: string | null;
+  source_url?: string | null;
+  source_license?: string | null;
+  source_author?: string | null;
+  external_id?: string | null;
   created_by?: number | null;
   created_by_name?: string | null;
   is_public?: boolean;
@@ -27,9 +33,9 @@ export interface PromptImportResult {
 }
 
 export const promptsApi = {
-  getPrompts: (keyword?: string, category?: string, page = 1, limit = 100, owner = false) =>
+  getPrompts: (keyword?: string, category?: string, page = 1, limit = 100, owner = false, randomSeed?: number, sourceKind?: 'internal' | 'external') =>
     api.get<{ items: PromptItem[]; total: number; page: number; limit: number }>('/prompts', {
-      params: { keyword, category, page, limit, owner },
+      params: { keyword, category, page, limit, owner, random_seed: randomSeed, source_kind: sourceKind },
     }),
 
   getCategories: () =>

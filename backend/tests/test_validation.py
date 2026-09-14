@@ -85,32 +85,6 @@ def test_environment_names_must_match():
     assert "APP_ENV_MATCHES_DEPLOYMENT_ENVIRONMENT" in settings.validate_critical()
 
 
-# --- 分页校验 ---
-
-@pytest.mark.asyncio
-async def test_pagination_page_zero_rejected(auth_client):
-    resp = await auth_client.get("/api/v1/templates?page=0")
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_pagination_negative_page(auth_client):
-    resp = await auth_client.get("/api/v1/templates?page=-1")
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_pagination_limit_too_large(auth_client):
-    resp = await auth_client.get("/api/v1/templates?limit=1000000")
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_pagination_limit_zero(auth_client):
-    resp = await auth_client.get("/api/v1/templates?limit=0")
-    assert resp.status_code == 422
-
-
 # --- 全局异常处理 ---
 
 @pytest.mark.asyncio
@@ -130,11 +104,7 @@ async def test_validation_error_format(auth_client):
     })
     headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
 
-    resp = await auth_client.post("/api/v1/templates", json={
-        "name": "",  # 违反 min_length
-        "fabric_json": "{}",
-        "category": "test",
-    }, headers=headers)
+    resp = await auth_client.get("/api/v1/materials?page=invalid", headers=headers)
     assert resp.status_code == 422
     data = resp.json()
     assert data["code"] == 422

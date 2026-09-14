@@ -3,6 +3,7 @@ from app.db.base import Base
 
 
 class Template(Base):
+    """Legacy schema retained for existing databases; no active template API."""
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, index=True)

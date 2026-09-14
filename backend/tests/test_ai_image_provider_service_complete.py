@@ -90,6 +90,21 @@ def test_provider_helpers_cover_formats_limits_and_debug(monkeypatch, tmp_path):
     assert module._looks_like_html_response("<!DOCTYPE html><title>524</title>") is True
     assert module._extract_html_title("<html><title> Gateway  Timeout </title></html>") == "Gateway Timeout"
 
+    image25 = _provider(
+        model_name="gptimage25",
+        provider_model="gpt-image-2.5-flare",
+        config={"generation_modes": ["fast", "precision"]},
+    )
+    assert module._normalize_generation_mode(None) == "fast"
+    assert module._normalize_generation_mode("PRECISION") == "precision"
+    with pytest.raises(ValueError, match="fast 或 precision"):
+        module._normalize_generation_mode("unknown")
+    assert module._provider_supports_generation_mode(image25, "fast") is True
+    image25.config = {"generation_modes": ["precision"]}
+    assert module._provider_supports_generation_mode(image25, "fast") is False
+    assert module._resolve_provider_request_model(image25, {"generation_mode": "fast"}) == "gpt-image-2.5-flare"
+    assert module._resolve_provider_request_model(image25, {"generation_mode": "precision"}) == "gpt-image-2.5-sunburst"
+
     class _Response:
         status_code = 524
         reason_phrase = "Timeout"
@@ -170,6 +185,24 @@ async def _async_none():
 async def test_provider_crud_selection_slots_and_runtime(client, monkeypatch):
     async with async_session() as db:
         service = AIImageProviderService(db)
+        with pytest.raises(ValueError, match="不能放入 GPT Image 2"):
+            await service.create_provider({
+                "name": "Wrong pool",
+                "model_name": "gptimage2",
+                "provider_kind": "openai_images",
+                "provider_model": "gpt-image-2.5-flare",
+                "endpoint_url": "https://wrong/v1",
+                "api_key": "wrong",
+            })
+        with pytest.raises(ValueError, match="Flare 或 Sunburst"):
+            await service.create_provider({
+                "name": "Wrong 2.5 model",
+                "model_name": "gptimage25",
+                "provider_kind": "openai_images",
+                "provider_model": "gpt-image-2",
+                "endpoint_url": "https://wrong/v1",
+                "api_key": "wrong",
+            })
         first = await service.create_provider({
             "name": "Default",
             "model_name": "gptimage2",
@@ -263,6 +296,45 @@ async def test_generate_success_failure_callbacks_and_no_provider(client, monkey
         await db.commit()
         unavailable = await service.generate("prompt", {})
         assert unavailable["provider_configured"] is True
+
+
+@pytest.mark.asyncio
+async def test_gptimage25_routes_modes_inside_dedicated_provider_pool(client, monkeypatch):
+    async with async_session() as db:
+        provider = _provider(
+            id=111,
+            name="Team 2.5",
+            model_name="gptimage25",
+            provider_model="gpt-image-2.5-flare",
+            is_default=True,
+            config={"generation_modes": ["fast", "precision"], "max_concurrent": 2},
+        )
+        old_provider = _provider(id=112, name="Old Image 2")
+        db.add_all([provider, old_provider])
+        await db.commit()
+        service = AIImageProviderService(db)
+        requested_models = []
+
+        async def success_call(selected_provider, _prompt, params, **_kwargs):
+            requested_models.append(module._resolve_provider_request_model(selected_provider, params))
+            return {"task_id": "up-25", "status": "completed", "image_urls": ["image.png"]}
+
+        monkeypatch.setattr(service, "_call_provider", success_call)
+        fast = await service.generate(
+            "prompt",
+            {"generation_mode": "fast"},
+            model_name="gptimage25",
+        )
+        precision = await service.generate(
+            "prompt",
+            {"generation_mode": "precision"},
+            model_name="gptimage25",
+        )
+
+        assert requested_models == ["gpt-image-2.5-flare", "gpt-image-2.5-sunburst"]
+        assert fast["provider"]["id"] == provider.id
+        assert fast["provider"]["provider_model"] == "gpt-image-2.5-flare"
+        assert precision["provider"]["provider_model"] == "gpt-image-2.5-sunburst"
 
 
 @pytest.mark.asyncio

@@ -19,7 +19,6 @@ from app.core.roles import (
 )
 from app.core.security import hash_password
 from app.models.user import User
-from app.models.project import Project
 from app.models.material import Material
 from app.models.ai_task import AITask
 from app.models.dify_workflow import DifyWorkflowConfig
@@ -229,9 +228,6 @@ async def get_user_stats(
     ai_task_count = await db.execute(select(func.count()).select_from(AITask).where(AITask.user_id == user_id))
     wf_task_count = await db.execute(select(func.count()).select_from(DifyTask).where(DifyTask.user_id == user_id))
 
-    # 项目数
-    project_count = await db.execute(select(func.count()).select_from(Project).where(and_(Project.user_id == user_id, Project.deleted_at.is_(None))))
-
     # 素材存储
     storage_result = await db.execute(select(func.sum(Material.file_size)).where(and_(Material.created_by == user_id, Material.deleted_at.is_(None))))
     storage_bytes = storage_result.scalar() or 0
@@ -239,7 +235,6 @@ async def get_user_stats(
     return ApiResponse(data={
         "ai_tasks": ai_task_count.scalar() or 0,
         "wf_tasks": wf_task_count.scalar() or 0,
-        "projects": project_count.scalar() or 0,
         "storage_mb": round(storage_bytes / (1024 * 1024), 2),
     })
 
@@ -383,9 +378,6 @@ async def get_user_detail(
     yesterday = now - timedelta(hours=24)
 
     # Counts by user
-    project_count = await db.execute(select(func.count()).select_from(Project).where(
-        and_(Project.user_id == user_id, Project.deleted_at.is_(None))
-    ))
     material_count = await db.execute(select(func.count()).select_from(Material).where(
         and_(Material.created_by == user_id, Material.deleted_at.is_(None))
     ))
@@ -425,7 +417,6 @@ async def get_user_detail(
             "created_at": str(user.created_at),
         },
         "stats": {
-            "project_count": project_count.scalar() or 0,
             "material_count": material_count.scalar() or 0,
             "ai_task_count": ai_task_count.scalar() or 0,
             "ai_task_24h": ai_task_24h.scalar() or 0,

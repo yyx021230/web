@@ -3,6 +3,7 @@ from app.db.base import Base
 
 
 class Project(Base):
+    """Legacy schema retained for existing databases; no active project API."""
     __tablename__ = "projects"
 
     id = Column(Integer, primary_key=True, index=True)

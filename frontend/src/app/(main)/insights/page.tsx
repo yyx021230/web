@@ -13,13 +13,16 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDot,
+  FileSpreadsheet,
   HelpCircle,
   Layers3,
   Loader2,
   Search,
   Sparkles,
   Target,
+  Upload,
   Users,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -31,8 +34,19 @@ import {
   type VehicleMatchResult,
 } from '@/lib/vehicleMatcher';
 import { AccountMultiSelect } from '@/components/ui/account-multi-select';
+import adaptive from '@/components/layout/adaptive-dashboard.module.css';
 import { carModelsApi } from '@/services/carModelsApi';
-import { getXhsInsightAccountNotes, getXhsProfileStatOwnerRows, type XHSAccountNote, type XHSInsightsDashboard, type XHSProfileStatOwnerRow } from '@/services/xhsApi';
+import {
+  getEnvironments,
+  getXhsInsightAccountNotes,
+  getXhsProfileStatOwnerRows,
+  importXhsCreatorExport,
+  type XHSAccountNote,
+  type XHSEnvironment,
+  type XHSInsightsDashboard,
+  type XHSProfileStatOwnerRow,
+} from '@/services/xhsApi';
+import { toast } from '@/lib/toast';
 
 declare global {
   interface Window {
@@ -1675,10 +1689,10 @@ function OperatorPerformanceSection({ rows, range, ready, accountScope }: { rows
         </button>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[26px] border border-slate-100 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
-        <div className="overflow-x-auto">
-          <div className="min-w-[1340px]">
-            <div className="sticky top-0 z-[1] grid grid-cols-[48px_1fr_2fr_repeat(10,minmax(78px,1fr))] bg-slate-950 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-white/70">
+      <div className="mt-4 min-w-0 overflow-hidden rounded-[26px] border border-slate-100 shadow-[0_18px_46px_rgba(15,23,42,0.06)]">
+        <div className="min-w-0 overflow-hidden">
+          <div className="w-full min-w-0">
+            <div className={cn(adaptive.operatorTableGrid, 'sticky top-0 z-[1] bg-slate-950 px-3 py-3 text-[10px] font-bold leading-tight text-white/70')}>
               <span>#</span>
               <span>运营负责人</span>
               <span>负责账号</span>
@@ -1695,7 +1709,7 @@ function OperatorPerformanceSection({ rows, range, ready, accountScope }: { rows
             </div>
             <div className="max-h-[224px] overflow-y-auto bg-white">
               {rows.map((row, index) => (
-                <div key={row.ownerId} className="grid grid-cols-[48px_1fr_2fr_repeat(10,minmax(78px,1fr))] items-center border-t border-slate-100 px-4 py-3 text-sm transition hover:bg-slate-50/80">
+                <div key={row.ownerId} className={cn(adaptive.operatorTableGrid, 'items-center border-t border-slate-100 px-3 py-3 text-xs transition hover:bg-slate-50/80')}>
                   <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs font-black text-slate-500">{index + 1}</span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-slate-950">{row.ownerName}</div>
@@ -1995,9 +2009,9 @@ function AccountRankingPanel({
   };
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden p-0">
+    <div className={cn(adaptive.innerContainer, 'relative h-full min-h-0 overflow-hidden p-0')}>
       {accounts.length > 0 || posts.length > 0 ? (
-        <div className="grid h-full min-h-0 gap-3 overflow-hidden sm:grid-cols-2">
+        <div className={adaptive.innerSplit}>
           <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
             <div className="sticky top-0 z-10 mb-2 flex items-center justify-between gap-3 rounded-2xl bg-slate-50/95 px-2 py-1.5 backdrop-blur">
               <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">账号排行</span>
@@ -2386,9 +2400,9 @@ function PersonalPostRankingChart({
   const rows = posts.slice(0, 6);
   const maxViews = Math.max(1, ...rows.map((post) => getPostRankingValue(post, postSort)));
   return (
-    <div className="relative">
+    <div className={cn(adaptive.innerContainer, 'relative')}>
       {rows.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className={adaptive.cardGrid}>
           {rows.map((post, index) => {
             const rankingValue = getPostRankingValue(post, postSort);
             const width = Math.max(10, (rankingValue / maxViews) * 100);
@@ -3248,6 +3262,226 @@ function AiSummaryModal({ report, onClose }: { report: AiReport; onClose: () => 
   );
 }
 
+function CreatorExportImportDialog({
+  onClose,
+  onImported,
+}: {
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [environments, setEnvironments] = useState<XHSEnvironment[]>([]);
+  const [environmentId, setEnvironmentId] = useState<number | null>(null);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getEnvironments()
+      .then((items) => {
+        if (cancelled) return;
+        setEnvironments(
+          items
+            .filter((environment) => !environment.is_sync_runner)
+            .sort((left, right) => left.account_name.localeCompare(right.account_name, 'zh-Hans-CN')),
+        );
+      })
+      .catch((error) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : '账号列表加载失败');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAccounts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filteredEnvironments = useMemo(() => {
+    const keyword = accountSearch.trim().toLowerCase();
+    if (!keyword) return environments;
+    return environments.filter((environment) => (
+      `${environment.account_name} ${environment.shop_id || ''} ${environment.xhs_account_id || ''}`
+        .toLowerCase()
+        .includes(keyword)
+    ));
+  }, [accountSearch, environments]);
+  const selectedEnvironment = environments.find((environment) => environment.id === environmentId) || null;
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0] || null;
+    if (nextFile && nextFile.size > 20 * 1024 * 1024) {
+      toast.error('表格不能超过 20MB');
+      event.target.value = '';
+      return;
+    }
+    setFile(nextFile);
+  };
+
+  const handleImport = async () => {
+    if (!environmentId) {
+      toast.error('请先选择表格所属的小红书账号');
+      return;
+    }
+    if (!file) {
+      toast.error('请选择创作者中心导出的 Excel 表格');
+      return;
+    }
+    setImporting(true);
+    try {
+      const result = await importXhsCreatorExport(environmentId, file);
+      toast.success(
+        `${result.account_name} 导入完成：识别 ${result.exported_rows || 0} 条，新增 ${result.created_notes || 0} 条，更新 ${result.updated_notes || 0} 条`,
+      );
+      onImported();
+      onClose();
+    } catch (error) {
+      toast.error(`导入失败：${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      onClick={() => {
+        if (!importing) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="creator-import-title"
+        className="flex max-h-[min(760px,calc(100vh-32px))] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_32px_100px_rgba(15,23,42,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white shadow-sm">
+              <FileSpreadsheet className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h2 id="creator-import-title" className="text-lg font-semibold tracking-[-0.025em] text-slate-950">人工导入</h2>
+              <p className="mt-0.5 text-xs text-slate-500">选择账号，上传创作者中心表格</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="关闭人工导入"
+            onClick={onClose}
+            disabled={importing}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <section>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="creator-import-account-search" className="text-sm font-semibold text-slate-900">1. 选择小红书账号</label>
+              {selectedEnvironment && (
+                <span className="max-w-[60%] truncate rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  {selectedEnvironment.account_name}
+                </span>
+              )}
+            </div>
+            <div className="relative mt-3">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="creator-import-account-search"
+                type="search"
+                value={accountSearch}
+                onChange={(event) => setAccountSearch(event.target.value)}
+                placeholder="搜索账号名称或小红书 ID"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+              />
+            </div>
+            <div className="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white">
+              {loadingAccounts ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />加载账号
+                </div>
+              ) : filteredEnvironments.length === 0 ? (
+                <div className="px-4 py-10 text-center text-sm text-slate-400">没有匹配的账号</div>
+              ) : filteredEnvironments.map((environment) => {
+                const selected = environment.id === environmentId;
+                return (
+                  <button
+                    key={environment.id}
+                    type="button"
+                    onClick={() => setEnvironmentId(environment.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      'flex w-full items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0',
+                      selected ? 'bg-slate-950 text-white' : 'bg-white text-slate-900 hover:bg-slate-50',
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{environment.account_name}</span>
+                      {(environment.xhs_account_id || environment.shop_id) && (
+                        <span className={cn('mt-0.5 block truncate text-[11px]', selected ? 'text-slate-300' : 'text-slate-400')}>
+                          {environment.xhs_account_id ? `小红书 ID ${environment.xhs_account_id}` : environment.shop_id}
+                        </span>
+                      )}
+                    </span>
+                    <span className={cn(
+                      'grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px]',
+                      selected ? 'border-white bg-white text-slate-950' : 'border-slate-200 text-transparent',
+                    )}>✓</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="mt-5">
+            <div className="text-sm font-semibold text-slate-900">2. 上传导出表格</div>
+            <label className="mt-3 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 transition hover:border-slate-500 hover:bg-white">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-slate-600 shadow-sm ring-1 ring-slate-200">
+                  <Upload className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-slate-800">{file?.name || '选择 Excel 表格'}</span>
+                  <span className="mt-0.5 block text-[11px] text-slate-400">{file ? `${(file.size / 1024).toFixed(1)} KB` : '.xlsx / .xls，最大 20MB'}</span>
+                </span>
+              </span>
+              <span className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">浏览文件</span>
+              <input
+                type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+          </section>
+        </div>
+
+        <footer className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
+          <span className="text-xs text-slate-400">成功后自动刷新当前看板</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} disabled={importing} className="h-10 rounded-xl px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40">取消</button>
+            <button
+              type="button"
+              onClick={handleImport}
+              disabled={importing || !environmentId || !file}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+              {importing ? '正在导入' : '确认导入'}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function XhsInsightsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => getDefaultDateRange());
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentFilter>('all');
@@ -3271,6 +3505,8 @@ export default function XhsInsightsPage() {
   const [activeDetailNote, setActiveDetailNote] = useState<XHSAccountNote | null>(null);
   const [rankingDetailOpen, setRankingDetailOpen] = useState(false);
   const [aiSummaryOpen, setAiSummaryOpen] = useState(false);
+  const [creatorImportOpen, setCreatorImportOpen] = useState(false);
+  const [dashboardReloadKey, setDashboardReloadKey] = useState(0);
   const [detailStage, setDetailStage] = useState(0);
   const [vehicleMatches, setVehicleMatches] = useState<Map<string, VehicleMatchResult>>(new Map());
   const [vehicleMatchingDone, setVehicleMatchingDone] = useState(false);
@@ -3375,7 +3611,7 @@ export default function XhsInsightsPage() {
     return () => {
       cancelled = true;
     };
-  }, [dateRange]);
+  }, [dateRange, dashboardReloadKey]);
 
   const range = useMemo(() => dateRange, [dateRange]);
   const deferredSearch = useDeferredValue(search);
@@ -3717,15 +3953,15 @@ export default function XhsInsightsPage() {
         : '正在加载真实数据';
 
   return (
-    <div className="relative h-full overflow-y-auto bg-white text-slate-900">
+    <div className={cn(adaptive.page, 'relative h-full overflow-y-auto bg-white text-slate-900')}>
       <Script src="/vendor/echarts.min.js" strategy="afterInteractive" onLoad={() => setEchartsReady(true)} />
       <div className="pointer-events-none absolute inset-0 bg-white" />
       <div className="pointer-events-none absolute inset-0 hidden" />
 
       <main className="relative min-h-full p-3 lg:p-4">
-        <div className="mx-auto w-full max-w-none space-y-4">
+        <div className={cn(adaptive.dashboardCanvas, 'mx-auto max-w-none space-y-4')}>
           <section className={cn('relative z-40 overflow-visible rounded-[28px] p-4', CARD_CLASS)}>
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className={adaptive.headerRow}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-slate-700">运营数据看板</span>
@@ -3745,8 +3981,8 @@ export default function XhsInsightsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 xl:min-w-[820px]">
-                <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className={cn(adaptive.filterPanel, 'flex flex-col gap-2')}>
+                <div className={adaptive.filterRow}>
                   <DateRangePicker range={range} onChange={setDateRange} />
                   <select
                     value={selectedDepartment}
@@ -3789,6 +4025,17 @@ export default function XhsInsightsPage() {
                     clearLabel={selectedOwner === 'all' ? '全量账户' : '该负责人全部账号'}
                     emptyLabel="没有匹配的账号"
                   />
+                  {viewerRoles.includes('admin') && (
+                    <button
+                      type="button"
+                      onClick={() => setCreatorImportOpen(true)}
+                      className="flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                      title="选择小红书账号并上传创作者中心导出表格"
+                    >
+                      <Upload className="h-4 w-4" />
+                      人工导入
+                    </button>
+                  )}
                   <button onClick={() => setAiSummaryOpen(true)} className="flex h-10 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(15,23,42,0.22)] transition hover:-translate-y-0.5 hover:bg-slate-800">
                     <Sparkles className="h-4 w-4" />
                     生成 AI 摘要
@@ -3807,7 +4054,7 @@ export default function XhsInsightsPage() {
           </div>
         ) : (
           <>
-            <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
+            <section className={adaptive.kpiGridEight}>
               {kpiCards.map((metric) => {
                 const Icon = metric.icon;
                 return (
@@ -3847,12 +4094,12 @@ export default function XhsInsightsPage() {
               </section>
             )}
 
-            <section className="grid items-start gap-4">
+            <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-4">
               {isPortfolioView ? (
                 <div className="min-w-0 space-y-4 xl:col-start-1 xl:row-start-1">
-                  <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.34fr)_minmax(340px,0.86fr)]">
+                  <div className={adaptive.pairGridWide}>
                     <div className="min-w-0">
-                      <section className={cn('relative h-[400px] overflow-hidden p-5', PANEL_CLASS)}>
+                      <section className={cn(adaptive.standardChart, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                         <div className="pointer-events-none absolute inset-0 hidden" />
                         <div className="relative flex h-full flex-col">
                           <div className="flex items-start justify-between gap-3">
@@ -3880,7 +4127,7 @@ export default function XhsInsightsPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <section className={cn('relative h-[400px] overflow-hidden p-5', PANEL_CLASS)}>
+                      <section className={cn(adaptive.standardChart, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                         <div className="pointer-events-none absolute inset-0 hidden" />
                         <div className="relative flex h-full flex-col">
                           <PanelTitle title="车型统计" />
@@ -3900,9 +4147,9 @@ export default function XhsInsightsPage() {
                 </div>
               ) : (
                 <div className="min-w-0 space-y-4 xl:col-start-1 xl:row-start-1">
-                  <div className="grid items-stretch gap-4 xl:grid-cols-[440px_minmax(0,1fr)]">
-                    <div className="grid min-w-0 gap-4">
-                      <section className={cn('relative h-[330px] overflow-hidden p-4', PANEL_CLASS)}>
+                  <div className={adaptive.tallGrid}>
+                    <div className={adaptive.tallStack}>
+                      <section className={cn(adaptive.fillPanel, 'relative overflow-hidden p-4', PANEL_CLASS)}>
                         <div className="pointer-events-none absolute inset-0 hidden" />
                         <div className="relative flex h-full flex-col">
                           <PanelTitle title="内容标签" />
@@ -3912,7 +4159,7 @@ export default function XhsInsightsPage() {
                         </div>
                       </section>
 
-                      <section className={cn('relative h-[390px] overflow-hidden p-4', PANEL_CLASS)}>
+                      <section className={cn(adaptive.fillPanel, 'relative overflow-hidden p-4', PANEL_CLASS)}>
                         <div className="pointer-events-none absolute inset-0 hidden" />
                         <div className="relative flex h-full flex-col">
                           <PanelTitle title="车型分布" />
@@ -3921,7 +4168,7 @@ export default function XhsInsightsPage() {
                       </section>
                     </div>
 
-                    <section className={cn('relative h-[736px] overflow-hidden p-5', PANEL_CLASS)}>
+                    <section className={cn(adaptive.fillPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                       <div className="pointer-events-none absolute inset-0 hidden" />
                       <div className="relative flex h-full flex-col">
                         <PanelTitle eyebrow="趋势表现" title="发布表现趋势" suffix="柱=浏览 · 线=评论/发帖" />
@@ -3984,6 +4231,12 @@ export default function XhsInsightsPage() {
           <AiSummaryModal
             report={aiReport}
             onClose={() => setAiSummaryOpen(false)}
+          />
+        )}
+        {creatorImportOpen && (
+          <CreatorExportImportDialog
+            onClose={() => setCreatorImportOpen(false)}
+            onImported={() => setDashboardReloadKey((current) => current + 1)}
           />
         )}
     </div>

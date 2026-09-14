@@ -76,6 +76,58 @@ def test_one_text_list_derives_blocks_and_keeps_amount_checks(monkeypatch,tmp_pa
         runner.build_image_plan(**kwargs)
 
 
+def test_mother_template_lead_slot_is_rewritten_before_generation(monkeypatch, tmp_path):
+    lead = '点击下方【立即咨询】了解更多车型报价和本月优惠政策'
+    template = {
+        'id': 126,
+        'chinese': f'标题“旧车型”，底部小字“{lead}”',
+        'template_type': 'standard',
+        'source_slot_count': 2,
+    }
+    monkeypatch.setattr(runner, 'relay_json', lambda *args, **kwargs: {
+        'adapted_prompt': f'零跑A05海报，标题“零跑A05”，底部小字“{lead}”',
+        'slot_mappings': [
+            {'source': '旧车型', 'output': '零跑A05', 'action': '最小替换'},
+            {'source': lead, 'output': lead, 'action': '保留'},
+        ],
+    })
+    result = runner.build_image_plan(
+        copy={'title': '零跑A05近期政策', 'content': '车型与权益参考'},
+        template=template,
+        case={'vehicle_model': '零跑A05', 'brand': '零跑汽车'},
+        car_images={'斜前方': '/car.png'}, model='test', attempts=1,
+        public_root='https://example.test', trace_dir=tmp_path,
+    )
+    assert result['lead_language_sanitized'] is True
+    assert result['slot_mappings'][1]['source'] == lead
+    assert result['slot_mappings'][1]['output'] == '购车信息参考'
+    assert result['text_blocks'] == ['零跑A05', '购车信息参考']
+    assert '咨询' not in result['adapted_prompt']
+
+
+def test_lead_wording_in_layout_description_is_scrubbed_when_slots_are_safe(monkeypatch, tmp_path):
+    template = {
+        'id': 567, 'chinese': '获客引流海报，标题“旧车型”，小字“配置参考”',
+        'template_type': 'standard', 'source_slot_count': 2,
+    }
+    monkeypatch.setattr(runner, 'relay_json', lambda *args, **kwargs: {
+        'adapted_prompt': '客资引流海报，标题“零跑D19”，小字“配置参考”',
+        'slot_mappings': [
+            {'source': '旧车型', 'output': '零跑D19', 'action': '最小替换'},
+            {'source': '配置参考', 'output': '配置参考', 'action': '保留'},
+        ],
+    })
+    result = runner.build_image_plan(
+        copy={'title': '零跑D19', 'content': '配置参考'}, template=template,
+        case={'vehicle_model': '零跑D19', 'brand': '零跑汽车'},
+        car_images={'斜前方': '/car.png'}, model='test', attempts=1,
+        public_root='https://example.test', trace_dir=tmp_path,
+    )
+    assert result['lead_language_sanitized'] is True
+    assert result['text_blocks'] == ['零跑D19', '配置参考']
+    assert '引流' not in result['adapted_prompt']
+
+
 def test_explicit_plan_retry_preserves_copy_and_source(monkeypatch,tmp_path):
     initial={'batch_date':'2026-09-07','posts':{'p':{'copy':{'ok':True,'title':'原文','content':'不动正文'},'prompt_template':{'id':324},'image_plan':{'ok':False,'errors':['schema mismatch']},'status':'image_plan_failed'}}}
     path=tmp_path/'checkpoint.json';path.write_text(json.dumps(initial))

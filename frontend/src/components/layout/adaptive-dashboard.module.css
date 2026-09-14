@@ -1,0 +1,182 @@
+.page {
+  container-type: inline-size;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.dashboardCanvas {
+  width: 100%;
+  min-width: 0;
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: minmax(330px, 0.72fr) minmax(620px, 1.28fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.filterPanel {
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.filterRow {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.kpiGrid,
+.kpiGridSix,
+.kpiGridEight {
+  display: grid;
+  gap: 8px;
+}
+
+.kpiGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.kpiGridSix { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.kpiGridEight { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+
+.pairGrid,
+.pairGridWide,
+.pairGridNarrow {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.pairGrid > *,
+.pairGridWide > *,
+.pairGridNarrow > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pairGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pairGridWide { grid-template-columns: minmax(0, 1.16fr) minmax(0, .84fr); }
+.pairGridNarrow { grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); }
+
+.heroPanel { height: 620px; }
+.trendPanel { height: 816px; }
+.comparisonPanel { height: 450px; }
+.compactChart { height: 360px; }
+.standardChart { height: 400px; }
+.tallGrid {
+  display: grid;
+  grid-template-columns: minmax(min(350px, 100%), .72fr) minmax(min(520px, 100%), 1.28fr);
+  height: 736px;
+  gap: 16px;
+}
+.tallStack { display: grid; min-width: 0; min-height: 0; grid-template-rows: .86fr 1fr; gap: 16px; }
+.fillPanel { height: 100%; min-height: 0; }
+
+.innerContainer {
+  container-type: inline-size;
+}
+
+.innerSplit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: 100%;
+  min-height: 0;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.innerSplitSecondary {
+  min-width: 0;
+  border-left: 1px solid rgb(226 232 240);
+  padding-left: 16px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 12px;
+}
+
+.operatorTableGrid {
+  display: grid;
+  grid-template-columns:
+    minmax(30px, .35fr)
+    minmax(72px, 1fr)
+    minmax(120px, 2fr)
+    repeat(10, minmax(38px, .72fr));
+  min-width: 0;
+}
+
+@container (max-width: 1120px) {
+  .headerRow {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .filterPanel {
+    justify-self: stretch;
+  }
+
+  .filterRow {
+    justify-content: flex-start;
+  }
+
+  .kpiGridEight {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .kpiGridSix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 760px) {
+  .kpiGrid,
+  .kpiGridSix,
+  .kpiGridEight {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pairGrid,
+  .pairGridWide,
+  .pairGridNarrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroPanel,
+  .trendPanel,
+  .comparisonPanel {
+    height: auto;
+    min-height: 450px;
+  }
+
+  .tallGrid {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .tallStack {
+    grid-template-rows: repeat(2, minmax(340px, auto));
+  }
+
+  .fillPanel {
+    min-height: 420px;
+  }
+
+}
+
+@container (max-width: 480px) {
+  .kpiGrid,
+  .kpiGridSix,
+  .kpiGridEight {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page * { scroll-behavior: auto !important; }
+}

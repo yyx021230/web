@@ -36,6 +36,12 @@ class PromptExample(Base):
     ul_list = Column(JSON, default=[])  # 策略与技巧列表
     sort_order = Column(Integer, default=0)  # 排序
     is_public = Column(Boolean, nullable=False, default=True)  # 是否公开到社区
+    source_kind = Column(String(20), nullable=False, default="internal", index=True)  # internal | external
+    source_name = Column(String(100), nullable=True)  # 外部数据集/站点名称
+    source_url = Column(String(1000), nullable=True)  # 原始内容页
+    source_license = Column(String(100), nullable=True)  # 授权协议
+    source_author = Column(String(255), nullable=True)  # 原作者/发布者
+    external_id = Column(String(255), nullable=True, index=True)  # 外部来源稳定 ID
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)  # 上传者
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)  # 最后编辑者
     deleted_at = Column(DateTime, nullable=True, index=True)  # 软删除

@@ -107,9 +107,21 @@ CTA_RE = re.compile(
 )
 IMAGE_LEAD_RE = re.compile(
     r"私信|留言|评论|咨询|扫码|联系方式|微信|电话|加微|进群|"
+    r"点击(?:下方|按钮|链接)|客资引流|引流话术|"
     r"【[^】]*(?:城市|车型)[^】]*】|(?:城市|所在城市)\s*[+＋/、]\s*车型|"
     r"(?:获取|领取|索取|查看|了解)(?:本地|当地|所在城市|最新|详细|专属|完整|更多|具体|近期|本月)?"
     r"(?:政策|报价|价格|方案|明细|资料|清单|权益)"
+)
+
+IMAGE_LEAD_SAFE_REPLACEMENTS = (
+    "购车信息参考",
+    "车型与权益参考",
+    "配置与续航参考",
+    "近期购车政策",
+    "产品亮点",
+    "版本信息参考",
+    "用车权益参考",
+    "配置选择参考",
 )
 UNSAFE_QUOTE_TEMPLATE_RE = re.compile(
     r"价格表|报价单|配置表|配置对比|官方指导价|裸车价|补贴后到手价|"
@@ -669,6 +681,75 @@ def validate_copy(
 
 def numeric_tokens(value: str) -> set[str]:
     return money_values(value)
+
+
+def sanitize_image_plan_lead_language(plan: dict[str, Any], case: dict[str, Any]) -> dict[str, Any]:
+    """Rewrite unsafe mother-template text slots without weakening final checks.
+
+    Mother images define layout, not mandatory wording.  Planning models can
+    occasionally preserve an old CTA even when instructed to replace it.  Do
+    the safe, deterministic part here: keep the source-slot provenance and
+    position, replace only unsafe visible text, and scrub any repeated CTA
+    fragment from the prose prompt.  ``validate_image_plan`` and OCR remain the
+    final fail-closed gates.
+    """
+    result = dict(plan)
+    prompt = str(result.get("adapted_prompt") or "")
+    raw_mappings = result.get("slot_mappings")
+    if not isinstance(raw_mappings, list):
+        return result
+
+    mappings = [dict(row) if isinstance(row, dict) else row for row in raw_mappings]
+    used = {
+        str(row.get("output") or "").strip()
+        for row in mappings if isinstance(row, dict)
+        and str(row.get("output") or "").strip()
+        and IMAGE_LEAD_RE.search(str(row.get("output") or "")) is None
+    }
+    candidates = [str(case.get("vehicle_model") or "").strip(), *IMAGE_LEAD_SAFE_REPLACEMENTS]
+
+    def replacement() -> str:
+        for value in candidates:
+            if value and value not in used:
+                used.add(value)
+                return value
+        # Standard templates have at most nine slots, so this is only a stable
+        # last resort for unusual quote layouts.
+        value = "购车参考信息"
+        used.add(value)
+        return value
+
+    changed = False
+    for row in mappings:
+        if not isinstance(row, dict):
+            continue
+        source = str(row.get("source") or "").strip()
+        output = str(row.get("output") or "").strip()
+        if IMAGE_LEAD_RE.search(output) is None:
+            continue
+        safe = replacement()
+        for unsafe in (output, source):
+            if unsafe:
+                prompt = prompt.replace(unsafe, safe)
+        row["output"] = safe
+        row["action"] = "删除留咨并替换为合规信息"
+        changed = True
+
+    if IMAGE_LEAD_RE.search(prompt):
+        # A model may already have fixed every visible slot while retaining a
+        # CTA in descriptive prose. It is not a visual requirement, so scrub
+        # that residue without forcing the whole template to be abandoned.
+        prompt = IMAGE_LEAD_RE.sub("购车信息参考", prompt)
+        changed = True
+    if changed:
+        result["adapted_prompt"] = prompt
+        result["slot_mappings"] = mappings
+        result["text_blocks"] = [
+            str(row.get("output") or "").strip()
+            for row in mappings if isinstance(row, dict)
+        ]
+        result["lead_language_sanitized"] = True
+    return result
 
 
 def validate_image_plan(plan: dict[str, Any], copy: dict[str, Any], case: dict[str, Any]) -> list[str]:

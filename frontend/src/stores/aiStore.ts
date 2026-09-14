@@ -22,7 +22,6 @@ interface AIState {
   setCurrentModel: (model: string) => void;
   generateImage: (prompt: string, params?: Record<string, unknown>) => Promise<string | void>;
   cancelGeneration: (id: string) => void;
-  addToCanvas: (generationId: string) => void;
   fetchHistory: (page?: number, limit?: number) => Promise<void>;
 }
 
@@ -33,6 +32,7 @@ export const useAIStore = create<AIState>((set, get) => ({
   availableModels: [
     { id: 'seedream', name: 'Seedream', description: '字节跳动生图模型' },
     { id: 'gptimage2', name: 'GPT Image 2', description: 'OpenAI GPT Image 2 图像生成' },
+    { id: 'gptimage25', name: 'GPT Image 2.5', description: '快速出图与精细创作双模式' },
     { id: 'midjourney', name: 'Midjourney', description: '预留 - Midjourney' },
     { id: 'stable-diffusion', name: 'Stable Diffusion', description: '预留 - SD' },
   ],
@@ -49,6 +49,7 @@ export const useAIStore = create<AIState>((set, get) => ({
         height: (params.height as number) || 1024,
         style: params.style as string | undefined,
         quality: params.quality as string | undefined,
+        generation_mode: params.generation_mode as 'fast' | 'precision' | undefined,
         negative_prompt: params.negative_prompt as string | undefined,
       };
 
@@ -125,10 +126,6 @@ export const useAIStore = create<AIState>((set, get) => ({
       ),
       isGenerating: false,
     }));
-  },
-
-  addToCanvas: (_generationId: string) => {
-    // Add generated image to canvas
   },
 
   fetchHistory: async (page = 1, limit = 60) => {

@@ -66,8 +66,6 @@ async def get_materials(
                 "category": m.category,
                 "tags": m.tags,
                 "created_at": str(m.created_at),
-                # 设计类素材包含 design_json（用于编辑器加载还原）
-                "design_json": m.design_json,
                 # AI 模版包含 ai_meta（用于显示 prompt、参考图等）
                 "ai_meta": m.ai_meta,
             }
@@ -104,7 +102,7 @@ async def get_material(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """获取单个素材详情（用于编辑器加载设计稿）"""
+    """获取当前用户可访问的素材详情。"""
     service = MaterialService(db)
     material = await service.get_by_id(material_id, user_id=current_user.id)
     if not material:
@@ -119,7 +117,6 @@ async def get_material(
         "category": material.category,
         "tags": material.tags,
         "created_at": str(material.created_at),
-        "design_json": material.design_json,
     })
 
 
@@ -178,41 +175,6 @@ async def upload_material(
     })
 
 
-@router.post("/design")
-async def save_design(
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """保存编辑器设计稿到草稿箱
-
-    请求体:
-    - name: 设计名称
-    - design_json: 完整的 Fabric JSON（含所有图层、位置、样式关系）
-    - thumbnail: 设计缩略图 URL 或 base64（用于草稿箱预览）
-    - width: 画布宽度
-    - height: 画布高度
-    """
-    service = MaterialService(db)
-    material = await service.create_design(
-        name=data.get("name", "未命名设计"),
-        design_json=data.get("design_json"),
-        thumbnail=data.get("thumbnail"),
-        width=data.get("width"),
-        height=data.get("height"),
-        user_id=current_user.id,
-    )
-    return ApiResponse(data={
-        "id": material.id,
-        "name": material.name,
-        "type": material.type,
-        "url": material.url,  # 缩略图
-        "width": material.width,
-        "height": material.height,
-        "category": material.category,
-    })
-
-
 @router.delete("/all")
 async def delete_all_materials(
     db: AsyncSession = Depends(get_db),
@@ -245,21 +207,11 @@ async def update_material(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """更新已有设计稿（覆盖保存）
-
-    请求体:
-    - name: 设计名称
-    - design_json: 完整的 Fabric JSON
-    - thumbnail: 设计缩略图
-    - width: 画布宽度
-    - height: 画布高度
-    - tags: 标签列表
-    """
+    """更新素材名称、缩略图、尺寸和标签。"""
     service = MaterialService(db)
-    material = await service.update_design(
+    material = await service.update_material(
         material_id=material_id,
         name=data.get("name"),
-        design_json=data.get("design_json"),
         thumbnail=data.get("thumbnail"),
         width=data.get("width"),
         height=data.get("height"),

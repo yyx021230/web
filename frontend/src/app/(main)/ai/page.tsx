@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
-  Sparkles, Download, Share2, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
-  ImagePlus, Trash2, Image as ImageIcon, FolderOpen, Save, BookOpen,
+  Download, Share2, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
+  ImagePlus, Images, Upload, Trash2, Image as ImageIcon, Save, Zap, ScanLine, RotateCcw, SlidersHorizontal, ArrowUp,
 } from 'lucide-react';
 import { aiApi, type ActiveImageTasksResponse, type AIImageRuntimeConfig, type ImageTaskResponse, type QueueStatus } from '@/services/aiApi';
-import { editorApi } from '@/services/editorApi';
+import { materialApi } from '@/services/materialApi';
 import { promptsApi } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
 import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
+import studio from './studio.module.css';
 
 interface RefImageItem {
   data: string; // base64 or URL
@@ -25,10 +25,21 @@ interface ChatMessage {
   content: string;
   images: AIImageResult[];
   timestamp: string;
-  params?: { model: string; size: string; style: string; count: number; quality?: string };
+  params?: { model: string; modelId?: string; size: string; style: string; count: number; quality?: string; generationMode?: 'fast' | 'precision' };
   refImages?: RefImageItem[]; // 参考图片列表（用于图生图）
   taskId?: string; // 异步任务的 task_id（用于轮询）
   clientRequestId?: string; // 前端提交请求幂等 ID（用于找回任务）
+}
+
+interface GenerationRequestSnapshot {
+  prompt: string;
+  model: string;
+  size: string;
+  style: string;
+  count: number;
+  quality?: string;
+  generationMode?: 'fast' | 'precision';
+  refImages: RefImageItem[];
 }
 
 interface AIImageResult {
@@ -39,10 +50,43 @@ interface AIImageResult {
   liked: boolean;
 }
 
+function ByteDanceLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M19.8772 1.4685 24 2.5326v18.9426l-4.1228 1.0563V1.4685Zm-13.3481 9.428 4.115 1.0641v8.9786l-4.115 1.0642V10.8965ZM0 2.572l4.115 1.0642v16.7354L0 21.428V2.572Zm17.4553 5.6205v11.107l-4.1228-1.0642V9.2568l4.1228-1.0642Z" />
+    </svg>
+  );
+}
+
+function OpenAILogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729Zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944Zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464ZM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865a4.504 4.504 0 0 1-1.6464-6.1408Zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667Zm2.0107-3.0231-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66ZM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813Zm1.0976-2.3654 2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" />
+    </svg>
+  );
+}
+
 const models = [
-  { id: 'seedream', name: 'Seedream', desc: '字节跳动' },
-  { id: 'gptimage2', name: 'GPT Image 2', desc: 'OpenAI' },
+  { id: 'seedream', name: 'Seedream', desc: '字节跳动', note: '中文海报与批量创作', icon: ByteDanceLogo, brand: 'bytedance' },
+  { id: 'gptimage2', name: 'GPT Image 2', desc: 'OpenAI', note: '稳定通用的图像生成', icon: OpenAILogo, brand: 'openai' },
+  { id: 'gptimage25', name: 'GPT Image 2.5', desc: 'OpenAI 新一代', note: '快速与精细双模式', icon: OpenAILogo, brand: 'openai', badge: 'NEW' },
 ];
+
+const generationModes = [
+  {
+    id: 'fast' as const,
+    label: '快速出图',
+    desc: '日常批量创作，响应更快',
+    icon: Zap,
+  },
+  {
+    id: 'precision' as const,
+    label: '精细创作',
+    desc: '复杂版式与精准改图更稳',
+    icon: ScanLine,
+  },
+];
+const getGenerationModeLabel = (mode: 'fast' | 'precision') => mode === 'precision' ? '精细创作' : '快速出图';
 
 const qualities = [
   { id: 'low', label: '低', desc: '快速/便宜' },
@@ -52,6 +96,18 @@ const qualities = [
 
 type AspectRatioId = '1:1' | '4:5' | '3:4' | '2:3' | '9:16' | '4:3' | '3:2' | '16:9';
 type ResolutionTierId = '1K' | '2K' | '3K' | '4K';
+
+interface GenerationPreferences {
+  version: 1;
+  prompt: string;
+  model: string;
+  ratio: AspectRatioId;
+  resolutionTier: ResolutionTierId;
+  style: string;
+  quality: string;
+  generationMode: 'fast' | 'precision';
+  count: number;
+}
 
 interface ResolutionOption {
   id: ResolutionTierId;
@@ -186,17 +242,18 @@ const seedreamResolutionMap: Record<AspectRatioId, Record<ResolutionTierId, Reso
 };
 
 const formatSize = (w: number, h: number) => `${w}×${h}`;
+const isGptImageModel = (model: string) => model === 'gptimage2' || model === 'gptimage25';
 const getAspectRatiosForModel = (model: string) => {
-  const ids = model === 'gptimage2' ? gptimage2RatioIds : seedreamRatioIds;
+  const ids = isGptImageModel(model) ? gptimage2RatioIds : seedreamRatioIds;
   return ids.map(id => aspectRatios.find(ratio => ratio.id === id)).filter(Boolean) as typeof aspectRatios;
 };
 const getResolutionOptions = (model: string, ratio: AspectRatioId) => {
-  const map = model === 'gptimage2' ? gptimage2ResolutionMap : seedreamResolutionMap;
+  const map = isGptImageModel(model) ? gptimage2ResolutionMap : seedreamResolutionMap;
   return resolutionTiers.map(tier => map[ratio][tier.id]);
 };
 const getDefaultPreset = (model: string): { ratio: AspectRatioId; tier: ResolutionTierId; size: string } => {
   const ratio: AspectRatioId = '1:1';
-  const tier: ResolutionTierId = model === 'gptimage2' ? '1K' : '2K';
+  const tier: ResolutionTierId = isGptImageModel(model) ? '1K' : '2K';
   const option = getResolutionOptions(model, ratio).find(item => item.id === tier) || getResolutionOptions(model, ratio)[0];
   return { ratio, tier: option.id, size: formatSize(option.w, option.h) };
 };
@@ -208,6 +265,7 @@ const POLL_INTERVAL = 2000;
 const MAX_PARALLEL_TASKS = 6;
 const STORAGE_KEY_BASE = 'ai_image_messages';
 const PENDING_KEY_BASE = 'ai_pending_generation';
+const PREFERENCES_SCOPE_BASE = 'ai_image_preferences';
 const PROMPT_MAX_LEN = 8000;
 
 /** 持久化相关常量 */
@@ -222,6 +280,7 @@ interface PendingGenerationState {
   model: string;
   size: string;
   style: string;
+  generationMode?: 'fast' | 'precision';
   timestamp: number;
   taskId?: string;
   clientRequestId?: string;
@@ -238,6 +297,37 @@ function parsePendingStates(raw: string | null): PendingGenerationState[] {
     return [];
   }
 }
+
+function parseGenerationPreferences(raw: string | null): GenerationPreferences | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<GenerationPreferences>;
+    const model = models.some(item => item.id === parsed.model) ? parsed.model! : 'seedream';
+    const preset = getDefaultPreset(model);
+    const ratio = getAspectRatiosForModel(model).some(item => item.id === parsed.ratio)
+      ? parsed.ratio!
+      : preset.ratio;
+    const resolutionTier = getResolutionOptions(model, ratio).some(item => item.id === parsed.resolutionTier && !item.disabled)
+      ? parsed.resolutionTier!
+      : preset.tier;
+    return {
+      version: 1,
+      prompt: typeof parsed.prompt === 'string' ? parsed.prompt.slice(0, PROMPT_MAX_LEN) : '',
+      model,
+      ratio,
+      resolutionTier,
+      style: typeof parsed.style === 'string' && styles.includes(parsed.style) ? parsed.style : '写实',
+      quality: qualities.some(item => item.id === parsed.quality) ? parsed.quality! : 'low',
+      generationMode: parsed.generationMode === 'precision' ? 'precision' : 'fast',
+      count: [1, 2, 4].includes(Number(parsed.count)) ? Number(parsed.count) : 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// 只跨客户端路由切换保留；浏览器刷新后模块重载，草稿随即清空。
+const generationPreferencesMemory = new Map<string, GenerationPreferences>();
 
 function normalizeMessagePairs(source: ChatMessage[]): ChatMessage[] {
   const normalized: ChatMessage[] = [];
@@ -364,7 +454,6 @@ async function buildImageResults(
 }
 
 export default function AIPage() {
-  const router = useRouter();
   const initialPreset = getDefaultPreset('seedream');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -381,10 +470,15 @@ export default function AIPage() {
   const [selectedSize, setSelectedSize] = useState(initialPreset.size);
   const [selectedStyle, setSelectedStyle] = useState('写实');
   const [selectedQuality, setSelectedQuality] = useState('low');
+  const [selectedGenerationMode, setSelectedGenerationMode] = useState<'fast' | 'precision'>('fast');
   const [imageCount, setImageCount] = useState(1);
   const [previewImage, setPreviewImage] = useState<AIImageResult | null>(null);
   const [refImages, setRefImages] = useState<RefImageItem[]>([]); // 参考图片列表
   const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [restoredParameters, setRestoredParameters] = useState(false);
+  const [composerCompact, setComposerCompact] = useState(false);
   const pendingTaskCount = messages.filter(m =>
     m.type === 'result' && (Boolean(m.taskId) || Boolean(m.clientRequestId) || m.content === '正在生成图片，请稍候...')
   ).length;
@@ -398,20 +492,77 @@ export default function AIPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
   const forceScrollToBottomRef = useRef(false);
+  const composerExpandedByUserRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [scopedKeys, setScopedKeys] = useState<{ storageKey: string; pendingKey: string } | null>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const [scopedKeys, setScopedKeys] = useState<{ storageKey: string; pendingKey: string; preferencesScope: string } | null>(null);
   const pollTimersRef = useRef<Record<string, number>>({});
   const runtimeConfigRef = useRef<AIImageRuntimeConfig | null>(null);
   const deletedPendingRef = useRef<{ promptMsgId?: string; resultMsgId?: string } | null>(null);
   const pendingCancelRef = useRef<PendingGenerationState | null>(null);
   const debugStorageRef = useRef(false);
+  const importedCreativeRef = useRef(false);
   const availableAspectRatios = getAspectRatiosForModel(selectedModel);
-  const showResolutionTiers = selectedModel === 'gptimage2';
   const selectedResolutionOptions = getResolutionOptions(selectedModel, selectedRatio);
   const activeResolutionOption = selectedResolutionOptions.find(item => item.id === selectedResolutionTier && !item.disabled)
     || selectedResolutionOptions.find(item => !item.disabled)
     || selectedResolutionOptions[0];
   const selectedModelInfo = models.find(item => item.id === selectedModel) || models[0];
+  const SelectedModelIcon = selectedModelInfo.icon;
+  const generateLabel = submitting
+    ? '正在提交任务'
+    : !canStartMoreTasks
+      ? '任务已满 ' + effectiveActiveTaskCount + '/' + maxActiveTasks
+      : '开始生成';
+
+  const selectModel = (nextModel: string) => {
+    const preset = getDefaultPreset(nextModel);
+    setSelectedModel(nextModel);
+    setSelectedRatio(preset.ratio);
+    setSelectedResolutionTier(preset.tier);
+    setSelectedSize(preset.size);
+    setModelMenuOpen(false);
+    setSettingsMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!modelMenuOpen && !settingsMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!modelMenuRef.current?.contains(event.target as Node)) setModelMenuOpen(false);
+      if (!settingsMenuRef.current?.contains(event.target as Node)) setSettingsMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setModelMenuOpen(false);
+        setSettingsMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [modelMenuOpen, settingsMenuOpen]);
+
+  useEffect(() => {
+    if (importedCreativeRef.current) return;
+    importedCreativeRef.current = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') !== 'prompt-library') return;
+
+    const importedPrompt = (params.get('prompt') || '').trim().slice(0, PROMPT_MAX_LEN);
+    const reference = (params.get('reference') || '').trim();
+    if (importedPrompt) setPrompt(importedPrompt);
+    if (reference) {
+      setRefImages(current => current.some(item => item.data === reference)
+        ? current
+        : [{ data: reference, name: '提示词宝库参考图', source: 'gallery' as const }, ...current].slice(0, 10));
+    }
+  }, []);
 
   useEffect(() => {
     runtimeConfigRef.current = runtimeConfig;
@@ -435,6 +586,8 @@ export default function AIPage() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
+    composerExpandedByUserRef.current = false;
+    setComposerCompact(false);
     requestAnimationFrame(() => {
       if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -446,7 +599,36 @@ export default function AIPage() {
     const el = scrollRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const movedUp = el.scrollTop < lastScrollTopRef.current - 2;
+    lastScrollTopRef.current = el.scrollTop;
     shouldStickToBottomRef.current = distanceToBottom < 120;
+    if (distanceToBottom < 120) {
+      composerExpandedByUserRef.current = false;
+      setComposerCompact(false);
+      return;
+    }
+    if (movedUp || !composerExpandedByUserRef.current) {
+      composerExpandedByUserRef.current = false;
+      setComposerCompact(true);
+      setModelMenuOpen(false);
+      setSettingsMenuOpen(false);
+    }
+  }, []);
+
+  const expandComposer = useCallback(() => {
+    composerExpandedByUserRef.current = true;
+    setComposerCompact(false);
+    requestAnimationFrame(() => promptInputRef.current?.focus({ preventScroll: true }));
+  }, []);
+
+  const returnToBottom = useCallback(() => {
+    composerExpandedByUserRef.current = false;
+    setComposerCompact(false);
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    });
   }, []);
 
   const getActiveKeys = useCallback(() => {
@@ -454,6 +636,7 @@ export default function AIPage() {
     return {
       storageKey: getUserScopedKey(STORAGE_KEY_BASE),
       pendingKey: getUserScopedKey(PENDING_KEY_BASE),
+      preferencesScope: getUserScopedKey(PREFERENCES_SCOPE_BASE),
     };
   }, [scopedKeys]);
 
@@ -563,7 +746,13 @@ export default function AIPage() {
           content: pending.prompt || '恢复中的任务',
           images: [],
           timestamp: ts,
-          params: { model: pending.model || 'seedream', size: pending.size || '2048×2048', style: pending.style || '写实', count: 1 },
+          params: {
+            model: pending.model || 'seedream',
+            size: pending.size || '2048×2048',
+            style: pending.style || '写实',
+            count: 1,
+            generationMode: pending.model === 'gptimage25' ? (pending.generationMode || 'fast') : undefined,
+          },
         });
       }
       if (!hasResult) {
@@ -598,7 +787,7 @@ export default function AIPage() {
     const nextRatio = availableRatios.some(item => item.id === selectedRatio)
       ? selectedRatio
       : availableRatios[0]?.id || '1:1';
-    const preferredTier: ResolutionTierId = selectedModel === 'gptimage2' ? selectedResolutionTier : '2K';
+    const preferredTier: ResolutionTierId = isGptImageModel(selectedModel) ? selectedResolutionTier : '2K';
     const options = getResolutionOptions(selectedModel, nextRatio);
     const next = options.find(item => item.id === preferredTier && !item.disabled)
       || options.find(item => !item.disabled)
@@ -652,6 +841,7 @@ export default function AIPage() {
     const next = {
       storageKey: getUserScopedKey(STORAGE_KEY_BASE),
       pendingKey: getUserScopedKey(PENDING_KEY_BASE),
+      preferencesScope: getUserScopedKey(PREFERENCES_SCOPE_BASE),
     };
     setScopedKeys(next);
     logDebug('scopedKeysReady', next as unknown as Record<string, unknown>);
@@ -794,7 +984,27 @@ export default function AIPage() {
   useEffect(() => {
     try {
       if (!scopedKeys) return;
-      const { storageKey, pendingKey } = scopedKeys;
+      const { storageKey, pendingKey, preferencesScope } = scopedKeys;
+      const preferences = parseGenerationPreferences(
+        generationPreferencesMemory.has(preferencesScope)
+          ? JSON.stringify(generationPreferencesMemory.get(preferencesScope))
+          : null
+      );
+      if (preferences) {
+        const params = new URLSearchParams(window.location.search);
+        const hasImportedPrompt = params.get('from') === 'prompt-library' && Boolean(params.get('prompt')?.trim());
+        const option = getResolutionOptions(preferences.model, preferences.ratio)
+          .find(item => item.id === preferences.resolutionTier && !item.disabled);
+        if (!hasImportedPrompt) setPrompt(preferences.prompt);
+        setSelectedModel(preferences.model);
+        setSelectedRatio(preferences.ratio);
+        setSelectedResolutionTier(preferences.resolutionTier);
+        if (option) setSelectedSize(formatSize(option.w, option.h));
+        setSelectedStyle(preferences.style);
+        setSelectedQuality(preferences.quality);
+        setSelectedGenerationMode(preferences.generationMode);
+        setImageCount(preferences.count);
+      }
       const storageCandidates = getFallbackKeys(STORAGE_KEY_BASE, storageKey);
       let saved: string | null = null;
       let savedFrom = storageKey;
@@ -898,12 +1108,34 @@ export default function AIPage() {
   }, [logDebug, removePendingState, scopedKeys, startPoll, startRequestRecovery, upsertPendingMessages, upsertPendingState, writePendingStates]);
 
   const isGenerating = pendingTaskCount > 0 || reconcilingPending;
+  const generationGroups = messages.reduce<ChatMessage[][]>((groups, message) => {
+    if (message.type === 'prompt' || groups.length === 0) groups.push([message]);
+    else groups[groups.length - 1].push(message);
+    return groups;
+  }, []);
 
   // 持久化到 localStorage（包含进行中的任务）
   useEffect(() => {
     if (!loaded || !scopedKeys) return;
     persistMessages(messages);
   }, [messages, loaded, persistMessages, scopedKeys]);
+
+  // 保留当前用户尚未提交的创作草稿，页面切换后可继续编辑。
+  useEffect(() => {
+    if (!loaded || !scopedKeys) return;
+    const preferences: GenerationPreferences = {
+      version: 1,
+      prompt,
+      model: selectedModel,
+      ratio: selectedRatio,
+      resolutionTier: selectedResolutionTier,
+      style: selectedStyle,
+      quality: selectedQuality,
+      generationMode: selectedGenerationMode,
+      count: imageCount,
+    };
+    generationPreferencesMemory.set(scopedKeys.preferencesScope, preferences);
+  }, [imageCount, loaded, prompt, scopedKeys, selectedGenerationMode, selectedModel, selectedQuality, selectedRatio, selectedResolutionTier, selectedStyle]);
 
   useEffect(() => {
     setCanViewGlobalQueue(currentUserCanViewGlobalQueue());
@@ -939,71 +1171,42 @@ export default function AIPage() {
     startPoll(taskId, model, resultMsgId, width, height, clientRequestId);
   }, [startPoll]);
 
-  const handleGenerate = async () => {
-    if (!prompt.trim() || submitting || !loaded || prompt.length > PROMPT_MAX_LEN) return;
-    setSubmitting(true);
-    const active = await refreshActiveTasks();
-    const activeCount = active?.active_count ?? effectiveActiveTaskCount;
-    const maxActive = active?.max_active ?? maxActiveTasks;
-    if (activeCount >= maxActive) {
-      toast.error(`最多同时提交 ${maxActive} 个生图任务，请等待当前任务完成后再试`);
-      setSubmitting(false);
-      return;
-    }
-    forceScrollToBottomRef.current = true;
-    shouldStickToBottomRef.current = true;
-
-    const sizeParts = selectedSize.split('×');
+  const submitGenerationAttempt = async (
+    request: GenerationRequestSnapshot,
+    promptMsgId: string,
+    resultMsgId: string,
+  ) => {
+    const sizeParts = request.size.split('×');
     const width = parseInt(sizeParts[0]) || 1024;
     const height = parseInt(sizeParts[1]) || 1024;
-
-    const currentRefImages = refImages;
-    const promptMessage: ChatMessage = {
-      id: Date.now().toString(), type: 'prompt', content: prompt, images: [],
-      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      params: {
-        model: models.find(m => m.id === selectedModel)?.name || selectedModel,
-        size: selectedSize,
-        style: selectedStyle,
-        count: imageCount,
-        quality: selectedModel === 'gptimage2' ? selectedQuality : undefined,
-      },
-      refImages: currentRefImages.length > 0 ? [...currentRefImages] : undefined,
-    };
-    setMessages(prev => [...prev, promptMessage]);
-    const currentPrompt = prompt;
-    setPrompt('');
-    setRefImages([]);
-
-    const resultMsgId = (Date.now() + 1).toString();
     const clientRequestId = createClientRequestId();
-    // 先显示一个加载中的结果占位
-    setMessages(prev => [...prev, {
-      id: resultMsgId, type: 'result', content: getWaitingContent('queued'), images: [],
-      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      clientRequestId,
-    }]);
+    setMessages(prev => prev.map(msg =>
+      msg.id === resultMsgId
+        ? { ...msg, content: getWaitingContent('queued'), images: [], taskId: undefined, clientRequestId }
+        : msg
+    ));
 
     upsertPendingState({
-      promptMsgId: promptMessage.id,
+      promptMsgId,
       resultMsgId,
-      prompt: currentPrompt,
-      model: selectedModel,
-      size: selectedSize,
-      style: selectedStyle,
+      prompt: request.prompt,
+      model: request.model,
+      size: request.size,
+      style: request.style,
+      generationMode: request.model === 'gptimage25' ? request.generationMode : undefined,
       timestamp: Date.now(),
       clientRequestId,
       status: 'pending',
-    } as PendingGenerationState);
+    });
 
     try {
       // 构建参考图片参数
       const refParams: Record<string, unknown> = {};
-      if (currentRefImages.length > 0) {
-        const allImages = currentRefImages.map(img => img.data);
+      if (request.refImages.length > 0) {
+        const allImages = request.refImages.map(img => img.data);
         if (allImages.length === 1) {
           // 单图：用兼容字段保持向后兼容
-          const img = currentRefImages[0];
+          const img = request.refImages[0];
           refParams[img.source === 'gallery' ? 'image_url' : 'image_data'] = img.data;
         } else {
           // 多图：发 images_data 数组（后端 images_data 支持 base64 和 URL 混合）
@@ -1012,14 +1215,15 @@ export default function AIPage() {
       }
 
       const res = await aiApi.generateImage({
-        prompt: currentPrompt,
+        prompt: request.prompt,
         client_request_id: clientRequestId,
-        model: selectedModel,
-        count: imageCount,
+        model: request.model,
+        count: request.count,
         width,
         height,
-        style: selectedStyle,
-        ...(selectedModel === 'gptimage2' ? { quality: selectedQuality } : {}),
+        style: request.style,
+        ...(isGptImageModel(request.model) && request.quality ? { quality: request.quality } : {}),
+        ...(request.model === 'gptimage25' && request.generationMode ? { generation_mode: request.generationMode } : {}),
         ...refParams,
       });
 
@@ -1052,18 +1256,19 @@ export default function AIPage() {
           msg.id === resultMsgId ? { ...msg, taskId: data.task_id, clientRequestId, content: getWaitingContent(data.status) } : msg
         ));
         upsertPendingState({
-          promptMsgId: promptMessage.id,
+          promptMsgId,
           resultMsgId,
-          prompt: currentPrompt,
-          model: selectedModel,
-          size: selectedSize,
-          style: selectedStyle,
+          prompt: request.prompt,
+          model: request.model,
+          size: request.size,
+          style: request.style,
+          generationMode: request.model === 'gptimage25' ? request.generationMode : undefined,
           timestamp: Date.now(),
           taskId: data.task_id,
           clientRequestId,
           status: 'pending',
         });
-        await pollTask(data.task_id, selectedModel, resultMsgId, width, height, clientRequestId);
+        await pollTask(data.task_id, request.model, resultMsgId, width, height, clientRequestId);
       }
     } catch (e) {
       const status = getHttpErrorStatus(e);
@@ -1079,12 +1284,13 @@ export default function AIPage() {
         return;
       }
       const pendingForRecovery: PendingGenerationState = {
-        promptMsgId: promptMessage.id,
+        promptMsgId,
         resultMsgId,
-        prompt: currentPrompt,
-        model: selectedModel,
-        size: selectedSize,
-        style: selectedStyle,
+        prompt: request.prompt,
+        model: request.model,
+        size: request.size,
+        style: request.style,
+        generationMode: request.model === 'gptimage25' ? request.generationMode : undefined,
         timestamp: Date.now(),
         clientRequestId,
         status: 'reconciling',
@@ -1100,6 +1306,116 @@ export default function AIPage() {
       setSubmitting(false);
       void refreshActiveTasks();
     }
+  };
+
+  const ensureGenerationSlot = async () => {
+    const active = await refreshActiveTasks();
+    const activeCount = active?.active_count ?? effectiveActiveTaskCount;
+    const maxActive = active?.max_active ?? maxActiveTasks;
+    if (activeCount < maxActive) return true;
+    toast.error(`最多同时提交 ${maxActive} 个生图任务，请等待当前任务完成后再试`);
+    return false;
+  };
+
+  const handleGenerate = async () => {
+    if (!prompt.trim() || submitting || !loaded || prompt.length > PROMPT_MAX_LEN) return;
+    setSubmitting(true);
+    if (!await ensureGenerationSlot()) {
+      setSubmitting(false);
+      return;
+    }
+    forceScrollToBottomRef.current = true;
+    shouldStickToBottomRef.current = true;
+
+    const timestamp = Date.now();
+    const promptMsgId = timestamp.toString();
+    const resultMsgId = (timestamp + 1).toString();
+    const request: GenerationRequestSnapshot = {
+      prompt: prompt.trim(),
+      model: selectedModel,
+      size: selectedSize,
+      style: selectedStyle,
+      count: imageCount,
+      quality: isGptImageModel(selectedModel) ? selectedQuality : undefined,
+      generationMode: selectedModel === 'gptimage25' ? selectedGenerationMode : undefined,
+      refImages: refImages.map(image => ({ ...image })),
+    };
+    const displayTimestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    setMessages(prev => [...prev,
+      {
+        id: promptMsgId,
+        type: 'prompt',
+        content: request.prompt,
+        images: [],
+        timestamp: displayTimestamp,
+        params: {
+          model: models.find(m => m.id === request.model)?.name || request.model,
+          modelId: request.model,
+          size: request.size,
+          style: request.style,
+          count: request.count,
+          quality: request.quality,
+          generationMode: request.generationMode,
+        },
+        refImages: request.refImages.length > 0 ? request.refImages : undefined,
+      },
+      {
+        id: resultMsgId,
+        type: 'result',
+        content: getWaitingContent('queued'),
+        images: [],
+        timestamp: displayTimestamp,
+      },
+    ]);
+    setRestoredParameters(false);
+    setPrompt('');
+    setRefImages([]);
+    await submitGenerationAttempt(request, promptMsgId, resultMsgId);
+  };
+
+  const handleRestoreParameters = (resultMessage: ChatMessage) => {
+    if (submitting || !loaded) return;
+    const currentMessages = messagesRef.current;
+    const resultIndex = currentMessages.findIndex(message => message.id === resultMessage.id);
+    const promptMessage = resultIndex > 0
+      ? [...currentMessages.slice(0, resultIndex)].reverse().find(message => message.type === 'prompt')
+      : undefined;
+    if (!promptMessage?.params || !promptMessage.content.trim()) {
+      toast.error('未找到这次任务的原始参数，无法载入');
+      return;
+    }
+
+    const modelId = promptMessage.params.modelId
+      || models.find(model => model.name === promptMessage.params?.model)?.id
+      || promptMessage.params.model;
+    if (!models.some(model => model.id === modelId)) {
+      toast.error('原任务使用的模型已不可用，请重新选择模型');
+      return;
+    }
+
+    const preset = getAspectRatiosForModel(modelId).flatMap(ratio =>
+      getResolutionOptions(modelId, ratio.id).filter(option => !option.disabled)
+        .map(option => ({ ratio: ratio.id, tier: option.id, size: formatSize(option.w, option.h) }))
+    ).find(option => option.size === promptMessage.params?.size);
+    if (!preset) {
+      toast.error('原任务尺寸已不在当前支持的档位中，请重新选择尺寸');
+      return;
+    }
+    if ((prompt.trim() || refImages.length) && !window.confirm('载入后将替换输入区当前的提示词、参考图和生成设置，是否继续？')) return;
+    setPrompt(promptMessage.content);
+    setSelectedModel(modelId);
+    setSelectedRatio(preset.ratio);
+    setSelectedResolutionTier(preset.tier);
+    setSelectedSize(preset.size);
+    setSelectedStyle(promptMessage.params.style);
+    setImageCount(promptMessage.params.count);
+    setSelectedQuality(promptMessage.params.quality || 'low');
+    setSelectedGenerationMode(promptMessage.params.generationMode || 'fast');
+    setRefImages(promptMessage.refImages?.map(image => ({ ...image })) || []);
+    setRestoredParameters(true);
+    setModelMenuOpen(false);
+    expandComposer();
+    toast.success('原参数已载入，可修改后再生成');
   };
 
   const openShareDialog = async (img: AIImageResult, resultMsgId: string) => {
@@ -1260,11 +1576,12 @@ export default function AIPage() {
         style: promptMsg?.params?.style ?? '',
         count: promptMsg?.params?.count,
         quality: promptMsg?.params?.quality,
+        generation_mode: promptMsg?.params?.generationMode,
       };
 
       if (saveTarget === 'drafts') {
         // 保存到草稿箱（保留 AI 元数据）
-        await editorApi.saveAIDraft({
+        await materialApi.saveAIDraft({
           name: rawPrompt.slice(0, 50) || 'AI 草稿',
           url: img.url,
           width: img.width,
@@ -1275,7 +1592,7 @@ export default function AIPage() {
       } else {
         // 保存到模版库，带标签
         const tags = saveTag ? [saveTag] : [];
-        await editorApi.saveAITemplate({
+        await materialApi.saveAITemplate({
           name: rawPrompt.slice(0, 50) || 'AI 模版',
           url: img.url,
           width: img.width,
@@ -1349,317 +1666,86 @@ export default function AIPage() {
   }, [clearAllPollTimers]);
 
   return (
-    <div className="relative h-full overflow-hidden bg-[#f5f8ff]">
-      <div className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-white blur-2xl" />
-      <div className="pointer-events-none absolute -right-24 -top-28 h-96 w-96 rounded-full bg-blue-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/3 top-8 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.72),rgba(237,244,255,0.45)_48%,rgba(255,255,255,0.86))]" />
+    <div className={cn(studio.studio, 'relative h-full overflow-hidden')}>
+      <div aria-hidden="true" className={studio.atmosphere} />
 
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
 
-      <div className="relative z-10 flex h-full w-full flex-col gap-4 overflow-auto p-3 md:p-5 xl:flex-row xl:overflow-hidden">
-        {/* ===== 左侧：Cloud Studio 控制台 ===== */}
-        <section className="flex min-h-[760px] w-full shrink-0 flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/80 shadow-[0_24px_70px_rgba(81,112,160,0.18)] backdrop-blur-xl xl:min-h-0 xl:w-[500px]">
-          <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-300/40">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-600">Cloud Studio</span>
-                  {queueStatus && (queueStatus.processing || queueStatus.pending > 0) && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-600">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {queueStatus.pending > 0 ? `排队中 ${queueStatus.pending}` : '生成中'}
-                    </span>
-                  )}
-                </div>
-                <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950">AI 智能创作</h2>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => router.push('/prompts')}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/70 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm transition-all hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
-                title="提示词宝库">
-                <BookOpen className="h-3.5 w-3.5" /> 提示词宝库
-              </button>
-              {messages.length > 0 && (
-                <button onClick={handleClearHistory} className="rounded-full px-2.5 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500" title="清空对话">
-                  清空
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-3 overflow-auto px-5 py-4 scrollbar-thin">
-            <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-3 shadow-[0_12px_36px_rgba(79,103,146,0.08)]">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">AI 模型</label>
-              <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-100">
-                <div className="pointer-events-none absolute left-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-slate-950 text-white shadow-sm">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <select value={selectedModel} onChange={(e) => {
-                  const next = e.target.value;
-                  const preset = getDefaultPreset(next);
-                  setSelectedModel(next);
-                  setSelectedRatio(preset.ratio);
-                  setSelectedResolutionTier(preset.tier);
-                  setSelectedSize(preset.size);
-                }}
-                  aria-label="选择 AI 模型"
-                  className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none rounded-2xl opacity-0 outline-none">
-                  {models.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} — {m.desc}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none flex h-11 items-center pl-12 pr-10">
-                  <div className="truncate text-sm font-bold text-slate-950">
-                    {selectedModelInfo.name} — {selectedModelInfo.desc}
-                  </div>
-                </div>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-white/70 p-3 shadow-[0_12px_36px_rgba(79,103,146,0.07)]">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label className="block text-xs font-semibold text-slate-500">图片尺寸</label>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
-                  {showResolutionTiers ? formatSize(activeResolutionOption.w, activeResolutionOption.h) : `固定 2K · ${formatSize(activeResolutionOption.w, activeResolutionOption.h)}`}
-                </span>
-              </div>
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(54px,1fr))] gap-1.5">
-                {availableAspectRatios.map(ratio => (
-                  <button key={ratio.id} onClick={() => setSelectedRatio(ratio.id)}
-                    className={cn('rounded-xl border px-1.5 py-1.5 text-center shadow-sm transition-all',
-                      selectedRatio === ratio.id
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-600 shadow-indigo-100'
-                        : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/70 hover:text-indigo-600')}>
-                    <div className="text-xs font-bold">{ratio.label}</div>
-                    <div className="mt-0.5 text-[9px] font-medium leading-none text-slate-400">{ratio.desc}</div>
-                  </button>
-                ))}
-              </div>
-              {showResolutionTiers && (
-                <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(62px,1fr))] gap-1.5">
-                  {selectedResolutionOptions.map(option => {
-                    const selected = selectedResolutionTier === option.id && !option.disabled;
-                    return (
-                      <button key={option.id} disabled={option.disabled}
-                        onClick={() => {
-                          setSelectedResolutionTier(option.id);
-                          setSelectedSize(formatSize(option.w, option.h));
-                        }}
-                        className={cn('min-h-[50px] rounded-xl border px-1.5 py-1.5 text-center shadow-sm transition-all',
-                          selected
-                            ? 'border-indigo-400 bg-indigo-50 text-indigo-600 shadow-indigo-100'
-                            : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/70 hover:text-indigo-600',
-                          option.disabled && 'cursor-not-allowed border-slate-100 bg-slate-50/80 text-slate-300 shadow-none hover:border-slate-100 hover:bg-slate-50/80 hover:text-slate-300')}>
-                        <div className="text-xs font-bold">{option.label}</div>
-                        <div className={cn('mt-0.5 text-[9px] font-medium leading-tight', option.disabled ? 'text-slate-300' : 'text-slate-400')}>
-                          {option.disabled ? option.note : formatSize(option.w, option.h)}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-white/70 p-3 shadow-[0_12px_36px_rgba(79,103,146,0.07)]">
-              <label className="mb-2 block text-xs font-semibold text-slate-500">风格</label>
-              <div className="flex flex-wrap gap-2">
-                {styles.map(s => (
-                  <button key={s} onClick={() => setSelectedStyle(s)}
-                    className={cn('rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-sm transition-all',
-                      selectedStyle === s
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-600 shadow-indigo-100'
-                        : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/70 hover:text-indigo-600')}>{s}</button>
-                ))}
-              </div>
-            </div>
-
-            {selectedModel === 'gptimage2' && (
-              <div className="rounded-2xl border border-slate-200/80 bg-white/70 p-3 shadow-[0_12px_36px_rgba(79,103,146,0.07)]">
-                <label className="mb-2 block text-xs font-semibold text-slate-500">
-                  图像质量
-                  <span className="ml-1 text-[10px] font-normal text-slate-400">(质量越高价格越贵)</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {qualities.map(q => (
-                    <button key={q.id} onClick={() => setSelectedQuality(q.id)}
-                      className={cn('rounded-2xl border px-3 py-2.5 text-center shadow-sm transition-all',
-                        selectedQuality === q.id
-                          ? 'border-indigo-400 bg-indigo-50 text-indigo-600 shadow-indigo-100'
-                          : 'border-slate-200 bg-white/80 hover:border-indigo-200 hover:bg-indigo-50/70')}>
-                      <div className={cn('text-sm font-bold', selectedQuality === q.id ? 'text-indigo-600' : 'text-slate-900')}>{q.label}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">{q.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-slate-200/70 bg-white/72 p-4">
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_14px_36px_rgba(79,103,146,0.1)]">
-              {refImages.length > 0 && (
-                <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
-                  <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600">参考图 · {refImages.length}</span>
-                  <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto scrollbar-thin">
-                    {refImages.map((img, idx) => (
-                      <div key={`${img.data}-${idx}`} className="group relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white bg-slate-100 shadow-sm">
-                        <img src={img.data} alt={img.name} className="h-full w-full object-cover" />
-                        <button onClick={() => removeRefImage(idx)}
-                          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-white/95 text-slate-400 opacity-0 shadow-sm transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
-                placeholder={refImages.length > 0 ? '描述你想要的修改...' : '描述你想要的图片...'}
-                className="h-36 w-full resize-none rounded-t-3xl border-0 bg-transparent p-4 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0" />
-              <div className="relative flex items-center border-t border-slate-100 px-3 py-2.5">
-                <span className={cn('absolute left-3 text-xs', prompt.length > PROMPT_MAX_LEN ? 'text-red-600' : 'text-slate-400')}>{prompt.length}/{PROMPT_MAX_LEN}</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <div className="relative">
-                    <select
-                      value={imageCount}
-                      onChange={(e) => setImageCount(Number(e.target.value))}
-                      className="h-9 w-[70px] appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-7 text-xs font-semibold text-slate-700 transition-all hover:border-indigo-200 focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                      title="生成数量"
-                    >
-                      {[1, 2, 4].map(n => (
-                        <option key={n} value={n}>{n} 张</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className={cn('flex h-9 items-center justify-center gap-1 rounded-xl border px-2 text-xs font-semibold transition-all',
-                      refImages.length > 0 ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600')}
-                    title="上传参考图">
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    上传
-                  </button>
-                  <button onClick={() => setGalleryPickerOpen(true)} disabled={refImages.length >= 10}
-                    className={cn('flex h-9 items-center justify-center gap-1 rounded-xl border px-2 text-xs font-semibold transition-all',
-                      refImages.length > 0 ? 'border-indigo-200 bg-indigo-50 text-indigo-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600',
-                      refImages.length >= 10 && 'cursor-not-allowed opacity-50')}
-                    title="从图库选择">
-                  <FolderOpen className="h-3.5 w-3.5" />
-                  图库
-                </button>
-                <button onClick={handleGenerate} disabled={!prompt.trim() || !canStartMoreTasks || !loaded || prompt.length > PROMPT_MAX_LEN}
-                  className={cn('flex h-9 min-w-[108px] items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-white shadow-lg transition-all',
-                    prompt.trim() && canStartMoreTasks && loaded && prompt.length <= PROMPT_MAX_LEN
-                      ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-indigo-300/40 hover:-translate-y-0.5 hover:shadow-indigo-300/60'
-                      : 'cursor-not-allowed bg-slate-200 text-slate-400 shadow-none')}>
-                  {!canStartMoreTasks ? (
-                    submitting ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" />提交中</>
-                    ) : (
-                      <><Loader2 className="h-4 w-4 animate-spin" />任务已满 {effectiveActiveTaskCount}/{maxActiveTasks}</>
-                    )
-                  ) : (
-                    <><Sparkles className="h-4 w-4" />{refImages.length > 0 ? `图生图 (${refImages.length}张)` : effectiveActiveTaskCount > 0 ? `继续生成 ${effectiveActiveTaskCount}/${maxActiveTasks}` : '生成图片'}</>
-                  )}
-                </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== 右侧：云画布结果区 ===== */}
-        <section className="relative flex min-h-[620px] flex-1 flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/72 shadow-[0_24px_80px_rgba(81,112,160,0.18)] backdrop-blur-xl xl:min-h-0">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_5%,rgba(129,161,255,0.22),transparent_30%),radial-gradient(circle_at_10%_100%,rgba(255,255,255,0.95),transparent_34%)]" />
-          <div ref={scrollRef} onScroll={handleResultScroll} className="relative z-10 flex-1 overflow-auto p-4 md:p-6 scrollbar-thin">
+      <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
+        <section aria-label="创作结果" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            ref={scrollRef}
+            data-testid="creation-results-scroller"
+            onScroll={handleResultScroll}
+            className={cn(studio.resultsScroller, 'relative z-10 flex-1 overflow-auto scrollbar-thin')}
+          >
             {reconcilingPending && (
               <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-600">
                 <Loader2 className="h-3 w-3 animate-spin" /> 正在同步任务状态
               </div>
             )}
-            <div className="min-h-full rounded-[28px] border border-dashed border-slate-300/80 bg-white/55 p-4 shadow-inner md:p-6">
+            <div className={cn(studio.resultsInner, 'relative')}>
               {messages.length === 0 && !isGenerating && loaded && (
-                <div className="flex min-h-[520px] flex-col items-center justify-center text-center text-slate-500">
-                  <div className="relative mb-6 h-32 w-44">
-                    <div className="absolute bottom-2 left-5 h-20 w-32 rounded-[50px] bg-gradient-to-br from-indigo-100 via-blue-100 to-white shadow-[0_20px_60px_rgba(99,102,241,0.22)]" />
-                    <div className="absolute bottom-8 left-14 h-24 w-24 rounded-full bg-gradient-to-br from-white to-indigo-100 shadow-inner" />
-                    <div className="absolute bottom-8 right-2 h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-white" />
-                    <div className="absolute bottom-11 left-16 flex h-14 w-20 items-center justify-center rounded-2xl bg-indigo-400/20 text-indigo-500 backdrop-blur-sm">
-                      <ImageIcon className="h-8 w-8" />
-                    </div>
-                    <Sparkles className="absolute left-2 top-12 h-5 w-5 text-indigo-400" />
-                    <Sparkles className="absolute right-0 top-24 h-4 w-4 text-blue-300" />
-                  </div>
-                  <p className="text-base font-semibold text-slate-800">输入描述开始 AI 创作</p>
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">在左侧设置参数并描述你的创意，生成专属的精美图像。</p>
+                <div className={cn(studio.empty, 'absolute inset-0 flex flex-col items-center justify-center text-center')}>
+                  <p className={studio.headline}>今天想创作什么？</p>
+                  <p className="mt-3 px-4 text-sm leading-6 text-muted-foreground">描述画面，或添加参考图</p>
                 </div>
               )}
 
               {messages.length > 0 && (
-                <div className="space-y-6">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className="group/msg relative">
+                <div className={studio.history}>
+                  <div className={studio.historyActions}>
+                    <button onClick={handleClearHistory}>
+                      <Trash2 />
+                      清空记录
+                    </button>
+                  </div>
+                  {generationGroups.map((group, index) => (
+                    <article key={group[0].id} aria-label={`创作记录 ${index + 1}`} className={studio.generationCard}>
+                    {group.map((msg) => (
+                    <div key={msg.id} className={cn('group/msg relative', msg.type === 'prompt' ? studio.promptColumn : studio.resultColumn)}>
                       {msg.type === 'prompt' && (
-                        <div className="flex gap-3 items-start">
-                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-xs font-bold text-indigo-600 shadow-sm ring-1 ring-indigo-100">我</div>
-                          <div className="flex-1">
-                            <div className="relative rounded-[24px] border border-white bg-white/88 px-5 py-4 shadow-[0_16px_42px_rgba(79,103,146,0.12)] group/bubble">
+                        <div className={cn(studio.promptRecord, msg.refImages?.length === 1 && studio.singleReference, 'relative')}>
+                          <div className="min-w-0 flex-1">
+                            <div className={cn(studio.promptBody, 'relative group/bubble')}>
                               {msg.refImages && msg.refImages.length > 0 && (
-                                <div className="mb-3 flex items-start gap-2 rounded-2xl bg-slate-50/80 p-2">
-                                  {msg.refImages.slice(0, 4).map((img, idx) => (
-                                    <div key={`${img.data}-${idx}`} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white shadow-sm">
-                                      <img src={img.data} alt="" className="h-full w-full object-cover" />
+                                <div className={studio.referenceStrip}>
+                                  {msg.refImages.map((img, idx) => (
+                                    <div key={`${img.data}-${idx}`} className={studio.referenceThumbnail}>
+                                      <img src={img.data} alt={img.name || `参考图 ${idx + 1}`} className="h-full w-full object-contain" />
                                     </div>
                                   ))}
-                                  {msg.refImages.length > 4 && (
-                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white bg-white text-xs text-slate-400 shadow-sm">+{msg.refImages.length - 4}</div>
-                                  )}
-                                  <div className="flex items-center gap-1 self-center text-[10px] font-medium text-indigo-600">
+                                  {msg.refImages.length > 1 && <div className="flex items-center gap-1 self-center text-[10px] text-slate-400">
                                     <ImageIcon className="h-3 w-3" />
                                     <span>{msg.refImages.length} 张参考图</span>
-                                  </div>
+                                  </div>}
                                 </div>
                               )}
-                              <p className="text-sm leading-relaxed text-slate-800">{msg.content}</p>
-                              <button onClick={() => deleteMessage(msg.id)}
-                                className="absolute -bottom-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-white text-slate-300 opacity-0 shadow-md transition-all hover:bg-red-50 hover:text-red-500 group-hover/bubble:opacity-100"
-                                title="删除">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              <p className={cn(studio.promptText, 'whitespace-pre-wrap break-words')}>{msg.content}</p>
                             </div>
                             {msg.params && (
-                              <div className="mt-2 flex flex-wrap gap-2 pl-1">
-                                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-600">{msg.params.model}</span>
-                                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-600">{msg.params.size}</span>
-                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-600">{msg.params.style}</span>
-                                {msg.params.quality && (
-                                  <span className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold',
-                                    msg.params.quality === 'high' ? 'bg-red-50 text-red-600' :
-                                    msg.params.quality === 'medium' ? 'bg-orange-50 text-orange-600' :
-                                    'bg-emerald-50 text-emerald-600'
-                                  )}>{msg.params.quality === 'high' ? '高质量' : msg.params.quality === 'medium' ? '中质量' : '低质量'}</span>
+                              <div className={studio.recordParameters}>
+                                <span>{msg.params.model}</span>
+                                <span>{msg.params.size}</span>
+                                <span>{msg.params.style}</span>
+                                {msg.params.generationMode && (
+                                  <span>{getGenerationModeLabel(msg.params.generationMode)}</span>
                                 )}
-                                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-slate-400 shadow-sm">{msg.params.count} 张</span>
-                                <span className="ml-auto text-[10px] text-slate-400">{msg.timestamp}</span>
+                                {msg.params.quality && (
+                                  <span>{msg.params.quality === 'high' ? '高质量' : msg.params.quality === 'medium' ? '中质量' : '低质量'}</span>
+                                )}
+                                <span>{msg.params.count} 张</span>
+                                <time className="ml-auto">{msg.timestamp}</time>
                               </div>
                             )}
+                            <button onClick={() => deleteMessage(msg.id)} className={studio.deleteRecord} title="删除"><Trash2 className="h-3.5 w-3.5" /></button>
                           </div>
                         </div>
                       )}
 
                       {msg.type === 'result' && (
-                        <div className="flex gap-3 items-start">
-                          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-300/40">
+                        <div className={studio.resultRecord}>
+                          <div className={studio.resultHeading}>
                             {msg.taskId || msg.clientRequestId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : msg.images.length > 0 ? (
@@ -1669,19 +1755,34 @@ export default function AIPage() {
                             ) : (
                               <CheckCircle2 className="h-4 w-4" />
                             )}
+                            <span>{msg.taskId || msg.clientRequestId ? '正在生成' : msg.images.length ? '已完成' : '未完成'}</span>
+                            <span className={studio.resultType}>{group[0].params?.model || 'AI IMAGE'}</span>
                           </div>
-                          <div className="flex-1">
+                          <div className="min-w-0 flex-1">
                             <div className="relative group/bubble">
                               {msg.content && (
                                 <div className={cn(
-                                  'relative mb-3 rounded-[24px] border px-5 py-4 text-sm shadow-[0_16px_42px_rgba(79,103,146,0.1)]',
+                                  studio.taskState,
                                   msg.content.startsWith('生成失败') || msg.content.startsWith('已取消')
-                                    ? 'border-red-100 bg-red-50 text-red-600'
-                                    : (msg.taskId || msg.clientRequestId) ? 'border-blue-100 bg-blue-50 text-blue-700' : 'border-white bg-white/88 text-slate-700'
+                                    ? studio.taskFailed : studio.taskWaiting
                                 )}>
-                                  {msg.content}
+                                  <p className="max-w-full break-words text-[13px] leading-6">{msg.content}</p>
+                                  {msg.content.startsWith('生成失败') && (
+                                    <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRestoreParameters(msg)}
+                                        disabled={submitting || !loaded}
+                                        className={studio.restoreButton}
+                                      >
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                        载入参数并修改
+                                      </button>
+                                      <span className="text-[11px] text-slate-400">恢复到输入区，不会直接生成</span>
+                                    </div>
+                                  )}
                                   <button onClick={() => deleteMessage(msg.id)}
-                                    className="absolute -bottom-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-white text-slate-300 opacity-0 shadow-md transition-all hover:bg-red-50 hover:text-red-500 group-hover/bubble:opacity-100"
+                                    className={studio.deleteRecord}
                                     title="删除">
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1689,10 +1790,10 @@ export default function AIPage() {
                               )}
                               {msg.images.length > 0 && (
                                 <div className="relative">
-                                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                                  <div className={cn(studio.outputGrid, msg.images.length === 1 && studio.singleOutput)}>
                                     {msg.images.map((img) => (
-                                      <div key={img.id} className="group relative cursor-zoom-in overflow-hidden rounded-[26px] border border-white bg-white shadow-[0_18px_48px_rgba(79,103,146,0.16)]" style={{ aspectRatio: `${img.width} / ${img.height}` }} onClick={() => setPreviewImage(img)}>
-                                        <img src={img.url} alt="" className="h-full w-full object-contain bg-white" />
+                                      <div key={img.id} className={cn(studio.outputImage, 'group relative cursor-zoom-in')} style={{ aspectRatio: `${img.width} / ${img.height}` }} onClick={() => setPreviewImage(img)}>
+                                        <img src={img.url} alt="生成图片" className="h-full w-full object-contain" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
                                           <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 p-4">
                                             <button onClick={(e) => { e.stopPropagation(); openShareDialog(img, msg.id); }}
@@ -1727,25 +1828,350 @@ export default function AIPage() {
                                   </div>
                                   {!msg.content && (
                                     <button onClick={() => deleteMessage(msg.id)}
-                                      className="absolute -bottom-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-white text-slate-300 opacity-0 shadow-md transition-all hover:bg-red-50 hover:text-red-500 group-hover/bubble:opacity-100"
+                                      className={studio.deleteRecord}
                                       title="删除">
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   )}
                                 </div>
                               )}
-                              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
-                                <span>{msg.images.length} 张图片</span><span className="text-slate-300">•</span><span>{msg.timestamp}</span>
-                              </div>
+                              {msg.images.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-400"><span>{msg.images.length} 张图片</span><button type="button" className={studio.restoreButton} disabled={submitting || !loaded} onClick={() => handleRestoreParameters(msg)}><RotateCcw className="h-3 w-3" />载入参数并修改</button></div>}
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
+                    ))}
+                    </article>
                   ))}
                 </div>
               )}
             </div>
+          </div>
+        </section>
+        <section
+          aria-label="创作控制台"
+          data-mode={composerCompact ? 'compact' : 'expanded'}
+          className={cn(studio.composerFrame, composerCompact && studio.composerFrameCompact)}
+        >
+          {composerCompact && messages.length > 0 && (
+            <button type="button" className={studio.returnToBottom} onClick={returnToBottom}>
+              回到底部
+              <ChevronDown />
+            </button>
+          )}
+          {restoredParameters && <div role="status" className={studio.restoredNotice}><RotateCcw className="h-3 w-3" /><span>已载入原任务参数，可修改后再生成</span><button type="button" aria-label="关闭参数载入提示" onClick={() => setRestoredParameters(false)}><X className="h-3 w-3" /></button></div>}
+          <div
+            className={studio.composer}
+            onClick={() => { if (composerCompact) expandComposer(); }}
+          >
+          <div className={studio.composerSurface}>
+            <div className={studio.composerTop} aria-hidden={composerCompact}>
+              <div ref={modelMenuRef} className="relative z-30 shrink-0">
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={modelMenuOpen}
+                  onClick={() => {
+                    setModelMenuOpen(open => !open);
+                    setSettingsMenuOpen(false);
+                  }}
+                  className={studio.modelTrigger}
+                >
+                  <span className={studio.modelIcon} data-brand={selectedModelInfo.brand}>
+                    <SelectedModelIcon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-[13px] font-semibold text-slate-950">{selectedModelInfo.name}</span>
+                      {selectedModelInfo.badge && (
+                        <span className="rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium text-primary">新一代</span>
+                      )}
+                    </span>
+                  </span>
+                  <ChevronDown className={cn('h-3 w-3 shrink-0 text-slate-400 transition-transform', modelMenuOpen && 'rotate-180')} />
+                </button>
+
+                {modelMenuOpen && (
+                  <div
+                    role="listbox"
+                    aria-label="选择 AI 模型"
+                    className={cn(studio.modelMenu, 'rounded-[22px] border border-slate-200 bg-white p-2 shadow-[0_12px_36px_rgba(15,23,42,0.14)]')}
+                  >
+                    <div className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">生成引擎</div>
+                    <div className="space-y-1">
+                      {models.map(model => {
+                        const Icon = model.icon;
+                        const selected = model.id === selectedModel;
+                        return (
+                          <button
+                            key={model.id}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onClick={() => selectModel(model.id)}
+                            className={cn(
+                              'group/model flex w-full items-center gap-3 rounded-2xl border px-2.5 py-2.5 text-left transition-all',
+                              selected
+                                ? 'border-indigo-100 bg-indigo-50'
+                                : 'border-transparent hover:border-slate-200 hover:bg-slate-50',
+                            )}
+                          >
+                            <span className={studio.modelOptionIcon} data-brand={model.brand}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-slate-800">{model.name}</span>
+                                {model.badge && <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium tracking-wide text-primary">{model.badge}</span>}
+                              </span>
+                              <span className="mt-0.5 block text-xs leading-4 text-slate-400">{model.note} · {model.desc}</span>
+                            </span>
+                            <span className={cn(
+                              'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all',
+                              selected ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-transparent',
+                            )}>
+                              <CheckCircle2 className="h-3 w-3" />
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {selectedModel === 'gptimage25' && (
+                <div className={studio.modeSwitch}>
+                  {generationModes.map(mode => {
+                    const Icon = mode.icon;
+                    const selected = selectedGenerationMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        aria-pressed={selected}
+                        title={mode.desc}
+                        onClick={() => setSelectedGenerationMode(mode.id)}
+                        className={cn(studio.modeOption, selected && studio.modeOptionSelected)}
+                      >
+                        <Icon />
+                        <span>{mode.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div ref={settingsMenuRef} className={studio.settingsControl}>
+                <button
+                  type="button"
+                  aria-label="生成参数"
+                  aria-haspopup="dialog"
+                  aria-expanded={settingsMenuOpen}
+                  onClick={() => {
+                    setSettingsMenuOpen(open => !open);
+                    setModelMenuOpen(false);
+                  }}
+                  className={studio.settingsTrigger}
+                >
+                  <SlidersHorizontal />
+                  <span>{selectedRatio}</span>
+                  <span className={studio.settingsTriggerMeta}>· {activeResolutionOption.label} · {imageCount}张</span>
+                  <ChevronDown className={cn(settingsMenuOpen && studio.chevronOpen)} />
+                </button>
+
+                {settingsMenuOpen && (
+                  <div
+                    role="dialog"
+                    aria-label="生成参数设置"
+                    className={studio.settingsMenu}
+                    onClick={event => event.stopPropagation()}
+                  >
+                    <div className={studio.settingsMenuHeader}>
+                      <div>
+                        <p>生成参数</p>
+                        <span>统一设置画幅与输出规格</span>
+                      </div>
+                      <button type="button" aria-label="关闭生成参数" onClick={() => setSettingsMenuOpen(false)}><X /></button>
+                    </div>
+
+                    <section className={studio.settingsSection}>
+                      <p className={studio.settingsLabel}>画面比例</p>
+                      <div role="group" aria-label="画面比例" className={studio.ratioOptions}>
+                        {availableAspectRatios.map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            aria-pressed={selectedRatio === item.id}
+                            className={studio.ratioOption}
+                            onClick={() => setSelectedRatio(item.id)}
+                          >
+                            <span className={studio.ratioGlyph}>
+                              <i style={{ aspectRatio: item.id.replace(':', ' / ') }} />
+                            </span>
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className={studio.settingsSection}>
+                      <p className={studio.settingsLabel}>分辨率</p>
+                      <div role="group" aria-label="分辨率" className={studio.segmentedOptions}>
+                        {selectedResolutionOptions.map(option => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            disabled={option.disabled}
+                            aria-pressed={selectedResolutionTier === option.id}
+                            title={option.disabled ? option.note : formatSize(option.w, option.h)}
+                            onClick={() => setSelectedResolutionTier(option.id)}
+                          >
+                            <span>{option.label}</span>
+                            {!option.disabled && <small>{formatSize(option.w, option.h)}</small>}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className={studio.settingsSection}>
+                      <p className={studio.settingsLabel}>生成数量</p>
+                      <div role="group" aria-label="生成数量" className={studio.countOptions}>
+                        {[1, 2, 4].map(count => (
+                          <button key={count} type="button" aria-pressed={imageCount === count} onClick={() => setImageCount(count)}>{count}</button>
+                        ))}
+                      </div>
+                    </section>
+
+                    {isGptImageModel(selectedModel) && (
+                      <section className={studio.settingsSection}>
+                        <p className={studio.settingsLabel}>图像质量</p>
+                        <div role="group" aria-label="图像质量" className={studio.qualityOptions}>
+                          {qualities.map(option => (
+                            <button key={option.id} type="button" aria-pressed={selectedQuality === option.id} onClick={() => setSelectedQuality(option.id)}>
+                              <span>{option.label}质量</span>
+                              <small>{option.desc}</small>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    <section className={studio.settingsSection}>
+                      <p className={studio.settingsLabel}>画面风格</p>
+                      <div role="group" aria-label="画面风格" className={studio.styleOptions}>
+                        {styles.map(style => (
+                          <button key={style} type="button" aria-pressed={selectedStyle === style} onClick={() => setSelectedStyle(style)}>{style}</button>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                )}
+              </div>
+
+              <div className={studio.referenceActions} role="group" aria-label="添加参考图">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={refImages.length >= 10}
+                  className={cn(studio.sourceAction, studio.localSourceAction)}
+                  title="从电脑选择图片"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>本地导入</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGalleryPickerOpen(true)}
+                  disabled={refImages.length >= 10}
+                  className={cn(studio.sourceAction, studio.gallerySourceAction)}
+                  title="从我的图库选择图片"
+                >
+                  <Images className="h-3.5 w-3.5" />
+                  <span>我的图库</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                aria-label={generateLabel}
+                title={generateLabel}
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || prompt.length > PROMPT_MAX_LEN}
+                className={studio.generate}
+              >
+                {submitting ? <Loader2 className="animate-spin" /> : <ArrowUp />}
+              </button>
+            </div>
+            <div className={studio.composerBody}>
+              <button
+                type="button"
+                aria-label="展开并添加参考图"
+                className={studio.compactReferenceAction}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  expandComposer();
+                  requestAnimationFrame(() => fileInputRef.current?.click());
+                }}
+              >
+                <ImagePlus />
+              </button>
+              <div className={studio.composerDraft}>
+                {refImages.length > 0 && <div className={cn(studio.composerReferences, 'scrollbar-thin')}>
+                  {refImages.map((img, idx) => <div
+                    key={idx}
+                    className={studio.composerReferenceThumbnail}
+                    title={`${img.source === 'local' ? '本地导入' : '我的图库'} · ${img.name}`}
+                  >
+                    <img src={img.data} alt={img.name} className="h-full w-full object-cover" />
+                    <span className={cn(
+                      studio.referenceSourceBadge,
+                      img.source === 'local' ? studio.localSourceBadge : studio.gallerySourceBadge,
+                    )}>
+                      {img.source === 'local' ? '本地' : '图库'}
+                    </span>
+                    <button onClick={() => removeRefImage(idx)} aria-label={'移除参考图 ' + (idx + 1)} className="absolute right-0 top-0 rounded-full bg-slate-900/70 p-0.5 text-white hover:bg-red-500"><X className="h-3 w-3" /></button>
+                  </div>)}
+                </div>}
+                <textarea ref={promptInputRef} id="ai-creation-prompt" aria-label="画面描述" value={prompt} onChange={e => setPrompt(e.target.value)}
+                  onFocus={() => {
+                    composerExpandedByUserRef.current = true;
+                    setComposerCompact(false);
+                  }}
+                  onKeyDown={e => {
+                    // Enter also confirms Chinese IME candidates; only submit committed input.
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+                      e.preventDefault();
+                      handleGenerate();
+                    }
+                  }}
+                  placeholder={refImages.length ? '描述你希望如何修改参考图…' : '描述你想创造的画面，或者添加一张参考图…'}
+                  className={cn(studio.promptInput, 'border-0 bg-transparent pt-0.5 text-[13px] leading-[1.75] tracking-[0.01em] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0')}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label={generateLabel}
+                title={generateLabel}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleGenerate();
+                }}
+                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || prompt.length > PROMPT_MAX_LEN}
+                className={studio.compactGenerate}
+              >
+                {submitting ? <Loader2 className="animate-spin" /> : <ArrowUp />}
+              </button>
+            </div>
+          </div>
+          </div>
+          <div className={studio.composerMeta}>
+            <span>{formatSize(activeResolutionOption.w, activeResolutionOption.h)} px</span>
+            <span className={cn('tabular-nums', prompt.length > PROMPT_MAX_LEN && 'text-red-600')}>{prompt.length} / {PROMPT_MAX_LEN}</span>
+            <span>Shift + Enter 换行</span>
+            {effectiveActiveTaskCount > 0 && <span>正在处理 {effectiveActiveTaskCount} 个任务</span>}
+            {canViewGlobalQueue && !!queueStatus?.pending && <span>队列中 {queueStatus.pending} 个任务</span>}
           </div>
         </section>
       </div>

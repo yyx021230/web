@@ -7,7 +7,7 @@ import { UserIcon, ArrowLeft } from 'lucide-react';
 
 interface UserDetail {
   user: { id: number; username: string; display_name?: string | null; email: string; avatar: string | null; role: string; roles?: string[]; is_active: boolean; created_at: string };
-  stats: { project_count: number; material_count: number; ai_task_count: number; ai_task_24h: number; workflow_count: number; dify_task_count: number; dify_run_log_count: number; copywriting_count: number };
+  stats: { material_count: number; ai_task_count: number; ai_task_24h: number; workflow_count: number; dify_task_count: number; dify_run_log_count: number; copywriting_count: number };
   recent_ai_tasks: Array<{ id: number; model_name: string; prompt: string; status: string; created_at: string }>;
   recent_dify_tasks: Array<{ id: number; workflow_id: number; status: string; created_at: string }>;
 }
@@ -57,7 +57,6 @@ export default function UserDetailPage() {
   }
 
   const stats = [
-    { label: '项目', value: detail.stats.project_count, href: `/admin/projects?user_id=${userId}` },
     { label: '素材', value: detail.stats.material_count, href: `/admin/gallery?user_id=${userId}` },
     { label: 'AI 生图', value: detail.stats.ai_task_count, href: `/admin/api-usage?user_id=${userId}` },
     { label: 'AI 近24h', value: detail.stats.ai_task_24h },

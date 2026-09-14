@@ -6,7 +6,7 @@ import {
   X, Search, Loader2, ImagePlus, Check,
   FileImage, Car, ChevronDown, Layers,
 } from 'lucide-react';
-import { editorApi, type Material } from '@/services/editorApi';
+import { materialApi, type Material } from '@/services/materialApi';
 import { carModelsApi } from '@/services/carModelsApi';
 
 export interface GalleryPickerImage {
@@ -133,7 +133,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       let page = 1;
       let hasMore = true;
       while (hasMore) {
-        const res = await editorApi.getMaterials(undefined, page, 50, true, 'ai-template');
+        const res = await materialApi.getMaterials(undefined, page, 50, true, 'ai-template');
         all.push(...res.data.items);
         hasMore = res.data.items.length === 50;
         page++;
@@ -160,7 +160,7 @@ export default function GalleryPicker({ open, onClose, onSelect, multiSelect, on
       let page = 1;
       let hasMore = true;
       while (hasMore) {
-        const res = await editorApi.getMaterials('ai-template', page, 50, true);
+        const res = await materialApi.getMaterials('ai-template', page, 50, true);
         const items = res.data.items;
         all.push(...items);
         hasMore = items.length === 50;

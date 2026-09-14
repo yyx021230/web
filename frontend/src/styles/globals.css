@@ -51,11 +51,8 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 239 84% 67%;
     
-    /* Canvas */
-    --canvas-bg: 210 20% 96%;
-    --canvas-border: 213 27% 84%;
-    --canvas-grid: 214 32% 91%;
-    --canvas-guide: 217 91% 60%;
+    /* Workspace surface */
+    --workspace-bg: 210 20% 96%;
     
     /* Radius */
     --radius: 0.5rem;
@@ -87,10 +84,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 239 84% 67%;
-    --canvas-bg: 220 20% 10%;
-    --canvas-border: 217 33% 25%;
-    --canvas-grid: 217 30% 20%;
-    --canvas-guide: 217 91% 50%;
+    --workspace-bg: 220 20% 10%;
   }
 }
 
@@ -132,15 +126,6 @@
 }
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
-}
-
-/* Canvas Area */
-.canvas-container {
-  background-color: hsl(var(--canvas-bg));
-  background-image: 
-    linear-gradient(hsl(var(--canvas-grid)) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--canvas-grid)) 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 
 /* Cloud Studio shared surfaces */

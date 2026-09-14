@@ -1,5 +1,8 @@
 import axios, { type AxiosInstance } from 'axios';
 import { toast } from '@/lib/toast';
+import { requestAuthentication } from '@/lib/auth-events';
+
+let lastAuthNoticeAt = 0;
 
 function resolveApiBaseURL(): string {
   if (process.env.NEXT_PUBLIC_API_BASE) {
@@ -84,8 +87,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('app_current_user');
-      toast.error('登录已过期，请重新登录');
-      window.location.href = '/';
+      const now = Date.now();
+      if (now - lastAuthNoticeAt > 2000) {
+        lastAuthNoticeAt = now;
+        toast.error('登录已过期，请重新登录');
+        requestAuthentication({
+          next: `${window.location.pathname}${window.location.search}`,
+          reason: '登录状态已过期，请重新登录后继续',
+        });
+      }
     }
     // Prefer detail from FastAPI HTTPException, or message from envelope
     const message = error.response?.data?.detail || error.response?.data?.message || error.message || '请求失败';

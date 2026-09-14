@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "c3d4e5f6a7b8"
+CURRENT_REVISION = "b36e8d1f4a2c"
 
 
 def _run_alembic(path: Path, *args: str) -> None:

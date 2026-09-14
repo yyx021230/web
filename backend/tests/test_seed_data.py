@@ -50,7 +50,7 @@ async def test_seed_data_creates_admin_role_assignments(monkeypatch, client):
 
     assert admin.role == "admin"
     assert roles == ["admin"]
-    assert await _counts() == (1, 1, 5, 46)
+    assert await _counts() == (1, 1, 0, 0)
 
 
 @pytest.mark.asyncio
@@ -107,7 +107,7 @@ async def test_seed_data_second_run_is_idempotent_without_credentials(
         monkeypatch.delenv(name, raising=False)
     await seed_data.seed()
 
-    assert await _counts() == (1, 1, 5, 46)
+    assert await _counts() == (1, 1, 0, 0)
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_seed_data_repairs_partial_database_with_missing_admin(
 
 
 @pytest.mark.asyncio
-async def test_seed_reset_reseeds_assets_without_deleting_users(monkeypatch, client):
+async def test_seed_reset_is_rejected_without_deleting_users(monkeypatch, client):
     _configure_admin(monkeypatch)
     _configure_seed_session(monkeypatch)
     await seed_data.seed()
@@ -160,9 +160,10 @@ async def test_seed_reset_reseeds_assets_without_deleting_users(monkeypatch, cli
     ):
         monkeypatch.delenv(name, raising=False)
     _configure_seed_session(monkeypatch, "--reset")
-    await seed_data.seed()
+    with pytest.raises(RuntimeError, match="不再支持 --reset"):
+        await seed_data.seed()
 
-    assert await _counts() == (2, 1, 5, 46)
+    assert await _counts() == (2, 1, 0, 0)
     async with async_session() as db:
         usernames = set((await db.execute(select(User.username))).scalars())
     assert usernames == {"seed-admin", "kept-viewer"}

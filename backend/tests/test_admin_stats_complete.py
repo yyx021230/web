@@ -98,7 +98,7 @@ async def test_overview_ai_trend_storage_and_rankings_cover_all_statuses(client)
     headers = make_auth_headers(1)
     overview = (await client.get("/api/v1/admin/stats/overview", headers=headers)).json()["data"]
     assert overview["user_count"] == 2
-    assert overview["project_count"] == 1
+    assert "project_count" not in overview
     assert overview["material_count"] == 2
     assert overview["ai_task_count"] == 3
     assert overview["ai_tasks_today"] == 3

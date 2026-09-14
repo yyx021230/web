@@ -338,10 +338,6 @@ function UserStatsModal({ user, onClose }: { user: AppUser; onClose: () => void 
                   <div className="text-xs text-cyan-600 font-medium mb-1">工作流任务</div>
                   <div className="text-2xl font-bold text-cyan-900">{stats?.wf_tasks}</div>
                 </div>
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
-                  <div className="text-xs text-amber-600 font-medium mb-1">项目总数</div>
-                  <div className="text-2xl font-bold text-amber-900">{stats?.projects}</div>
-                </div>
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
                   <div className="text-xs text-emerald-600 font-medium mb-1">存储占用</div>
                   <div className="text-2xl font-bold text-emerald-900">{stats?.storage_mb} MB</div>

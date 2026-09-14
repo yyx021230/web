@@ -48,6 +48,9 @@ function getAiProviderLabel(item: {
   if (item.model_name === 'gptimage2') {
     return 'GPT Image 2 直连适配器';
   }
+  if (item.model_name === 'gptimage25') {
+    return 'GPT Image 2.5 直连适配器';
+  }
   return '-';
 }
 
@@ -415,7 +418,7 @@ export default function GlobalTasksPage() {
                           {getAiProviderLabel(item)}
                         </div>
                         <div className="text-[10px] text-gray-400">
-                          {item.provider_kind || (item.model_name === 'gptimage2' ? 'adapter_direct' : '-')}
+                          {item.provider_kind || (['gptimage2', 'gptimage25'].includes(item.model_name || '') ? 'adapter_direct' : '-')}
                         </div>
                       </td>
                     )}

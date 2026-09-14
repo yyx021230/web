@@ -11,7 +11,6 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.core.deps import require_admin
 from app.models.user import User
-from app.models.project import Project
 from app.models.ai_task import AITask
 from app.models.dify_task import DifyTask
 from app.models.dify_run_log import DifyRunLog
@@ -253,112 +252,6 @@ async def get_workflow_task_detail(
             for log in run_logs
         ],
     })
-
-
-# --- Projects ---
-
-@router.get("/projects")
-async def list_projects(
-    page: int = Query(default=1, ge=1),
-    limit: int = Query(default=20, ge=1, le=100),
-    username: str | None = Query(default=None, description="按用户名筛选"),
-    status: str | None = Query(default=None, description="按状态筛选"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """项目列表（管理员）"""
-    filter_user_id = await _resolve_user_id(db, username)
-    if (username or "").strip() and filter_user_id is None:
-        return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
-
-    conditions = [Project.deleted_at.is_(None)]
-    if filter_user_id is not None:
-        conditions.append(Project.user_id == filter_user_id)
-    if status:
-        conditions.append(Project.status == status)
-
-    count_stmt = (
-        select(func.count())
-        .select_from(Project)
-        .join(User, Project.user_id == User.id)
-        .where(*conditions)
-    )
-    count_result = await db.execute(count_stmt)
-    total = count_result.scalar() or 0
-
-    stmt = (
-        select(Project, User.username)
-        .join(User, Project.user_id == User.id)
-        .where(*conditions)
-        .order_by(desc(Project.updated_at))
-        .offset((page - 1) * limit)
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    rows = result.all()
-
-    return ApiResponse(data={
-        "items": [
-            {
-                "id": p.id,
-                "user_id": p.user_id,
-                "username": uname,
-                "name": p.name,
-                "thumbnail": p.thumbnail,
-                "status": p.status,
-                "created_at": str(p.created_at),
-                "updated_at": str(p.updated_at),
-            }
-            for p, uname in rows
-        ],
-        "total": total,
-        "page": page,
-        "limit": limit,
-    })
-
-
-@router.delete("/projects/{project_id}")
-async def delete_project(
-    project_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """管理员删除项目"""
-    from datetime import datetime
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="项目不存在")
-    project.deleted_at = datetime.now()
-    await db.commit()
-    return ApiResponse(message="已删除")
-
-
-@router.post("/projects/batch-delete")
-async def batch_delete_projects(
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """管理员批量删除项目（软删除）"""
-    _ = current_user
-    ids = data.get("project_ids") or []
-    if not isinstance(ids, list) or len(ids) == 0:
-        raise HTTPException(status_code=400, detail="project_ids 不能为空")
-
-    from datetime import datetime
-    result = await db.execute(
-        select(Project).where(
-            Project.id.in_(ids),
-            Project.deleted_at.is_(None),
-        )
-    )
-    projects = result.scalars().all()
-    now = datetime.now()
-    for p in projects:
-        p.deleted_at = now
-    await db.commit()
-    return ApiResponse(data={"deleted": len(projects)}, message=f"已删除 {len(projects)} 个项目")
 
 
 # --- AI Tasks ---

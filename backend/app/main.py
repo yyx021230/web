@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AI Creative Studio API",
-    description="Backend API for AI Creative Studio - Design editor with AI and Dify integration",
+    description="Backend API for AI Creative Studio - AI image generation, content creation and Dify integration",
     version=settings.app_version,
     lifespan=lifespan,
 )

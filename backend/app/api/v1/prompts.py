@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_optional_current_user
+from app.core.roles import has_role
 from app.db.session import get_db
 from app.adapters.storage import storage
 from app.models.prompt import PromptCategory, PromptExample
@@ -30,8 +31,8 @@ REPORT_REASONS = {
 }
 
 
-def _is_admin(user: User) -> bool:
-    return user.role == "admin"
+def _is_admin(user: User | None) -> bool:
+    return has_role(user, "admin")
 
 
 def _normalize_report_reason(raw: str | None) -> str:
@@ -64,10 +65,12 @@ async def get_prompts(
     keyword: str | None = None,
     category: str | None = None,
     owner: bool = Query(False, description="仅查看自己上传的提示词"),
+    source_kind: str | None = Query(None, pattern="^(internal|external)$", description="内容来源：内部或外部"),
+    random_seed: int | None = Query(None, ge=1, le=2_147_483_646, description="发现页稳定随机种子"),
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取社区提示词列表"""
     conditions = [
@@ -76,6 +79,8 @@ async def get_prompts(
     ]
 
     if owner:
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="请先登录")
         conditions.append(PromptExample.created_by == current_user.id)
     elif not _is_admin(current_user):
         # 社区页默认仅展示公开内容（管理员可见全部）
@@ -83,6 +88,9 @@ async def get_prompts(
 
     if category:
         conditions.append(PromptCategory.name == category)
+
+    if source_kind:
+        conditions.append(PromptExample.source_kind == source_kind)
 
     if keyword:
         kw = f"%{keyword}%"
@@ -108,9 +116,20 @@ async def get_prompts(
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
+    ordered_stmt = base_stmt
+    if random_seed is not None and not keyword and not category and not owner:
+        # A seeded permutation keeps infinite-scroll pages stable without the
+        # duplicates and omissions caused by ORDER BY random().
+        modulus = 2_147_483_647
+        multiplier = ((random_seed * 1_103_515_245 + 12_345) % (modulus - 1)) + 1
+        offset = (random_seed * 48_271) % modulus
+        order_key = (PromptExample.id * multiplier + offset) % modulus
+        ordered_stmt = ordered_stmt.order_by(order_key.asc(), PromptExample.id.asc())
+    else:
+        ordered_stmt = ordered_stmt.order_by(PromptExample.created_at.desc(), PromptExample.id.desc())
+
     result = await db.execute(
-        base_stmt
-        .order_by(PromptExample.created_at.desc(), PromptExample.id.desc())
+        ordered_stmt
         .offset((page - 1) * limit)
         .limit(limit)
     )
@@ -125,9 +144,10 @@ async def get_prompts(
         creator_map = {uid: uname for uid, uname in users_result.all()}
 
     is_admin = _is_admin(current_user)
+    current_user_id = current_user.id if current_user else None
     items = []
     for example, cat in rows:
-        can_edit = is_admin or (example.created_by == current_user.id)
+        can_edit = is_admin or (current_user_id is not None and example.created_by == current_user_id)
         title = (example.name or "").strip()
         if not title:
             title = f"{cat.name} - {example.param_type or '通用'}"
@@ -142,12 +162,18 @@ async def get_prompts(
                 "image_url": example.image_url or "",
                 "category": cat.name,
                 "param_type": example.param_type or "",
+                "source_kind": example.source_kind or "internal",
+                "source_name": example.source_name,
+                "source_url": example.source_url,
+                "source_license": example.source_license,
+                "source_author": example.source_author,
+                "external_id": example.external_id,
                 "created_by": example.created_by,
                 "created_by_name": creator_map.get(example.created_by, "系统") if example.created_by else "系统",
                 "is_public": example.is_public,
                 "can_edit": can_edit,
                 "can_delete": can_edit,
-                "is_mine": example.created_by == current_user.id,
+                "is_mine": current_user_id is not None and example.created_by == current_user_id,
                 "created_at": str(example.created_at),
             }
         )
@@ -165,7 +191,7 @@ async def get_prompts(
 @router.get("/categories")
 async def get_categories(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取提示词分类统计"""
     conditions = [
@@ -209,6 +235,7 @@ async def create_prompt(
         ul_list=data.get("ul_list", []),
         sort_order=int(data.get("sort_order", 0) or 0),
         is_public=bool(data.get("is_public", True)),
+        source_kind="internal",
         created_by=current_user.id,
         updated_by=current_user.id,
     )
@@ -226,6 +253,12 @@ async def create_prompt(
             "image_url": example.image_url or "",
             "category": category.name,
             "param_type": example.param_type,
+            "source_kind": example.source_kind,
+            "source_name": example.source_name,
+            "source_url": example.source_url,
+            "source_license": example.source_license,
+            "source_author": example.source_author,
+            "external_id": example.external_id,
             "created_by": example.created_by,
             "created_by_name": current_user.username,
             "is_public": example.is_public,
@@ -297,6 +330,12 @@ async def update_prompt(
             "image_url": example.image_url or "",
             "category": current_category.name,
             "param_type": example.param_type,
+            "source_kind": example.source_kind,
+            "source_name": example.source_name,
+            "source_url": example.source_url,
+            "source_license": example.source_license,
+            "source_author": example.source_author,
+            "external_id": example.external_id,
             "created_by": example.created_by,
             "created_by_name": current_user.username if example.created_by == current_user.id else None,
             "is_public": example.is_public,
@@ -466,6 +505,7 @@ async def import_prompts(
                 chinese_example=row["chinese"],
                 english_example=row["english"],
                 ul_list=[],
+                source_kind="internal",
                 created_by=current_user.id,
                 updated_by=current_user.id,
             )

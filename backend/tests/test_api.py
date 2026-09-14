@@ -128,118 +128,6 @@ async def test_get_me_with_auth(client):
 # --- 模板 ---
 
 @pytest.mark.asyncio
-async def test_get_templates(client):
-    resp = await client.get("/api/v1/templates")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["code"] == 0
-    assert "items" in data["data"]
-
-
-@pytest.mark.asyncio
-async def test_get_template_not_found(client):
-    resp = await client.get("/api/v1/templates/99999")
-    assert resp.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_create_template(client):
-    headers = await register_and_login(client, "tpl_user", "tpl@example.com")
-    resp = await client.post("/api/v1/templates", json={
-        "name": "测试模板",
-        "description": "测试描述",
-        "fabric_json": '{"objects":[]}',
-        "category": "poster",
-        "tags": ["tag1", "tag2"],
-    }, headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["data"]["name"] == "测试模板"
-    assert data["data"]["category"] == "poster"
-    template_id = data["data"]["id"]
-
-    resp = await client.get(f"/api/v1/templates/{template_id}")
-    assert resp.status_code == 200
-    assert resp.json()["data"]["name"] == "测试模板"
-
-
-@pytest.mark.asyncio
-async def test_delete_template(client):
-    headers = await register_and_login(client, "del_tpl_user", "del_tpl@example.com")
-    resp = await client.post("/api/v1/templates", json={
-        "name": "删除测试模板",
-        "description": "",
-        "fabric_json": '{"objects":[]}',
-        "category": "test",
-    }, headers=headers)
-    template_id = resp.json()["data"]["id"]
-
-    resp = await client.delete(f"/api/v1/templates/{template_id}", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["message"] == "已删除"
-
-    resp = await client.get(f"/api/v1/templates/{template_id}")
-    assert resp.status_code == 404
-
-
-# --- 项目 ---
-
-@pytest.mark.asyncio
-async def test_get_projects(client):
-    headers = await register_and_login(client, "proj_user", "proj@example.com")
-    resp = await client.get("/api/v1/projects", headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "items" in data["data"]
-
-
-@pytest.mark.asyncio
-async def test_create_project(client):
-    headers = await register_and_login(client, "proj2_user", "proj2@example.com")
-    resp = await client.post("/api/v1/projects", json={
-        "name": "测试项目",
-    }, headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["data"]["name"] == "测试项目"
-    project_id = data["data"]["id"]
-
-    resp = await client.get(f"/api/v1/projects/{project_id}", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["data"]["name"] == "测试项目"
-
-
-@pytest.mark.asyncio
-async def test_update_project(client):
-    headers = await register_and_login(client, "proj3_user", "proj3@example.com")
-    resp = await client.post("/api/v1/projects", json={"name": "更新前"}, headers=headers)
-    project_id = resp.json()["data"]["id"]
-
-    resp = await client.put(f"/api/v1/projects/{project_id}", json={
-        "name": "更新后",
-        "status": "published",
-    }, headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["data"]["name"] == "更新后"
-    assert resp.json()["data"]["status"] == "published"
-
-
-@pytest.mark.asyncio
-async def test_delete_project(client):
-    headers = await register_and_login(client, "proj4_user", "proj4@example.com")
-    resp = await client.post("/api/v1/projects", json={"name": "删除测试项目"}, headers=headers)
-    project_id = resp.json()["data"]["id"]
-
-    resp = await client.delete(f"/api/v1/projects/{project_id}", headers=headers)
-    assert resp.status_code == 200
-
-    resp = await client.get(f"/api/v1/projects/{project_id}", headers=headers)
-    assert resp.status_code == 404
-
-
-# --- 素材 ---
-
-@pytest.mark.asyncio
 async def test_get_materials(client):
     headers = await register_and_login(client, "materials_user", "materials_user@example.com")
     resp = await client.get("/api/v1/materials", headers=headers)
@@ -253,9 +141,10 @@ async def test_get_material_is_user_scoped(client):
     headers_a = await register_and_login(client, "material_owner", "material_owner@example.com")
     headers_b = await register_and_login(client, "material_other", "material_other@example.com")
 
-    create_resp = await client.post("/api/v1/materials/design", json={
+    create_resp = await client.post("/api/v1/materials/draft-ai", json={
         "name": "用户私有草稿",
-        "design_json": {"objects": []},
+        "url": "data:image/png;base64,AA==",
+        "ai_meta": {"prompt": "car"},
         "thumbnail": "data:image/png;base64,test",
         "width": 100,
         "height": 100,
@@ -346,63 +235,6 @@ async def test_cancel_local_ai_image_task_marks_cancelled(client):
 # --- 未授权访问 ---
 
 @pytest.mark.asyncio
-async def test_unauthorized_project_access(client):
-    resp = await client.get("/api/v1/projects")
-    assert resp.status_code in (401, 403)
-
-
-@pytest.mark.asyncio
-async def test_unauthorized_template_create(client):
-    resp = await client.post("/api/v1/templates", json={
-        "name": "无权限创建",
-        "fabric_json": '{"objects":[]}',
-        "category": "test",
-    })
-    assert resp.status_code in (401, 403)
-
-
-# --- 安全修复测试：所有权校验 ---
-
-@pytest.mark.asyncio
-async def test_template_ownership_update(client):
-    """用户 B 不能修改用户 A 的模板"""
-    # 用户 A 创建模板
-    headers_a = await register_and_login(client, "owner_a", "owner_a@example.com")
-    resp = await client.post("/api/v1/templates", json={
-        "name": "用户A的模板",
-        "fabric_json": '{"objects":[]}',
-        "category": "test",
-    }, headers=headers_a)
-    template_id = resp.json()["data"]["id"]
-
-    # 用户 B 尝试修改
-    headers_b = await register_and_login(client, "attacker_b", "attacker_b@example.com")
-    resp = await client.put(f"/api/v1/templates/{template_id}", json={
-        "name": "被篡改的名字",
-    }, headers=headers_b)
-    # 应返回 404（服务层返回 None 时路由层抛出）
-    assert resp.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_template_ownership_delete(client):
-    """用户 B 不能删除用户 A 的模板"""
-    # 用户 A 创建模板
-    headers_a = await register_and_login(client, "owner_a2", "owner_a2@example.com")
-    resp = await client.post("/api/v1/templates", json={
-        "name": "用户A的模板2",
-        "fabric_json": '{"objects":[]}',
-        "category": "test",
-    }, headers=headers_a)
-    template_id = resp.json()["data"]["id"]
-
-    # 用户 B 尝试删除
-    headers_b = await register_and_login(client, "attacker_b2", "attacker_b2@example.com")
-    resp = await client.delete(f"/api/v1/templates/{template_id}", headers=headers_b)
-    assert resp.status_code == 404
-
-
-@pytest.mark.asyncio
 async def test_material_delete_requires_auth(client):
     """删除素材需要登录"""
     resp = await client.delete("/api/v1/materials/99999")
@@ -429,19 +261,6 @@ async def test_duplicate_user_returns_400(client):
     assert resp.status_code == 400
     data = resp.json()
     assert "detail" in data or data.get("code") == 400
-
-
-@pytest.mark.asyncio
-async def test_fabric_json_max_length(client):
-    """fabric_json 超长时应被验证拒绝"""
-    headers = await register_and_login(client, "limit_user", "limit@example.com")
-    huge_json = "x" * 6_000_000  # 超过 5MB 限制
-    resp = await client.post("/api/v1/templates", json={
-        "name": "超大模板",
-        "fabric_json": huge_json,
-        "category": "test",
-    }, headers=headers)
-    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -485,47 +304,6 @@ async def test_save_ai_draft_persists_ai_meta(client):
     saved = next((m for m in items if m["id"] == data["id"]), None)
     assert saved is not None
     assert saved["ai_meta"]["prompt"] == "测试提示词"
-
-
-@pytest.mark.asyncio
-async def test_project_create_with_fabric_json(client):
-    """创建项目时可传入 fabric_json"""
-    headers = await register_and_login(client, "pj_user5", "pj5@example.com")
-    canvas = '{"objects":[{"type":"rect","left":10,"top":10}]}'
-    resp = await client.post("/api/v1/projects", json={
-        "name": "带画布的项目",
-        "fabric_json": canvas,
-    }, headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["data"]["name"] == "带画布的项目"
-    project_id = data["data"]["id"]
-
-    # 验证 fabric_json 已保存
-    resp = await client.get(f"/api/v1/projects/{project_id}", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["data"]["fabric_json"] == canvas
-
-
-@pytest.mark.asyncio
-async def test_template_response_includes_fabric_json(client):
-    """模板响应包含 fabric_json"""
-    headers = await register_and_login(client, "fj_user", "fj@example.com")
-    canvas = '{"objects":[{"type":"circle"}]}'
-    resp = await client.post("/api/v1/templates", json={
-        "name": "含画布模板",
-        "fabric_json": canvas,
-        "category": "test",
-    }, headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["data"]["fabric_json"] == canvas
-
-    # GET 也应包含 fabric_json
-    tid = data["data"]["id"]
-    resp = await client.get(f"/api/v1/templates/{tid}")
-    assert resp.status_code == 200
-    assert resp.json()["data"]["fabric_json"] == canvas
 
 
 @pytest.mark.asyncio

@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { createPortal } from 'react-dom';
 import {
-  Search, Upload, LayoutGrid, Grid3X3, Download, Trash2, Heart,
-  Eye, ChevronLeft, ChevronRight, Loader2, CloudDownload,
+  Search, Upload, Download, Trash2, Heart,
+  ChevronLeft, ChevronRight, Loader2, CloudDownload,
   Car, FileImage, Palette, X, Check, ImagePlus,
   Sparkles, Edit3, Tag,
 } from 'lucide-react';
 import { carModelsApi } from '@/services/carModelsApi';
-import { editorApi } from '@/services/editorApi';
+import { materialApi } from '@/services/materialApi';
+import styles from '@/components/library/library-workspace.module.css';
 
 // ===== Types =====
 interface GalleryImage {
@@ -19,10 +21,8 @@ interface GalleryImage {
   width: number;
   height: number;
   folder: 'drafts' | 'templates' | 'car-models';
-  /** 是否为编辑器设计稿 */
+  /** 历史设计稿仅保留缩略图预览 */
   isDesign?: boolean;
-  /** 设计稿的完整 JSON（用于跳转编辑器时还原） */
-  designJson?: Record<string, unknown> | null;
   /** AI 生图元数据（模版库专用） */
   aiMeta?: {
     prompt?: string;
@@ -184,7 +184,6 @@ export default function GalleryPage() {
   const [activeFolder, setActiveFolder] = useState<FolderKey>('templates');
   const [templateSubFolder, setTemplateSubFolder] = useState<TemplateSubKey>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [previewImg, setPreviewImg] = useState<GalleryImage | null>(null);
 
@@ -204,12 +203,10 @@ export default function GalleryPage() {
   const [draftPage, setDraftPage] = useState(1);
   const [draftHasMore, setDraftHasMore] = useState(false);
   const [loadingMoreDrafts, setLoadingMoreDrafts] = useState(false);
-  const [loadingAllDrafts, setLoadingAllDrafts] = useState(false);
   const [draftTotalCount, setDraftTotalCount] = useState(0);
   const [templatePage, setTemplatePage] = useState(1);
   const [templateHasMore, setTemplateHasMore] = useState(false);
   const [loadingMoreTemplates, setLoadingMoreTemplates] = useState(false);
-  const [loadingAllTemplates, setLoadingAllTemplates] = useState(false);
   const [templateTotalCount, setTemplateTotalCount] = useState(0);
 
   // Storage usage
@@ -217,7 +214,7 @@ export default function GalleryPage() {
   const [storagePercent, setStoragePercent] = useState(0);
   const [storageLoading, setStorageLoading] = useState(true);
 
-  const mapDraftMaterial = useCallback((m: Awaited<ReturnType<typeof editorApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
+  const mapDraftMaterial = useCallback((m: Awaited<ReturnType<typeof materialApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
     id: m.id,
     name: m.name,
     url: m.url || '',
@@ -225,7 +222,6 @@ export default function GalleryPage() {
     height: m.height || 800,
     folder: 'drafts',
     isDesign: m.type === 'design',
-    designJson: m.design_json,
     aiMeta: m.ai_meta,
     liked: false,
     createdAt: m.created_at,
@@ -233,7 +229,7 @@ export default function GalleryPage() {
     tags: m.tags || [],
   }), []);
 
-  const mapTemplateMaterial = useCallback((m: Awaited<ReturnType<typeof editorApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
+  const mapTemplateMaterial = useCallback((m: Awaited<ReturnType<typeof materialApi.getMaterials>>['data']['items'][number]): GalleryImage => ({
     id: m.id,
     name: m.name,
     url: m.url || '',
@@ -247,12 +243,11 @@ export default function GalleryPage() {
 
   const loadRemainingDraftPages = useCallback(async (startingPage: number, initialItems: GalleryImage[], total: number) => {
     if (initialItems.length >= total) return;
-    setLoadingAllDrafts(true);
     try {
       let page = startingPage;
       let allItems = [...initialItems];
       while (allItems.length < total) {
-        const res = await editorApi.getMaterials(undefined, page, MATERIALS_PAGE_SIZE, true, 'ai-template');
+        const res = await materialApi.getMaterials(undefined, page, MATERIALS_PAGE_SIZE, true, 'ai-template');
         const nextItems = (res.data.items || []).map(mapDraftMaterial);
         if (nextItems.length === 0) break;
         allItems = [...allItems, ...nextItems];
@@ -263,19 +258,16 @@ export default function GalleryPage() {
       }
     } catch (e) {
       console.error('Failed to auto-load remaining drafts:', e);
-    } finally {
-      setLoadingAllDrafts(false);
     }
   }, [mapDraftMaterial]);
 
   const loadRemainingTemplatePages = useCallback(async (startingPage: number, initialItems: GalleryImage[], total: number) => {
     if (initialItems.length >= total) return;
-    setLoadingAllTemplates(true);
     try {
       let page = startingPage;
       let allItems = [...initialItems];
       while (allItems.length < total) {
-        const res = await editorApi.getMaterials('ai-template', page, MATERIALS_PAGE_SIZE, true);
+        const res = await materialApi.getMaterials('ai-template', page, MATERIALS_PAGE_SIZE, true);
         const nextItems = (res.data.items || [])
           .filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design')
           .map(mapTemplateMaterial);
@@ -288,8 +280,6 @@ export default function GalleryPage() {
       }
     } catch (e) {
       console.error('Failed to auto-load remaining templates:', e);
-    } finally {
-      setLoadingAllTemplates(false);
     }
   }, [mapTemplateMaterial]);
 
@@ -298,8 +288,8 @@ export default function GalleryPage() {
     const fetchData = async () => {
       setLoading(true);
       const [draftResult, templateResult] = await Promise.allSettled([
-        editorApi.getMaterials(undefined, 1, MATERIALS_PAGE_SIZE, true, 'ai-template'),
-        editorApi.getMaterials('ai-template', 1, MATERIALS_PAGE_SIZE, true),
+        materialApi.getMaterials(undefined, 1, MATERIALS_PAGE_SIZE, true, 'ai-template'),
+        materialApi.getMaterials('ai-template', 1, MATERIALS_PAGE_SIZE, true),
       ]);
 
       if (draftResult.status === 'fulfilled') {
@@ -347,7 +337,7 @@ export default function GalleryPage() {
 
       // Storage usage (independent of gallery data)
       try {
-        const usage = await editorApi.getStorageUsage();
+        const usage = await materialApi.getStorageUsage();
         setStorageUsedMB(usage.data.used_mb);
         setStoragePercent(usage.data.percent);
       } catch (e) {
@@ -364,7 +354,7 @@ export default function GalleryPage() {
     setLoadingMoreDrafts(true);
     try {
       const nextPage = draftPage + 1;
-      const res = await editorApi.getMaterials(undefined, nextPage, MATERIALS_PAGE_SIZE, true, 'ai-template');
+      const res = await materialApi.getMaterials(undefined, nextPage, MATERIALS_PAGE_SIZE, true, 'ai-template');
       const newDrafts = (res.data.items || []).map(mapDraftMaterial);
       setDraftImages(prev => {
         const merged = [...prev, ...newDrafts];
@@ -382,7 +372,7 @@ export default function GalleryPage() {
     setLoadingMoreTemplates(true);
     try {
       const nextPage = templatePage + 1;
-      const res = await editorApi.getMaterials('ai-template', nextPage, MATERIALS_PAGE_SIZE, true);
+      const res = await materialApi.getMaterials('ai-template', nextPage, MATERIALS_PAGE_SIZE, true);
       const tItems = (res.data.items || []).filter(m => m.type === 'template' || m.type === 'image' || m.type === 'design');
       const newTemplates = tItems.map(mapTemplateMaterial);
       setTemplateImages(prev => {
@@ -469,22 +459,6 @@ export default function GalleryPage() {
   }, [activeFolder, templateSubFolder, draftImages, templateImages, carImages, searchQuery]);
 
   const currentImages = filteredImages();
-  const activeFolderLoadedCount = activeFolder === 'drafts'
-    ? draftImages.length
-    : activeFolder === 'templates'
-      ? templateImages.length
-      : currentImages.length;
-  const activeFolderTotalCount = activeFolder === 'drafts'
-    ? draftTotalCount
-    : activeFolder === 'templates'
-      ? templateTotalCount
-      : currentImages.length;
-  const isAutoLoadingActiveFolder = activeFolder === 'drafts'
-    ? loadingAllDrafts
-    : activeFolder === 'templates'
-      ? loadingAllTemplates
-      : false;
-
   // Selection
   const toggleSelect = (id: string, e?: React.MouseEvent) => {
     if (e && (e.ctrlKey || e.metaKey)) {
@@ -593,7 +567,7 @@ export default function GalleryPage() {
     if (!confirm('确定要删除这个素材吗？')) return;
     if (previewImg && String(previewImg.id) === String(id)) setPreviewImg(null);
     try {
-      await editorApi.deleteMaterial(id);
+      await materialApi.deleteMaterial(id);
       setDraftImages(prev => prev.filter(img => img.id !== id));
       setDraftTotalCount(prev => Math.max(0, prev - 1));
       setSelectedImages(prev => { const n = new Set(prev); n.delete(String(id)); return n; });
@@ -607,22 +581,13 @@ export default function GalleryPage() {
     if (!confirm('确定要删除这个模版吗？')) return;
     if (previewImg && String(previewImg.id) === String(id)) setPreviewImg(null);
     try {
-      await editorApi.deleteMaterial(id);
+      await materialApi.deleteMaterial(id);
       setTemplateImages(prev => prev.filter(img => img.id !== id));
       setTemplateTotalCount(prev => Math.max(0, prev - 1));
       setSelectedImages(prev => { const n = new Set(prev); n.delete(String(id)); return n; });
     } catch (err) {
       alert('删除失败: ' + (err instanceof Error ? err.message : '未知错误'));
     }
-  };
-
-  /** 打开设计稿到编辑器 */
-  const openDesignInEditor = async (img: GalleryImage) => {
-    if (!img.isDesign || !img.designJson) return;
-    // 跳转到编辑器页面并携带设计数据
-    const params = new URLSearchParams();
-    params.set('designId', String(img.id));
-    window.location.href = `/editor?${params.toString()}`;
   };
 
   /** 从模版库删除 */
@@ -638,7 +603,7 @@ export default function GalleryPage() {
     if (isNaN(tid)) return;
     setDownloadingId(tid);
     try {
-      const res = await editorApi.downloadRemoteImage(tid, img.url);
+      const res = await materialApi.downloadRemoteImage(tid, img.url);
       if (res.data?.url) {
         // 更新本地状态为新的 URL
         setTemplateImages(prev => prev.map(t =>
@@ -663,7 +628,7 @@ export default function GalleryPage() {
     if (!confirm(`确定要删除选中的 ${selectedImages.size} 个素材吗？`)) return;
     selectedImages.forEach(idStr => {
       const id = Number(idStr);
-      editorApi.deleteMaterial(id).catch(() => {});
+      materialApi.deleteMaterial(id).catch(() => {});
     });
     setDraftImages(prev => prev.filter(img => !selectedImages.has(String(img.id))));
     setDraftTotalCount(prev => Math.max(0, prev - selectedImages.size));
@@ -681,7 +646,7 @@ export default function GalleryPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const res = await editorApi.uploadMaterial(file);
+      const res = await materialApi.uploadMaterial(file);
       const m = res.data;
       const newImg: GalleryImage = {
         id: m.id,
@@ -712,7 +677,7 @@ export default function GalleryPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const res = await editorApi.uploadMaterial(file, 'templates');
+      const res = await materialApi.uploadMaterial(file, 'templates');
       const m = res.data;
       // Show category selection modal
       setPendingUploadId(m.id);
@@ -741,7 +706,7 @@ export default function GalleryPage() {
     if (pendingUploadId === null) return;
     try {
       const tags = tag ? [tag] : [];
-      await editorApi.updateMaterial(pendingUploadId, { tags });
+      await materialApi.updateMaterial(pendingUploadId, { tags });
       setTemplateImages(prev => prev.map(t =>
         t.id === pendingUploadId ? { ...t, tags } : t
       ));
@@ -772,7 +737,7 @@ export default function GalleryPage() {
   const handleRenameFolder = async () => {
     if (!folderAction || !folderAction.newName.trim()) return;
     try {
-      await editorApi.renameFolder(folderAction.name, folderAction.newName.trim());
+      await materialApi.renameFolder(folderAction.name, folderAction.newName.trim());
       // Update local state + persist
       setTemplateUserFolders(prev => {
         const next = prev.map(f => f === folderAction.name ? folderAction.newName.trim() : f);
@@ -792,7 +757,7 @@ export default function GalleryPage() {
   const handleDeleteFolder = async () => {
     if (!folderAction) return;
     try {
-      await editorApi.deleteFolder(folderAction.name);
+      await materialApi.deleteFolder(folderAction.name);
       // Update local state + persist
       setTemplateUserFolders(prev => {
         const next = prev.filter(f => f !== folderAction.name);
@@ -820,7 +785,7 @@ export default function GalleryPage() {
     try {
       // Build new tags list: keep non-template tags, add current template tag
       const newTags = editTag ? [editTag] : [];
-      await editorApi.updateMaterial(Number(editingTemplate.id), {
+      await materialApi.updateMaterial(Number(editingTemplate.id), {
         name: editName,
         tags: newTags,
       });
@@ -849,268 +814,87 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="cloud-page flex h-full gap-4 p-4">
-      {/* Hidden file input for upload */}
+    <div className={styles.page} data-library="gallery">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-      {/* Hidden file input for template upload */}
       <input ref={templateFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleTemplateUpload} />
 
-      {/* ===== 左侧文件夹 ===== */}
-      <div className="cloud-panel flex w-60 shrink-0 flex-col overflow-hidden rounded-[28px]">
-        <div className="border-b border-slate-200/70 px-4 py-4">
-          <div className="text-[11px] font-semibold text-indigo-600">Cloud Studio</div>
-          <h2 className="text-sm font-semibold text-slate-950">我的图库</h2>
-          <p className="text-xs text-slate-500 mt-0.5">管理您的图片素材</p>
-        </div>
-
-        <nav className="flex-1 overflow-auto py-2">
-          {FOLDERS.map(f => {
-            const isActive = activeFolder === f.key;
-            return (
-              <div key={f.key}>
-                <button
-                  onClick={() => { setActiveFolder(f.key); setSelectedImages(new Set()); }}
-                  className={cn(
-                    'flex w-full items-center justify-between px-4 py-2.5 text-sm transition-colors',
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-600 font-medium'
-                      : 'text-slate-700 hover:bg-white/60'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={cn(isActive ? 'text-primary' : 'text-muted-foreground')}>
-                      {f.icon}
-                    </span>
-                    <span className="truncate">{f.label}</span>
-                  </div>
-                  <span className={cn('text-xs', isActive ? 'text-primary/70' : 'text-muted-foreground')}>
-                    {getFolderCount(f.key)}
-                  </span>
-                </button>
-                {/* 模版库子分类 */}
-                {f.key === 'templates' && isActive && (
-                  <div className="ml-4 border-l-2 border-border pl-3 space-y-0.5 mt-0.5">
-                    <button
-                      onClick={() => setTemplateSubFolder('')}
-                      className={cn(
-                        'flex w-full items-center justify-between px-3 py-2 text-xs transition-colors rounded-r',
-                        !templateSubFolder ? 'text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      <span>全部</span>
-                      <span className={cn(!templateSubFolder ? 'text-primary/70' : 'text-muted-foreground/60')}>
-                        {getSubCount('')}
-                      </span>
-                    </button>
-                    {templateFolders.map(sub => (
-                      <div key={sub} className="group/folder relative">
-                        <button
-                          onClick={() => setTemplateSubFolder(sub)}
-                          className={cn(
-                            'flex w-full items-center justify-between px-3 py-2 text-xs transition-colors rounded-r',
-                            templateSubFolder === sub
-                              ? 'text-primary font-medium'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          <span className="truncate">{sub}</span>
-                          <span className={cn(templateSubFolder === sub ? 'text-primary/70' : 'text-muted-foreground/60')}>
-                            {getSubCount(sub)}
-                          </span>
-                        </button>
-                        <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover/folder:flex items-center gap-0.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFolderAction({
-                                type: 'rename',
-                                name: sub,
-                                newName: sub,
-                                imageCount: getSubCount(sub),
-                              });
-                            }}
-                            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-accent"
-                            title="重命名"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFolderAction({
-                                type: 'delete',
-                                name: sub,
-                                newName: '',
-                                imageCount: getSubCount(sub),
-                              });
-                            }}
-                            className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-red-500 hover:bg-accent"
-                            title="删除文件夹"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {showNewFolderInput ? (
-                      <div className="flex items-center gap-1 px-2 py-1">
-                        <input
-                          autoFocus
-                          value={newFolderInput}
-                          onChange={(e) => setNewFolderInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newFolderInput.trim()) {
-                              handleCreateFolder(newFolderInput.trim());
-                              setNewFolderInput('');
-                              setShowNewFolderInput(false);
-                            }
-                            if (e.key === 'Escape') {
-                              setNewFolderInput('');
-                              setShowNewFolderInput(false);
-                            }
-                          }}
-                          placeholder="文件夹名称"
-                          className="flex-1 h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
-                        />
-                        <button
-                          onClick={() => {
-                            if (newFolderInput.trim()) {
-                              handleCreateFolder(newFolderInput.trim());
-                              setNewFolderInput('');
-                            }
-                            setShowNewFolderInput(false);
-                          }}
-                          className="h-7 w-7 flex items-center justify-center rounded-md bg-primary text-white hover:bg-primary/90"
-                        >
-                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        </button>
-                        <button
-                          onClick={() => { setNewFolderInput(''); setShowNewFolderInput(false); }}
-                          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowNewFolderInput(true)}
-                        className="flex w-full items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors rounded-r"
-                      >
-                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-                        新建文件夹
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      <header className={styles.header}>
+        <nav className={styles.tabs} aria-label="图库文件夹">
+          {FOLDERS.map(f => (
+            <button key={f.key} className={styles.tab} aria-pressed={activeFolder === f.key} onClick={() => { setActiveFolder(f.key); setSelectedImages(new Set()); }}>
+              {f.icon}{f.label}<span className={styles.count}>{getFolderCount(f.key).toLocaleString()}</span>
+            </button>
+          ))}
         </nav>
+        <div className={styles.actions}>
+          <label className={styles.search}>
+            <Search />
+            <input aria-label="搜索图片" placeholder="搜索图片、车型…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            {searchQuery && <button aria-label="清除搜索" onClick={() => setSearchQuery('')}><X /></button>}
+          </label>
+          {(activeFolder === 'drafts' || activeFolder === 'templates') && (
+            <button className={styles.primaryButton} onClick={() => activeFolder === 'drafts' ? fileInputRef.current?.click() : templateFileInputRef.current?.click()}>
+              <Upload />导入
+            </button>
+          )}
+          <div className={styles.storage} title="图库存储空间">
+            {storageLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : (
+              <>
+                <div className={styles.storageTrack} role="progressbar" aria-label="存储空间使用率" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(storagePercent, 100)}>
+                  <div style={{ width: `${Math.min(storagePercent, 100)}%`, background: storagePercent > 90 ? '#c47777' : storagePercent > 70 ? '#bd9e65' : undefined }} />
+                </div>
+                <span>{storageUsedMB >= 1024 ? `${(storageUsedMB / 1024).toFixed(1)} GB` : `${storageUsedMB} MB`} / 5 GB</span>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
-        {/* Storage info */}
-        <div className="border-t p-4">
-          <div className="text-xs text-slate-500 mb-2">存储空间</div>
-          {storageLoading ? (
-            <div className="h-1.5 rounded-full bg-muted animate-pulse" />
-          ) : (
-            <>
-              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all',
-                    storagePercent > 90 ? 'bg-red-500' :
-                    storagePercent > 70 ? 'bg-amber-500' :
-                    'bg-primary'
-                  )}
-                  style={{ width: `${Math.min(storagePercent, 100)}%` }}
-                />
-              </div>
-              <div className="mt-1.5 text-xs text-muted-foreground">
-                {storageUsedMB >= 1024
-                  ? `${(storageUsedMB / 1024).toFixed(1)} GB`
-                  : `${storageUsedMB} MB`}
-                {' '}
-                / 5 GB
-                {storagePercent > 0 && (
-                  <span className="ml-1 text-primary/70">({storagePercent}%)</span>
+      {activeFolder === 'templates' && (
+        <div className={styles.filters}>
+          <span className={styles.filterLabel}><Tag />文件夹</span>
+          <div className={styles.chips} aria-label="素材分类">
+            <button className={styles.chip} aria-pressed={!templateSubFolder} onClick={() => setTemplateSubFolder('')}>全部<small>{getSubCount('')}</small></button>
+            {templateFolders.map(sub => (
+              <div key={sub} className={styles.folderChip}>
+                <button className={styles.chip} aria-pressed={templateSubFolder === sub} onClick={() => setTemplateSubFolder(sub)} title={sub}>
+                  <span>{sub}</span><small>{getSubCount(sub)}</small>
+                </button>
+                {templateSubFolder === sub && (
+                  <div className={styles.folderActions}>
+                    <button aria-label={`重命名文件夹 ${sub}`} title="重命名文件夹" onClick={() => setFolderAction({ type: 'rename', name: sub, newName: sub, imageCount: getSubCount(sub) })}><Edit3 /></button>
+                    <button aria-label={`删除文件夹 ${sub}`} title="删除文件夹" onClick={() => setFolderAction({ type: 'delete', name: sub, newName: '', imageCount: getSubCount(sub) })}><Trash2 /></button>
+                  </div>
                 )}
               </div>
-            </>
+            ))}
+          </div>
+          {showNewFolderInput ? (
+            <form className={styles.folderInput} onSubmit={e => {
+              e.preventDefault();
+              if (!newFolderInput.trim()) return;
+              handleCreateFolder(newFolderInput.trim());
+              setNewFolderInput('');
+              setShowNewFolderInput(false);
+            }}>
+              <input autoFocus aria-label="文件夹名称" placeholder="文件夹名称" value={newFolderInput} onChange={e => setNewFolderInput(e.target.value)} onKeyDown={e => {
+                if (e.key === 'Escape') { setNewFolderInput(''); setShowNewFolderInput(false); }
+              }} />
+              <button type="submit" className={styles.button} aria-label="创建文件夹"><Check /></button>
+              <button type="button" className={styles.button} aria-label="取消创建文件夹" onClick={() => { setNewFolderInput(''); setShowNewFolderInput(false); }}><X /></button>
+            </form>
+          ) : (
+            <button className={styles.button} onClick={() => setShowNewFolderInput(true)}><ImagePlus />新建文件夹</button>
           )}
         </div>
-      </div>
+      )}
 
       {/* ===== 主内容 ===== */}
-      <div className="cloud-panel flex flex-1 flex-col overflow-visible rounded-[28px]">
-        {/* 顶部工具栏 */}
-        <div className="cloud-toolbar flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="搜索图片..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="cloud-pill w-64 rounded-2xl py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-              />
-            </div>
-            {(activeFolder === 'drafts' || activeFolder === 'templates') && (
-              <div className="flex items-center gap-2 rounded-xl bg-slate-100/80 px-3 py-2 text-xs text-slate-600">
-                <span>
-                  已加载 {activeFolderLoadedCount} / 共 {Math.max(activeFolderTotalCount, activeFolderLoadedCount)} 张
-                </span>
-                {isAutoLoadingActiveFolder && (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
-                    <span className="text-indigo-600">正在继续加载</span>
-                  </>
-                )}
-              </div>
-            )}
-            {selectedImages.size > 0 && activeFolder === 'drafts' && (
-              <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5">
-                <Check className="h-4 w-4 text-primary" />
-                <span className="text-xs font-medium text-primary">已选 {selectedImages.size} 张</span>
-                <button onClick={deleteSelected} className="flex items-center gap-1 text-xs text-red-600 hover:underline ml-1">
-                  <Trash2 className="h-3 w-3" />删除
-                </button>
-                <button onClick={() => setSelectedImages(new Set())} className="text-xs text-primary hover:underline ml-1">
-                  取消
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {(activeFolder === 'drafts' || activeFolder === 'templates') && (
-              <button
-                onClick={() => activeFolder === 'drafts' ? fileInputRef.current?.click() : templateFileInputRef.current?.click()}
-                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-2 text-xs font-medium text-white shadow-lg shadow-indigo-200 transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5" />导入图片
-              </button>
-            )}
-            <div className="h-5 w-px bg-border" />
-            <div className="cloud-pill flex items-center rounded-xl p-0.5">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={cn('flex h-7 w-7 items-center justify-center rounded-md transition-colors', viewMode === 'grid' ? 'bg-accent' : '')}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={cn('flex h-7 w-7 items-center justify-center rounded-md transition-colors', viewMode === 'list' ? 'bg-accent' : '')}
-              >
-                <Grid3X3 className="h-4 w-4 rotate-90" />
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div className={styles.content}>
         {/* ===== 车型库筛选栏 ===== */}
         {activeFolder === 'car-models' && (
-          <div className="cloud-toolbar relative z-20 flex items-center gap-3 px-4 py-2.5">
+          <div className={cn(styles.filters, "relative z-20 flex-wrap")}>
+            <div className={styles.filterGroup}>
             <span className="text-xs text-muted-foreground whitespace-nowrap">品牌:</span>
             <SearchableSelect
               options={carBrands}
@@ -1119,6 +903,8 @@ export default function GalleryPage() {
               placeholder="选择品牌..."
               emptyText="无匹配品牌"
             />
+            </div>
+            <div className={styles.filterGroup}>
             <span className="text-xs text-muted-foreground whitespace-nowrap">车型:</span>
             <div className="flex items-center gap-1.5">
               <button
@@ -1142,6 +928,7 @@ export default function GalleryPage() {
                 className="min-w-[140px]"
               />
             </div>
+            </div>
             <span className="text-xs text-muted-foreground ml-2">
               {carImages.length} 张图片{selectedModel === 'all' ? '（全部车型）' : '（5角度）'}
             </span>
@@ -1149,7 +936,16 @@ export default function GalleryPage() {
         )}
 
         {/* ===== 图片列表区域 ===== */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className={styles.scrollArea}>
+          {selectedImages.size > 0 && activeFolder === 'drafts' && (
+            <div className="sticky top-0 z-20 mb-3 flex justify-center">
+              <div className="flex items-center gap-2 rounded-xl border border-black/5 bg-white/95 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-xl">
+                <span className={styles.filterLabel}>已选 {selectedImages.size} 张</span>
+                <button onClick={deleteSelected} className={styles.button}><Trash2 />删除</button>
+                <button onClick={() => setSelectedImages(new Set())} className={styles.button}>取消选择</button>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
@@ -1173,58 +969,52 @@ export default function GalleryPage() {
                 </button>
               )}
             </div>
-          ) : viewMode === 'grid' ? (
+          ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              <div className={styles.imageGrid}>
                 {currentImages.map(img => (
                 <div
                   key={String(img.id)}
                   className={cn(
-                    'cloud-card cloud-card-hover group relative aspect-square cursor-pointer overflow-hidden rounded-3xl transition-all',
+                    styles.imageCard, 'group',
                     selectedImages.has(String(img.id))
                       ? 'ring-2 ring-primary ring-offset-2'
-                      : 'hover:shadow-md'
+                      : undefined
                   )}
                 >
-                  {/* 点击：设计稿跳转到编辑器，普通图片打开预览 */}
+                  {/* 图片和历史设计稿统一预览 */}
                   <div
-                    onClick={() => {
-                      if (img.isDesign && activeFolder !== 'drafts') {
-                        openDesignInEditor(img);
-                      } else {
-                        setPreviewImg(img);
-                      }
-                    }}
-                    className="w-full h-full flex items-center justify-center bg-muted"
+                    onClick={() => setPreviewImg(img)}
+                    className={styles.imageStage}
                   >
                     {img.isDesign && img.url ? (
-                      <img src={img.url} alt={img.name} className="w-full h-full object-contain p-2" />
+                      <img src={img.url} alt={img.name} className={cn(styles.galleryImage, styles.containImage)} />
                     ) : img.isDesign ? (
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Palette className="h-8 w-8 mb-1 opacity-30" />
                         <span className="text-[10px] opacity-50">{img.name}</span>
                       </div>
                     ) : (
-                      <img src={img.url} alt={img.name} className="w-full h-full object-contain p-2" />
+                      <img src={img.url} alt={img.name} className={styles.galleryImage} />
                     )}
                   </div>
                   {/* 设计稿标识 */}
                   {img.isDesign && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/90 text-white text-[9px] font-medium">
+                    <div className={styles.mediaBadge}>
                       <Palette className="h-2.5 w-2.5" />
                       <span>设计稿</span>
                     </div>
                   )}
                   {/* AI 图片标识 */}
                   {(activeFolder === 'templates' || activeFolder === 'drafts') && img.aiMeta && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-600/90 text-white text-[9px] font-medium">
+                    <div className={styles.mediaBadge}>
                       <Sparkles className="h-2.5 w-2.5" />
                       <span>{activeFolder === 'templates' ? 'AI 模版' : 'AI 草稿'}</span>
                     </div>
                   )}
                   {/* 普通模版标识（手动导入） */}
                   {activeFolder === 'templates' && !img.aiMeta && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[9px] font-medium">
+                    <div className={styles.mediaBadge}>
                       <ImagePlus className="h-2.5 w-2.5" />
                       <span>导入</span>
                     </div>
@@ -1246,38 +1036,29 @@ export default function GalleryPage() {
                     </label>
                   )}
                   {/* Bottom info */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 pt-6">
-                    <p className="text-xs text-white truncate">{img.name}</p>
+                  <div className={styles.imageInfo}>
+                    <p>{img.name}</p>
                     {img.angle && (
-                      <p className="text-[10px] text-white/70">{img.angle}</p>
-                    )}
-                    {img.isDesign && (
-                      <p className="text-[10px] text-primary/80">点击打开编辑</p>
+                      <small>{img.angle}</small>
                     )}
                     {(activeFolder === 'templates' || activeFolder === 'drafts') && img.tags && img.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div>
                         {img.tags.map(tag => (
-                          <span key={tag} className="text-[9px] bg-white/20 text-white px-1 py-0.5 rounded">{tag}</span>
+                          <span key={tag}>{tag}</span>
                         ))}
                       </div>
                     )}
                   </div>
                   {/* 设计稿快速操作按钮 */}
                   {img.isDesign && (
-                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openDesignInEditor(img); }}
-                        className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-primary/90"
-                      >
-                        <Palette className="h-2.5 w-2.5" />打开编辑
-                      </button>
+                    <div className={styles.quickActions}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           const draftId = Number(img.id);
                           deleteDraft(draftId);
                         }}
-                        className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-red-600"
+                        data-danger="true"
                       >
                         <Trash2 className="h-2.5 w-2.5" />删除
                       </button>
@@ -1285,13 +1066,12 @@ export default function GalleryPage() {
                   )}
                   {/* 模版快速操作按钮 */}
                   {activeFolder === 'templates' && (
-                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={styles.quickActions}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           openEditTemplate(img);
                         }}
-                        className="flex items-center gap-1 rounded-md bg-blue-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-blue-600"
                       >
                         <Edit3 className="h-2.5 w-2.5" />编辑
                       </button>
@@ -1300,7 +1080,7 @@ export default function GalleryPage() {
                           e.stopPropagation();
                           handleDeleteTemplate(img);
                         }}
-                        className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-red-600"
+                        data-danger="true"
                       >
                         <Trash2 className="h-2.5 w-2.5" />删除
                       </button>
@@ -1308,13 +1088,12 @@ export default function GalleryPage() {
                   )}
                   {/* 草稿快速操作按钮（普通图片） */}
                   {activeFolder === 'drafts' && !img.isDesign && (
-                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={styles.quickActions}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           openEditTemplate(img);
                         }}
-                        className="flex items-center gap-1 rounded-md bg-blue-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-blue-600"
                       >
                         <Edit3 className="h-2.5 w-2.5" />编辑
                       </button>
@@ -1324,7 +1103,7 @@ export default function GalleryPage() {
                           const draftId = Number(img.id);
                           if (!isNaN(draftId)) deleteDraft(draftId);
                         }}
-                        className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] text-white font-medium shadow-sm hover:bg-red-600"
+                        data-danger="true"
                       >
                         <Trash2 className="h-2.5 w-2.5" />删除
                       </button>
@@ -1359,102 +1138,14 @@ export default function GalleryPage() {
                 </div>
               )}
             </>
-          ) : (
-            <>
-              <div className="space-y-1">
-              {currentImages.map(img => (
-                <div
-                  key={String(img.id)}
-                  className="cloud-card flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors hover:bg-white/90"
-                >
-                  {/* Checkbox (only for drafts) */}
-                  {activeFolder === 'drafts' && (
-                    <label onClick={(e) => e.stopPropagation()} className="shrink-0 cursor-pointer">
-                      <div className={cn(
-                        'flex h-5 w-5 items-center justify-center rounded border transition-all',
-                        selectedImages.has(String(img.id)) ? 'bg-primary border-primary' : 'border-muted-foreground/30'
-                      )}>
-                        {selectedImages.has(String(img.id)) && <Check className="h-3 w-3 text-white" />}
-                      </div>
-                      <input type="checkbox" className="sr-only" checked={selectedImages.has(String(img.id))} onChange={() => toggleSelect(String(img.id))} />
-                    </label>
-                  )}
-                  <div
-                    onClick={() => setPreviewImg(img)}
-                    className="h-12 w-12 rounded-md shrink-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center bg-muted"
-                  >
-                    <img src={img.url} alt={img.name} className="w-8 h-8 object-contain" />
-                  </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setPreviewImg(img)}>
-                    <p className="text-sm font-medium truncate">{img.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {img.brand && `${img.brand} · `}{img.width}×{img.height}
-                      {img.angle && ` · ${img.angle}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => setPreviewImg(img)} className="p-1.5 rounded hover:bg-background/50 text-muted-foreground" title="预览">
-                      <Eye className="h-3.5 w-3.5" />
-                    </button>
-                    <button onClick={() => {
-                      const a = document.createElement('a');
-                      a.href = img.url;
-                      a.download = img.name + '.jpg';
-                      a.click();
-                    }} className="p-1.5 rounded hover:bg-background/50 text-muted-foreground" title="下载">
-                      <Download className="h-3.5 w-3.5" />
-                    </button>
-                    {activeFolder === 'drafts' && typeof img.id === 'number' && (() => {
-                        const draftId = img.id;
-                        return (
-                          <>
-                            <button onClick={() => toggleLike(draftId)} className={cn('p-1.5 rounded hover:bg-background/50', img.liked ? 'text-red-500' : 'text-muted-foreground')} title="收藏">
-                              <Heart className={cn('h-3.5 w-3.5', img.liked && 'fill-current')} />
-                            </button>
-                            <button onClick={() => deleteDraft(draftId)} className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600" title="删除">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        );
-                      })()}
-                  </div>
-                </div>
-              ))}
-              </div>
-              {/* Load more button */}
-              {activeFolder === 'drafts' && draftHasMore && (
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={loadMoreDrafts}
-                    disabled={loadingMoreDrafts}
-                    className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
-                  >
-                    {loadingMoreDrafts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多 ({draftImages.length}/{Math.max(draftTotalCount, draftImages.length)})
-                  </button>
-                </div>
-              )}
-              {activeFolder === 'templates' && templateHasMore && (
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={loadMoreTemplates}
-                    disabled={loadingMoreTemplates}
-                    className="flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50"
-                  >
-                    {loadingMoreTemplates ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    加载更多 ({templateImages.length}/{Math.max(templateTotalCount, templateImages.length)})
-                  </button>
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>
 
       {/* ===== 图片预览弹窗 ===== */}
-      {previewImg && (
+      {previewImg && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImg(null)}>
-          <button onClick={() => setPreviewImg(null)} className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+          <button aria-label="关闭图片预览" onClick={() => setPreviewImg(null)} className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
             <X className="h-5 w-5" />
           </button>
           {previewIdx > 0 && (
@@ -1587,11 +1278,11 @@ export default function GalleryPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
 
       {/* ===== 编辑模版信息弹窗 ===== */}
-      {editingTemplate && (
+      {editingTemplate && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setEditingTemplate(null)}>
           <div onClick={(e) => e.stopPropagation()} className="flex flex-col max-w-md w-full mx-4">
             <div className="bg-card rounded-2xl border p-6">
@@ -1685,11 +1376,11 @@ export default function GalleryPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
 
       {/* ===== 上传后选择分类弹窗 ===== */}
-      {pendingUploadId !== null && (
+      {pendingUploadId !== null && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={() => setPendingUploadId(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1774,11 +1465,11 @@ export default function GalleryPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
 
       {/* ===== 文件夹操作弹窗（重命名/删除） ===== */}
-      {folderAction && (
+      {folderAction && createPortal(
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
           onClick={() => setFolderAction(null)}
@@ -1871,7 +1562,7 @@ export default function GalleryPage() {
               </div>
             )}
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   );

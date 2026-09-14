@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import {
   Palette, LayoutDashboard, Users, Workflow, ImagePlus, BarChart3, LogOut, Menu, X, BookOpen,
-  FolderKanban, Activity, MessageSquare, Loader2, Send,
+  Activity, MessageSquare, Loader2, Send,
   Bot, Target, Clock3,
 } from 'lucide-react';
 import { authApi } from '@/services/authApi';
@@ -23,7 +23,6 @@ const navItems = [
   { id: 'workflows', icon: Workflow, label: 'Hermes 工作流', href: '/admin/workflows' },
   { id: 'ai-image', icon: Bot, label: '生图入口', href: '/admin/ai-image' },
   { id: 'tasks', icon: Activity, label: '任务中心', href: '/admin/tasks' },
-  { id: 'projects', icon: FolderKanban, label: '项目管理', href: '/admin/projects' },
   { id: 'gallery', icon: ImagePlus, label: '资产中心', href: '/admin/gallery' },
   { id: 'copywritings', icon: BookOpen, label: '文案管理', href: '/admin/copywritings' },
   { id: 'prompts', icon: MessageSquare, label: '提示词管理', href: '/admin/prompts' },
@@ -38,7 +37,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('token');
     if (!token) {
       toast.error('请先登录');
-      router.replace('/');
+      router.replace('/prompts?login=1&next=%2Fadmin');
       return;
     }
 
@@ -62,12 +61,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
           setChecking(false);
         } else {
           toast.error('无权访问管理后台');
-          router.replace('/');
+          router.replace('/prompts');
         }
       })
       .catch(() => {
         toast.error('无权访问管理后台');
-        router.replace('/');
+        router.replace('/prompts?login=1&next=%2Fadmin');
       });
   }, [router]);
 
@@ -94,7 +93,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname.startsWith('/admin/workflows')) return 'workflows';
     if (pathname.startsWith('/admin/ai-image')) return 'ai-image';
     if (pathname.startsWith('/admin/tasks')) return 'tasks';
-    if (pathname.startsWith('/admin/projects')) return 'projects';
     if (pathname.startsWith('/admin/gallery')) return 'gallery';
     if (pathname.startsWith('/admin/copywritings')) return 'copywritings';
     if (pathname.startsWith('/admin/prompts')) return 'prompts';
@@ -104,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => {
     authApi.logout();
-    window.location.href = '/';
+    window.location.href = '/prompts';
   };
 
   return (
@@ -160,7 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span>当前版本</span>
             <span className="font-medium text-gray-700">v{APP_VERSION.replace(/^v/, '')}</span>
           </div>
-          <a href="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+          <a href="/prompts" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors">
             <Palette className="h-4 w-4" />
             返回前台
           </a>

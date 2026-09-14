@@ -33,20 +33,23 @@ async def generate_image(
     """提交生图任务（需登录）"""
     try:
         service = AIImageService(model_name=req.model, db=db)
+        params = {
+            "negative_prompt": req.negative_prompt,
+            "width": req.width,
+            "height": req.height,
+            "style": req.style,
+            "quality": req.quality,
+            "count": req.count,
+            "image_data": req.image_data,
+            "image_url": req.image_url,
+            "images_data": req.images_data,
+        }
+        if req.model == "gptimage25":
+            params["generation_mode"] = req.generation_mode
         result = await service.submit(
             prompt=req.prompt,
             client_request_id=req.client_request_id,
-            params={
-                "negative_prompt": req.negative_prompt,
-                "width": req.width,
-                "height": req.height,
-                "style": req.style,
-                "quality": req.quality,
-                "count": req.count,
-                "image_data": req.image_data,
-                "image_url": req.image_url,
-                "images_data": req.images_data,
-            },
+            params=params,
             user_id=current_user.id,
         )
         return ApiResponse(data=ImageTaskResponse(**result))

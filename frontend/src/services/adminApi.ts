@@ -122,7 +122,6 @@ export const adminApi = {
   getOverview: (username?: string) =>
     api.get<{
       user_count: number;
-      project_count: number;
       material_count: number;
       ai_task_count: number;
       workflow_count: number;
@@ -227,7 +226,7 @@ export const adminApi = {
     api.post(`/admin/users/${userId}/workflows`, { workflow_ids: workflowIds }),
 
   getUserStats: (userId: number) =>
-    api.get<{ ai_tasks: number; wf_tasks: number; projects: number; storage_mb: number }>(`/admin/users/${userId}/stats`),
+    api.get<{ ai_tasks: number; wf_tasks: number; storage_mb: number }>(`/admin/users/${userId}/stats`),
 
   batchDeleteUserTasks: (userId: number, type: 'ai' | 'workflow') =>
     api.post('/admin/users/batch-delete-tasks', { user_id: userId, type }),
@@ -252,7 +251,7 @@ export const adminApi = {
 
   // User detail
   getUserDetail: (userId: number) =>
-    api.get<{ user: { id: number; username: string; email: string; avatar: string | null; role: string; roles?: string[]; is_active: boolean; created_at: string }; stats: { project_count: number; material_count: number; ai_task_count: number; ai_task_24h: number; workflow_count: number; dify_task_count: number; dify_run_log_count: number; copywriting_count: number }; recent_ai_tasks: Array<{ id: number; model_name: string; prompt: string; status: string; created_at: string }>; recent_dify_tasks: Array<{ id: number; workflow_id: number; status: string; created_at: string }> }>(`/admin/users/${userId}/detail`),
+    api.get<{ user: { id: number; username: string; email: string; avatar: string | null; role: string; roles?: string[]; is_active: boolean; created_at: string }; stats: { material_count: number; ai_task_count: number; ai_task_24h: number; workflow_count: number; dify_task_count: number; dify_run_log_count: number; copywriting_count: number }; recent_ai_tasks: Array<{ id: number; model_name: string; prompt: string; status: string; created_at: string }>; recent_dify_tasks: Array<{ id: number; workflow_id: number; status: string; created_at: string }> }>(`/admin/users/${userId}/detail`),
 
   // Resources (ai-tasks, copywritings)
   getAiTasks: (params: { page?: number; limit?: number; username?: string; status?: string; model_name?: string }) =>
@@ -355,14 +354,6 @@ export const adminApi = {
 
   deleteWorkflowTask: (taskId: number) =>
     api.delete(`/admin/resources/workflow-tasks/${taskId}`),
-
-  getProjects: (params: { page?: number; limit?: number; username?: string; status?: string }) =>
-    api.get<{ items: any[]; total: number; page: number; limit: number }>('/admin/resources/projects', { params }),
-
-  deleteProject: (projectId: number) =>
-    api.delete(`/admin/resources/projects/${projectId}`),
-  batchDeleteProjects: (project_ids: number[]) =>
-    api.post<{ deleted: number }>('/admin/resources/projects/batch-delete', { project_ids }),
 
   getAdminCopywritings: (page = 1, limit = 20, username?: string, category?: string, search?: string) =>
     api.get<{ items: Array<{ id: number; title: string; content: string; tags: string[]; category: string; created_by: number | null; created_at: string }>; total: number; page: number; limit: number }>('/admin/resources/copywritings', { params: { page, limit, username, category, search } }),
@@ -733,6 +724,7 @@ export const adminApi = {
     quality?: string;
     count?: number;
     image_data?: string;
+    generation_mode?: 'fast' | 'precision';
   }) =>
     api.post<{
       id: number;

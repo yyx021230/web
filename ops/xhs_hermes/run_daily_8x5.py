@@ -68,6 +68,7 @@ from core import (  # noqa: E402
     prompt_template_type,
     safe_prompt_pool,
     sanitize_copy,
+    sanitize_image_plan_lead_language,
     select_diverse_rows,
     structure_digest,
     validate_copy,
@@ -1084,6 +1085,7 @@ def build_image_plan(
             "vehicle_image": {"label": desired_angle, "url": car_images[desired_angle]},
             "plan_attempt": attempt,
         })
+        result = sanitize_image_plan_lead_language(result, case)
         if template.get("source_image_matches_section") is False:
             result["selected_prompt_image"] = ""
         errors = validate_image_plan(result, copy, case)

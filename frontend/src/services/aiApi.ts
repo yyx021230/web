@@ -10,6 +10,7 @@ export interface GenerateImageParams {
   height?: number;
   style?: string;
   quality?: string;  // low / medium / high
+  generation_mode?: 'fast' | 'precision'; // GPT Image 2.5：快速出图 / 精细创作
   image_data?: string; // 单张参考图片 base64（图生图模式）
   images_data?: string[]; // 多张参考图片 base64/URL（Seedream 支持最多 10 张）
   image_url?: string; // 单张参考图片 URL（图库模式）
@@ -69,7 +70,23 @@ export interface AIImageRuntimeConfig {
 
 function resolveErrorMessage(data: unknown, fallback: string): string {
   if (data && typeof data === 'object') {
-    const body = data as { message?: unknown; detail?: unknown };
+    const body = data as { message?: unknown; detail?: unknown; data?: unknown };
+    const errors = Array.isArray(body.data) ? body.data : Array.isArray(body.detail) ? body.detail : [];
+    const fields: Record<string, string> = {
+      image_url: '参考图地址', image_data: '参考图', images_data: '参考图',
+      prompt: '提示词', width: '图片宽度', height: '图片高度', count: '生成数量',
+      generation_mode: '生成模式', model: '模型', client_request_id: '请求编号',
+    };
+    const details = errors.flatMap((error: unknown) => {
+      if (!error || typeof error !== 'object') return [];
+      const item = error as { field?: string; loc?: unknown[]; message?: string; msg?: string };
+      const message = item.message || item.msg;
+      if (typeof message !== 'string') return [];
+      const field = (item.field || item.loc?.join('.') || '').replace(/^body\./, '');
+      const label = fields[field.split('.')[0]] || field;
+      return [`${label ? `${label}：` : ''}${message.replace(/^Value error, /, '')}`];
+    });
+    if (details.length) return details.join('；');
     if (typeof body.message === 'string' && body.message.trim()) {
       return body.message;
     }
@@ -87,8 +104,49 @@ function createApiError(message: string, status?: number): Error & { status?: nu
   return err;
 }
 
+async function prepareReferenceSource(source: string): Promise<string> {
+  if (typeof window === 'undefined' || source.startsWith('data:')) return source;
+  const url = new URL(source, window.location.origin);
+  if (url.origin !== window.location.origin) return source;
+  if (url.pathname.startsWith('/uploads/')) return `${url.pathname}${url.search}`;
+  if (!url.pathname.startsWith('/car-models/')) return source;
+
+  // Legacy car images live in Next public, not in the backend storage volume.
+  try {
+    const response = await fetch(url.href, { signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`图片读取失败（${response.status}）`);
+    const blob = await response.blob();
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(blob.type)) throw new Error('地址返回的不是可用图片');
+    if (blob.size > 10 * 1024 * 1024) throw new Error('图片不能超过 10MB');
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('图片读取失败'));
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    throw createApiError(`车型参考图读取失败：${error instanceof Error ? error.message : '请重新选择图片'}`, 400);
+  }
+}
+
+async function prepareGenerationParams(params: GenerateImageParams): Promise<GenerateImageParams> {
+  const prepared = { ...params };
+  if (params.image_url) {
+    const source = await prepareReferenceSource(params.image_url);
+    if (source.startsWith('data:image/')) {
+      prepared.image_data = source;
+      delete prepared.image_url;
+    } else {
+      prepared.image_url = source;
+    }
+  }
+  if (params.images_data) prepared.images_data = await Promise.all(params.images_data.map(prepareReferenceSource));
+  return prepared;
+}
+
 export const aiApi = {
   generateImage: async (params: GenerateImageParams) => {
+    const prepared = await prepareGenerationParams(params);
     // Use direct API route for generate (avoids Next.js rewrite 1MB body limit)
     // Other calls go through the proxy which is fine (they don't have large bodies)
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -97,7 +155,7 @@ export const aiApi = {
     const res = await fetch('/api/ai-image/generate', {
       method: 'POST',
       headers,
-      body: JSON.stringify(params),
+      body: JSON.stringify(prepared),
     });
     const data = await res.json();
     // Unwrap the { code, message, data } envelope to match axios api behavior

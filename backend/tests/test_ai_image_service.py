@@ -123,6 +123,34 @@ def test_normalize_failed_result_fills_missing_error():
     assert result["error"] == "上游返回失败，但没有提供错误详情"
 
 
+def test_gptimage25_is_registered_as_a_separate_user_model():
+    service = AIImageService(model_name="gptimage25")
+    assert service.adapter.name == "gptimage25"
+    assert any(item["id"] == "gptimage25" for item in service.list_available_models())
+
+
+@pytest.mark.asyncio
+async def test_gptimage25_without_provider_never_falls_back_to_image2_adapter(client, monkeypatch):
+    adapter_called = False
+
+    async def fake_adapter_generate(*args, **kwargs):
+        nonlocal adapter_called
+        adapter_called = True
+        return {"status": "completed", "image_urls": ["unexpected.png"]}
+
+    monkeypatch.setattr("app.adapters.ai_model.gptimage25.GPTImage25Adapter.generate_image", fake_adapter_generate)
+    async with async_session() as db:
+        service = AIImageService(model_name="gptimage25", db=db)
+        result = await service._generate_with_configured_provider(
+            "prompt",
+            {"generation_mode": "fast", "width": 768, "height": 1024},
+        )
+
+    assert result["status"] == "failed"
+    assert "尚未配置" in result["error"]
+    assert adapter_called is False
+
+
 @pytest.mark.asyncio
 async def test_submit_enqueues_task_in_redis_queue(client, monkeypatch):
     queued_task_ids: list[int] = []

@@ -180,7 +180,6 @@ async def test_admin_user_workflows_stats_detail_activation_and_deletion(client)
     assert stats.json()["data"] == {
         "ai_tasks": 1,
         "wf_tasks": 1,
-        "projects": 1,
         "storage_mb": 2.0,
     }
     detail = await client.get(f"/api/v1/admin/users/{user_id}/detail", headers=headers)

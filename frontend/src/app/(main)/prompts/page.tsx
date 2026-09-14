@@ -1,13 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import * as Dialog from '@radix-ui/react-dialog';
+import styles from './prompts.module.css';
 import { cn } from '@/lib/utils';
 import {
-  Search, Copy, Check, Sparkles, Loader2, Upload,
-  FileText, X, Plus, ImageIcon, Trash2, Pencil, Flag,
+  Copy, Check, Loader2, Upload,
+  FileText, X, Plus, ImageIcon, Trash2, Pencil, Flag, MoreHorizontal, SlidersHorizontal,
+  Heart, Shuffle, Download,
 } from 'lucide-react';
 import { promptsApi, type PromptItem, type PromptImportResult } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
+import { useOptionalAuthSession } from '@/components/auth/AuthSession';
 
 type PromptForm = {
   title: string;
@@ -27,19 +33,34 @@ const emptyForm: PromptForm = {
   param_type: '通用',
 };
 
+type SourceFilter = 'all' | 'external' | 'internal';
+
+const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
+  { value: 'all', label: '全部' },
+  { value: 'external', label: '外部' },
+  { value: 'internal', label: '内部' },
+];
+
 export default function PromptsPage() {
+  const authSession = useOptionalAuthSession();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
-  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
+  const [activeSource, setActiveSource] = useState<SourceFilter>('all');
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
-  const [onlyMine, setOnlyMine] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const discoverySeedRef = useRef(0);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [previewPrompt, setPreviewPrompt] = useState<PromptItem | null>(null);
-  const PAGE_SIZE = 24;
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [promptExpanded, setPromptExpanded] = useState(false);
+  const PAGE_SIZE = 30;
 
   const [showImport, setShowImport] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -53,51 +74,84 @@ export default function PromptsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<PromptImportResult | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const hasLoadedListRef = useRef(false);
 
   const [addForm, setAddForm] = useState<PromptForm>(emptyForm);
   const [editForm, setEditForm] = useState<PromptForm>(emptyForm);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  const fetchData = async (kw?: string, cat?: string, p = 1, mine = onlyMine) => {
-    setLoading(true);
+  const requireLogin = (next = '/prompts', reason = '登录后继续使用这项功能') => {
+    // Tests and isolated embeds may render the gallery without the app provider.
+    if (!authSession || authSession.user) return true;
+    authSession.requestLogin({ next, reason });
+    return false;
+  };
+
+  const protectLink = (event: React.MouseEvent<HTMLAnchorElement>, next: string, reason: string) => {
+    if (requireLogin(next, reason)) return;
+    event.preventDefault();
+  };
+
+  const fetchData = useCallback(async (p = 1, append = false) => {
+    if (append && loadingMoreRef.current) return;
+    const requestId = append ? requestIdRef.current : ++requestIdRef.current;
+    if (append) {
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      setLoadMoreError(null);
+    } else {
+      setLoading(true);
+      setLoadError(null);
+      setLoadMoreError(null);
+    }
     try {
-      const res = await promptsApi.getPrompts(kw, cat, p, PAGE_SIZE, mine);
-      setPrompts(res.data.items);
+      if (!discoverySeedRef.current) {
+        discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
+      }
+      const sourceKind = activeSource === 'all' ? undefined : activeSource;
+      const res = await promptsApi.getPrompts('', undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind);
+      if (requestId !== requestIdRef.current) return;
+      setPrompts(current => {
+        if (!append) return res.data.items;
+        const loadedIds = new Set(current.map(item => item.id));
+        return [...current, ...res.data.items.filter(item => !loadedIds.has(item.id))];
+      });
       setTotal(res.data.total);
       setPage(res.data.page);
+      if (!append) galleryRef.current?.scrollTo?.({ top: 0 });
     } catch (e) {
-      console.error(e);
+      if (requestId !== requestIdRef.current) return;
+      const message = e instanceof Error ? e.message : '提示词加载失败，请重试';
+      if (append) setLoadMoreError(message);
+      else setLoadError(message);
     } finally {
-      setLoading(false);
+      if (append) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      } else if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await promptsApi.getCategories();
-      setCategories(res.data.categories);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  }, [activeSource]);
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    fetchData(1);
+    return () => { requestIdRef.current += 1; };
+  }, [fetchData]);
+
+  const hasMore = prompts.length < total;
 
   useEffect(() => {
-    if (!hasLoadedListRef.current) {
-      hasLoadedListRef.current = true;
-      fetchData(searchQuery, activeCategory, 1, onlyMine);
-      return;
-    }
-    const timer = setTimeout(() => {
-      fetchData(searchQuery, activeCategory, 1, onlyMine);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeCategory, onlyMine]);
+    const root = galleryRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!root || !sentinel || !hasMore || loading || loadingMore || loadMoreError || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting) fetchData(page + 1, true);
+    }, { root, rootMargin: '600px 0px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchData, hasMore, loadMoreError, loading, loadingMore, page]);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -114,6 +168,23 @@ export default function PromptsPage() {
     setTimeout(() => setCopiedId(null), 1500);
   };
 
+  const getCreativeHref = (item: PromptItem, includeReference = false) => {
+    const text = (item.chinese || item.english || '').trim();
+    const params = new URLSearchParams({ prompt: text, from: 'prompt-library' });
+    if (includeReference && item.image_url) params.set('reference', item.image_url);
+    return `/ai?${params.toString()}`;
+  };
+
+  const toggleFavorite = (id: number) => {
+    if (!requireLogin('/prompts', '登录后收藏喜欢的创意')) return;
+    setFavoriteIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('确定要删除此提示词吗？')) return;
     try {
@@ -127,6 +198,7 @@ export default function PromptsPage() {
   };
 
   const handleReport = async (prompt: PromptItem) => {
+    if (!requireLogin('/prompts', '登录后提交内容举报')) return;
     let reasons = reportReasons;
     if (reasons.length === 1 && reasons[0] === '其他') {
       try {
@@ -184,8 +256,7 @@ export default function PromptsPage() {
         toast.success(`导入成功：${result.imported_count} 条`);
         setShowImport(false);
       }
-      fetchData(searchQuery, activeCategory, 1);
-      fetchCategories();
+      fetchData(1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : '导入失败');
     } finally {
@@ -208,8 +279,7 @@ export default function PromptsPage() {
       toast.success('添加成功');
       setShowAdd(false);
       setAddForm(emptyForm);
-      fetchData(searchQuery, activeCategory, 1);
-      fetchCategories();
+      fetchData(1);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '添加失败');
     } finally {
@@ -245,8 +315,7 @@ export default function PromptsPage() {
       toast.success('更新成功');
       setShowEdit(false);
       setEditingPrompt(null);
-      fetchData(searchQuery, activeCategory, page);
-      fetchCategories();
+      fetchData(1);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '更新失败');
     } finally {
@@ -254,205 +323,161 @@ export default function PromptsPage() {
     }
   };
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  const visibleCategories = showAllCategories ? categories : categories.slice(0, 12);
+  const relatedPrompts = previewPrompt
+    ? prompts.filter(item => item.id !== previewPrompt.id && (!previewPrompt.category || item.category === previewPrompt.category)).slice(0, 6)
+    : [];
 
   return (
-    <div className="cloud-page flex h-full flex-col">
-      <div className="cloud-toolbar flex items-center justify-between px-5 py-3 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-300/40">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-indigo-600">Cloud Studio</div>
-            <h1 className="text-sm font-semibold text-slate-950">提示词库</h1>
-          </div>
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">{total} 条</span>
+    <div className={styles.page}>
+      <h1 className="sr-only">提示词宝库</h1>
+      <header className={styles.toolbar}>
+        <div className={styles.categoryRail}>
+          <nav className={styles.categories} aria-label="提示词来源">
+            {sourceTabs.map(tab => (
+              <button
+                key={tab.value}
+                className={styles.category}
+                aria-pressed={tab.value === activeSource}
+                onClick={() => {
+                  if (tab.value === activeSource) return;
+                  discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
+                  setActiveSource(tab.value);
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { setShowMyReports(true); fetchMyReports(); }} className="cloud-pill flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-indigo-50 transition-colors">
-            我的举报
-          </button>
-          <button onClick={() => setShowAdd(true)} className="cloud-pill flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-indigo-50 transition-colors">
-            <Plus className="h-3.5 w-3.5" /> 添加
-          </button>
-          <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-indigo-200 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> 批量导入
-          </button>
+        <div className={styles.tools}>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger className={styles.manageButton} aria-label="管理提示词宝库" title="管理提示词宝库">
+              <SlidersHorizontal size={17} />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className={styles.menu} align="end" sideOffset={8}>
+                <DropdownMenu.Label className={styles.menuLabel}>提示词宝库</DropdownMenu.Label>
+                <DropdownMenu.Item className={styles.menuItem} onSelect={() => { if (requireLogin('/prompts', '登录后添加你的提示词')) setShowAdd(true); }}><Plus size={15} />添加提示词</DropdownMenu.Item>
+                <DropdownMenu.Item className={styles.menuItem} onSelect={() => { if (requireLogin('/prompts', '登录后批量导入提示词')) setShowImport(true); }}><Upload size={15} />批量导入</DropdownMenu.Item>
+                <DropdownMenu.Separator className={styles.menuDivider} />
+                <DropdownMenu.Item className={styles.menuItem} onSelect={() => { if (requireLogin('/prompts', '登录后查看你的举报记录')) { setShowMyReports(true); fetchMyReports(); } }}><Flag size={15} />我的举报记录</DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
-      </div>
+      </header>
 
-      <div className="cloud-toolbar px-5 py-3 shrink-0 space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[220px] max-w-md">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="搜索提示词..." className="cloud-pill w-full rounded-2xl py-2 pl-8 pr-3 text-xs focus:outline-none focus:ring-4 focus:ring-indigo-100" />
-          </div>
-          <label className="inline-flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">
-            <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} className="rounded" />
-            只看我上传的提示词
-          </label>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[11px] text-muted-foreground">
-            分类 {categories.length} 个
-          </div>
-          {categories.length > 12 && (
-            <button
-              onClick={() => setShowAllCategories(v => !v)}
-              className="text-[11px] text-primary hover:underline"
-            >
-              {showAllCategories ? '收起分类' : '展开全部'}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => setActiveCategory('')} className={cn('cloud-pill rounded-full px-3 py-1 text-[11px] font-medium transition-colors', !activeCategory ? 'border-indigo-400 bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:border-indigo-200 hover:text-slate-900')}>全部</button>
-          {visibleCategories.map(cat => (
-            <button key={cat.name} onClick={() => setActiveCategory(cat.name)} className={cn('cloud-pill rounded-full px-3 py-1 text-[11px] font-medium transition-colors', activeCategory === cat.name ? 'border-indigo-400 bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:border-indigo-200 hover:text-slate-900')}>
-              {cat.name} <span className="opacity-50 ml-0.5">({cat.count})</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto p-5">
+      <div ref={galleryRef} className={styles.scrollArea}>
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mb-2" />
-            <span className="text-sm">加载中...</span>
+          <div aria-busy="true" aria-label="正在加载提示词">
+            <span role="status" className="sr-only">正在加载提示词</span>
+            <div className={styles.gallery} aria-hidden="true">
+              {Array.from({ length: 15 }, (_, i) => <div key={i} className={styles.skeleton} />)}
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className={styles.empty} role="alert">
+            <ImageIcon size={30} /><h2>灵感暂时没有加载出来</h2><p>{loadError}</p>
+            <button onClick={() => fetchData(1)}>重新加载</button>
           </div>
         ) : prompts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <FileText className="h-8 w-8 mb-3 opacity-30" />
-            <p className="text-sm">暂无提示词</p>
+          <div className={styles.empty}>
+            <ImageIcon size={30} /><h2>灵感，即将入场</h2>
+            <p>添加图片和提示词，让好想法可以再次被使用。</p>
+            <button onClick={() => { if (requireLogin('/prompts', '登录后添加你的提示词')) setShowAdd(true); }}>添加提示词</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {prompts.map(prompt => {
-              const copyIdCn = `cn-${prompt.id}`;
-              const copyIdEn = `en-${prompt.id}`;
-              return (
-                <div key={prompt.id} className="cloud-card cloud-card-hover group overflow-hidden rounded-3xl">
-                  {prompt.image_url ? (
-                    <div
-                      className="aspect-[3/4] overflow-hidden bg-slate-50 bg-[radial-gradient(circle_at_1px_1px,rgba(100,116,139,0.18)_1px,transparent_0)] [background-size:14px_14px] cursor-zoom-in flex items-center justify-center"
-                      onClick={() => setPreviewPrompt(prompt)}
-                      title="点击查看图片和提示词详情"
+          <div className={styles.gallery}>
+            {prompts.map(prompt => (
+              <article key={prompt.id} className={styles.card}>
+                <button className={styles.coverButton} onClick={() => { setPreviewPrompt(prompt); setPromptExpanded(false); }}
+                  aria-label={`查看提示词：${prompt.title || prompt.name || '未命名提示词'}`}>
+                  <PromptCover prompt={prompt} />
+                </button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger className={styles.cardMenu} aria-label={`更多操作：${prompt.title || prompt.name || '未命名提示词'}`}>
+                    <MoreHorizontal size={18} />
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content className={styles.menu} align="end" sideOffset={6}>
+                      <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleCopy(prompt.chinese, `cn-${prompt.id}`)}><Copy size={15} />复制提示词</DropdownMenu.Item>
+                      {prompt.english && <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleCopy(prompt.english, `en-${prompt.id}`)}><Copy size={15} />复制英文提示词</DropdownMenu.Item>}
+                      {prompt.can_edit && <DropdownMenu.Item className={styles.menuItem} onSelect={() => openEdit(prompt)}><Pencil size={15} />编辑</DropdownMenu.Item>}
+                      {prompt.can_delete ? <DropdownMenu.Item className={cn(styles.menuItem, styles.danger)} onSelect={() => handleDelete(prompt.id)}><Trash2 size={15} />删除</DropdownMenu.Item>
+                        : <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleReport(prompt)}><Flag size={15} />举报</DropdownMenu.Item>}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+                <div className={styles.cardDetails}>
+                  <button className={styles.author} onClick={() => { setPreviewPrompt(prompt); setPromptExpanded(false); }}>
+                    <span aria-hidden="true">{(prompt.source_author || prompt.source_name || prompt.created_by_name || '灵感')[0]}</span>
+                    <b>{prompt.source_author || prompt.source_name || prompt.created_by_name || '灵感收录'}</b>
+                  </button>
+                  <div className={styles.cardActions}>
+                    <Link className={styles.useCreative} href={getCreativeHref(prompt)}
+                      onClick={event => protectLink(event, getCreativeHref(prompt), '登录后将这个提示词带入 AI 生图')}>
+                      <Shuffle size={14} />使用创意
+                    </Link>
+                    <button
+                      className={styles.favoriteButton}
+                      aria-label={favoriteIds.has(prompt.id) ? '取消收藏' : '收藏'}
+                      aria-pressed={favoriteIds.has(prompt.id)}
+                      onClick={() => toggleFavorite(prompt.id)}
                     >
-                      <img
-                        src={prompt.image_url}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover object-[center_68%] rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-[1.04]"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="aspect-[3/4] bg-gradient-to-br from-primary/5 via-purple-50/50 to-primary/5 flex items-center justify-center">
-                      <ImageIcon className="h-5 w-5 text-muted-foreground/20" />
-                    </div>
-                  )}
-
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-xs font-semibold text-foreground line-clamp-1 flex-1">{prompt.title}</h3>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        {prompt.can_edit && (
-                          <button onClick={() => openEdit(prompt)} className="p-1 rounded hover:bg-blue-50 text-muted-foreground hover:text-blue-500">
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                        )}
-                        {prompt.can_delete && (
-                          <button onClick={() => handleDelete(prompt.id)} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
-                        {!prompt.can_delete && (
-                          <button onClick={() => handleReport(prompt)} className="p-1 rounded hover:bg-amber-50 text-muted-foreground hover:text-amber-600" title="举报">
-                            <Flag className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {prompt.category && <span className="inline-block rounded-md bg-primary/5 px-1.5 py-0.5 text-[10px] text-primary font-medium">{prompt.category}</span>}
-                      {prompt.created_by_name && <span className="inline-block rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">By {prompt.created_by_name}</span>}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-medium text-muted-foreground">中文</span>
-                        <button onClick={() => handleCopy(prompt.chinese, copyIdCn)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                          {copiedId === copyIdCn ? <><Check className="h-3 w-3 text-green-500" /> 已复制</> : <><Copy className="h-3 w-3" /> 复制</>}
-                        </button>
-                      </div>
-                      <div className="line-clamp-3 rounded-lg bg-muted/50 px-2.5 py-2 text-xs leading-relaxed text-foreground">{prompt.chinese}</div>
-                    </div>
-
-                    {prompt.english && (
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-medium text-muted-foreground">English</span>
-                          <button onClick={() => handleCopy(prompt.english, copyIdEn)} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                            {copiedId === copyIdEn ? <><Check className="h-3 w-3 text-green-500" /> 已复制</> : <><Copy className="h-3 w-3" /> 复制</>}
-                          </button>
-                        </div>
-                        <div className="line-clamp-2 rounded-lg bg-muted/30 px-2.5 py-2 text-xs leading-relaxed text-muted-foreground">{prompt.english}</div>
-                      </div>
-                    )}
+                      <Heart size={17} />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+              </article>
+            ))}
           </div>
         )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6 pb-4">
-            <button disabled={page <= 1} onClick={() => fetchData(searchQuery, activeCategory, page - 1)} className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium disabled:opacity-40 hover:bg-accent transition-colors">上一页</button>
-            <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => fetchData(searchQuery, activeCategory, page + 1)} className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium disabled:opacity-40 hover:bg-accent transition-colors">下一页</button>
-          </div>
-        )}
+        {!loading && !loadError && prompts.length > 0 && <footer className={styles.feedStatus}>
+          <span>已展示 {prompts.length.toLocaleString()} / {total.toLocaleString()} 个灵感</span>
+          {loadingMore && <span role="status"><Loader2 className="animate-spin" />正在加载更多灵感</span>}
+          {loadMoreError && <button onClick={() => fetchData(page + 1, true)}>继续加载</button>}
+          {!hasMore && <span>已经浏览完当前标签的全部内容</span>}
+          <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden="true" />
+        </footer>}
       </div>
 
       {showImport && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowImport(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl border w-[480px] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="text-sm font-semibold">批量导入提示词</h3>
-              <button onClick={() => setShowImport(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
+        <div className={styles.modalOverlay} onClick={() => setShowImport(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div><span className={styles.modalEyebrow}>Import collection</span><h3>批量导入提示词</h3></div>
+              <button aria-label="关闭导入弹窗" onClick={() => setShowImport(false)} className={styles.modalClose}><X /></button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1.5">
-                <p className="font-medium text-foreground">导入说明</p>
+            <div className={styles.modalBody}>
+              <div className={styles.importGuide}>
+                <p className={styles.guideTitle}>准备你的文件</p>
                 <p>支持格式：`.xlsx` / `.xls` / `.csv`</p>
                 <p>必填字段：`中文提示词`、`图片URL`（无图行会被拦截）</p>
                 <p>推荐字段：`标题`、`分类`、`参数类型`、`英文提示词`</p>
                 <p>示例表头：`标题,中文提示词,英文提示词,分类,参数类型,图片URL`</p>
-                <a href="/prompt-import-template.csv" download className="inline-flex items-center gap-1 text-primary hover:underline">
-                  <FileText className="h-3 w-3" />
+                <a href="/prompt-import-template.csv" download className={styles.templateLink}>
+                  <FileText />
                   下载导入模板
                 </a>
               </div>
-              <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImportFile} className="w-full text-sm" />
-              {importing && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> 导入中...</div>}
+              <label className={styles.filePicker}>
+                <span className={styles.filePickerIcon}><Upload /></span>
+                <span><b>选择要导入的文件</b><small>单次导入后会自动刷新提示词宝库</small></span>
+                <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleImportFile} />
+              </label>
+              {importing && <div className={styles.processing}><Loader2 className="animate-spin" /> 正在整理提示词...</div>}
               {importResult && (
-                <div className="rounded-lg border p-3 text-xs space-y-2">
-                  <p className="text-foreground font-medium">
+                <div className={styles.importResult}>
+                  <p>
                     导入结果：成功 {importResult.imported_count} 条，失败 {importResult.failed_count} 条（总计 {importResult.total_rows} 条）
                   </p>
                   {importResult.created_categories.length > 0 && (
-                    <p className="text-muted-foreground">新建分类：{importResult.created_categories.join('、')}</p>
+                    <p>新建分类：{importResult.created_categories.join('、')}</p>
                   )}
                   {importResult.failed_rows.length > 0 && (
                     <details>
-                      <summary className="cursor-pointer text-red-600">查看失败明细（最多展示 10 条）</summary>
-                      <ul className="mt-2 list-disc pl-5 space-y-1 text-red-600">
+                      <summary>查看失败明细（最多展示 10 条）</summary>
+                      <ul>
                         {importResult.failed_rows.slice(0, 10).map((row, idx) => (
                           <li key={`${row.row}-${idx}`}>第 {row.row} 行{row.title ? `（${row.title}）` : ''}：{row.reason}</li>
                         ))}
@@ -491,39 +516,39 @@ export default function PromptsPage() {
       )}
 
       {showMyReports && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowMyReports(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl border w-[680px] max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h3 className="text-sm font-semibold">我的举报记录</h3>
-              <button onClick={() => setShowMyReports(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
+        <div className={styles.modalOverlay} onClick={() => setShowMyReports(false)}>
+          <div className={cn(styles.modal, styles.reportModal)} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div><span className={styles.modalEyebrow}>My reports</span><h3>我的举报记录</h3></div>
+              <button aria-label="关闭举报记录" onClick={() => setShowMyReports(false)} className={styles.modalClose}><X /></button>
             </div>
-            <div className="p-5 overflow-auto">
+            <div className={cn(styles.modalBody, styles.reportBody)}>
               {reportsLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> 加载中...</div>
+                <div className={styles.processing}><Loader2 className="animate-spin" /> 正在加载记录...</div>
               ) : myReports.length === 0 ? (
-                <div className="text-sm text-muted-foreground">暂无举报记录</div>
+                <div className={styles.reportEmpty}><Flag />暂无举报记录</div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="text-left text-gray-600 border-b">
+                <table className={styles.reportTable}>
+                  <thead>
                     <tr>
-                      <th className="py-2">提示词</th>
-                      <th className="py-2">原因</th>
-                      <th className="py-2">状态</th>
-                      <th className="py-2">时间</th>
+                      <th>提示词</th>
+                      <th>原因</th>
+                      <th>状态</th>
+                      <th>时间</th>
                     </tr>
                   </thead>
                   <tbody>
                     {myReports.map(r => (
-                      <tr key={r.id} className="border-b last:border-0">
-                        <td className="py-2 pr-2 text-gray-700">{r.prompt_name}</td>
-                        <td className="py-2 pr-2 text-gray-600">{r.reason}</td>
-                        <td className="py-2 pr-2">
-                          <span className={cn('px-2 py-0.5 rounded text-xs', r.status === 'pending' ? 'bg-amber-50 text-amber-700' : r.status === 'resolved' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600')}>
+                      <tr key={r.id}>
+                        <td>{r.prompt_name}</td>
+                        <td>{r.reason}</td>
+                        <td>
+                          <span className={cn(styles.status, r.status === 'pending' ? styles.statusPending : r.status === 'resolved' ? styles.statusResolved : styles.statusRejected)}>
                             {r.status === 'pending' ? '待处理' : r.status === 'resolved' ? '已处理' : '已驳回'}
                           </span>
-                          {r.resolution_note && <div className="text-xs text-gray-500 mt-1">备注：{r.resolution_note}</div>}
+                          {r.resolution_note && <div className={styles.reportNote}>备注：{r.resolution_note}</div>}
                         </td>
-                        <td className="py-2 text-xs text-gray-500">{r.created_at.slice(0, 19)}</td>
+                        <td>{r.created_at.slice(0, 19)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -534,93 +559,135 @@ export default function PromptsPage() {
         </div>
       )}
 
+      <Dialog.Root open={Boolean(previewPrompt)} onOpenChange={open => { if (!open) setPreviewPrompt(null); }}>
       {previewPrompt && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewPrompt(null)}>
-          <button
-            onClick={() => setPreviewPrompt(null)}
-            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
+        <Dialog.Portal>
+        <Dialog.Overlay className={styles.detailOverlay} />
+        <Dialog.Content aria-describedby={undefined} className={styles.detailDialog}
+          onClick={e => { if (e.target === e.currentTarget) setPreviewPrompt(null); }}>
+          <Dialog.Title className="sr-only">{previewPrompt.title || previewPrompt.name || '提示词详情'}</Dialog.Title>
           <div
-            className="grid max-h-[92vh] w-full max-w-6xl grid-cols-1 gap-4 overflow-auto lg:h-[92vh] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden"
+            className={styles.detailLayout}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex h-[58vh] min-h-0 items-center justify-center overflow-hidden rounded-[28px] bg-black shadow-2xl lg:h-full">
-              {previewPrompt.image_url ? (
-                <img
-                  src={previewPrompt.image_url}
-                  alt={previewPrompt.title || '提示词图片'}
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex aspect-[3/4] w-full max-w-md items-center justify-center bg-slate-900 text-slate-500">
-                  <ImageIcon className="h-10 w-10" />
-                </div>
-              )}
+            <div className={styles.detailImagePanel}>
+              <div className={styles.detailCover}><PromptCover prompt={previewPrompt} /></div>
+              <div className={styles.detailFloatingActions}>
+                {previewPrompt.image_url && (
+                  <a href={previewPrompt.image_url} target="_blank" rel="noreferrer" aria-label="下载图片" title="下载图片">
+                    <Download />
+                  </a>
+                )}
+                <button aria-label="关闭提示词详情" onClick={() => setPreviewPrompt(null)} className={styles.detailClose}>
+                  <span>ESC</span><X />
+                </button>
+              </div>
             </div>
 
-            <aside className="min-h-0 overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex h-full flex-col">
-                <div className="border-b border-slate-100 px-6 py-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-400">#{previewPrompt.id}</span>
-                    {previewPrompt.category && (
-                      <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-                        {previewPrompt.category}
-                      </span>
-                    )}
+            <aside className={styles.detailAside}>
+              <div className={styles.detailAsideInner}>
+                <div className={styles.detailHeader}>
+                  <div className={styles.detailMeta}>
+                    <span className={styles.detailAuthorAvatar}>{(previewPrompt.source_author || previewPrompt.source_name || previewPrompt.created_by_name || '灵感')[0]}</span>
+                    <b>{previewPrompt.source_author || previewPrompt.source_name || previewPrompt.created_by_name || '灵感收录'}</b>
+                    <span className={styles.detailParam}>{previewPrompt.param_type || previewPrompt.category || 'AI 图像'}</span>
                   </div>
-                  <h2 className="text-xl font-bold leading-snug text-slate-950">{previewPrompt.title || previewPrompt.name || '未命名提示词'}</h2>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">{previewPrompt.chinese}</p>
-                </div>
-
-                <div className="flex-1 overflow-auto px-6 py-5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-500">Prompt</div>
-                    <button
-                      onClick={() => handleCopy(previewPrompt.chinese, `preview-cn-${previewPrompt.id}`)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100"
-                    >
-                      {copiedId === `preview-cn-${previewPrompt.id}` ? <><Check className="h-3.5 w-3.5" /> 已复制</> : <><Copy className="h-3.5 w-3.5" /> 复制中文</>}
+                  <div className={styles.detailQuickActions}>
+                    <button aria-pressed={favoriteIds.has(previewPrompt.id)} onClick={() => toggleFavorite(previewPrompt.id)}>
+                      <Heart />{favoriteIds.has(previewPrompt.id) ? '已收藏' : '收藏'}
+                    </button>
+                    <button onClick={() => handleCopy(previewPrompt.chinese, `preview-cn-${previewPrompt.id}`)}>
+                      {copiedId === `preview-cn-${previewPrompt.id}` ? <><Check />已复制</> : <><Copy />复制提示词</>}
                     </button>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-700 whitespace-pre-wrap">
+                </div>
+
+                <div className={styles.detailBody}>
+                  <div className={styles.detailSectionLabel}>提示词</div>
+                  <div className={cn(styles.promptText, promptExpanded && styles.promptTextExpanded)}>
                     {previewPrompt.chinese}
                   </div>
+                  {previewPrompt.chinese.length > 150 && (
+                    <button className={styles.promptExpand} onClick={() => setPromptExpanded(value => !value)}>
+                      {promptExpanded ? '收起' : '展开'}
+                    </button>
+                  )}
 
                   {previewPrompt.english && (
-                    <div className="mt-5">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">English</div>
+                    <div className={styles.englishBlock}>
+                      <div className={styles.detailSectionHead}>
+                        <div className={cn(styles.detailSectionLabel, styles.mutedLabel)}>English Prompt</div>
                         <button
                           onClick={() => handleCopy(previewPrompt.english, `preview-en-${previewPrompt.id}`)}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+                          className={cn(styles.detailCopy, styles.detailCopyMuted)}
                         >
-                          {copiedId === `preview-en-${previewPrompt.id}` ? <><Check className="h-3.5 w-3.5 text-green-500" /> 已复制</> : <><Copy className="h-3.5 w-3.5" /> 复制英文</>}
+                          {copiedId === `preview-en-${previewPrompt.id}` ? <><Check /> 已复制</> : <><Copy /> 复制英文</>}
                         </button>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-600 whitespace-pre-wrap">
+                      <div className={cn(styles.promptText, styles.promptTextEnglish)}>
                         {previewPrompt.english}
                       </div>
                     </div>
                   )}
+
+                  {previewPrompt.source_kind === 'external' && (
+                    <div className={styles.sourceAttribution}>
+                      <div>
+                        <span>外部灵感</span>
+                        <b>{previewPrompt.source_name || '开放素材库'}</b>
+                        {previewPrompt.source_license && <small>{previewPrompt.source_license}</small>}
+                      </div>
+                      {previewPrompt.source_url && (
+                        <a href={previewPrompt.source_url} target="_blank" rel="noreferrer">查看原始内容</a>
+                      )}
+                    </div>
+                  )}
+
+                  {relatedPrompts.length > 0 && (
+                    <section className={styles.relatedSection}>
+                      <h3>更多相关内容</h3>
+                      <div className={styles.relatedGrid}>
+                        {relatedPrompts.map(item => (
+                          <button key={item.id} onClick={() => { setPreviewPrompt(item); setPromptExpanded(false); }} aria-label={`查看相关提示词：${item.title || item.name || '未命名提示词'}`}>
+                            <PromptCover prompt={item} />
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                 </div>
 
-                <div className="border-t border-slate-100 px-6 py-4">
-                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-                    <span>作者：<b className="text-slate-800">{previewPrompt.created_by_name || '未知'}</b></span>
-                    {previewPrompt.param_type && <span className="rounded-full bg-slate-100 px-2.5 py-1">{previewPrompt.param_type}</span>}
-                  </div>
+                <div className={styles.detailFooter}>
+                  <Link className={styles.detailUseCreative} href={getCreativeHref(previewPrompt)}
+                    onClick={event => protectLink(event, getCreativeHref(previewPrompt), '登录后将这个提示词带入 AI 生图')}>
+                    <Shuffle />使用创意
+                  </Link>
+                  <Link className={styles.detailReference} href={getCreativeHref(previewPrompt, true)}
+                    onClick={event => protectLink(event, getCreativeHref(previewPrompt, true), '登录后用这张图片继续创作')}>
+                    <ImageIcon />用作参考图
+                  </Link>
                 </div>
               </div>
             </aside>
           </div>
-        </div>
+        </Dialog.Content>
+        </Dialog.Portal>
       )}
+      </Dialog.Root>
     </div>
   );
+}
+
+function PromptCover({ prompt }: { prompt: PromptItem }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [prompt.image_url]);
+  if (!prompt.image_url || failed) return (
+    <div className={styles.missingCover}>
+      <ImageIcon size={28} /><strong>{prompt.title || prompt.name || '未命名提示词'}</strong>
+      <span>{failed ? '图片暂不可用 · 查看提示词' : '文字也能开启灵感 · 查看提示词'}</span>
+    </div>
+  );
+  return <img src={prompt.image_url} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
 }
 
 function PromptModal({
@@ -660,61 +727,60 @@ function PromptModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl border w-[520px] max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"><X className="h-4 w-4" /></button>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={cn(styles.modal, styles.formModal)} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <div><span className={styles.modalEyebrow}>Prompt details</span><h3>{title}</h3></div>
+          <button aria-label={`关闭${title}`} onClick={onClose} className={styles.modalClose}><X /></button>
         </div>
-        <div className="p-5 space-y-4 overflow-y-auto">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">标题 <span className="text-red-500">*</span></label>
-            <input value={form.title} onChange={e => patch('title', e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        <div className={cn(styles.modalBody, styles.formBody)}>
+          <div className={styles.field}>
+            <label>标题 <span>*</span></label>
+            <input value={form.title} onChange={e => patch('title', e.target.value)} />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">中文提示词 <span className="text-red-500">*</span></label>
-            <textarea value={form.chinese} onChange={e => patch('chinese', e.target.value)} rows={3} className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+          <div className={styles.field}>
+            <label>中文提示词 <span>*</span></label>
+            <textarea value={form.chinese} onChange={e => patch('chinese', e.target.value)} rows={4} />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">英文提示词</label>
-            <textarea value={form.english} onChange={e => patch('english', e.target.value)} rows={3} className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+          <div className={styles.field}>
+            <label>英文提示词</label>
+            <textarea value={form.english} onChange={e => patch('english', e.target.value)} rows={3} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">分类</label>
-              <input value={form.category} onChange={e => patch('category', e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+          <div className={styles.fieldRow}>
+            <div className={styles.field}>
+              <label>分类</label>
+              <input value={form.category} onChange={e => patch('category', e.target.value)} />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">参数类型</label>
-              <input value={form.param_type} onChange={e => patch('param_type', e.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <div className={styles.field}>
+              <label>参数类型</label>
+              <input value={form.param_type} onChange={e => patch('param_type', e.target.value)} />
             </div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">图片 URL</label>
-            <div className="flex gap-2">
-              <input value={form.image_url} onChange={e => patch('image_url', e.target.value)} placeholder="/uploads/prompts/xxx.png" className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-              <label className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs cursor-pointer hover:bg-accent">
-                <Upload className="h-3.5 w-3.5" />
+          <div className={styles.field}>
+            <label>图片 URL</label>
+            <div className={styles.imageFieldRow}>
+              <input value={form.image_url} onChange={e => patch('image_url', e.target.value)} placeholder="/uploads/prompts/xxx.png" />
+              <label className={styles.uploadButton}>
+                <Upload />
                 {uploading ? '上传中...' : '上传'}
-                <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+                <input type="file" accept="image/*" onChange={handleUpload} />
               </label>
             </div>
             {form.image_url && (
-              <div className="mt-2 aspect-[3/4] max-h-80 overflow-hidden rounded-xl border bg-slate-50 bg-[radial-gradient(circle_at_1px_1px,rgba(100,116,139,0.16)_1px,transparent_0)] [background-size:14px_14px] p-2 flex items-center justify-center">
+              <div className={styles.formPreview}>
                 <img
                   src={form.image_url}
                   alt="提示词图片预览"
-                  className="h-full w-full object-cover object-[center_68%] rounded-lg"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
             )}
           </div>
         </div>
-        <div className="flex gap-2 p-5 border-t">
-          <button onClick={onClose} className="flex-1 rounded-lg border py-2 text-sm hover:bg-neutral-50 transition-colors">取消</button>
-          <button onClick={onSubmit} disabled={loading} className="flex-1 rounded-lg bg-primary text-white py-2 text-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
-            {loading ? '处理中...' : submitText}
+        <div className={styles.modalActions}>
+          <button onClick={onClose} className={styles.secondaryAction}>取消</button>
+          <button onClick={onSubmit} disabled={loading} className={styles.primaryAction}>
+            {loading ? <><Loader2 className="animate-spin" />处理中...</> : submitText}
           </button>
         </div>
       </div>

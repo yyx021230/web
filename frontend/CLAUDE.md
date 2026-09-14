@@ -2,7 +2,7 @@
 
 ## 项目信息
 - 项目: AI Creative Studio (AI创意工作台)
-- 技术栈: Next.js 14 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Zustand + Fabric.js
+- 技术栈: Next.js 14 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Zustand
 - 目录: /Users/yyx/ztqc/web/frontend
 
 ## 核心规则
@@ -115,11 +115,10 @@ export function ComponentName({ prop1, prop2 }: ComponentNameProps) {
 - 错误处理统一在 axios 拦截器中处理
 - 禁止在组件中直接使用 `fetch()` 或 `axios()`
 
-### 6. Fabric.js 集成规范
-- Canvas 操作封装在 `lib/fabric/` 目录
-- 禁止在组件中直接操作 canvas，必须通过 manager
-- 所有 fabric 对象创建通过 `object-factory.ts`
-- 历史记录通过 `history.ts` 管理
+### 6. 素材与图库规范
+- 独立模板库和画布编辑器已下线，不再新增入口或 Fabric.js 依赖。
+- 图库共享操作统一使用 `services/materialApi.ts`。
+- 保留 AI 图片保存、参考图选择和历史设计稿预览，不恢复画布编辑能力。
 
 ### 7. Dify 工作流集成规范
 - Dify 调用封装在 `lib/dify/` 和 `services/difyApi.ts`

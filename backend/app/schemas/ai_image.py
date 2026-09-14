@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from app.config import settings
@@ -29,6 +29,10 @@ class GenerateImageRequest(BaseModel):
     height: int = Field(default=2048, ge=256, le=4096, description="高度")
     style: Optional[str] = Field(None, description="风格")
     quality: Optional[str] = Field(None, description="图像质量等级 (low/medium/high)，仅部分模型支持")
+    generation_mode: Literal["fast", "precision"] = Field(
+        default="fast",
+        description="GPT Image 2.5 创作模式：fast 快速出图，precision 精细创作",
+    )
     count: int = Field(default=1, ge=1, le=4, description="生成数量（当前支持 1/2/4，最大 4）")
     # 单图兼容（base64 或 URL）
     image_data: Optional[str] = Field(

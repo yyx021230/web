@@ -656,7 +656,7 @@ class AIImageService:
         task_id: int | None = None,
     ) -> tuple[dict, list[str], list[str]]:
         upstream_prompt = prompt
-        if self.adapter.name == "gptimage2":
+        if self.adapter.name in {"gptimage2", "gptimage25"}:
             upstream_prompt = _append_dimension_prompt_instruction(prompt, params)
         await mirror_ai_image_shadow_safely(
             task_id,
@@ -847,9 +847,10 @@ class AIImageService:
                     exc,
                 )
 
-        if self.db and self.adapter.name == "gptimage2":
+        if self.db and self.adapter.name in {"gptimage2", "gptimage25"}:
             provider_service = AIImageProviderService(self.db)
-            providers = await provider_service.list_providers("gptimage2")
+            provider_model_name = self.adapter.name
+            providers = await provider_service.list_providers(provider_model_name)
             if providers:
                 async def mark_selected_provider(provider: dict) -> None:
                     if not task_id:
@@ -875,12 +876,21 @@ class AIImageService:
                     prompt=prompt,
                     params=params,
                     user_id=user_id,
-                    model_name="gptimage2",
+                    model_name=provider_model_name,
                     on_provider_selected=mark_selected_provider if task_id else None,
                     on_upstream_accepted=mark_upstream_accepted if task_id else None,
                 )
                 if not self._should_fallback_to_adapter(provider_result):
                     return provider_result
+            if provider_model_name == "gptimage25":
+                return {
+                    "task_id": "",
+                    "status": "failed",
+                    "image_urls": [],
+                    "error": "GPT Image 2.5 尚未配置可用入口",
+                    "provider_configured": False,
+                    "provider": None,
+                }
         adapter_params = dict(params)
         if task_id:
             adapter_params["_on_upstream_accepted"] = mark_upstream_accepted

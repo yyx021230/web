@@ -46,6 +46,7 @@ import {
 import { toast } from '@/lib/toast';
 import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
 import { datetimeLocalToIso, toDatetimeLocalFromISO, toDatetimeLocalValue } from '@/lib/dateTime';
+import styles from './publish.module.css';
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: '待发布',
@@ -2852,7 +2853,7 @@ export default function XHSPublishManagePage() {
   }, [page, totalPages]);
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden bg-[#f5f8ff]">
+    <div className={`${styles.workspace} relative h-full min-h-0 overflow-hidden bg-[#f5f8ff]`}>
       <div className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-white blur-2xl" />
       <div className="pointer-events-none absolute -right-24 -top-28 h-96 w-96 rounded-full bg-blue-200/35 blur-3xl" />
       <div className="pointer-events-none absolute left-1/3 top-8 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
@@ -2862,8 +2863,8 @@ export default function XHSPublishManagePage() {
         className="relative z-10 h-full w-[111.111111%] origin-top-left scale-90"
         style={{ height: '111.111111%' }}
       >
-        <div className="flex h-full min-h-0 w-full flex-col gap-3 p-2.5 md:p-4 xl:flex-row xl:overflow-hidden">
-        <section className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-[28px] border border-white/80 bg-white/80 shadow-[0_24px_70px_rgba(81,112,160,0.18)] backdrop-blur-xl xl:h-full xl:w-[560px]">
+        <div className={styles.layout}>
+        <section className={`${styles.composerPanel} overflow-hidden rounded-[28px] border border-white/80 bg-white/80 shadow-[0_24px_70px_rgba(81,112,160,0.18)] backdrop-blur-xl`}>
           <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-3">
             <div>
               <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-600">Cloud Studio</span>
@@ -3041,12 +3042,12 @@ export default function XHSPublishManagePage() {
           </div>
         </section>
 
-        <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-visible rounded-[32px] border border-white/80 bg-white/72 shadow-[0_24px_80px_rgba(81,112,160,0.18)] backdrop-blur-xl">
+        <section className={`${styles.managementPanel} relative flex min-h-0 min-w-0 flex-1 flex-col overflow-visible rounded-[32px] border border-white/80 bg-white/72 shadow-[0_24px_80px_rgba(81,112,160,0.18)] backdrop-blur-xl`}>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_5%,rgba(129,161,255,0.2),transparent_32%),radial-gradient(circle_at_10%_100%,rgba(255,255,255,0.95),transparent_35%)]" />
 
           <div className="relative z-30 border-b border-slate-200/70 px-4 py-3">
             <div className="flex flex-col gap-3">
-              <div className="grid gap-2 md:grid-cols-4 2xl:grid-cols-7">
+              <div className={styles.viewGrid}>
                   {MANAGE_VIEW_ORDER.map((view) => {
                     const active = manageView === view;
                     return (
@@ -4149,7 +4150,7 @@ export default function XHSPublishManagePage() {
                     <div className="absolute inset-x-0 top-0 h-52 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,0.92))]" />
                     <div className="absolute inset-x-10 top-28 h-px bg-[linear-gradient(90deg,transparent,rgba(148,163,184,0.34),transparent)]" />
 
-                    <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,0.9fr)]">
+                    <div className={`relative ${styles.compareHero}`}>
                       <div>
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/90 bg-white/78 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 shadow-[0_10px_24px_rgba(148,163,184,0.14)] backdrop-blur">
                           <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
@@ -4165,7 +4166,7 @@ export default function XHSPublishManagePage() {
                             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Overview Metrics</div>
                             <div className="text-xs text-slate-500">当前区间全指标总览</div>
                           </div>
-                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+                          <div className={styles.metricGrid}>
                           {creativeCompareOverviewStats.map((item) => (
                             <div key={item.key} className="rounded-[22px] border border-white/90 bg-white/84 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.1)] backdrop-blur">
                               <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{item.label}</div>
@@ -4209,7 +4210,7 @@ export default function XHSPublishManagePage() {
 
                   </div>
 
-                  <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
+                  <div className={styles.metricGrid}>
                     {creativeCompareTagCards.map((card, index) => {
                       const surface = CREATIVE_COMPARE_CARD_SURFACES[card.key] || CREATIVE_COMPARE_CARD_SURFACES.manual;
                       const style = CREATIVE_COMPARE_TAG_STYLES[card.key] || CREATIVE_COMPARE_TAG_STYLES.manual;
@@ -4303,7 +4304,7 @@ export default function XHSPublishManagePage() {
                     })}
                   </div>
 
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px]">
+                  <div className={styles.compareGrid}>
                     <div className="rounded-[32px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,250,255,0.98))] p-5 shadow-[0_20px_48px_rgba(79,103,146,0.1)]">
                       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                         <div>
@@ -4574,7 +4575,7 @@ export default function XHSPublishManagePage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <div className={styles.compareGridReverse}>
                     <div className="rounded-[30px] border border-slate-200/90 bg-white/92 p-4 shadow-[0_18px_40px_rgba(79,103,146,0.1)]">
                       <div>
                         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Matrix</div>

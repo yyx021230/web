@@ -11,14 +11,12 @@ from app.core.roles import has_role
 from app.models.user import User
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(
-    db: AsyncSession = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> User:
+async def _load_user_from_token(db: AsyncSession, token: str) -> User:
     try:
-        payload = decode_access_token(credentials.credentials)
+        payload = decode_access_token(token)
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -38,6 +36,31 @@ async def get_current_user(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return user
+
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> User:
+    return await _load_user_from_token(db, credentials.credentials)
+
+
+async def get_optional_current_user(
+    db: AsyncSession = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+) -> User | None:
+    """Return the active user when a valid bearer token is present.
+
+    Public endpoints use this dependency so a missing or stale browser token does
+    not prevent anonymous content from rendering. Protected endpoints continue to
+    use ``get_current_user`` and retain strict 401/403 behavior.
+    """
+    if credentials is None:
+        return None
+    try:
+        return await _load_user_from_token(db, credentials.credentials)
+    except HTTPException:
+        return None
 
 
 async def require_admin(

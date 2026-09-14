@@ -81,7 +81,6 @@ async def test_admin_resource_lists_details_fail_and_delete(client):
 
     for path in (
         "/api/v1/admin/resources/workflow-tasks?username=missing",
-        "/api/v1/admin/resources/projects?username=missing",
         "/api/v1/admin/resources/ai-tasks?username=missing",
         "/api/v1/admin/resources/copywritings?username=missing",
     ):
@@ -99,24 +98,6 @@ async def test_admin_resource_lists_details_fail_and_delete(client):
     assert workflow_detail.status_code == 200
     assert workflow_detail.json()["data"]["logs"][0]["level"] == "error"
     assert (await client.get("/api/v1/admin/resources/workflow-tasks/99999", headers=headers)).status_code == 404
-
-    projects = await client.get(
-        "/api/v1/admin/resources/projects",
-        params={"username": "member", "status": "published"},
-        headers=headers,
-    )
-    assert projects.json()["data"]["total"] == 1
-    assert (await client.delete("/api/v1/admin/resources/projects/99999", headers=headers)).status_code == 404
-    assert (
-        await client.post("/api/v1/admin/resources/projects/batch-delete", json={}, headers=headers)
-    ).status_code == 400
-    batch = await client.post(
-        "/api/v1/admin/resources/projects/batch-delete",
-        json={"project_ids": [20, 99999]},
-        headers=headers,
-    )
-    assert batch.json()["data"]["deleted"] == 1
-    assert (await client.delete("/api/v1/admin/resources/projects/21", headers=headers)).status_code == 200
 
     ai_list = await client.get(
         "/api/v1/admin/resources/ai-tasks",
