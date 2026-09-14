@@ -43,6 +43,51 @@ const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
 
 const promptImageSizeCache = new Map<string, { width: number; height: number }>();
 
+function normalizePromptImageUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed, 'https://creative-studio.local');
+    const path = url.pathname.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/';
+    return url.origin === 'https://creative-studio.local'
+      ? path
+      : `${url.protocol}//${url.host.toLowerCase()}${path}`;
+  } catch {
+    return trimmed.split(/[?#]/, 1)[0].replace(/\/$/, '');
+  }
+}
+
+function promptIdentity(prompt: PromptItem) {
+  const imageUrl = normalizePromptImageUrl(prompt.image_url || '');
+  if (imageUrl) return `image:${imageUrl}`;
+
+  const externalId = prompt.external_id?.trim();
+  if (externalId) return `external:${prompt.source_name || ''}:${externalId}`;
+
+  const copy = (prompt.chinese || prompt.english || prompt.title || prompt.name || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+  return copy ? `copy:${copy}` : `id:${prompt.id}`;
+}
+
+function mergeUniquePrompts(current: PromptItem[], incoming: PromptItem[]) {
+  const seenIds = new Set(current.map(item => item.id));
+  const seenContent = new Set(current.map(promptIdentity));
+  const merged = [...current];
+
+  for (const item of incoming) {
+    const identity = promptIdentity(item);
+    if (seenIds.has(item.id) || seenContent.has(identity)) continue;
+    seenIds.add(item.id);
+    seenContent.add(identity);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
 function fallbackImageSize(id: number) {
   const ratios = [
     { width: 3, height: 4 },
@@ -156,11 +201,7 @@ export default function PromptsPage() {
       if (requestId !== requestIdRef.current) return;
       const preparedItems = await preparePromptImages(res.data.items);
       if (requestId !== requestIdRef.current) return;
-      setPrompts(current => {
-        if (!append) return preparedItems;
-        const loadedIds = new Set(current.map(item => item.id));
-        return [...current, ...preparedItems.filter(item => !loadedIds.has(item.id))];
-      });
+      setPrompts(current => mergeUniquePrompts(append ? current : [], preparedItems));
       setTotal(res.data.total);
       setPage(res.data.page);
       if (!append) galleryRef.current?.scrollTo?.({ top: 0 });
@@ -184,7 +225,7 @@ export default function PromptsPage() {
     return () => { requestIdRef.current += 1; };
   }, [fetchData]);
 
-  const hasMore = prompts.length < total;
+  const hasMore = page * PAGE_SIZE < total;
 
   useEffect(() => {
     const root = galleryRef.current;
@@ -478,7 +519,7 @@ export default function PromptsPage() {
           </div>
         )}
         {!loading && !loadError && prompts.length > 0 && <footer className={styles.feedStatus}>
-          <span>已展示 {prompts.length.toLocaleString()} / {total.toLocaleString()} 个灵感</span>
+          <span>已展示 {prompts.length.toLocaleString()} 个不重复灵感</span>
           {loadingMore && <span role="status"><Loader2 className="animate-spin" />正在加载更多灵感</span>}
           {loadMoreError && <button onClick={() => fetchData(page + 1, true)}>继续加载</button>}
           {!hasMore && <span>已经浏览完当前标签的全部内容</span>}
@@ -616,7 +657,7 @@ export default function PromptsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.detailImagePanel}>
-              <div className={styles.detailCover}><PromptCover prompt={previewPrompt} /></div>
+              <div className={styles.detailCover}><PromptDetailCover prompt={previewPrompt} /></div>
               <div className={styles.detailFloatingActions}>
                 {previewPrompt.image_url && (
                   <a href={previewPrompt.image_url} target="_blank" rel="noreferrer" aria-label="下载图片" title="下载图片">
@@ -737,6 +778,32 @@ function PromptCover({ prompt }: { prompt: PromptItem }) {
   return <span className={styles.coverFrame} style={{ aspectRatio: `${width} / ${height}` }}>
     <img src={prompt.image_url} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async" onError={() => setFailed(true)} />
   </span>;
+}
+
+function PromptDetailCover({ prompt }: { prompt: PromptItem }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [prompt.image_url]);
+
+  if (!prompt.image_url || failed) return (
+    <div className={styles.detailMissingCover}>
+      <ImageIcon size={30} />
+      <strong>{prompt.title || prompt.name || '未命名提示词'}</strong>
+      <span>{failed ? '图片暂不可用' : '当前灵感暂无配图'}</span>
+    </div>
+  );
+
+  return (
+    <div className={styles.detailImageStage}>
+      <img
+        className={styles.detailImage}
+        src={prompt.image_url}
+        alt={prompt.title || prompt.name || '提示词效果图'}
+        loading="eager"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 }
 
 function PromptModal({

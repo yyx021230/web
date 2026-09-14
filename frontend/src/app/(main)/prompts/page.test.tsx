@@ -67,8 +67,12 @@ describe('image-first prompt gallery', () => {
   it('opens full bilingual details and copies text without modifying the prompt', async () => {
     await mount();
     await act(async () => (host.querySelector('[aria-label="查看提示词：汽车光影"]') as HTMLButtonElement).click());
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(entry.chinese);
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(entry.english);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain(entry.chinese);
+    expect(dialog.textContent).toContain(entry.english);
+    const detailImage = dialog.querySelector('img[alt="汽车光影"]');
+    expect(detailImage?.getAttribute('loading')).toBe('eager');
+    expect(detailImage?.className).toContain('detailImage');
     await act(async () => button('复制英文').click());
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(entry.english);
     await act(async () => (document.querySelector('[aria-label="关闭提示词详情"]') as HTMLButtonElement).click());
@@ -122,7 +126,7 @@ describe('image-first prompt gallery', () => {
   });
 
   it('keeps appending unique items as the user scrolls', async () => {
-    const nextEntry = { ...entry, id: 8, title: '第二批灵感' };
+    const nextEntry = { ...entry, id: 8, title: '第二批灵感', image_url: '/second-cover.png' };
     vi.mocked(promptsApi.getPrompts)
       .mockResolvedValueOnce(result([entry], 60, 1))
       .mockResolvedValueOnce(result([entry, nextEntry], 60, 2));
@@ -134,6 +138,37 @@ describe('image-first prompt gallery', () => {
     expect(host.querySelector('[aria-label="查看提示词：汽车光影"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="查看提示词：第二批灵感"]')).not.toBeNull();
     expect(host.querySelectorAll('article')).toHaveLength(2);
+  });
+
+  it('does not repeat the same visual when later pages contain another database row for it', async () => {
+    const repeatedVisual = {
+      ...entry,
+      id: 8,
+      title: '重复图片记录',
+      image_url: 'https://cdn.example.com/cover.png?signature=another',
+    };
+    const nextEntry = {
+      ...entry,
+      id: 9,
+      title: '真正的新灵感',
+      image_url: 'https://cdn.example.com/new-cover.png',
+    };
+    const firstEntry = {
+      ...entry,
+      image_url: 'https://cdn.example.com/cover.png?signature=first',
+    };
+    vi.mocked(promptsApi.getPrompts)
+      .mockResolvedValueOnce(result([firstEntry], 60, 1))
+      .mockResolvedValueOnce(result([repeatedVisual, nextEntry], 60, 2));
+
+    await mount();
+    const observer = {} as IntersectionObserver;
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], observer));
+
+    expect(host.querySelector('[aria-label="查看提示词：重复图片记录"]')).toBeNull();
+    expect(host.querySelector('[aria-label="查看提示词：真正的新灵感"]')).not.toBeNull();
+    expect(host.querySelectorAll('article')).toHaveLength(2);
+    expect(host.textContent).toContain('已经浏览完当前标签的全部内容');
   });
 
 });

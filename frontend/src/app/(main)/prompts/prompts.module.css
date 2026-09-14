@@ -93,9 +93,11 @@
 .menu { z-index: 100; min-width: 180px; max-width: calc(100vw - 24px); padding: 5px; border: 1px solid #e8e8ef; border-radius: 12px; background: white; box-shadow: 0 8px 35px #282c451a, 0 2px 6px #282c4508; }
 .menuLabel { padding: 7px 9px; font-size: 10px; color: #a0a2ae; }
 .detailCover { display: grid; place-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: clamp(46px, 6vh, 82px) clamp(34px, 6vw, 110px); }
-.detailCover > .coverFrame { width: 100%; height: 100%; max-width: 100%; max-height: 100%; aspect-ratio: auto !important; border-radius: 16px; background: transparent; box-shadow: 0 20px 60px #33384212; }
-.detailCover > .coverFrame img { object-fit: contain; }
-.detailCover > .missingCover { width: min(520px, 72%); max-height: 82%; border-radius: 16px; }
+.detailImageStage { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.detailImage { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; margin: auto; border-radius: 16px; object-fit: contain; object-position: center; filter: drop-shadow(0 20px 30px #33384218); }
+.detailMissingCover { position: relative; display: flex; width: min(520px, 72%); max-height: 82%; aspect-ratio: 3 / 4; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 28px; border-radius: 16px; color: #606476; text-align: center; background: radial-gradient(circle at 26% 18%, #ffffffb8, transparent 34%), linear-gradient(145deg, #f5f6f8, #eceef2); box-shadow: 0 20px 60px #33384212; }
+.detailMissingCover strong { max-width: 220px; font-family: 'Noto Serif SC', serif; font-size: 14px; font-weight: 500; line-height: 1.7; }
+.detailMissingCover span { color: #9093a1; font-size: 10px; }
 .menuItem { display: flex; align-items: center; gap: 9px; padding: 9px; outline: none; border-radius: 7px; color: #555969; font-size: 12px; cursor: pointer; }
 .menuItem[data-highlighted] { background: #f1f2f8; color: #3d4460; }
 .menuDivider { height: 1px; margin: 4px 5px; background: #efeff4; }

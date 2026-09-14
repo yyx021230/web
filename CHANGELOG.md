@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.32] - 2026-09-14
+
+### Fixed
+
+- Kept prompt-detail images centered and fully visible across portrait, landscape and extra-wide aspect ratios.
+- Deduplicated prompt visuals across infinite-scroll pages even when repeated database rows use different IDs or signed URL parameters.
+- Added an isolated frontend-only release path so homepage fixes do not restart APIs, workers or data services.
+
 ## [0.3.31] - 2026-09-14
 
 ### Fixed
