@@ -17,6 +17,9 @@ def require(condition: bool, message: str) -> None:
 
 compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 deploy = (ROOT / "scripts/windows/Deploy-Release.ps1").read_text(encoding="utf-8")
+assert_release = (ROOT / "scripts/windows/Assert-ReleaseState.ps1").read_text(
+    encoding="utf-8"
+)
 rollback = (ROOT / "scripts/windows/Rollback-Release.ps1").read_text(encoding="utf-8")
 start_production = (ROOT / "scripts/windows/Start-Production.ps1").read_text(
     encoding="utf-8"
@@ -52,6 +55,17 @@ require(
 require(
     "Assert-ReleaseState.ps1" in deploy,
     "Deploy-Release.ps1 must run the post-deploy release-state verifier",
+)
+require(
+    deploy.count("--env-file $rootEnvPath -f $rootComposePath") >= 6,
+    "core release lifecycle commands must ignore module overrides that pin old images",
+)
+require(
+    "frontendImageTag" in assert_release
+    and "frontendBakedVersion" in assert_release
+    and "frontendBakedCommit" in assert_release
+    and "frontendBakedSourceSha256" in assert_release,
+    "release-state verification must detect a stale frontend image",
 )
 require(
     "McpSourceSha256" in deploy and "McpBinarySha256" in deploy,

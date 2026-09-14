@@ -18,4 +18,11 @@
 
 - 不新增数据库迁移，不重复安装素材包。
 - 必须沿用唯一发布入口 `WIN_PASS=... ./deploy-to-windows.sh`。
+
+## Post-deploy frontend correction
+
+- Production's module override pinned the core `frontend` service to `ztqc/frontend:0.3.25`, so the first cutover upgraded the API and worker while leaving the public UI stale.
+- Core release lifecycle commands now use the base Compose file explicitly, preventing module overrides from replacing the immutable release image.
+- Release-state verification now checks the frontend image tag, version, commit, and source fingerprint in addition to the backend and worker.
+- The production override no longer pins the core frontend release, and FRP port `18080` targets the main frontend on local port `3000`.
 - 发布后验证“全部/外部/内部”三类提示词接口、首页图片和主要功能页面。

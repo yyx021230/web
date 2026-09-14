@@ -32,9 +32,12 @@ if (-not $receipt.core) {
 
 $backendId = Get-ServiceContainer "backend"
 $workerId = Get-ServiceContainer "ai-worker"
+$frontendId = Get-ServiceContainer "frontend"
 $backend = @(docker inspect $backendId | ConvertFrom-Json)[0]
 $worker = @(docker inspect $workerId | ConvertFrom-Json)[0]
+$frontend = @(docker inspect $frontendId | ConvertFrom-Json)[0]
 $image = @(docker image inspect $backend.Image | ConvertFrom-Json)[0]
+$frontendImage = @(docker image inspect $frontend.Image | ConvertFrom-Json)[0]
 
 $actual = [ordered]@{
     version = Read-EnvValue $backend.Config.Env "APP_VERSION"
@@ -53,6 +56,13 @@ $actual = [ordered]@{
     workerVersion = Read-EnvValue $worker.Config.Env "APP_VERSION"
     workerCommit = Read-EnvValue $worker.Config.Env "GIT_COMMIT"
     workerSourceSha256 = Read-EnvValue $worker.Config.Env "RELEASE_SOURCE_SHA256"
+    frontendVersion = Read-EnvValue $frontend.Config.Env "NEXT_PUBLIC_APP_VERSION"
+    frontendCommit = Read-EnvValue $frontend.Config.Env "NEXT_PUBLIC_GIT_COMMIT"
+    frontendImageRef = "$($frontend.Config.Image)"
+    frontendImageId = "$($frontend.Image)"
+    frontendImageVersion = "$($frontendImage.Config.Labels.'org.opencontainers.image.version')"
+    frontendImageCommit = "$($frontendImage.Config.Labels.'org.opencontainers.image.revision')"
+    frontendImageSourceSha256 = "$($frontendImage.Config.Labels.'com.ztqc.release.source-sha256')"
 }
 
 $expected = $receipt.core
@@ -73,6 +83,12 @@ $checks = [ordered]@{
     workerVersion = $actual.workerVersion -eq "$($expected.version)"
     workerCommit = $actual.workerCommit -eq "$($expected.commit)"
     workerSourceSha256 = $actual.workerSourceSha256 -eq "$($expected.sourceSha256)"
+    frontendVersion = $actual.frontendVersion -eq "$($expected.version)"
+    frontendCommit = $actual.frontendCommit -eq "$($expected.commit)"
+    frontendImageTag = $actual.frontendImageRef.EndsWith(":$($expected.imageTag)")
+    frontendBakedVersion = $actual.frontendImageVersion -eq "$($expected.version)"
+    frontendBakedCommit = $actual.frontendImageCommit -eq "$($expected.commit)"
+    frontendBakedSourceSha256 = $actual.frontendImageSourceSha256 -eq "$($expected.sourceSha256)"
 }
 
 $failed = @($checks.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })

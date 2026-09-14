@@ -390,7 +390,7 @@ try {
     # queue gate and switch. Existing API and worker processes stay alive until
     # all accepted work has finished; a non-empty queue aborts and reopens the
     # frontend without touching those processes.
-    docker compose stop frontend | Out-Null
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop frontend | Out-Null
     $servicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "post-build preflight"
 
@@ -420,7 +420,7 @@ try {
     # The user entrypoint has remained closed since the post-build gate. Check
     # once more before stopping API and worker processes.
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
-    docker compose stop backend ai-worker | Out-Null
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop backend ai-worker | Out-Null
     $applicationServicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"
 
@@ -462,7 +462,7 @@ try {
     Set-EnvValue $rootEnvPath "MCP_BINARY_SHA256" $McpBinarySha256
 
     $migrationAttempted = $true
-    docker compose run --rm --no-deps backend alembic upgrade head
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath run --rm --no-deps backend alembic upgrade head
     $migrationExitCode = $LASTEXITCODE
     $observedMigrationRevision = "$(docker exec $currentPostgresId psql -U $databaseUser -d $databaseName -Atc 'SELECT version_num FROM alembic_version LIMIT 1;' | Select-Object -Last 1)".Trim()
     if ($LASTEXITCODE -ne 0 -or -not $observedMigrationRevision) {
@@ -473,7 +473,7 @@ try {
     $migrationAttempted = $observedMigrationRevision -ne $preMigrationRevision
     if ($migrationExitCode -ne 0) { throw "Database migration failed" }
     $postMigrationRevision = $observedMigrationRevision
-    docker compose up -d --no-deps backend ai-worker frontend
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-deps backend ai-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
     $deadline = (Get-Date).AddMinutes(3)
@@ -581,13 +581,13 @@ catch {
         }
         try {
             if ($applicationServicesStopped) {
-                docker compose up -d --no-build --no-deps backend ai-worker frontend
+                docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-build --no-deps backend ai-worker frontend
                 if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
             } else {
                 # Initial/post-build queue gates only close the frontend. Do not
                 # recreate API or worker containers that may still be draining
                 # an accepted task; just reopen the user entrypoint.
-                docker compose up -d --no-build --no-deps frontend
+                docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-build --no-deps frontend
                 if ($LASTEXITCODE -ne 0) { throw "frontend failed to reopen" }
             }
         } catch {
