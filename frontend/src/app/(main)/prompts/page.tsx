@@ -356,14 +356,17 @@ export default function PromptsPage() {
     }
 
     const visiblePrompts = promptsRef.current;
-    setRelatedPrompts(rankRelatedPrompts(previewPrompt, visiblePrompts));
+    const visibleCandidates = previewPrompt.category
+      ? visiblePrompts.filter(item => item.category === previewPrompt.category)
+      : visiblePrompts;
+    setRelatedPrompts(rankRelatedPrompts(previewPrompt, visibleCandidates));
     if (!previewPrompt.category) return;
 
     const sourceKind = activeSource === 'all' ? undefined : activeSource;
     const cacheKey = `${previewPrompt.category}:${sourceKind || 'all'}`;
     const cached = relatedCacheRef.current.get(cacheKey);
     if (cached) {
-      setRelatedPrompts(rankRelatedPrompts(previewPrompt, mergeUniquePrompts(cached, visiblePrompts)));
+      setRelatedPrompts(rankRelatedPrompts(previewPrompt, cached));
       return;
     }
 
@@ -371,7 +374,7 @@ export default function PromptsPage() {
       .then(res => {
         if (requestId !== relatedRequestRef.current) return;
         relatedCacheRef.current.set(cacheKey, res.data.items);
-        setRelatedPrompts(rankRelatedPrompts(previewPrompt, mergeUniquePrompts(res.data.items, visiblePrompts)));
+        setRelatedPrompts(rankRelatedPrompts(previewPrompt, res.data.items));
       })
       .catch(() => {
         // Keep the locally ranked fallback when the wider candidate pool is unavailable.

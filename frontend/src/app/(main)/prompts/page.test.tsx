@@ -196,8 +196,16 @@ describe('image-first prompt gallery', () => {
       category: '产品与品牌',
       image_url: '/relevant.png',
     };
+    const crossCategory = {
+      ...entry,
+      id: 23,
+      title: '跨分类近似素材',
+      chinese: '冰冻能量饮料罐矗立在极地冰雪中，蓝色冰块覆盖罐身',
+      category: '海报设计',
+      image_url: '/cross-category.png',
+    };
     vi.mocked(promptsApi.getPrompts)
-      .mockResolvedValueOnce(result([selected, unrelated, relevant]))
+      .mockResolvedValueOnce(result([selected, unrelated, relevant, crossCategory]))
       .mockResolvedValueOnce(result([unrelated, relevant], 2));
 
     await mount();
@@ -206,6 +214,7 @@ describe('image-first prompt gallery', () => {
 
     const recommendations = Array.from(document.querySelectorAll('[aria-label^="查看相关提示词："]'));
     expect(recommendations[0]?.getAttribute('aria-label')).toBe('查看相关提示词：冰块中的罐装饮料');
+    expect(recommendations.some(item => item.getAttribute('aria-label') === '查看相关提示词：跨分类近似素材')).toBe(false);
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', '产品与品牌', 1, 600, false, undefined, undefined);
   });
 

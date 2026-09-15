@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.35] - 2026-09-15
+
+### Fixed
+
+- Kept related-prompt results inside the selected prompt's complete category pool so generic prompt wording cannot pull in unrelated loaded gallery categories.
+
 ## [0.3.34] - 2026-09-15
 
 ### Fixed
