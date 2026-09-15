@@ -5,16 +5,23 @@ param(
     [string]$FrpConfigPath = "C:\ProgramData\frp\frpc.toml",
     [string]$StateRoot = "C:\ProgramData\frp\watchdog",
     [int]$FailureThreshold = 2,
-    [int]$ProbeTimeoutSeconds = 6
+    [int]$ProbeTimeoutSeconds = 4,
+    [int]$ProbeIntervalSeconds = 10,
+    [switch]$Continuous
 )
 
 $ErrorActionPreference = "Stop"
+if ($FailureThreshold -lt 1) { throw "FailureThreshold must be at least 1" }
+if ($ProbeTimeoutSeconds -lt 1) { throw "ProbeTimeoutSeconds must be at least 1" }
+if ($ProbeIntervalSeconds -lt 5) { throw "ProbeIntervalSeconds must be at least 5" }
+
 $statePath = Join-Path $StateRoot "state.json"
 $logPath = Join-Path $StateRoot "watchdog.log"
-$mutex = New-Object System.Threading.Mutex($false, "Global\ZTQCFrpTunnelWatchdog")
-$mutexHeld = $false
 
 function Write-WatchdogLog([string]$Message) {
+    if ((Test-Path $logPath -PathType Leaf) -and (Get-Item $logPath).Length -ge 5MB) {
+        Move-Item $logPath "$logPath.1" -Force
+    }
     Add-Content -Encoding UTF8 -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message"
 }
 
@@ -76,50 +83,72 @@ function Restart-FrpEntry {
     Start-ScheduledTask -TaskName $FrpTaskName
 }
 
-New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
-try {
-    $mutexHeld = $mutex.WaitOne(0)
-    if (-not $mutexHeld) { exit 0 }
+function Invoke-WatchdogCheck {
+    $mutex = New-Object System.Threading.Mutex($false, "Global\ZTQCFrpTunnelWatchdog")
+    $mutexHeld = $false
+    try {
+        $mutexHeld = $mutex.WaitOne(0)
+        if (-not $mutexHeld) { return 0 }
 
-    $localOk = Test-HttpEndpoint $LocalUrl
-    if (-not $localOk) {
-        Write-WatchdogState 0 "local_service_unavailable" $false
-        Write-WatchdogLog "Skipped FRP recovery because the local web service is unavailable"
-        exit 0
-    }
+        $state = Read-WatchdogState
+        if (-not (Test-HttpEndpoint $LocalUrl)) {
+            if ($state.status -ne "local_service_unavailable") {
+                Write-WatchdogState 0 "local_service_unavailable" $false
+                Write-WatchdogLog "Skipped FRP recovery because the local web service is unavailable"
+            }
+            return 0
+        }
 
-    if (Test-HttpEndpoint $PublicUrl) {
-        Write-WatchdogState 0 "healthy" $false
-        exit 0
-    }
-
-    $state = Read-WatchdogState
-    $failures = [int]$state.consecutivePublicFailures + 1
-    if ($failures -lt $FailureThreshold) {
-        Write-WatchdogState $failures "public_probe_failed" $false
-        exit 0
-    }
-
-    Write-WatchdogLog "Public probe failed $failures consecutive times while local service is healthy; restarting FRP entry only"
-    Restart-FrpEntry
-
-    foreach ($attempt in 1..8) {
-        Start-Sleep -Seconds 2
         if (Test-HttpEndpoint $PublicUrl) {
-            Write-WatchdogState 0 "recovered" $true
-            Write-WatchdogLog "FRP public entry recovered after restart"
-            exit 0
+            if ($state.status -ne "healthy" -or [int]$state.consecutivePublicFailures -ne 0) {
+                Write-WatchdogState 0 "healthy" $false
+            }
+            return 0
+        }
+
+        $failures = [int]$state.consecutivePublicFailures + 1
+        if ($failures -lt $FailureThreshold) {
+            Write-WatchdogState $failures "public_probe_failed" $false
+            return 0
+        }
+
+        Write-WatchdogLog "Public probe failed $failures consecutive times while local service is healthy; restarting FRP entry only"
+        Restart-FrpEntry
+
+        foreach ($attempt in 1..8) {
+            Start-Sleep -Seconds 2
+            if (Test-HttpEndpoint $PublicUrl) {
+                Write-WatchdogState 0 "healthy" $true
+                Write-WatchdogLog "FRP public entry recovered after restart"
+                return 0
+            }
+        }
+
+        Write-WatchdogState $failures "recovery_failed" $false
+        Write-WatchdogLog "FRP restart completed but the public entry is still unavailable"
+        return 1
+    } catch {
+        Write-WatchdogLog "Watchdog failed: $($_.Exception.Message)"
+        Write-WatchdogState 0 "watchdog_failed" $false
+        return 1
+    } finally {
+        if ($mutexHeld) { $mutex.ReleaseMutex() }
+        $mutex.Dispose()
+    }
+}
+
+New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
+if ($Continuous) {
+    Write-WatchdogLog "Continuous FRP monitor started; interval=${ProbeIntervalSeconds}s threshold=$FailureThreshold"
+    while ($true) {
+        $result = Invoke-WatchdogCheck
+        if ($result -ne 0) {
+            Start-Sleep -Seconds ([Math]::Max(60, $ProbeIntervalSeconds))
+        } else {
+            Start-Sleep -Seconds $ProbeIntervalSeconds
         }
     }
-
-    Write-WatchdogState $failures "recovery_failed" $false
-    Write-WatchdogLog "FRP restart completed but the public entry is still unavailable"
-    exit 1
-} catch {
-    Write-WatchdogLog "Watchdog failed: $($_.Exception.Message)"
-    Write-WatchdogState 0 "watchdog_failed" $false
-    throw
-} finally {
-    if ($mutexHeld) { $mutex.ReleaseMutex() }
-    $mutex.Dispose()
 }
+
+$result = Invoke-WatchdogCheck
+exit $result

@@ -1,11 +1,15 @@
 param(
     [string]$ProjectRoot = "C:\projects\web",
     [string]$TaskName = "ZTQC FRP Tunnel Monitor",
-    [int]$IntervalMinutes = 1
+    [int]$ProbeIntervalSeconds = 10,
+    [int]$FailureThreshold = 2,
+    [int]$ProbeTimeoutSeconds = 4
 )
 
 $ErrorActionPreference = "Stop"
-if ($IntervalMinutes -lt 1) { throw "IntervalMinutes must be at least 1" }
+if ($ProbeIntervalSeconds -lt 5) { throw "ProbeIntervalSeconds must be at least 5" }
+if ($FailureThreshold -lt 1) { throw "FailureThreshold must be at least 1" }
+if ($ProbeTimeoutSeconds -lt 1) { throw "ProbeTimeoutSeconds must be at least 1" }
 
 $watchdogScript = Join-Path $ProjectRoot "scripts\windows\Watch-FrpTunnel.ps1"
 if (-not (Test-Path $watchdogScript -PathType Leaf)) {
@@ -14,18 +18,16 @@ if (-not (Test-Path $watchdogScript -PathType Leaf)) {
 
 $action = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$watchdogScript`""
+    -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$watchdogScript`" -Continuous -ProbeIntervalSeconds $ProbeIntervalSeconds -FailureThreshold $FailureThreshold -ProbeTimeoutSeconds $ProbeTimeoutSeconds"
 $startupTrigger = New-ScheduledTaskTrigger -AtStartup
-$startupTrigger.Delay = "PT2M"
-$repeatTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
+$startupTrigger.Delay = "PT30S"
 $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 1) `
-    -RestartCount 2 `
+    -ExecutionTimeLimit ([TimeSpan]::Zero) `
+    -RestartCount 999 `
     -RestartInterval (New-TimeSpan -Minutes 1)
 $principal = New-ScheduledTaskPrincipal `
     -UserId "SYSTEM" `
@@ -35,9 +37,10 @@ $principal = New-ScheduledTaskPrincipal `
 Register-ScheduledTask `
     -TaskName $TaskName `
     -Action $action `
-    -Trigger @($startupTrigger, $repeatTrigger) `
+    -Trigger $startupTrigger `
     -Settings $settings `
     -Principal $principal `
     -Force | Out-Null
 
-Write-Output "Installed '$TaskName' for startup and every $IntervalMinutes minute(s)"
+Start-ScheduledTask -TaskName $TaskName
+Write-Output "Installed '$TaskName' as a continuous ${ProbeIntervalSeconds}s monitor"

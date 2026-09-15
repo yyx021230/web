@@ -2,6 +2,19 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.40] - 2026-09-15
+
+### Fixed
+
+- Replaced the minute-based FRP probe with a continuous 10-second public-entry monitor that recovers a stale tunnel without restarting application containers.
+- Reduced the oversized FRP pre-connect pool and enabled explicit TCP multiplexing keepalives so the Windows tunnel no longer accumulates unusable work connections.
+
+## [0.3.39] - 2026-09-15
+
+### Changed
+
+- Expanded the Hermes workflow worker pool to ten concurrent generation tasks without restarting the core image-generation worker.
+
 ## [0.3.38] - 2026-09-15
 
 ### Fixed
