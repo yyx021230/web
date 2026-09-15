@@ -56,6 +56,7 @@ const nextConfig = {
   output: 'standalone',
   images: {
     remotePatterns: [],
+    minimumCacheTTL: 31_536_000,
   },
   async headers() {
     return [

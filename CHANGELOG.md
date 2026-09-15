@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.37] - 2026-09-15
+
+### Fixed
+
+- Rendered the prompt gallery immediately after its API response instead of blocking on eager downloads of every original image.
+- Served internal gallery cards through cached 640px Next.js previews while retaining original-resolution images in the detail view.
+- Added a Windows FRP public-entry watchdog that recovers a stale tunnel without restarting Docker or application services.
+
 ## [0.3.36] - 2026-09-15
 
 ### Fixed
