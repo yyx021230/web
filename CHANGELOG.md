@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.36] - 2026-09-15
+
+### Fixed
+
+- Added subject-aware ranking for beverages, beauty, fashion, vehicles, portraits, architecture and other major visual concepts so shared layout wording cannot outweigh actual content similarity.
+
 ## [0.3.35] - 2026-09-15
 
 ### Fixed

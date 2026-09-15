@@ -55,6 +55,31 @@ const RELATED_STOP_WORDS = new Set([
   '生成', '设计', '展示', '呈现', '整体', '质感', '效果', '一个', '一种', '使用', '具有', '非常',
 ]);
 const RELATED_CJK_STOP_FRAGMENTS = Array.from(RELATED_STOP_WORDS).filter(word => /[\u3400-\u9fff]/.test(word));
+const RELATED_PRIMARY_CONCEPTS: Array<[string, RegExp]> = [
+  ['beauty', /\b(?:skincare|cosmetic|perfume|fragrance|serum|cream|lotion|shampoo|deodorant|makeup|lipstick|moisturizer)\b|护肤|美妆|香水|精华|面霜|乳液|洗发|口红/],
+  ['beverage', /\b(?:beverage|drink|juice|soda|cola|coffee|tea|beer|whiskey|wine|cocktail)\b|饮料|果汁|汽水|咖啡|茶饮|啤酒|威士忌|酒瓶/],
+  ['fashion', /\b(?:fashion|apparel|clothing|jersey|garment|dress|gown|jacket|hoodie|sneaker|shoe|scarf)\b|服装|服饰|球衣|礼服|裙装|夹克|卫衣|鞋履|围巾/],
+  ['vehicle', /\b(?:automotive|car|vehicle|suv|sedan|motorcycle|truck)\b|汽车|轿车|跑车|越野车|摩托车|卡车/],
+  ['technology', /\b(?:smartphone|phone|laptop|computer|tablet|headphone|speaker|smartwatch|camera)\b|手机|电脑|平板|耳机|音箱|手表|相机/],
+  ['food', /\b(?:food|meal|dish|cake|bread|dessert|burger|pizza|cuisine)\b|美食|菜肴|蛋糕|面包|甜点|汉堡|披萨/],
+  ['architecture', /\b(?:architecture|building|interior|facade|house|room)\b|建筑|室内|空间|房屋|房间|立面/],
+  ['portrait', /\b(?:portrait|woman|man|girl|boy|person|couple|family)\b|人像|女性|男性|女孩|男孩|人物|情侣|家庭/],
+  ['graphic', /\b(?:logo|typography|poster|infographic|blueprint)\b|标志|字体|海报|信息图|蓝图/],
+  ['art', /\b(?:illustration|painting|sculpture|character)\b|插画|绘画|雕塑|角色/],
+  ['jewelry', /\b(?:jewelry|jewellery|ring|necklace|bracelet)\b|珠宝|戒指|项链|手链/],
+];
+const RELATED_SCENE_CONCEPTS: Array<[string, RegExp]> = [
+  ['ingredients', /\b(?:fruit|vegetable|ingredient|botanical|strawberry|orange|peach|apple|berry|mango|citrus)\b|水果|蔬菜|原料|植萃|草本|草莓|橙子|桃子|苹果|莓果|芒果|柑橘/],
+  ['floating', /\b(?:float|floating|suspended|levitating|mid-air)\b|悬浮|漂浮|半空/],
+  ['frozen', /\b(?:frozen|frost|frosted|ice|icy|snow|arctic|icicle)\b|冰冻|冰霜|冰块|冰雪|雪地|极地|冰柱/],
+  ['splash', /\b(?:splash|splashing|droplet|spray)\b|飞溅|水花|液滴|喷溅/],
+  ['exploded', /\b(?:exploded|explosion|deconstructed|cutaway)\b|爆炸|爆开|拆解|剖面/],
+  ['miniature', /\b(?:miniature|tiny|micro-world|diorama)\b|微缩|迷你|微观世界|立体模型/],
+  ['collage', /\b(?:collage|grid|bento|storyboard)\b|拼贴|网格|宫格|分镜/],
+  ['dark', /\b(?:dark|moody|noir|shadowy)\b|暗调|黑暗|低照度|黑色电影/],
+  ['minimal', /\b(?:minimal|minimalist|clean|negative-space)\b|极简|简洁|留白/],
+  ['outdoor', /\b(?:outdoor|forest|mountain|street|garden|beach)\b|户外|森林|山地|街头|花园|海滩/],
+];
 
 function normalizeRelatedTerm(value: string) {
   const normalized = value.toLocaleLowerCase().replace(/[^a-z0-9\u3400-\u9fff]+/g, '');
@@ -110,6 +135,13 @@ function promptCopyIdentity(prompt: PromptItem) {
     .toLocaleLowerCase();
 }
 
+function collectRelatedConcepts(prompt: PromptItem, rules: Array<[string, RegExp]>) {
+  const content = `${prompt.title || ''} ${prompt.name || ''} ${prompt.chinese || ''} ${prompt.english || ''}`
+    .toLocaleLowerCase()
+    .slice(0, 5000);
+  return new Set(rules.filter(([, pattern]) => pattern.test(content)).map(([concept]) => concept));
+}
+
 function rankRelatedPrompts(selected: PromptItem, candidates: PromptItem[], limit = RELATED_RESULT_SIZE) {
   const seenIds = new Set<number>([selected.id]);
   const seenVisuals = new Set<string>([promptIdentity(selected)]);
@@ -127,7 +159,11 @@ function rankRelatedPrompts(selected: PromptItem, candidates: PromptItem[], limi
   if (uniqueCandidates.length === 0) return [];
 
   const selectedTerms = collectRelatedTerms(selected);
+  const selectedPrimaryConcepts = collectRelatedConcepts(selected, RELATED_PRIMARY_CONCEPTS);
+  const selectedSceneConcepts = collectRelatedConcepts(selected, RELATED_SCENE_CONCEPTS);
   const candidateTerms = uniqueCandidates.map(collectRelatedTerms);
+  const candidatePrimaryConcepts = uniqueCandidates.map(candidate => collectRelatedConcepts(candidate, RELATED_PRIMARY_CONCEPTS));
+  const candidateSceneConcepts = uniqueCandidates.map(candidate => collectRelatedConcepts(candidate, RELATED_SCENE_CONCEPTS));
   const documentFrequency = new Map<string, number>();
   for (const terms of candidateTerms) {
     for (const term of terms.keys()) {
@@ -149,9 +185,17 @@ function rankRelatedPrompts(selected: PromptItem, candidates: PromptItem[], limi
         const candidateWeight = terms.get(item.term);
         return candidateWeight ? sum + item.weight * Math.min(candidateWeight, 1.7) : sum;
       }, 0);
+      const primaryConcepts = candidatePrimaryConcepts[index];
+      const sceneConcepts = candidateSceneConcepts[index];
+      const sharedPrimaryCount = Array.from(selectedPrimaryConcepts).filter(concept => primaryConcepts.has(concept)).length;
+      const sharedSceneCount = Array.from(selectedSceneConcepts).filter(concept => sceneConcepts.has(concept)).length;
+      const primaryMismatch = selectedPrimaryConcepts.size > 0
+        && primaryConcepts.size > 0
+        && sharedPrimaryCount === 0;
+      const conceptScore = Math.min(sharedPrimaryCount * 0.18, 0.3) + Math.min(sharedSceneCount * 0.035, 0.14);
       const categoryBoost = selected.category && candidate.category === selected.category ? 0.08 : 0;
-      const modelBoost = selected.param_type && candidate.param_type === selected.param_type ? 0.01 : 0;
-      return { candidate, score: sharedWeight / selectedWeight + categoryBoost + modelBoost, index };
+      const mismatchPenalty = primaryMismatch ? 0.1 : 0;
+      return { candidate, score: sharedWeight / selectedWeight + conceptScore + categoryBoost - mismatchPenalty, index };
     })
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, limit)

@@ -176,7 +176,7 @@ describe('image-first prompt gallery', () => {
       ...entry,
       id: 20,
       title: '极地能量饮料',
-      chinese: '冰冻能量饮料罐矗立在极地冰雪中，罐身覆盖冰霜，商业产品摄影',
+      chinese: '冰冻能量饮料罐悬浮在极地冰雪中，罐身覆盖冰霜，纯白影棚背景，商业产品摄影',
       category: '产品与品牌',
       image_url: '/selected.png',
     };
@@ -184,7 +184,7 @@ describe('image-first prompt gallery', () => {
       ...entry,
       id: 21,
       title: '冬季服装海报',
-      chinese: '冬季服装模特站在城市街头，展示羊毛大衣和围巾',
+      chinese: '高端球衣悬浮在半空，纯白影棚背景，柔和灯光与商业广告质感',
       category: '产品与品牌',
       image_url: '/unrelated.png',
     };
@@ -192,7 +192,7 @@ describe('image-first prompt gallery', () => {
       ...entry,
       id: 22,
       title: '冰块中的罐装饮料',
-      chinese: '罐装能量饮料置于蓝色冰块和雪地中，罐身布满冰霜，产品广告',
+      chinese: '罐装能量饮料悬浮于蓝色冰块和雪地中，罐身布满冰霜，纯白影棚背景，产品广告',
       category: '产品与品牌',
       image_url: '/relevant.png',
     };
