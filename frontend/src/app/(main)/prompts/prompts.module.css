@@ -45,8 +45,8 @@
 .card:hover { z-index: 2; }
 .card:hover::after, .card:focus-within::after { opacity: 1; }
 .coverButton { display: block; width: 100%; height: auto; overflow: hidden; cursor: zoom-in; }
-.coverFrame { display: block; width: 100%; aspect-ratio: 3 / 4; overflow: hidden; background: #eef0f3; }
-.coverButton img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: auto; transform: scale(1.001); transition: transform 500ms cubic-bezier(.2,.7,.2,1), filter 260ms ease; }
+.coverFrame { display: block; width: 100%; overflow: hidden; background: #eef0f3; }
+.coverButton img { display: block; width: 100%; height: auto; aspect-ratio: auto 3 / 4; object-fit: cover; object-position: center; image-rendering: auto; transform: scale(1.001); transition: transform 500ms cubic-bezier(.2,.7,.2,1), filter 260ms ease; }
 .card:hover .coverButton img { transform: scale(1.026); filter: saturate(1.045) contrast(1.018); }
 .cardMenu { z-index: 4; display: grid; place-items: center; position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: #17181d70; box-shadow: inset 0 0 0 1px #ffffff28, 0 4px 12px #0002; backdrop-filter: blur(14px); transform: translateY(-4px) scale(.94); }
 .cardDetails { position: absolute; z-index: 3; bottom: 0; left: 0; right: 0; padding: 84px 16px 16px; color: white; pointer-events: none; transform: translateY(10px); transition: opacity 220ms ease, transform 420ms cubic-bezier(.22,1,.36,1); }

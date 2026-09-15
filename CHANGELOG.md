@@ -2,6 +2,12 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.38] - 2026-09-15
+
+### Fixed
+
+- Restored the prompt gallery's natural mixed-height masonry while retaining lazy, bandwidth-saving previews.
+
 ## [0.3.37] - 2026-09-15
 
 ### Fixed
