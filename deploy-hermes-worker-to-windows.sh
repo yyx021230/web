@@ -39,6 +39,7 @@ trap 'rm -rf "$STAGE" "$ARCHIVE"' EXIT
 
 git archive --format=tar HEAD \
   ops/xhs_hermes/run_daily_8x5.py \
+  ops/xhs_hermes/web_worker.py \
   scripts/windows/Dockerfile.hermes-worker-release \
   | tar -xf - -C "$STAGE"
 (

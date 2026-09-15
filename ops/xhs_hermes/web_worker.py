@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -12,6 +13,7 @@ import signal
 import socket
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -27,6 +29,7 @@ DEFAULT_CASES = ROOT / "config" / "cases.json"
 REPORT_FILE = ".web-report.json"
 PRODUCTION_REVISION = "2026-09-08-image-layout-v3"
 STOP_REQUESTED = False
+PENDING_REPORT_LOCK = threading.Lock()
 
 
 def request_stop(*_: Any) -> None:
@@ -42,7 +45,9 @@ def record_api_health() -> None:
     path = Path(configured)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix('.tmp')
+        temporary = path.with_name(
+            f'{path.name}.{os.getpid()}.{threading.get_ident()}.tmp'
+        )
         temporary.write_text(json.dumps({'last_api_success': time.time()}))
         os.replace(temporary, path)
     except OSError as exc:
@@ -354,6 +359,80 @@ def run_once(base_url: str, token: str, worker_id: str, output_root: Path) -> bo
     return True
 
 
+def slot_worker_id(worker_id: str, slot: int, concurrency: int) -> str:
+    """Give every concurrent claim loop its own durable worker identity."""
+    return worker_id if concurrency == 1 else f"{worker_id}-{slot:02d}"
+
+
+def run_slot(
+    base_url: str,
+    token: str,
+    worker_id: str,
+    output_root: Path,
+    *,
+    poll_seconds: int,
+    once: bool,
+) -> None:
+    while not STOP_REQUESTED:
+        try:
+            # Completion reports are shared by all slots. Serialize recovery so
+            # the same durable acknowledgement is never submitted twice.
+            with PENDING_REPORT_LOCK:
+                flush_pending_reports(base_url, token, output_root)
+            worked = run_once(base_url, token, worker_id, output_root)
+            if once:
+                return
+            if not worked:
+                time.sleep(max(3, poll_seconds))
+        except Exception as exc:
+            if once:
+                raise
+            print(
+                f"worker slot {worker_id} polling error: {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            time.sleep(max(5, poll_seconds))
+
+
+def run_pool(
+    base_url: str,
+    token: str,
+    worker_id: str,
+    output_root: Path,
+    *,
+    concurrency: int,
+    poll_seconds: int,
+    once: bool,
+) -> None:
+    if not 1 <= concurrency <= 16:
+        raise ValueError("Hermes run concurrency must be between 1 and 16")
+    if concurrency == 1:
+        run_slot(
+            base_url,
+            token,
+            worker_id,
+            output_root,
+            poll_seconds=poll_seconds,
+            once=once,
+        )
+        return
+    with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="hermes-run") as executor:
+        futures = [
+            executor.submit(
+                run_slot,
+                base_url,
+                token,
+                slot_worker_id(worker_id, slot, concurrency),
+                output_root,
+                poll_seconds=poll_seconds,
+                once=once,
+            )
+            for slot in range(1, concurrency + 1)
+        ]
+        for future in futures:
+            future.result()
+
+
 def main() -> int:
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser()
@@ -361,6 +440,11 @@ def main() -> int:
     parser.add_argument("--token", default=os.environ.get("XHS_WORKER_INTERNAL_TOKEN", ""))
     parser.add_argument("--worker-id", default=os.environ.get("HERMES_WORKER_ID", f"{socket.gethostname()}-hermes"))
     parser.add_argument("--poll-seconds", type=int, default=10)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=int(os.environ.get("HERMES_RUN_CONCURRENCY", "1")),
+    )
     parser.add_argument("--output-root", default=str(ROOT.parent.parent / "outputs" / "xhs_hermes_web"))
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args()
@@ -370,19 +454,15 @@ def main() -> int:
     output_root.mkdir(parents=True, exist_ok=True)
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
-    while not STOP_REQUESTED:
-        try:
-            flush_pending_reports(args.base_url, args.token, output_root)
-            worked = run_once(args.base_url, args.token, args.worker_id, output_root)
-            if args.once:
-                return 0
-            if not worked:
-                time.sleep(max(3, args.poll_seconds))
-        except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
-            if args.once:
-                raise
-            print(f"worker polling error: {type(exc).__name__}: {exc}", flush=True)
-            time.sleep(max(5, args.poll_seconds))
+    run_pool(
+        args.base_url,
+        args.token,
+        args.worker_id,
+        output_root,
+        concurrency=args.concurrency,
+        poll_seconds=args.poll_seconds,
+        once=args.once,
+    )
     return 0
 
 

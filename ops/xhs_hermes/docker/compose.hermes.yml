@@ -19,11 +19,12 @@ services:
     environment:
       HERMES_WEB_BASE_URL: http://backend:8000
       HERMES_WORKER_ID: windows-docker-hermes
+      HERMES_RUN_CONCURRENCY: "10"
       XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?existing Web worker token is required}
       HERMES_OCR_BACKEND: rapidocr
-      HERMES_OCR_THREADS: "2"
-      HERMES_MAX_TEXT_WORKERS: "2"
-      HERMES_MAX_IMAGE_WORKERS: "5"
+      HERMES_OCR_THREADS: "1"
+      HERMES_MAX_TEXT_WORKERS: "1"
+      HERMES_MAX_IMAGE_WORKERS: "1"
     volumes:
       - hermes-config:/app/web/ops/xhs_hermes/config
       - hermes-state:/app/web/ops/xhs_hermes/state
@@ -32,9 +33,9 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    mem_limit: 1536m
-    cpus: 2.0
-    pids_limit: 256
+    mem_limit: 6g
+    cpus: 8.0
+    pids_limit: 1024
     logging:
       driver: json-file
       options:

@@ -14,3 +14,4 @@ ENV APP_VERSION=${APP_VERSION} \
     BUILD_TIME=${BUILD_TIME}
 
 COPY ops/xhs_hermes/run_daily_8x5.py /app/web/ops/xhs_hermes/run_daily_8x5.py
+COPY ops/xhs_hermes/web_worker.py /app/web/ops/xhs_hermes/web_worker.py

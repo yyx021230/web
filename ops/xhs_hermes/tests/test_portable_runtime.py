@@ -118,3 +118,42 @@ def test_shutdown_requests_drain_not_process_termination(monkeypatch):
     monkeypatch.setattr(web_worker, 'STOP_REQUESTED', False)
     web_worker.request_stop()
     assert web_worker.STOP_REQUESTED is True
+
+
+def test_concurrent_slots_have_independent_worker_ids():
+    assert web_worker.slot_worker_id('windows-hermes', 1, 1) == 'windows-hermes'
+    assert web_worker.slot_worker_id('windows-hermes', 1, 10) == 'windows-hermes-01'
+    assert web_worker.slot_worker_id('windows-hermes', 10, 10) == 'windows-hermes-10'
+
+
+def test_pool_runs_ten_claim_slots(monkeypatch, tmp_path):
+    seen = []
+
+    def run_slot(base_url, token, worker_id, output_root, **kwargs):
+        seen.append((worker_id, kwargs['once']))
+
+    monkeypatch.setattr(web_worker, 'run_slot', run_slot)
+    web_worker.run_pool(
+        'https://example.test',
+        'offline',
+        'windows-hermes',
+        tmp_path,
+        concurrency=10,
+        poll_seconds=1,
+        once=True,
+    )
+    assert sorted(seen) == [(f'windows-hermes-{slot:02d}', True) for slot in range(1, 11)]
+
+
+@pytest.mark.parametrize('concurrency', [0, 17])
+def test_pool_rejects_unsafe_concurrency(concurrency, tmp_path):
+    with pytest.raises(ValueError, match='between 1 and 16'):
+        web_worker.run_pool(
+            'https://example.test',
+            'offline',
+            'windows-hermes',
+            tmp_path,
+            concurrency=concurrency,
+            poll_seconds=1,
+            once=True,
+        )

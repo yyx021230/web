@@ -17,6 +17,12 @@ $utf8 = New-Object Text.UTF8Encoding($false)
 $stamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
 $workerTag = "ztqc/hermes-worker:$Version-$Commit"
 
+function ReplaceWorkerSetting([string]$Block, [string]$Old, [string]$New, [string]$Name) {
+    if ($Block.Contains($New)) { return $Block }
+    if (-not $Block.Contains($Old)) { throw "Cannot locate Hermes Worker setting: $Name" }
+    return $Block.Replace($Old, $New)
+}
+
 function Exec([scriptblock]$Action, [string]$Failure) {
     & $Action
     if ($LASTEXITCODE -ne 0) { throw $Failure }
@@ -83,6 +89,26 @@ Exec {
 $raw = [IO.File]::ReadAllText($live)
 if (-not $raw.Contains($previousImage)) { throw "Live override does not contain current worker image: $previousImage" }
 $raw = $raw.Replace($previousImage, $workerTag)
+$workerMatch = [regex]::Match($raw, '(?ms)^  hermes-worker:\r?\n.*?(?=^volumes:\r?$)')
+if (-not $workerMatch.Success) { throw 'Cannot isolate Hermes Worker Compose block' }
+$workerBlock = $workerMatch.Value
+$newline = if ($workerBlock.Contains("`r`n")) { "`r`n" } else { "`n" }
+$identity = '      HERMES_WORKER_ID: windows-docker-hermes'
+if (-not $workerBlock.Contains('HERMES_RUN_CONCURRENCY:')) {
+    if (-not $workerBlock.Contains($identity)) { throw 'Cannot locate Hermes Worker identity setting' }
+    $workerBlock = $workerBlock.Replace(
+        $identity + $newline,
+        $identity + $newline + '      HERMES_RUN_CONCURRENCY: "10"' + $newline
+    )
+}
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_RUN_CONCURRENCY: "1"' '      HERMES_RUN_CONCURRENCY: "10"' 'run concurrency'
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_OCR_THREADS: "2"' '      HERMES_OCR_THREADS: "1"' 'OCR threads'
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_TEXT_WORKERS: "2"' '      HERMES_MAX_TEXT_WORKERS: "1"' 'text workers per run'
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_IMAGE_WORKERS: "5"' '      HERMES_MAX_IMAGE_WORKERS: "1"' 'image workers per run'
+$workerBlock = ReplaceWorkerSetting $workerBlock '    mem_limit: 1536m' '    mem_limit: 6g' 'memory limit'
+$workerBlock = ReplaceWorkerSetting $workerBlock '    cpus: 2.0' '    cpus: 8.0' 'CPU limit'
+$workerBlock = ReplaceWorkerSetting $workerBlock '    pids_limit: 256' '    pids_limit: 1024' 'PID limit'
+$raw = $raw.Substring(0, $workerMatch.Index) + $workerBlock + $raw.Substring($workerMatch.Index + $workerMatch.Length)
 [IO.File]::WriteAllText($candidate, $raw, $utf8)
 Exec {
     docker compose --project-name web --project-directory $ProjectRoot `
@@ -90,11 +116,41 @@ Exec {
 } 'Candidate Hermes compose validation failed'
 
 try {
+    $temporaryPools = @(docker ps -a --filter 'name=web-hermes-pool-' --format '{{.Names}}')
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect temporary Hermes worker pool' }
+    foreach ($temporaryPool in $temporaryPools) {
+        if ($temporaryPool) { Exec { docker rm -f $temporaryPool } "Cannot remove temporary pool $temporaryPool" }
+    }
     Exec { docker stop --timeout 2700 web-hermes-worker-1 } 'Hermes Worker drain failed'
     Copy-Item $candidate $live -Force
     Set-Location $ProjectRoot
     Exec { docker compose --profile hermes up -d --no-deps --no-build hermes-worker } 'Hermes Worker cutover failed'
     $worker = WaitHealthy 'web-hermes-worker-1' $workerTag
+
+    $workerInspect = (docker inspect web-hermes-worker-1 | ConvertFrom-Json)[0]
+    foreach ($expectedEnvironment in @(
+        'HERMES_RUN_CONCURRENCY=10',
+        'HERMES_MAX_TEXT_WORKERS=1',
+        'HERMES_MAX_IMAGE_WORKERS=1',
+        'HERMES_OCR_THREADS=1'
+    )) {
+        if ($workerInspect.Config.Env -notcontains $expectedEnvironment) {
+            throw "Hermes Worker environment missing $expectedEnvironment"
+        }
+    }
+    if ($workerInspect.HostConfig.Memory -ne 6442450944 -or
+        $workerInspect.HostConfig.NanoCpus -ne 8000000000 -or
+        $workerInspect.HostConfig.PidsLimit -ne 1024) {
+        throw 'Hermes Worker resource limits do not match the ten-slot release'
+    }
+
+    $slotCount = 0
+    for ($i = 0; $i -lt 30; $i++) {
+        $slotCount = [int](docker exec web-postgres-1 psql -U postgres -d ai_creative -At -c "SELECT count(*) FROM hermes_worker_states WHERE worker_id ~ '^windows-docker-hermes-(0[1-9]|10)$' AND last_seen_at >= now() - interval '90 seconds';").Trim()
+        if ($LASTEXITCODE -eq 0 -and $slotCount -eq 10) { break }
+        Start-Sleep -Seconds 2
+    }
+    if ($slotCount -ne 10) { throw "Expected 10 live Hermes slots, found $slotCount" }
 
     $internalCount = docker exec web-hermes-worker-1 python -c "import sys; sys.path.insert(0, '/app/web/ops/xhs_hermes'); from run_daily_8x5 import OnlineData; rows=OnlineData().prompts(); assert rows and all(str(r.get('source_kind') or '') == 'internal' for r in rows); print(len(rows))"
     if ($LASTEXITCODE -ne 0 -or [int]($internalCount.Trim()) -le 0) {
@@ -118,10 +174,12 @@ try {
         sourceArchiveSha256 = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
         scope = 'Hermes production reads the complete paginated internal prompt catalog only'
         internalPromptCount = [int]($internalCount.Trim())
+        runConcurrency = 10
+        workerSlotsVerified = $slotCount
         scheduleEnabled = $false
         generationRequests = 0
         databaseMigration = $false
-        acceptance = @{ workerHealthy = $true; internalCatalogVerified = $true; untouchedServices = $true }
+        acceptance = @{ workerHealthy = $true; workerSlots = $true; internalCatalogVerified = $true; untouchedServices = $true }
         rollback = @{
             composeBackup = (Join-Path $backup 'docker-compose.override.yml')
             previousWorker = $previousImage
