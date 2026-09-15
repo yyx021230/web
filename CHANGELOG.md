@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [0.3.34] - 2026-09-15
+
+### Fixed
+
+- Replaced same-category feed-order recommendations with cached full-category semantic ranking based on titles and bilingual prompt content.
+- Excluded the active prompt, duplicate visuals and duplicate prompt copy from related results.
+- Added regression coverage proving relevant product imagery ranks ahead of unrelated items from the same broad category.
+
 ## [0.3.33] - 2026-09-14
 
 ### Fixed

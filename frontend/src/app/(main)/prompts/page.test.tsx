@@ -171,4 +171,42 @@ describe('image-first prompt gallery', () => {
     expect(host.textContent).toContain('已经浏览完当前标签的全部内容');
   });
 
+  it('ranks semantically related detail recommendations ahead of same-category feed order', async () => {
+    const selected = {
+      ...entry,
+      id: 20,
+      title: '极地能量饮料',
+      chinese: '冰冻能量饮料罐矗立在极地冰雪中，罐身覆盖冰霜，商业产品摄影',
+      category: '产品与品牌',
+      image_url: '/selected.png',
+    };
+    const unrelated = {
+      ...entry,
+      id: 21,
+      title: '冬季服装海报',
+      chinese: '冬季服装模特站在城市街头，展示羊毛大衣和围巾',
+      category: '产品与品牌',
+      image_url: '/unrelated.png',
+    };
+    const relevant = {
+      ...entry,
+      id: 22,
+      title: '冰块中的罐装饮料',
+      chinese: '罐装能量饮料置于蓝色冰块和雪地中，罐身布满冰霜，产品广告',
+      category: '产品与品牌',
+      image_url: '/relevant.png',
+    };
+    vi.mocked(promptsApi.getPrompts)
+      .mockResolvedValueOnce(result([selected, unrelated, relevant]))
+      .mockResolvedValueOnce(result([unrelated, relevant], 2));
+
+    await mount();
+    await act(async () => (host.querySelector('[aria-label="查看提示词：极地能量饮料"]') as HTMLButtonElement).click());
+    await act(async () => Promise.resolve());
+
+    const recommendations = Array.from(document.querySelectorAll('[aria-label^="查看相关提示词："]'));
+    expect(recommendations[0]?.getAttribute('aria-label')).toBe('查看相关提示词：冰块中的罐装饮料');
+    expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', '产品与品牌', 1, 600, false, undefined, undefined);
+  });
+
 });

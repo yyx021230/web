@@ -43,6 +43,121 @@ const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
 
 const promptImageSizeCache = new Map<string, { width: number; height: number }>();
 
+const RELATED_POOL_SIZE = 600;
+const RELATED_RESULT_SIZE = 6;
+const RELATED_STOP_WORDS = new Set([
+  'about', 'above', 'against', 'along', 'also', 'and', 'are', 'around', 'background', 'based',
+  'cinematic', 'close', 'create', 'detailed', 'details', 'dramatic', 'each', 'featuring', 'from',
+  'generate', 'high', 'image', 'lighting', 'photo', 'photograph', 'photography', 'prompt', 'realistic',
+  'render', 'scene', 'shot', 'style', 'the', 'this', 'through', 'ultra', 'using', 'very', 'visual',
+  'with', 'without', 'quality', 'resolution', 'composition', 'perspective', 'aspect', 'ratio',
+  '画面', '图片', '图像', '照片', '摄影', '风格', '高清', '超清', '细节', '构图', '背景', '光影',
+  '生成', '设计', '展示', '呈现', '整体', '质感', '效果', '一个', '一种', '使用', '具有', '非常',
+]);
+const RELATED_CJK_STOP_FRAGMENTS = Array.from(RELATED_STOP_WORDS).filter(word => /[\u3400-\u9fff]/.test(word));
+
+function normalizeRelatedTerm(value: string) {
+  const normalized = value.toLocaleLowerCase().replace(/[^a-z0-9\u3400-\u9fff]+/g, '');
+  if (normalized.length > 4 && normalized.endsWith('s') && !normalized.endsWith('ss')) {
+    return normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+function isUsefulRelatedTerm(value: string) {
+  if (!value || RELATED_STOP_WORDS.has(value)) return false;
+  if (/^\d+$/.test(value) || /^(?:[248]k|hd|hdr|rgb)$/.test(value)) return false;
+  if (!/^[\u3400-\u9fff]+$/.test(value) || value.length > 4) return true;
+  return !RELATED_CJK_STOP_FRAGMENTS.some(word => word.includes(value));
+}
+
+function collectRelatedTerms(prompt: PromptItem) {
+  const terms = new Map<string, number>();
+  const add = (value: string, weight: number) => {
+    const term = normalizeRelatedTerm(value);
+    if (!isUsefulRelatedTerm(term)) return;
+    terms.set(term, Math.max(terms.get(term) || 0, weight));
+  };
+  const collect = (value: string, weight: number) => {
+    const normalized = value.toLocaleLowerCase().slice(0, 3000);
+    const latinWords = (normalized.match(/[a-z0-9][a-z0-9.+-]{1,}/g) || [])
+      .map(normalizeRelatedTerm)
+      .filter(isUsefulRelatedTerm);
+    latinWords.forEach(word => add(word, weight));
+    for (let index = 0; index < latinWords.length - 1; index += 1) {
+      add(`${latinWords[index]}:${latinWords[index + 1]}`, weight * 1.7);
+    }
+
+    for (const run of normalized.match(/[\u3400-\u9fff]{2,}/g) || []) {
+      const boundedRun = run.slice(0, 120);
+      for (const size of [2, 3, 4]) {
+        for (let index = 0; index <= boundedRun.length - size; index += 1) {
+          add(boundedRun.slice(index, index + size), weight * (size === 2 ? 1 : 1.35));
+        }
+      }
+    }
+  };
+
+  collect(`${prompt.title || ''} ${prompt.name || ''}`, 2.4);
+  collect(`${prompt.chinese || ''} ${prompt.english || ''}`, 1);
+  return terms;
+}
+
+function promptCopyIdentity(prompt: PromptItem) {
+  return (prompt.chinese || prompt.english || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+}
+
+function rankRelatedPrompts(selected: PromptItem, candidates: PromptItem[], limit = RELATED_RESULT_SIZE) {
+  const seenIds = new Set<number>([selected.id]);
+  const seenVisuals = new Set<string>([promptIdentity(selected)]);
+  const selectedCopy = promptCopyIdentity(selected);
+  const seenCopies = new Set<string>(selectedCopy ? [selectedCopy] : []);
+  const uniqueCandidates = candidates.filter(candidate => {
+    const visual = promptIdentity(candidate);
+    const copy = promptCopyIdentity(candidate);
+    if (seenIds.has(candidate.id) || seenVisuals.has(visual) || (copy && seenCopies.has(copy))) return false;
+    seenIds.add(candidate.id);
+    seenVisuals.add(visual);
+    if (copy) seenCopies.add(copy);
+    return true;
+  });
+  if (uniqueCandidates.length === 0) return [];
+
+  const selectedTerms = collectRelatedTerms(selected);
+  const candidateTerms = uniqueCandidates.map(collectRelatedTerms);
+  const documentFrequency = new Map<string, number>();
+  for (const terms of candidateTerms) {
+    for (const term of terms.keys()) {
+      documentFrequency.set(term, (documentFrequency.get(term) || 0) + 1);
+    }
+  }
+
+  const candidateCount = candidateTerms.length;
+  const weightedSelectedTerms = Array.from(selectedTerms.entries()).map(([term, weight]) => {
+    const idf = Math.log((candidateCount + 1) / ((documentFrequency.get(term) || 0) + 1)) + 1;
+    return { term, weight: weight * idf };
+  });
+  const selectedWeight = weightedSelectedTerms.reduce((sum, item) => sum + item.weight, 0) || 1;
+
+  return uniqueCandidates
+    .map((candidate, index) => {
+      const terms = candidateTerms[index];
+      const sharedWeight = weightedSelectedTerms.reduce((sum, item) => {
+        const candidateWeight = terms.get(item.term);
+        return candidateWeight ? sum + item.weight * Math.min(candidateWeight, 1.7) : sum;
+      }, 0);
+      const categoryBoost = selected.category && candidate.category === selected.category ? 0.08 : 0;
+      const modelBoost = selected.param_type && candidate.param_type === selected.param_type ? 0.01 : 0;
+      return { candidate, score: sharedWeight / selectedWeight + categoryBoost + modelBoost, index };
+    })
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, limit)
+    .map(item => item.candidate);
+}
+
 function normalizePromptImageUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -145,7 +260,11 @@ export default function PromptsPage() {
   const discoverySeedRef = useRef(0);
   const galleryRef = useRef<HTMLDivElement>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const promptsRef = useRef<PromptItem[]>([]);
   const [previewPrompt, setPreviewPrompt] = useState<PromptItem | null>(null);
+  const [relatedPrompts, setRelatedPrompts] = useState<PromptItem[]>([]);
+  const relatedCacheRef = useRef<Map<string, PromptItem[]>>(new Map());
+  const relatedRequestRef = useRef(0);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [promptExpanded, setPromptExpanded] = useState(false);
   const PAGE_SIZE = 30;
@@ -224,6 +343,40 @@ export default function PromptsPage() {
     fetchData(1);
     return () => { requestIdRef.current += 1; };
   }, [fetchData]);
+
+  useEffect(() => {
+    promptsRef.current = prompts;
+  }, [prompts]);
+
+  useEffect(() => {
+    const requestId = ++relatedRequestRef.current;
+    if (!previewPrompt) {
+      setRelatedPrompts([]);
+      return;
+    }
+
+    const visiblePrompts = promptsRef.current;
+    setRelatedPrompts(rankRelatedPrompts(previewPrompt, visiblePrompts));
+    if (!previewPrompt.category) return;
+
+    const sourceKind = activeSource === 'all' ? undefined : activeSource;
+    const cacheKey = `${previewPrompt.category}:${sourceKind || 'all'}`;
+    const cached = relatedCacheRef.current.get(cacheKey);
+    if (cached) {
+      setRelatedPrompts(rankRelatedPrompts(previewPrompt, mergeUniquePrompts(cached, visiblePrompts)));
+      return;
+    }
+
+    promptsApi.getPrompts('', previewPrompt.category, 1, RELATED_POOL_SIZE, false, undefined, sourceKind)
+      .then(res => {
+        if (requestId !== relatedRequestRef.current) return;
+        relatedCacheRef.current.set(cacheKey, res.data.items);
+        setRelatedPrompts(rankRelatedPrompts(previewPrompt, mergeUniquePrompts(res.data.items, visiblePrompts)));
+      })
+      .catch(() => {
+        // Keep the locally ranked fallback when the wider candidate pool is unavailable.
+      });
+  }, [activeSource, previewPrompt]);
 
   const hasMore = page * PAGE_SIZE < total;
 
@@ -408,10 +561,6 @@ export default function PromptsPage() {
       setEditing(false);
     }
   };
-
-  const relatedPrompts = previewPrompt
-    ? prompts.filter(item => item.id !== previewPrompt.id && (!previewPrompt.category || item.category === previewPrompt.category)).slice(0, 6)
-    : [];
 
   return (
     <div className={styles.page}>
