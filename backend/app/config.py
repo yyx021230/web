@@ -116,6 +116,8 @@ class Settings(BaseSettings):
     xhs_yundeng_sync_concurrency: int = 5
     xhs_device_busy_defer_timeout_seconds: float = 300.0
     xhs_device_busy_retry_interval_seconds: float = 10.0
+    xhs_creator_sync_behavior_enabled: bool = True
+    xhs_creator_sync_behavior_mode: int = 0
     xhs_yundeng_lease_seconds: int = 1800
     xhs_yundeng_acquire_timeout_seconds: int = 3600
     xhs_yundeng_start_stagger_seconds: float = 2.0

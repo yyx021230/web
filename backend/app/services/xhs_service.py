@@ -66,6 +66,10 @@ from app.services.request_queue import xhs_publish_queue
 from app.services.vehicle_catalog_service import VehicleCatalogService
 from app.services.yundeng_sync_coordinator import yundeng_sync_coordinator, yundeng_sync_guard
 from app.services.sms_device_coordinator import sms_device_coordinator
+from app.services.xhs_sync_behavior import (
+    CreatorSyncBehaviorPlan,
+    build_creator_sync_behavior_plan,
+)
 from app.db.session import async_session
 from app.utils.timezone import (
     aware_or_cst_naive_to_utc_naive,
@@ -134,6 +138,8 @@ XHS_DEVICE_BUSY_RETRY_INTERVAL_SECONDS = max(
     0.1,
     float(getattr(settings, "xhs_device_busy_retry_interval_seconds", 10.0) or 10.0),
 )
+XHS_CREATOR_SYNC_BEHAVIOR_ENABLED = bool(getattr(settings, "xhs_creator_sync_behavior_enabled", True))
+XHS_CREATOR_SYNC_BEHAVIOR_MODE = int(getattr(settings, "xhs_creator_sync_behavior_mode", 0) or 0)
 XHS_PROFILE_FETCH_TIMEOUT_SECONDS = max(
     90.0,
     float(getattr(settings, "xhs_profile_fetch_timeout_seconds", 300.0) or 300.0),
@@ -6245,6 +6251,11 @@ class XHSService:
         previous_mcp_api = getattr(self, "_active_mcp_api", None)
         max_attempts = 1 if use_external_mcp else 2
         last_error: BaseException | None = None
+        persona = self._build_sync_session_persona()
+        behavior_plan = build_creator_sync_behavior_plan(
+            _SYNC_BROWSER_CONFIG_RNG,
+            forced_mode=XHS_CREATOR_SYNC_BEHAVIOR_MODE if XHS_CREATOR_SYNC_BEHAVIOR_ENABLED else 1,
+        )
         try:
             for attempt in range(1, max_attempts + 1):
                 mcp_pid: int | None = None
@@ -6284,6 +6295,15 @@ class XHSService:
                         if not mcp_pid:
                             raise RuntimeError("启动小红书发布服务失败，请稍后重试")
                         await self._wait_mcp_ready(mcp_api)
+
+                    await self._run_creator_sync_behavior_prelude(
+                        api_base=mcp_api,
+                        env=env,
+                        persona=persona,
+                        plan=behavior_plan,
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
+                    )
 
                     await self._emit_progress(
                         progress_callback,
@@ -6437,7 +6457,7 @@ class XHSService:
                     if not use_external_mcp:
                         await self._stop_browser(env.shop_id)
                 if not use_external_mcp:
-                    await asyncio.sleep(1)
+                    await self._sleep_sync_retry_backoff(persona)
             if last_error is not None:
                 raise last_error
             raise RuntimeError("创作者中心同步未完成")
@@ -7201,6 +7221,157 @@ class XHSService:
         feed_id, xsec_token = _SYNC_BROWSER_CONFIG_RNG.choice(candidates[:3] or candidates)
         return feed_id, xsec_token
 
+    async def _run_creator_sync_behavior_prelude(
+        self,
+        *,
+        api_base: str,
+        env: XHSEnvironment,
+        persona: SyncSessionPersona,
+        plan: CreatorSyncBehaviorPlan,
+        progress_callback: ProgressCallback | None = None,
+        cancel_check: CancelCheck | None = None,
+    ) -> None:
+        """Execute one bounded, read-only route before the creator export.
+
+        The selected plan remains stable across browser-session retries for the
+        account. Prelude failures never block the canonical creator export, but
+        cancellation is always propagated immediately.
+        """
+
+        mode_value = int(plan.mode)
+        common_progress = {
+            "environment_id": int(env.id),
+            "account_name": env.account_name,
+            "behavior_mode": mode_value,
+            "behavior_label": plan.label,
+        }
+        await self._raise_if_sync_cancelled(cancel_check)
+        await self._emit_progress(
+            progress_callback,
+            {
+                **common_progress,
+                "phase": "creator_behavior_planned",
+                "detail": f"{env.account_name} 本次采用行为路线 {mode_value}：{plan.label}",
+            },
+        )
+        if plan.is_direct:
+            logger.info(
+                "创作中心同步使用直接路线: env_id=%s account=%s mode=%s",
+                env.id,
+                env.account_name,
+                mode_value,
+            )
+            return
+
+        executed_actions: list[str] = []
+        current_payload: dict | None = None
+        try:
+            await self._raise_if_sync_cancelled(cancel_check)
+            await self._sleep_sync_profile_prep(persona)
+
+            if plan.visit_current_home:
+                current_payload = await self._fetch_current_account_notes(
+                    api_base=api_base,
+                    limit=max(1, min(persona.warmup_note_limit, 8)),
+                )
+                executed_actions.append("current_home")
+                if plan.open_current_note_detail and await self._run_warmup_detail_peek(
+                    current_payload,
+                    api_base=api_base,
+                    persona=persona,
+                ):
+                    executed_actions.append("current_note_detail")
+
+            if plan.visit_profile_home:
+                profile_url = str(env.profile_url or "").strip()
+                if profile_url:
+                    if executed_actions:
+                        await self._sleep_between_account_note_context_switch(persona)
+                    profile_payload = await self._fetch_profile_account_notes(
+                        profile_url,
+                        api_base=api_base,
+                        limit=max(1, min(persona.warmup_note_limit, 8)),
+                    )
+                    executed_actions.append("profile_home")
+                    if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
+                        profile_payload,
+                        api_base=api_base,
+                        persona=persona,
+                    ):
+                        executed_actions.append("profile_note_detail")
+                elif current_payload is None:
+                    current_payload = await self._fetch_current_account_notes(
+                        api_base=api_base,
+                        limit=max(1, min(persona.warmup_note_limit, 8)),
+                    )
+                    executed_actions.append("current_home_fallback")
+                    if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
+                        current_payload,
+                        api_base=api_base,
+                        persona=persona,
+                    ):
+                        executed_actions.append("current_note_detail_fallback")
+
+            await self._raise_if_sync_cancelled(cancel_check)
+            if executed_actions:
+                await self._sleep_between_account_note_context_switch(persona)
+            await self._emit_progress(
+                progress_callback,
+                {
+                    **common_progress,
+                    "phase": "creator_behavior_completed",
+                    "detail": f"{env.account_name} 的同步前置浏览已完成，正在切换到创作者中心",
+                    "behavior_actions": executed_actions,
+                },
+            )
+            logger.info(
+                "创作中心同步前置路线完成: env_id=%s account=%s mode=%s actions=%s",
+                env.id,
+                env.account_name,
+                mode_value,
+                executed_actions,
+            )
+        except SyncJobCancelled:
+            raise
+        except Exception as exc:
+            logger.info(
+                "创作中心同步前置路线已跳过: env_id=%s account=%s mode=%s actions=%s reason=%s",
+                env.id,
+                env.account_name,
+                mode_value,
+                executed_actions,
+                self._sync_exception_message(exc),
+            )
+            await self._emit_progress(
+                progress_callback,
+                {
+                    **common_progress,
+                    "phase": "creator_behavior_skipped",
+                    "detail": f"{env.account_name} 的同步前置浏览不可用，已继续主同步",
+                    "behavior_actions": executed_actions,
+                    "error": self._sync_exception_message(exc),
+                },
+            )
+
+    async def _run_warmup_detail_peek(
+        self,
+        payload: dict | None,
+        *,
+        api_base: str,
+        persona: SyncSessionPersona,
+    ) -> bool:
+        feed_id, xsec_token = self._pick_warmup_feed(payload or {})
+        if not feed_id or not xsec_token:
+            return False
+        await self._sleep_between_account_note_details(persona)
+        await self._fetch_account_note_detail_metrics(
+            feed_id,
+            xsec_token,
+            api_base=api_base,
+            persona=persona,
+        )
+        return True
+
     async def _run_sync_browser_warmup(
         self,
         *,
@@ -7242,16 +7413,7 @@ class XHSService:
     ) -> None:
         if _SYNC_BROWSER_CONFIG_RNG.random() >= persona.warmup_detail_peek_probability:
             return
-        feed_id, xsec_token = self._pick_warmup_feed(payload or {})
-        if not feed_id or not xsec_token:
-            return
-        await self._sleep_between_account_note_details(persona)
-        await self._fetch_account_note_detail_metrics(
-            feed_id,
-            xsec_token,
-            api_base=api_base,
-            persona=persona,
-        )
+        await self._run_warmup_detail_peek(payload, api_base=api_base, persona=persona)
 
     async def _fetch_profile_account_notes(
         self,

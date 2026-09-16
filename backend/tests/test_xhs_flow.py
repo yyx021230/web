@@ -1571,6 +1571,8 @@ async def test_creator_engagement_rebuilds_transient_browser_session_once(client
     stopped_pids: list[int] = []
     stopped_browsers: list[str] = []
     progress_phases: list[str] = []
+    behavior_modes: list[int] = []
+    retry_backoffs = 0
     fetch_attempts = 0
 
     async def fake_allocate_free_port(self: XHSService) -> int:
@@ -1592,6 +1594,13 @@ async def test_creator_engagement_rebuilds_transient_browser_session_once(client
 
     async def fake_stop_browser(self: XHSService, shop_id: str):
         stopped_browsers.append(shop_id)
+
+    async def fake_behavior_prelude(self: XHSService, *, plan, **kwargs):
+        behavior_modes.append(int(plan.mode))
+
+    async def fake_retry_backoff(self: XHSService, persona=None):
+        nonlocal retry_backoffs
+        retry_backoffs += 1
 
     async def fake_fetch(self: XHSService, *, api_base=None, env=None, **kwargs):
         nonlocal fetch_attempts
@@ -1619,6 +1628,8 @@ async def test_creator_engagement_rebuilds_transient_browser_session_once(client
     monkeypatch.setattr(XHSService, "_wait_mcp_ready", fake_wait_mcp_ready)
     monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
     monkeypatch.setattr(XHSService, "_stop_browser", fake_stop_browser)
+    monkeypatch.setattr(XHSService, "_run_creator_sync_behavior_prelude", fake_behavior_prelude)
+    monkeypatch.setattr(XHSService, "_sleep_sync_retry_backoff", fake_retry_backoff)
     monkeypatch.setattr(XHSService, "_fetch_creator_note_stats", fake_fetch)
     monkeypatch.setattr(XHSService, "_import_creator_note_stats_rows", fake_import)
 
@@ -1634,6 +1645,9 @@ async def test_creator_engagement_rebuilds_transient_browser_session_once(client
     assert started_ports == [21001, 21002]
     assert stopped_pids == [51001, 51002]
     assert stopped_browsers == ["shop_publish_829", "shop_publish_829"]
+    assert len(behavior_modes) == 2
+    assert len(set(behavior_modes)) == 1
+    assert retry_backoffs == 1
     assert "retrying_account_engagement_browser" in progress_phases
 
 
@@ -1653,6 +1667,7 @@ async def test_creator_engagement_skips_missing_stats_permission_without_rebuild
     stopped_pids: list[int] = []
     stopped_browsers: list[str] = []
     progress_payloads: list[dict] = []
+    behavior_modes: list[int] = []
 
     async def fake_allocate_free_port(self: XHSService) -> int:
         return next(allocated_ports)
@@ -1674,6 +1689,9 @@ async def test_creator_engagement_skips_missing_stats_permission_without_rebuild
     async def fake_stop_browser(self: XHSService, shop_id: str):
         stopped_browsers.append(shop_id)
 
+    async def fake_behavior_prelude(self: XHSService, *, plan, **kwargs):
+        behavior_modes.append(int(plan.mode))
+
     async def fake_fetch(self: XHSService, **kwargs):
         raise CreatorStatsUnavailable("CREATOR_STATS_UNAVAILABLE: 暂未开通数据权限")
 
@@ -1686,6 +1704,7 @@ async def test_creator_engagement_skips_missing_stats_permission_without_rebuild
     monkeypatch.setattr(XHSService, "_wait_mcp_ready", fake_wait_mcp_ready)
     monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
     monkeypatch.setattr(XHSService, "_stop_browser", fake_stop_browser)
+    monkeypatch.setattr(XHSService, "_run_creator_sync_behavior_prelude", fake_behavior_prelude)
     monkeypatch.setattr(XHSService, "_fetch_creator_note_stats", fake_fetch)
 
     async with async_session() as db:
@@ -1700,6 +1719,7 @@ async def test_creator_engagement_skips_missing_stats_permission_without_rebuild
     assert started_ports == [21101]
     assert stopped_pids == [51101]
     assert stopped_browsers == ["shop_publish_830"]
+    assert len(behavior_modes) == 1
     assert not any(payload.get("phase") == "retrying_account_engagement_browser" for payload in progress_payloads)
     skipped = next(payload for payload in progress_payloads if payload.get("phase") == "account_engagement_skipped")
     assert skipped["environment_id"] == 830
