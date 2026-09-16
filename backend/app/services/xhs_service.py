@@ -7260,6 +7260,7 @@ class XHSService:
         failed_actions: list[dict[str, str]] = []
         current_payload: dict | None = None
         current_attempted = False
+        behavior_started_at = time.monotonic()
 
         def record_action_failure(action: str, exc: BaseException) -> None:
             error_message = self._sync_exception_message(exc)
@@ -7368,6 +7369,12 @@ class XHSService:
             if executed_actions and plan.occasional_long_pause_seconds > 0:
                 await self._sleep_creator_behavior_delay(plan.occasional_long_pause_seconds, cancel_check)
             await self._sleep_creator_behavior_delay(plan.final_transition_seconds, cancel_check)
+            minimum_remaining_seconds = max(
+                0.0,
+                float(plan.minimum_prelude_seconds) - (time.monotonic() - behavior_started_at),
+            )
+            if minimum_remaining_seconds > 0:
+                await self._sleep_creator_behavior_delay(minimum_remaining_seconds, cancel_check)
             await self._emit_progress(
                 progress_callback,
                 {

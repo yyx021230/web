@@ -71,21 +71,22 @@ def test_creator_behavior_can_force_each_numbered_route(forced_mode: int):
     plan = build_creator_sync_behavior_plan(FixedRoll(1), forced_mode=forced_mode)
 
     assert int(plan.mode) == forced_mode
-    assert 0.4 <= plan.entry_pause_seconds <= 3.5
-    assert 1.0 <= plan.list_dwell_seconds <= 8.0
-    assert 2.0 <= plan.detail_dwell_seconds <= 12.0
+    assert 1.5 <= plan.entry_pause_seconds <= 8.0
+    assert 5.0 <= plan.list_dwell_seconds <= 28.0
+    assert 8.0 <= plan.detail_dwell_seconds <= 40.0
     assert 1 <= plan.profile_scroll_rounds <= 4
     assert 8 <= plan.profile_max_feeds <= 30
+    assert 8.0 <= plan.minimum_prelude_seconds <= 160.0
 
 
 @pytest.mark.parametrize(
     ("roll", "expected"),
     [
         (1, CreatorSyncPace.QUICK),
-        (30, CreatorSyncPace.QUICK),
-        (31, CreatorSyncPace.BALANCED),
-        (80, CreatorSyncPace.BALANCED),
-        (81, CreatorSyncPace.SLOW),
+        (20, CreatorSyncPace.QUICK),
+        (21, CreatorSyncPace.BALANCED),
+        (75, CreatorSyncPace.BALANCED),
+        (76, CreatorSyncPace.SLOW),
         (100, CreatorSyncPace.SLOW),
     ],
 )
@@ -139,7 +140,8 @@ async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatc
         progress_callback=capture_progress,
     )
 
-    assert delays == [round(plan.entry_pause_seconds, 2), round(plan.final_transition_seconds, 2)]
+    assert delays[:2] == [round(plan.entry_pause_seconds, 2), round(plan.final_transition_seconds, 2)]
+    assert delays[2] == pytest.approx(plan.minimum_prelude_seconds, abs=0.01)
     assert progress[-1]["phase"] == "creator_behavior_completed"
     assert progress[-1]["behavior_actions"] == []
 
@@ -182,12 +184,13 @@ async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monk
     )
 
     assert events == [
-        "delay:1.55",
+        "delay:3.75",
         "current:http://mcp.test:8",
-        "delay:3.10",
+        "delay:12.00",
         "detail:feed-1",
-        "delay:5.00",
-        "delay:2.50",
+        "delay:18.00",
+        "delay:6.00",
+        "delay:57.50",
     ]
     assert [item["phase"] for item in progress] == [
         "creator_behavior_planned",
@@ -281,7 +284,8 @@ async def test_creator_mixed_route_randomizes_dwell_and_profile_scroll(monkeypat
         progress_callback=capture_progress,
     )
 
-    assert delays == [1.55, 3.1, 3.0, 3.1, 2.5]
+    assert delays[:5] == [3.75, 12.0, 7.0, 12.0, 6.0]
+    assert delays[5] == pytest.approx(plan.minimum_prelude_seconds, abs=0.01)
     assert profile_calls == [
         {
             "profile_url": env.profile_url,

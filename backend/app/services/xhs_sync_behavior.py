@@ -50,6 +50,7 @@ class CreatorSyncBehaviorPlan:
     profile_max_feeds: int = 8
     profile_stagnant_rounds: int = 1
     occasional_long_pause_seconds: float = 0.0
+    minimum_prelude_seconds: float = 0.0
 
     @property
     def label(self) -> str:
@@ -72,6 +73,7 @@ class CreatorSyncBehaviorPlan:
             "profile_max_feeds": self.profile_max_feeds,
             "profile_stagnant_rounds": self.profile_stagnant_rounds,
             "occasional_long_pause_seconds": round(self.occasional_long_pause_seconds, 2),
+            "minimum_prelude_seconds": round(self.minimum_prelude_seconds, 2),
         }
 
 
@@ -114,43 +116,43 @@ class _PaceRanges:
 
 _PACE_RANGES: dict[CreatorSyncPace, _PaceRanges] = {
     CreatorSyncPace.QUICK: _PaceRanges(
-        entry=(0.4, 1.2),
-        list_dwell=(1.0, 2.8),
-        detail_dwell=(2.0, 4.8),
-        context_switch=(0.8, 2.4),
-        final_transition=(0.8, 2.0),
+        entry=(1.5, 3.0),
+        list_dwell=(5.0, 9.0),
+        detail_dwell=(8.0, 14.0),
+        context_switch=(3.0, 5.0),
+        final_transition=(2.5, 5.0),
         note_limit=(3, 5),
         scroll_rounds=(1, 2),
         max_feeds=(8, 14),
         stagnant_rounds=(1, 1),
-        long_pause_probability=6,
-        long_pause=(4.0, 7.0),
+        long_pause_probability=8,
+        long_pause=(8.0, 14.0),
     ),
     CreatorSyncPace.BALANCED: _PaceRanges(
-        entry=(0.7, 2.4),
-        list_dwell=(1.4, 4.8),
-        detail_dwell=(2.5, 7.5),
-        context_switch=(1.5, 4.5),
-        final_transition=(1.2, 3.8),
+        entry=(2.5, 5.0),
+        list_dwell=(8.0, 16.0),
+        detail_dwell=(12.0, 24.0),
+        context_switch=(5.0, 9.0),
+        final_transition=(4.0, 8.0),
         note_limit=(3, 8),
         scroll_rounds=(1, 3),
         max_feeds=(8, 24),
         stagnant_rounds=(1, 2),
-        long_pause_probability=12,
-        long_pause=(6.0, 11.0),
+        long_pause_probability=14,
+        long_pause=(15.0, 25.0),
     ),
     CreatorSyncPace.SLOW: _PaceRanges(
-        entry=(1.5, 3.5),
-        list_dwell=(3.8, 8.0),
-        detail_dwell=(6.0, 12.0),
-        context_switch=(3.0, 6.0),
-        final_transition=(2.5, 6.0),
+        entry=(4.0, 8.0),
+        list_dwell=(15.0, 28.0),
+        detail_dwell=(22.0, 40.0),
+        context_switch=(8.0, 15.0),
+        final_transition=(7.0, 14.0),
         note_limit=(5, 8),
         scroll_rounds=(2, 4),
         max_feeds=(16, 30),
         stagnant_rounds=(1, 2),
-        long_pause_probability=18,
-        long_pause=(9.0, 16.0),
+        long_pause_probability=22,
+        long_pause=(25.0, 45.0),
     ),
 }
 
@@ -170,11 +172,42 @@ def _pick_weighted_mode(
 
 def _pick_pace(rng: BehaviorRandom) -> CreatorSyncPace:
     roll = rng.randint(1, 100)
-    if roll <= 30:
+    if roll <= 20:
         return CreatorSyncPace.QUICK
-    if roll <= 80:
+    if roll <= 75:
         return CreatorSyncPace.BALANCED
     return CreatorSyncPace.SLOW
+
+
+_MINIMUM_PRELUDE_RANGES: dict[
+    CreatorSyncPace,
+    dict[CreatorSyncBehaviorMode, tuple[float, float]],
+] = {
+    CreatorSyncPace.QUICK: {
+        CreatorSyncBehaviorMode.DIRECT: (8.0, 15.0),
+        CreatorSyncBehaviorMode.CURRENT_HOME: (18.0, 30.0),
+        CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL: (28.0, 45.0),
+        CreatorSyncBehaviorMode.PROFILE_HOME: (25.0, 40.0),
+        CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL: (40.0, 60.0),
+        CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE: (45.0, 70.0),
+    },
+    CreatorSyncPace.BALANCED: {
+        CreatorSyncBehaviorMode.DIRECT: (12.0, 20.0),
+        CreatorSyncBehaviorMode.CURRENT_HOME: (30.0, 45.0),
+        CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL: (45.0, 70.0),
+        CreatorSyncBehaviorMode.PROFILE_HOME: (40.0, 60.0),
+        CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL: (60.0, 90.0),
+        CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE: (70.0, 105.0),
+    },
+    CreatorSyncPace.SLOW: {
+        CreatorSyncBehaviorMode.DIRECT: (18.0, 28.0),
+        CreatorSyncBehaviorMode.CURRENT_HOME: (45.0, 65.0),
+        CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL: (70.0, 105.0),
+        CreatorSyncBehaviorMode.PROFILE_HOME: (60.0, 85.0),
+        CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL: (90.0, 135.0),
+        CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE: (105.0, 160.0),
+    },
+}
 
 
 def build_creator_sync_behavior_plan(
@@ -231,4 +264,5 @@ def build_creator_sync_behavior_plan(
         profile_max_feeds=rng.randint(*ranges.max_feeds),
         profile_stagnant_rounds=rng.randint(*ranges.stagnant_rounds),
         occasional_long_pause_seconds=occasional_long_pause_seconds,
+        minimum_prelude_seconds=rng.uniform(*_MINIMUM_PRELUDE_RANGES[pace][mode]),
     )
