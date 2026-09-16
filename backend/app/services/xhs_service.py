@@ -6259,6 +6259,11 @@ class XHSService:
             forced_mode=XHS_CREATOR_SYNC_BEHAVIOR_MODE if XHS_CREATOR_SYNC_BEHAVIOR_ENABLED else 1,
             profile_available=bool(str(env.profile_url or "").strip()),
         )
+        post_behavior_plan = build_creator_sync_behavior_plan(
+            _SYNC_BROWSER_CONFIG_RNG,
+            forced_mode=XHS_CREATOR_SYNC_BEHAVIOR_MODE if XHS_CREATOR_SYNC_BEHAVIOR_ENABLED else 1,
+            profile_available=bool(str(env.profile_url or "").strip()),
+        )
         try:
             for attempt in range(1, max_attempts + 1):
                 mcp_pid: int | None = None
@@ -6357,6 +6362,15 @@ class XHSService:
                     await self.db.commit()
                     metric_updates = int(import_result.get("metric_synced_notes") or 0)
                     total_notes = int(import_result.get("total_notes") or 0)
+                    await self._run_creator_sync_behavior_prelude(
+                        api_base=mcp_api,
+                        env=env,
+                        persona=persona,
+                        plan=post_behavior_plan,
+                        behavior_stage="after_creator",
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
+                    )
                     await self._emit_progress(
                         progress_callback,
                         {
@@ -6393,6 +6407,15 @@ class XHSService:
                         env.id,
                         env.account_name,
                         reason,
+                    )
+                    await self._run_creator_sync_behavior_prelude(
+                        api_base=mcp_api,
+                        env=env,
+                        persona=persona,
+                        plan=post_behavior_plan,
+                        behavior_stage="after_creator",
+                        progress_callback=progress_callback,
+                        cancel_check=cancel_check,
                     )
                     await self._emit_progress(
                         progress_callback,
@@ -7238,15 +7261,21 @@ class XHSService:
         env: XHSEnvironment,
         persona: SyncSessionPersona,
         plan: CreatorSyncBehaviorPlan,
+        behavior_stage: str = "before_creator",
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> None:
-        """Execute one bounded, read-only route before the creator export.
+        """Execute one bounded, read-only combination around the creator export.
 
-        The selected plan remains stable across browser-session retries for the
-        account. Prelude failures never block the canonical creator export, but
+        Before and after plans are sampled separately by the caller. A selected
+        plan remains stable across browser-session retries for the account.
+        Behavior failures never block the canonical creator export, but
         cancellation is always propagated immediately.
         """
+
+        is_after_creator = behavior_stage == "after_creator"
+        phase_prefix = "creator_post_behavior" if is_after_creator else "creator_behavior"
+        stage_label = "同步后置" if is_after_creator else "同步前置"
 
         occurrences = plan.occurrences or (
             CreatorSyncBehaviorOccurrence(
@@ -7275,15 +7304,16 @@ class XHSService:
             "behavior_modes": behavior_modes,
             "behavior_labels": behavior_labels,
             "behavior_parameters": plan.progress_parameters(),
+            "behavior_stage": behavior_stage,
         }
         await self._raise_if_sync_cancelled(cancel_check)
         await self._emit_progress(
             progress_callback,
             {
                 **common_progress,
-                "phase": "creator_behavior_planned",
+                "phase": f"{phase_prefix}_planned",
                 "detail": (
-                    f"{env.account_name} 本次随机组合 {len(occurrences)} 个行为："
+                    f"{env.account_name} 本次{stage_label}随机组合 {len(occurrences)} 个行为："
                     + " → ".join(f"{int(item.mode)}.{item.label}" for item in occurrences)
                 ),
             },
@@ -7308,7 +7338,8 @@ class XHSService:
                 }
             )
             logger.info(
-                "创作中心同步前置动作已降级: env_id=%s account=%s occurrence=%s mode=%s action=%s reason=%s",
+                "创作中心%s动作已降级: env_id=%s account=%s occurrence=%s mode=%s action=%s reason=%s",
+                stage_label,
                 env.id,
                 env.account_name,
                 occurrence_index,
@@ -7517,18 +7548,27 @@ class XHSService:
                 progress_callback,
                 {
                     **common_progress,
-                    "phase": "creator_behavior_completed",
+                    "phase": f"{phase_prefix}_completed",
                     "detail": (
-                        f"{env.account_name} 的同步前置浏览已完成，正在切换到创作者中心"
+                        (
+                            f"{env.account_name} 的同步后置浏览已完成"
+                            if is_after_creator
+                            else f"{env.account_name} 的同步前置浏览已完成，正在切换到创作者中心"
+                        )
                         if not failed_actions
-                        else f"{env.account_name} 的部分前置动作不可用，已降级并继续主同步"
+                        else (
+                            f"{env.account_name} 的部分后置动作不可用，已降级并结束本次同步"
+                            if is_after_creator
+                            else f"{env.account_name} 的部分前置动作不可用，已降级并继续主同步"
+                        )
                     ),
                     "behavior_actions": executed_actions,
                     "behavior_failed_actions": failed_actions,
                 },
             )
             logger.info(
-                "创作中心同步前置组合完成: env_id=%s account=%s modes=%s actions=%s failed_actions=%s",
+                "创作中心%s组合完成: env_id=%s account=%s modes=%s actions=%s failed_actions=%s",
+                stage_label,
                 env.id,
                 env.account_name,
                 behavior_modes,
@@ -7539,7 +7579,8 @@ class XHSService:
             raise
         except Exception as exc:
             logger.info(
-                "创作中心同步前置组合已跳过: env_id=%s account=%s modes=%s actions=%s reason=%s",
+                "创作中心%s组合已跳过: env_id=%s account=%s modes=%s actions=%s reason=%s",
+                stage_label,
                 env.id,
                 env.account_name,
                 behavior_modes,
@@ -7550,8 +7591,12 @@ class XHSService:
                 progress_callback,
                 {
                     **common_progress,
-                    "phase": "creator_behavior_skipped",
-                    "detail": f"{env.account_name} 的同步前置浏览不可用，已继续主同步",
+                    "phase": f"{phase_prefix}_skipped",
+                    "detail": (
+                        f"{env.account_name} 的同步后置浏览不可用，已结束本次同步"
+                        if is_after_creator
+                        else f"{env.account_name} 的同步前置浏览不可用，已继续主同步"
+                    ),
                     "behavior_actions": executed_actions,
                     "behavior_failed_actions": failed_actions,
                     "error": self._sync_exception_message(exc),

@@ -6,7 +6,7 @@ from typing import Protocol
 
 
 class CreatorSyncBehaviorMode(IntEnum):
-    """Read-only navigation routes used before creator-center synchronization."""
+    """Read-only navigation routes used around creator-center synchronization."""
 
     DIRECT = 1
     CURRENT_HOME = 2

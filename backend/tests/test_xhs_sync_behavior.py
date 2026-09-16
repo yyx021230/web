@@ -141,6 +141,38 @@ async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_creator_post_behavior_uses_distinct_progress_stage(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    plan = build_creator_sync_behavior_plan(FixedRoll(1), forced_mode=1)
+    env = SimpleNamespace(id=22, account_name="后置路线账号", profile_url=None)
+    progress: list[dict] = []
+
+    async def no_wait(*_args, **_kwargs):
+        return None
+
+    async def capture_progress(payload: dict):
+        progress.append(dict(payload))
+
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", no_wait)
+
+    await service._run_creator_sync_behavior_prelude(
+        api_base="http://mcp.test",
+        env=env,
+        persona=_persona(),
+        plan=plan,
+        behavior_stage="after_creator",
+        progress_callback=capture_progress,
+    )
+
+    assert [item["phase"] for item in progress] == [
+        "creator_post_behavior_planned",
+        "creator_post_behavior_completed",
+    ]
+    assert progress[-1]["behavior_stage"] == "after_creator"
+    assert progress[-1]["behavior_actions"] == ["direct_pause"]
+
+
+@pytest.mark.asyncio
 async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     plan = build_creator_sync_behavior_plan(
