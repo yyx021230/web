@@ -15,8 +15,11 @@ class FixedRoll:
     def __init__(self, value: int):
         self.value = value
 
-    def randint(self, _a: int, _b: int) -> int:
-        return self.value
+    def randint(self, a: int, b: int) -> int:
+        return min(max(self.value, a), b)
+
+    def uniform(self, a: float, b: float) -> float:
+        return (a + b) / 2
 
 
 def _persona() -> SyncSessionPersona:
@@ -67,21 +70,55 @@ def test_creator_behavior_can_force_each_numbered_route(forced_mode: int):
     plan = build_creator_sync_behavior_plan(FixedRoll(1), forced_mode=forced_mode)
 
     assert int(plan.mode) == forced_mode
+    assert 0.7 <= plan.entry_pause_seconds <= 2.4
+    assert 1.4 <= plan.list_dwell_seconds <= 4.8
+    assert 2.5 <= plan.detail_dwell_seconds <= 7.5
+    assert 1 <= plan.profile_scroll_rounds <= 3
+    assert 8 <= plan.profile_max_feeds <= 24
+
+
+@pytest.mark.asyncio
+async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    plan = build_creator_sync_behavior_plan(FixedRoll(1), forced_mode=1)
+    env = SimpleNamespace(id=16, account_name="直接路线账号", profile_url=None)
+    delays: list[float] = []
+    progress: list[dict] = []
+
+    async def fake_delay(self, seconds, cancel_check=None):
+        delays.append(round(float(seconds), 2))
+
+    async def capture_progress(payload: dict):
+        progress.append(dict(payload))
+
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", fake_delay)
+
+    await service._run_creator_sync_behavior_prelude(
+        api_base="http://mcp.test",
+        env=env,
+        persona=_persona(),
+        plan=plan,
+        progress_callback=capture_progress,
+    )
+
+    assert delays == [1.55, 2.5]
+    assert progress[-1]["phase"] == "creator_behavior_completed"
+    assert progress[-1]["behavior_actions"] == []
 
 
 @pytest.mark.asyncio
 async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     plan = build_creator_sync_behavior_plan(
-        FixedRoll(1),
+        FixedRoll(4),
         forced_mode=int(CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
     )
     env = SimpleNamespace(id=17, account_name="行为账号", profile_url="")
     events: list[str] = []
     progress: list[dict] = []
 
-    async def fake_profile_prep(self, persona):
-        events.append("profile_prep")
+    async def fake_delay(self, seconds, cancel_check=None):
+        events.append(f"delay:{seconds:.2f}")
 
     async def fake_fetch_current(self, *, api_base=None, limit=60):
         events.append(f"current:{api_base}:{limit}")
@@ -91,16 +128,12 @@ async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monk
         events.append(f"detail:{payload['feeds'][0]['feed_id']}")
         return True
 
-    async def fake_context_switch(self, persona):
-        events.append("context_switch")
-
     async def capture_progress(payload: dict):
         progress.append(dict(payload))
 
-    monkeypatch.setattr(XHSService, "_sleep_sync_profile_prep", fake_profile_prep)
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", fake_delay)
     monkeypatch.setattr(XHSService, "_fetch_current_account_notes", fake_fetch_current)
     monkeypatch.setattr(XHSService, "_run_warmup_detail_peek", fake_detail)
-    monkeypatch.setattr(XHSService, "_sleep_between_account_note_context_switch", fake_context_switch)
 
     await service._run_creator_sync_behavior_prelude(
         api_base="http://mcp.test",
@@ -111,10 +144,12 @@ async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monk
     )
 
     assert events == [
-        "profile_prep",
+        "delay:1.55",
         "current:http://mcp.test:4",
+        "delay:3.10",
         "detail:feed-1",
-        "context_switch",
+        "delay:5.00",
+        "delay:2.50",
     ]
     assert [item["phase"] for item in progress] == [
         "creator_behavior_planned",
@@ -148,8 +183,7 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
     async def capture_progress(payload: dict):
         completed.append(dict(payload))
 
-    monkeypatch.setattr(XHSService, "_sleep_sync_profile_prep", no_wait)
-    monkeypatch.setattr(XHSService, "_sleep_between_account_note_context_switch", no_wait)
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", no_wait)
     monkeypatch.setattr(XHSService, "_fetch_current_account_notes", fake_fetch_current)
     monkeypatch.setattr(XHSService, "_run_warmup_detail_peek", fake_detail)
 
@@ -166,6 +200,62 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
         "current_home_fallback",
         "current_note_detail_fallback",
     ]
+
+
+@pytest.mark.asyncio
+async def test_creator_mixed_route_randomizes_dwell_and_profile_scroll(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    plan = build_creator_sync_behavior_plan(
+        FixedRoll(3),
+        forced_mode=int(CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE),
+    )
+    env = SimpleNamespace(
+        id=20,
+        account_name="混合路线账号",
+        profile_url="https://www.xiaohongshu.com/user/profile/abc?xsec_token=xyz",
+    )
+    delays: list[float] = []
+    profile_calls: list[dict] = []
+    progress: list[dict] = []
+
+    async def fake_delay(self, seconds, cancel_check=None):
+        delays.append(round(float(seconds), 2))
+
+    async def fake_fetch_current(self, *, api_base=None, limit=60):
+        return {"feeds": []}
+
+    async def fake_fetch_profile(self, profile_url, api_base=None, limit=120, **kwargs):
+        profile_calls.append({"profile_url": profile_url, "limit": limit, **kwargs})
+        return {"feeds": []}
+
+    async def capture_progress(payload: dict):
+        progress.append(dict(payload))
+
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", fake_delay)
+    monkeypatch.setattr(XHSService, "_fetch_current_account_notes", fake_fetch_current)
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", fake_fetch_profile)
+
+    await service._run_creator_sync_behavior_prelude(
+        api_base="http://mcp.test",
+        env=env,
+        persona=_persona(),
+        plan=plan,
+        progress_callback=capture_progress,
+    )
+
+    assert delays == [1.55, 3.1, 3.0, 3.1, 2.5]
+    assert profile_calls == [
+        {
+            "profile_url": env.profile_url,
+            "limit": 3,
+            "scroll_mode": "input",
+            "max_feeds": 8,
+            "max_scroll_rounds": 3,
+            "max_stagnant_rounds": 2,
+        }
+    ]
+    assert progress[-1]["behavior_actions"] == ["current_home", "profile_home"]
+    assert progress[-1]["behavior_parameters"]["profile_scroll_rounds"] == 3
 
 
 @pytest.mark.asyncio

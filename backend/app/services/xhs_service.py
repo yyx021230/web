@@ -7244,6 +7244,7 @@ class XHSService:
             "account_name": env.account_name,
             "behavior_mode": mode_value,
             "behavior_label": plan.label,
+            "behavior_parameters": plan.progress_parameters(),
         }
         await self._raise_if_sync_cancelled(cancel_check)
         await self._emit_progress(
@@ -7254,67 +7255,65 @@ class XHSService:
                 "detail": f"{env.account_name} 本次采用行为路线 {mode_value}：{plan.label}",
             },
         )
-        if plan.is_direct:
-            logger.info(
-                "创作中心同步使用直接路线: env_id=%s account=%s mode=%s",
-                env.id,
-                env.account_name,
-                mode_value,
-            )
-            return
-
         executed_actions: list[str] = []
         current_payload: dict | None = None
         try:
-            await self._raise_if_sync_cancelled(cancel_check)
-            await self._sleep_sync_profile_prep(persona)
+            await self._sleep_creator_behavior_delay(plan.entry_pause_seconds, cancel_check)
 
             if plan.visit_current_home:
                 current_payload = await self._fetch_current_account_notes(
                     api_base=api_base,
-                    limit=max(1, min(persona.warmup_note_limit, 8)),
+                    limit=plan.note_limit,
                 )
                 executed_actions.append("current_home")
+                await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
                 if plan.open_current_note_detail and await self._run_warmup_detail_peek(
                     current_payload,
                     api_base=api_base,
                     persona=persona,
                 ):
                     executed_actions.append("current_note_detail")
+                    await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
 
             if plan.visit_profile_home:
                 profile_url = str(env.profile_url or "").strip()
                 if profile_url:
                     if executed_actions:
-                        await self._sleep_between_account_note_context_switch(persona)
+                        await self._sleep_creator_behavior_delay(plan.context_switch_seconds, cancel_check)
                     profile_payload = await self._fetch_profile_account_notes(
                         profile_url,
                         api_base=api_base,
-                        limit=max(1, min(persona.warmup_note_limit, 8)),
+                        limit=plan.note_limit,
+                        scroll_mode="input",
+                        max_feeds=plan.profile_max_feeds,
+                        max_scroll_rounds=plan.profile_scroll_rounds,
+                        max_stagnant_rounds=plan.profile_stagnant_rounds,
                     )
                     executed_actions.append("profile_home")
+                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
                     if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
                         profile_payload,
                         api_base=api_base,
                         persona=persona,
                     ):
                         executed_actions.append("profile_note_detail")
+                        await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
                 elif current_payload is None:
                     current_payload = await self._fetch_current_account_notes(
                         api_base=api_base,
-                        limit=max(1, min(persona.warmup_note_limit, 8)),
+                        limit=plan.note_limit,
                     )
                     executed_actions.append("current_home_fallback")
+                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
                     if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
                         current_payload,
                         api_base=api_base,
                         persona=persona,
                     ):
                         executed_actions.append("current_note_detail_fallback")
+                        await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
 
-            await self._raise_if_sync_cancelled(cancel_check)
-            if executed_actions:
-                await self._sleep_between_account_note_context_switch(persona)
+            await self._sleep_creator_behavior_delay(plan.final_transition_seconds, cancel_check)
             await self._emit_progress(
                 progress_callback,
                 {
@@ -7352,6 +7351,14 @@ class XHSService:
                     "error": self._sync_exception_message(exc),
                 },
             )
+
+    async def _sleep_creator_behavior_delay(
+        self,
+        seconds: float,
+        cancel_check: CancelCheck | None = None,
+    ) -> None:
+        await asyncio.sleep(max(0.0, float(seconds)))
+        await self._raise_if_sync_cancelled(cancel_check)
 
     async def _run_warmup_detail_peek(
         self,
