@@ -33,6 +33,47 @@ _MODE_LABELS: dict[CreatorSyncBehaviorMode, str] = {
 
 
 @dataclass(frozen=True)
+class CreatorSyncBehaviorOccurrence:
+    """One independently sampled behavior occurrence in a sync session."""
+
+    mode: CreatorSyncBehaviorMode
+    pace: CreatorSyncPace
+    entry_pause_seconds: float
+    list_dwell_seconds: float
+    detail_dwell_seconds: float
+    context_switch_seconds: float
+    final_transition_seconds: float
+    note_limit: int
+    profile_scroll_rounds: int
+    profile_max_feeds: int
+    profile_stagnant_rounds: int
+    occasional_long_pause_seconds: float
+    minimum_prelude_seconds: float
+
+    @property
+    def label(self) -> str:
+        return _MODE_LABELS[self.mode]
+
+    def progress_parameters(self) -> dict[str, object]:
+        return {
+            "mode": int(self.mode),
+            "label": self.label,
+            "pace": self.pace.value,
+            "entry_pause_seconds": round(self.entry_pause_seconds, 2),
+            "list_dwell_seconds": round(self.list_dwell_seconds, 2),
+            "detail_dwell_seconds": round(self.detail_dwell_seconds, 2),
+            "context_switch_seconds": round(self.context_switch_seconds, 2),
+            "final_transition_seconds": round(self.final_transition_seconds, 2),
+            "note_limit": self.note_limit,
+            "profile_scroll_rounds": self.profile_scroll_rounds,
+            "profile_max_feeds": self.profile_max_feeds,
+            "profile_stagnant_rounds": self.profile_stagnant_rounds,
+            "occasional_long_pause_seconds": round(self.occasional_long_pause_seconds, 2),
+            "minimum_prelude_seconds": round(self.minimum_prelude_seconds, 2),
+        }
+
+
+@dataclass(frozen=True)
 class CreatorSyncBehaviorPlan:
     mode: CreatorSyncBehaviorMode
     pace: CreatorSyncPace = CreatorSyncPace.BALANCED
@@ -51,6 +92,7 @@ class CreatorSyncBehaviorPlan:
     profile_stagnant_rounds: int = 1
     occasional_long_pause_seconds: float = 0.0
     minimum_prelude_seconds: float = 0.0
+    occurrences: tuple[CreatorSyncBehaviorOccurrence, ...] = ()
 
     @property
     def label(self) -> str:
@@ -60,7 +102,7 @@ class CreatorSyncBehaviorPlan:
     def is_direct(self) -> bool:
         return self.mode is CreatorSyncBehaviorMode.DIRECT
 
-    def progress_parameters(self) -> dict[str, int | float | str]:
+    def progress_parameters(self) -> dict[str, object]:
         return {
             "pace": self.pace.value,
             "entry_pause_seconds": round(self.entry_pause_seconds, 2),
@@ -74,6 +116,12 @@ class CreatorSyncBehaviorPlan:
             "profile_stagnant_rounds": self.profile_stagnant_rounds,
             "occasional_long_pause_seconds": round(self.occasional_long_pause_seconds, 2),
             "minimum_prelude_seconds": round(self.minimum_prelude_seconds, 2),
+            "behavior_sequence": [int(item.mode) for item in self.occurrences],
+            "behavior_occurrences": [item.progress_parameters() for item in self.occurrences],
+            "occurrence_probabilities": {
+                str(int(mode)): probability
+                for mode, probability in _BEHAVIOR_OCCURRENCE_PROBABILITIES.items()
+            },
         }
 
 
@@ -92,11 +140,25 @@ _WEIGHTED_MODES: tuple[tuple[CreatorSyncBehaviorMode, int], ...] = (
     (CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE, 10),
 )
 
-_WEIGHTED_MODES_WITHOUT_PROFILE: tuple[tuple[CreatorSyncBehaviorMode, int], ...] = (
-    (CreatorSyncBehaviorMode.DIRECT, 25),
-    (CreatorSyncBehaviorMode.CURRENT_HOME, 45),
-    (CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL, 30),
-)
+_BEHAVIOR_OCCURRENCE_PROBABILITIES: dict[CreatorSyncBehaviorMode, int] = {
+    CreatorSyncBehaviorMode.DIRECT: 18,
+    CreatorSyncBehaviorMode.CURRENT_HOME: 62,
+    CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL: 48,
+    CreatorSyncBehaviorMode.PROFILE_HOME: 42,
+    CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL: 32,
+    CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE: 24,
+}
+
+_BEHAVIOR_REPEAT_PROBABILITIES: dict[CreatorSyncBehaviorMode, int] = {
+    CreatorSyncBehaviorMode.DIRECT: 8,
+    CreatorSyncBehaviorMode.CURRENT_HOME: 15,
+    CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL: 12,
+    CreatorSyncBehaviorMode.PROFILE_HOME: 12,
+    CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL: 10,
+    CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE: 8,
+}
+
+_MAX_BEHAVIOR_OCCURRENCES = 6
 
 
 @dataclass(frozen=True)
@@ -179,6 +241,46 @@ def _pick_pace(rng: BehaviorRandom) -> CreatorSyncPace:
     return CreatorSyncPace.SLOW
 
 
+def _shuffle_modes(
+    rng: BehaviorRandom,
+    modes: list[CreatorSyncBehaviorMode],
+) -> list[CreatorSyncBehaviorMode]:
+    shuffled = list(modes)
+    for index in range(len(shuffled) - 1, 0, -1):
+        swap_index = rng.randint(0, index)
+        shuffled[index], shuffled[swap_index] = shuffled[swap_index], shuffled[index]
+    return shuffled
+
+
+def _select_behavior_modes(
+    rng: BehaviorRandom,
+    *,
+    forced_mode: int = 0,
+) -> tuple[CreatorSyncBehaviorMode, ...]:
+    try:
+        return (CreatorSyncBehaviorMode(int(forced_mode)),)
+    except (TypeError, ValueError):
+        pass
+
+    selected = [
+        mode
+        for mode, probability in _BEHAVIOR_OCCURRENCE_PROBABILITIES.items()
+        if rng.randint(1, 100) <= probability
+    ]
+    if not selected:
+        selected.append(_pick_weighted_mode(rng, _WEIGHTED_MODES))
+
+    selected = _shuffle_modes(rng, selected)
+    repeated = [
+        mode
+        for mode in selected
+        if rng.randint(1, 100) <= _BEHAVIOR_REPEAT_PROBABILITIES[mode]
+    ]
+    repeat_slots = max(0, _MAX_BEHAVIOR_OCCURRENCES - len(selected))
+    combined = selected + repeated[:repeat_slots]
+    return tuple(_shuffle_modes(rng, combined))
+
+
 _MINIMUM_PRELUDE_RANGES: dict[
     CreatorSyncPace,
     dict[CreatorSyncBehaviorMode, tuple[float, float]],
@@ -210,27 +312,10 @@ _MINIMUM_PRELUDE_RANGES: dict[
 }
 
 
-def build_creator_sync_behavior_plan(
+def _build_behavior_occurrence(
     rng: BehaviorRandom,
-    *,
-    forced_mode: int = 0,
-    profile_available: bool = True,
-) -> CreatorSyncBehaviorPlan:
-    """Build one stable behavior plan for a complete account sync session.
-
-    ``forced_mode`` accepts 1-6. Any other value selects a weighted route.
-    All routes are read-only; none performs likes, comments, follows, or other
-    state-changing engagement.
-    """
-
-    try:
-        mode = CreatorSyncBehaviorMode(int(forced_mode))
-    except (TypeError, ValueError):
-        mode = _pick_weighted_mode(
-            rng,
-            _WEIGHTED_MODES if profile_available else _WEIGHTED_MODES_WITHOUT_PROFILE,
-        )
-
+    mode: CreatorSyncBehaviorMode,
+) -> CreatorSyncBehaviorOccurrence:
     pace = _pick_pace(rng)
     ranges = _PACE_RANGES[pace]
     occasional_long_pause_seconds = (
@@ -238,22 +323,9 @@ def build_creator_sync_behavior_plan(
         if rng.randint(1, 100) <= ranges.long_pause_probability
         else 0.0
     )
-
-    return CreatorSyncBehaviorPlan(
+    return CreatorSyncBehaviorOccurrence(
         mode=mode,
         pace=pace,
-        visit_current_home=mode in {
-            CreatorSyncBehaviorMode.CURRENT_HOME,
-            CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL,
-            CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE,
-        },
-        open_current_note_detail=mode is CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL,
-        visit_profile_home=mode in {
-            CreatorSyncBehaviorMode.PROFILE_HOME,
-            CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL,
-            CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE,
-        },
-        open_profile_note_detail=mode is CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL,
         entry_pause_seconds=rng.uniform(*ranges.entry),
         list_dwell_seconds=rng.uniform(*ranges.list_dwell),
         detail_dwell_seconds=rng.uniform(*ranges.detail_dwell),
@@ -265,4 +337,58 @@ def build_creator_sync_behavior_plan(
         profile_stagnant_rounds=rng.randint(*ranges.stagnant_rounds),
         occasional_long_pause_seconds=occasional_long_pause_seconds,
         minimum_prelude_seconds=rng.uniform(*_MINIMUM_PRELUDE_RANGES[pace][mode]),
+    )
+
+
+def build_creator_sync_behavior_plan(
+    rng: BehaviorRandom,
+    *,
+    forced_mode: int = 0,
+    profile_available: bool = True,
+) -> CreatorSyncBehaviorPlan:
+    """Build a stable sequence of independently sampled read-only behaviors.
+
+    ``forced_mode`` keeps one numbered behavior for debugging. Auto mode gives
+    all six behaviors their own occurrence and repeat probabilities, so one
+    session can contain a shuffled subset and occasional repeated behavior.
+    ``profile_available`` remains accepted for compatibility; profile behavior
+    can resolve the current account profile dynamically when no URL is saved.
+    """
+
+    del profile_available
+    modes = _select_behavior_modes(rng, forced_mode=forced_mode)
+    occurrences = tuple(_build_behavior_occurrence(rng, mode) for mode in modes)
+    first = occurrences[0]
+    selected_modes = {item.mode for item in occurrences}
+
+    return CreatorSyncBehaviorPlan(
+        mode=first.mode,
+        pace=first.pace,
+        visit_current_home=bool(selected_modes & {
+            CreatorSyncBehaviorMode.CURRENT_HOME,
+            CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL,
+            CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE,
+        }),
+        open_current_note_detail=CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL in selected_modes,
+        visit_profile_home=bool(selected_modes & {
+            CreatorSyncBehaviorMode.PROFILE_HOME,
+            CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL,
+            CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE,
+        }),
+        open_profile_note_detail=CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL in selected_modes,
+        entry_pause_seconds=first.entry_pause_seconds,
+        list_dwell_seconds=first.list_dwell_seconds,
+        detail_dwell_seconds=first.detail_dwell_seconds,
+        context_switch_seconds=first.context_switch_seconds,
+        final_transition_seconds=first.final_transition_seconds,
+        note_limit=first.note_limit,
+        profile_scroll_rounds=first.profile_scroll_rounds,
+        profile_max_feeds=first.profile_max_feeds,
+        profile_stagnant_rounds=first.profile_stagnant_rounds,
+        occasional_long_pause_seconds=first.occasional_long_pause_seconds,
+        minimum_prelude_seconds=min(
+            240.0,
+            sum(item.minimum_prelude_seconds for item in occurrences),
+        ),
+        occurrences=occurrences,
     )

@@ -1291,6 +1291,9 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
             }]
         return []
 
+    async def fake_behavior_prelude(self: XHSService, **kwargs):
+        return None
+
     monkeypatch.setattr(XHSService, "_acquire_ready_sync_browser_ws_with_fallback", fake_acquire_ready_sync_browser_ws_with_fallback)
     monkeypatch.setattr(XHSService, "_allocate_free_port", fake_allocate_free_port)
     monkeypatch.setattr(XHSService, "_start_mcp", fake_start_mcp)
@@ -1298,6 +1301,7 @@ async def test_sync_account_note_engagements_updates_metrics_for_selected_accoun
     monkeypatch.setattr(XHSService, "_stop_mcp", fake_stop_mcp)
     monkeypatch.setattr(XHSService, "_stop_browser", fake_stop_browser)
     monkeypatch.setattr(XHSService, "_fetch_creator_note_stats", fake_fetch_creator_note_stats)
+    monkeypatch.setattr(XHSService, "_run_creator_sync_behavior_prelude", fake_behavior_prelude)
 
     async with async_session() as db:
         service = XHSService(db)

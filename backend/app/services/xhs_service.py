@@ -67,6 +67,8 @@ from app.services.vehicle_catalog_service import VehicleCatalogService
 from app.services.yundeng_sync_coordinator import yundeng_sync_coordinator, yundeng_sync_guard
 from app.services.sms_device_coordinator import sms_device_coordinator
 from app.services.xhs_sync_behavior import (
+    CreatorSyncBehaviorMode,
+    CreatorSyncBehaviorOccurrence,
     CreatorSyncBehaviorPlan,
     build_creator_sync_behavior_plan,
 )
@@ -7085,6 +7087,13 @@ class XHSService:
         return {
             "profile_nickname": str(user_info.get("nickname") or "").strip() or None,
             "red_id": str(user_info.get("redId") or "").strip() or None,
+            "user_id": str(
+                user_info.get("userId")
+                or user_info.get("user_id")
+                or user_info.get("userid")
+                or user_info.get("id")
+                or ""
+            ).strip() or None,
             "feeds": normalized_feeds,
         }
 
@@ -7239,12 +7248,32 @@ class XHSService:
         cancellation is always propagated immediately.
         """
 
-        mode_value = int(plan.mode)
+        occurrences = plan.occurrences or (
+            CreatorSyncBehaviorOccurrence(
+                mode=plan.mode,
+                pace=plan.pace,
+                entry_pause_seconds=plan.entry_pause_seconds,
+                list_dwell_seconds=plan.list_dwell_seconds,
+                detail_dwell_seconds=plan.detail_dwell_seconds,
+                context_switch_seconds=plan.context_switch_seconds,
+                final_transition_seconds=plan.final_transition_seconds,
+                note_limit=plan.note_limit,
+                profile_scroll_rounds=plan.profile_scroll_rounds,
+                profile_max_feeds=plan.profile_max_feeds,
+                profile_stagnant_rounds=plan.profile_stagnant_rounds,
+                occasional_long_pause_seconds=plan.occasional_long_pause_seconds,
+                minimum_prelude_seconds=plan.minimum_prelude_seconds,
+            ),
+        )
+        behavior_modes = [int(item.mode) for item in occurrences]
+        behavior_labels = [item.label for item in occurrences]
         common_progress = {
             "environment_id": int(env.id),
             "account_name": env.account_name,
-            "behavior_mode": mode_value,
-            "behavior_label": plan.label,
+            "behavior_mode": behavior_modes[0],
+            "behavior_label": behavior_labels[0],
+            "behavior_modes": behavior_modes,
+            "behavior_labels": behavior_labels,
             "behavior_parameters": plan.progress_parameters(),
         }
         await self._raise_if_sync_cancelled(cancel_check)
@@ -7253,128 +7282,237 @@ class XHSService:
             {
                 **common_progress,
                 "phase": "creator_behavior_planned",
-                "detail": f"{env.account_name} 本次采用行为路线 {mode_value}：{plan.label}",
+                "detail": (
+                    f"{env.account_name} 本次随机组合 {len(occurrences)} 个行为："
+                    + " → ".join(f"{int(item.mode)}.{item.label}" for item in occurrences)
+                ),
             },
         )
         executed_actions: list[str] = []
-        failed_actions: list[dict[str, str]] = []
-        current_payload: dict | None = None
-        current_attempted = False
-        behavior_started_at = time.monotonic()
+        failed_actions: list[dict[str, object]] = []
+        resolved_profile_url = str(env.profile_url or "").strip()
 
-        def record_action_failure(action: str, exc: BaseException) -> None:
+        def record_action_failure(
+            action: str,
+            exc: BaseException,
+            occurrence_index: int,
+            mode: CreatorSyncBehaviorMode,
+        ) -> None:
             error_message = self._sync_exception_message(exc)
-            failed_actions.append({"action": action, "error": error_message})
+            failed_actions.append(
+                {
+                    "occurrence": occurrence_index,
+                    "mode": int(mode),
+                    "action": action,
+                    "error": error_message,
+                }
+            )
             logger.info(
-                "创作中心同步前置动作已降级: env_id=%s account=%s mode=%s action=%s reason=%s",
+                "创作中心同步前置动作已降级: env_id=%s account=%s occurrence=%s mode=%s action=%s reason=%s",
                 env.id,
                 env.account_name,
-                mode_value,
+                occurrence_index,
+                int(mode),
                 action,
                 error_message,
             )
 
-        try:
-            await self._sleep_creator_behavior_delay(plan.entry_pause_seconds, cancel_check)
+        def resolve_profile_url(payload: dict | None) -> str:
+            nonlocal resolved_profile_url
+            if resolved_profile_url:
+                return resolved_profile_url
+            user_id = str((payload or {}).get("user_id") or "").strip()
+            if user_id and re.fullmatch(r"[0-9A-Za-z]+", user_id):
+                resolved_profile_url = f"https://www.xiaohongshu.com/user/profile/{user_id}"
+            return resolved_profile_url
 
-            if plan.visit_current_home:
-                current_attempted = True
+        async def run_current_home(
+            occurrence: CreatorSyncBehaviorOccurrence,
+            occurrence_index: int,
+            *,
+            open_detail: bool,
+            action_name: str = "current_home",
+        ) -> dict | None:
+            try:
+                payload = await self._fetch_current_account_notes(
+                    api_base=api_base,
+                    limit=occurrence.note_limit,
+                )
+                executed_actions.append(action_name)
+                resolve_profile_url(payload)
+                await self._sleep_creator_behavior_delay(
+                    occurrence.list_dwell_seconds,
+                    cancel_check,
+                )
+            except SyncJobCancelled:
+                raise
+            except Exception as exc:
+                record_action_failure(action_name, exc, occurrence_index, occurrence.mode)
+                return None
+
+            if open_detail:
+                detail_action = "current_note_detail"
                 try:
-                    current_payload = await self._fetch_current_account_notes(
+                    if await self._run_warmup_detail_peek(
+                        payload,
                         api_base=api_base,
-                        limit=plan.note_limit,
-                    )
-                    executed_actions.append("current_home")
-                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
+                        persona=persona,
+                    ):
+                        executed_actions.append(detail_action)
+                        await self._sleep_creator_behavior_delay(
+                            occurrence.detail_dwell_seconds,
+                            cancel_check,
+                        )
                 except SyncJobCancelled:
                     raise
                 except Exception as exc:
-                    record_action_failure("current_home", exc)
-                if plan.open_current_note_detail and current_payload is not None:
-                    try:
-                        if await self._run_warmup_detail_peek(
-                            current_payload,
-                            api_base=api_base,
-                            persona=persona,
-                        ):
-                            executed_actions.append("current_note_detail")
-                            await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
-                    except SyncJobCancelled:
-                        raise
-                    except Exception as exc:
-                        record_action_failure("current_note_detail", exc)
+                    record_action_failure(detail_action, exc, occurrence_index, occurrence.mode)
+            return payload
 
-            if plan.visit_profile_home:
-                profile_url = str(env.profile_url or "").strip()
-                if profile_url:
-                    if executed_actions:
-                        await self._sleep_creator_behavior_delay(plan.context_switch_seconds, cancel_check)
-                    profile_payload: dict | None = None
-                    try:
-                        profile_payload = await self._fetch_profile_account_notes(
-                            profile_url,
-                            api_base=api_base,
-                            limit=plan.note_limit,
-                            scroll_mode="input",
-                            max_feeds=plan.profile_max_feeds,
-                            max_scroll_rounds=plan.profile_scroll_rounds,
-                            max_stagnant_rounds=plan.profile_stagnant_rounds,
-                        )
-                        executed_actions.append("profile_home")
-                        await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
-                    except SyncJobCancelled:
-                        raise
-                    except Exception as exc:
-                        record_action_failure("profile_home", exc)
-                    if plan.open_profile_note_detail and profile_payload is not None:
-                        try:
-                            if await self._run_warmup_detail_peek(
-                                profile_payload,
-                                api_base=api_base,
-                                persona=persona,
-                            ):
-                                executed_actions.append("profile_note_detail")
-                                await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
-                        except SyncJobCancelled:
-                            raise
-                        except Exception as exc:
-                            record_action_failure("profile_note_detail", exc)
-                elif not current_attempted:
-                    current_attempted = True
-                    try:
-                        current_payload = await self._fetch_current_account_notes(
-                            api_base=api_base,
-                            limit=plan.note_limit,
-                        )
-                        executed_actions.append("current_home_fallback")
-                        await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
-                    except SyncJobCancelled:
-                        raise
-                    except Exception as exc:
-                        record_action_failure("current_home_fallback", exc)
-                    if plan.open_profile_note_detail and current_payload is not None:
-                        try:
-                            if await self._run_warmup_detail_peek(
-                                current_payload,
-                                api_base=api_base,
-                                persona=persona,
-                            ):
-                                executed_actions.append("current_note_detail_fallback")
-                                await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
-                        except SyncJobCancelled:
-                            raise
-                        except Exception as exc:
-                            record_action_failure("current_note_detail_fallback", exc)
+        async def run_profile_home(
+            occurrence: CreatorSyncBehaviorOccurrence,
+            occurrence_index: int,
+            *,
+            open_detail: bool,
+            current_payload: dict | None = None,
+        ) -> None:
+            profile_url = resolve_profile_url(current_payload)
+            if not profile_url:
+                current_payload = await run_current_home(
+                    occurrence,
+                    occurrence_index,
+                    open_detail=False,
+                    action_name="current_home_profile_resolution",
+                )
+                profile_url = resolve_profile_url(current_payload)
+            if not profile_url:
+                record_action_failure(
+                    "profile_home",
+                    RuntimeError("当前账号主页未返回可用 user_id"),
+                    occurrence_index,
+                    occurrence.mode,
+                )
+                return
 
-            if executed_actions and plan.occasional_long_pause_seconds > 0:
-                await self._sleep_creator_behavior_delay(plan.occasional_long_pause_seconds, cancel_check)
-            await self._sleep_creator_behavior_delay(plan.final_transition_seconds, cancel_check)
-            minimum_remaining_seconds = max(
-                0.0,
-                float(plan.minimum_prelude_seconds) - (time.monotonic() - behavior_started_at),
-            )
-            if minimum_remaining_seconds > 0:
-                await self._sleep_creator_behavior_delay(minimum_remaining_seconds, cancel_check)
+            try:
+                profile_payload = await self._fetch_profile_account_notes(
+                    profile_url,
+                    api_base=api_base,
+                    limit=occurrence.note_limit,
+                    scroll_mode="input",
+                    max_feeds=occurrence.profile_max_feeds,
+                    max_scroll_rounds=occurrence.profile_scroll_rounds,
+                    max_stagnant_rounds=occurrence.profile_stagnant_rounds,
+                )
+                executed_actions.append("profile_home")
+                await self._sleep_creator_behavior_delay(
+                    occurrence.list_dwell_seconds,
+                    cancel_check,
+                )
+            except SyncJobCancelled:
+                raise
+            except Exception as exc:
+                record_action_failure("profile_home", exc, occurrence_index, occurrence.mode)
+                return
+
+            if open_detail:
+                try:
+                    if await self._run_warmup_detail_peek(
+                        profile_payload,
+                        api_base=api_base,
+                        persona=persona,
+                    ):
+                        executed_actions.append("profile_note_detail")
+                        await self._sleep_creator_behavior_delay(
+                            occurrence.detail_dwell_seconds,
+                            cancel_check,
+                        )
+                except SyncJobCancelled:
+                    raise
+                except Exception as exc:
+                    record_action_failure(
+                        "profile_note_detail",
+                        exc,
+                        occurrence_index,
+                        occurrence.mode,
+                    )
+
+        try:
+            for occurrence_index, occurrence in enumerate(occurrences, start=1):
+                occurrence_started_at = time.monotonic()
+                actions_before = len(executed_actions)
+                if occurrence_index > 1:
+                    await self._sleep_creator_behavior_delay(
+                        occurrence.context_switch_seconds,
+                        cancel_check,
+                    )
+                await self._sleep_creator_behavior_delay(
+                    occurrence.entry_pause_seconds,
+                    cancel_check,
+                )
+
+                if occurrence.mode is CreatorSyncBehaviorMode.DIRECT:
+                    executed_actions.append("direct_pause")
+                elif occurrence.mode is CreatorSyncBehaviorMode.CURRENT_HOME:
+                    await run_current_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=False,
+                    )
+                elif occurrence.mode is CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL:
+                    await run_current_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=True,
+                    )
+                elif occurrence.mode is CreatorSyncBehaviorMode.PROFILE_HOME:
+                    await run_profile_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=False,
+                    )
+                elif occurrence.mode is CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL:
+                    await run_profile_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=True,
+                    )
+                elif occurrence.mode is CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE:
+                    current_payload = await run_current_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=False,
+                    )
+                    await self._sleep_creator_behavior_delay(
+                        occurrence.context_switch_seconds,
+                        cancel_check,
+                    )
+                    await run_profile_home(
+                        occurrence,
+                        occurrence_index,
+                        open_detail=False,
+                        current_payload=current_payload,
+                    )
+
+                if len(executed_actions) > actions_before and occurrence.occasional_long_pause_seconds > 0:
+                    await self._sleep_creator_behavior_delay(
+                        occurrence.occasional_long_pause_seconds,
+                        cancel_check,
+                    )
+                await self._sleep_creator_behavior_delay(
+                    occurrence.final_transition_seconds,
+                    cancel_check,
+                )
+                minimum_remaining_seconds = max(
+                    0.0,
+                    float(occurrence.minimum_prelude_seconds)
+                    - (time.monotonic() - occurrence_started_at),
+                )
+                if minimum_remaining_seconds > 0:
+                    await self._sleep_creator_behavior_delay(
+                        minimum_remaining_seconds,
+                        cancel_check,
+                    )
             await self._emit_progress(
                 progress_callback,
                 {
@@ -7390,10 +7528,10 @@ class XHSService:
                 },
             )
             logger.info(
-                "创作中心同步前置路线完成: env_id=%s account=%s mode=%s actions=%s failed_actions=%s",
+                "创作中心同步前置组合完成: env_id=%s account=%s modes=%s actions=%s failed_actions=%s",
                 env.id,
                 env.account_name,
-                mode_value,
+                behavior_modes,
                 executed_actions,
                 failed_actions,
             )
@@ -7401,10 +7539,10 @@ class XHSService:
             raise
         except Exception as exc:
             logger.info(
-                "创作中心同步前置路线已跳过: env_id=%s account=%s mode=%s actions=%s reason=%s",
+                "创作中心同步前置组合已跳过: env_id=%s account=%s modes=%s actions=%s reason=%s",
                 env.id,
                 env.account_name,
-                mode_value,
+                behavior_modes,
                 executed_actions,
                 self._sync_exception_message(exc),
             )

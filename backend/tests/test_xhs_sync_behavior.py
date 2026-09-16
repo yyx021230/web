@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from types import SimpleNamespace
 
 import pytest
@@ -43,27 +44,23 @@ def _persona() -> SyncSessionPersona:
     )
 
 
-@pytest.mark.parametrize(
-    ("roll", "expected"),
-    [
-        (1, CreatorSyncBehaviorMode.DIRECT),
-        (20, CreatorSyncBehaviorMode.DIRECT),
-        (21, CreatorSyncBehaviorMode.CURRENT_HOME),
-        (45, CreatorSyncBehaviorMode.CURRENT_HOME),
-        (46, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
-        (65, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
-        (66, CreatorSyncBehaviorMode.PROFILE_HOME),
-        (80, CreatorSyncBehaviorMode.PROFILE_HOME),
-        (81, CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL),
-        (90, CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL),
-        (91, CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE),
-        (100, CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE),
-    ],
-)
-def test_creator_behavior_weight_boundaries(roll: int, expected: CreatorSyncBehaviorMode):
-    plan = build_creator_sync_behavior_plan(FixedRoll(roll))
+def test_creator_behavior_auto_mode_can_combine_all_six_behaviors():
+    plan = build_creator_sync_behavior_plan(FixedRoll(1))
 
-    assert plan.mode is expected
+    assert {item.mode for item in plan.occurrences} == set(CreatorSyncBehaviorMode)
+    assert len(plan.occurrences) == 6
+
+
+def test_creator_behavior_auto_mode_has_independent_probability_and_repetition():
+    rng = random.Random(20260916)
+    plans = [build_creator_sync_behavior_plan(rng) for _ in range(1200)]
+    sequences = [tuple(item.mode for item in plan.occurrences) for plan in plans]
+
+    for mode in CreatorSyncBehaviorMode:
+        assert any(mode in sequence for sequence in sequences)
+    assert any(len(sequence) > 1 for sequence in sequences)
+    assert any(len(set(sequence)) < len(sequence) for sequence in sequences)
+    assert len(set(sequences)) > 100
 
 
 @pytest.mark.parametrize("forced_mode", range(1, 7))
@@ -96,24 +93,19 @@ def test_creator_behavior_selects_stable_session_pace(roll: int, expected: Creat
     assert plan.pace is expected
 
 
-@pytest.mark.parametrize(
-    ("roll", "expected"),
-    [
-        (1, CreatorSyncBehaviorMode.DIRECT),
-        (25, CreatorSyncBehaviorMode.DIRECT),
-        (26, CreatorSyncBehaviorMode.CURRENT_HOME),
-        (70, CreatorSyncBehaviorMode.CURRENT_HOME),
-        (71, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
-        (100, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
-    ],
-)
-def test_creator_behavior_avoids_profile_routes_when_profile_is_unavailable(
-    roll: int,
-    expected: CreatorSyncBehaviorMode,
-):
-    plan = build_creator_sync_behavior_plan(FixedRoll(roll), profile_available=False)
+def test_creator_behavior_does_not_remove_profile_probabilities_when_url_is_missing():
+    with_profile = build_creator_sync_behavior_plan(FixedRoll(1), profile_available=True)
+    without_profile = build_creator_sync_behavior_plan(FixedRoll(1), profile_available=False)
 
-    assert plan.mode is expected
+    assert [item.mode for item in without_profile.occurrences] == [
+        item.mode for item in with_profile.occurrences
+    ]
+    assert CreatorSyncBehaviorMode.PROFILE_HOME in {
+        item.mode for item in without_profile.occurrences
+    }
+    assert CreatorSyncBehaviorMode.PROFILE_NOTE_DETAIL in {
+        item.mode for item in without_profile.occurrences
+    }
 
 
 @pytest.mark.asyncio
@@ -140,10 +132,12 @@ async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatc
         progress_callback=capture_progress,
     )
 
-    assert delays[:2] == [round(plan.entry_pause_seconds, 2), round(plan.final_transition_seconds, 2)]
-    assert delays[2] == pytest.approx(plan.minimum_prelude_seconds, abs=0.01)
+    occurrence = plan.occurrences[0]
+    assert delays[0] == round(occurrence.entry_pause_seconds, 2)
+    assert round(occurrence.final_transition_seconds, 2) in delays
+    assert delays[-1] == pytest.approx(occurrence.minimum_prelude_seconds, abs=0.01)
     assert progress[-1]["phase"] == "creator_behavior_completed"
-    assert progress[-1]["behavior_actions"] == []
+    assert progress[-1]["behavior_actions"] == ["direct_pause"]
 
 
 @pytest.mark.asyncio
@@ -214,8 +208,15 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
         return None
 
     async def fake_fetch_current(self, *, api_base=None, limit=60):
-        events.append("current_fallback")
-        return {"feeds": [{"feed_id": "feed-fallback", "xsec_token": "token-fallback"}]}
+        events.append("current_resolution")
+        return {
+            "user_id": "profileuser",
+            "feeds": [{"feed_id": "feed-fallback", "xsec_token": "token-fallback"}],
+        }
+
+    async def fake_fetch_profile(self, profile_url, api_base=None, limit=120, **kwargs):
+        events.append(f"profile:{profile_url}")
+        return {"feeds": [{"feed_id": "feed-profile", "xsec_token": "token-profile"}]}
 
     async def fake_detail(self, payload, *, api_base, persona):
         events.append("detail_fallback")
@@ -226,6 +227,7 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
 
     monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", no_wait)
     monkeypatch.setattr(XHSService, "_fetch_current_account_notes", fake_fetch_current)
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", fake_fetch_profile)
     monkeypatch.setattr(XHSService, "_run_warmup_detail_peek", fake_detail)
 
     await service._run_creator_sync_behavior_prelude(
@@ -236,10 +238,15 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
         progress_callback=capture_progress,
     )
 
-    assert events == ["current_fallback", "detail_fallback"]
+    assert events == [
+        "current_resolution",
+        "profile:https://www.xiaohongshu.com/user/profile/profileuser",
+        "detail_fallback",
+    ]
     assert completed[-1]["behavior_actions"] == [
-        "current_home_fallback",
-        "current_note_detail_fallback",
+        "current_home_profile_resolution",
+        "profile_home",
+        "profile_note_detail",
     ]
 
 
@@ -344,7 +351,12 @@ async def test_creator_mixed_route_continues_after_one_read_only_action_fails(mo
     assert progress[-1]["phase"] == "creator_behavior_completed"
     assert progress[-1]["behavior_actions"] == ["profile_home"]
     assert progress[-1]["behavior_failed_actions"] == [
-        {"action": "current_home", "error": "current home unavailable"}
+        {
+            "occurrence": 1,
+            "mode": 6,
+            "action": "current_home",
+            "error": "current home unavailable",
+        }
     ]
 
 
