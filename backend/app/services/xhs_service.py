@@ -6255,6 +6255,7 @@ class XHSService:
         behavior_plan = build_creator_sync_behavior_plan(
             _SYNC_BROWSER_CONFIG_RNG,
             forced_mode=XHS_CREATOR_SYNC_BEHAVIOR_MODE if XHS_CREATOR_SYNC_BEHAVIOR_ENABLED else 1,
+            profile_available=bool(str(env.profile_url or "").strip()),
         )
         try:
             for attempt in range(1, max_attempts + 1):
@@ -7256,79 +7257,138 @@ class XHSService:
             },
         )
         executed_actions: list[str] = []
+        failed_actions: list[dict[str, str]] = []
         current_payload: dict | None = None
+        current_attempted = False
+
+        def record_action_failure(action: str, exc: BaseException) -> None:
+            error_message = self._sync_exception_message(exc)
+            failed_actions.append({"action": action, "error": error_message})
+            logger.info(
+                "创作中心同步前置动作已降级: env_id=%s account=%s mode=%s action=%s reason=%s",
+                env.id,
+                env.account_name,
+                mode_value,
+                action,
+                error_message,
+            )
+
         try:
             await self._sleep_creator_behavior_delay(plan.entry_pause_seconds, cancel_check)
 
             if plan.visit_current_home:
-                current_payload = await self._fetch_current_account_notes(
-                    api_base=api_base,
-                    limit=plan.note_limit,
-                )
-                executed_actions.append("current_home")
-                await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
-                if plan.open_current_note_detail and await self._run_warmup_detail_peek(
-                    current_payload,
-                    api_base=api_base,
-                    persona=persona,
-                ):
-                    executed_actions.append("current_note_detail")
-                    await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
+                current_attempted = True
+                try:
+                    current_payload = await self._fetch_current_account_notes(
+                        api_base=api_base,
+                        limit=plan.note_limit,
+                    )
+                    executed_actions.append("current_home")
+                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
+                except SyncJobCancelled:
+                    raise
+                except Exception as exc:
+                    record_action_failure("current_home", exc)
+                if plan.open_current_note_detail and current_payload is not None:
+                    try:
+                        if await self._run_warmup_detail_peek(
+                            current_payload,
+                            api_base=api_base,
+                            persona=persona,
+                        ):
+                            executed_actions.append("current_note_detail")
+                            await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
+                    except SyncJobCancelled:
+                        raise
+                    except Exception as exc:
+                        record_action_failure("current_note_detail", exc)
 
             if plan.visit_profile_home:
                 profile_url = str(env.profile_url or "").strip()
                 if profile_url:
                     if executed_actions:
                         await self._sleep_creator_behavior_delay(plan.context_switch_seconds, cancel_check)
-                    profile_payload = await self._fetch_profile_account_notes(
-                        profile_url,
-                        api_base=api_base,
-                        limit=plan.note_limit,
-                        scroll_mode="input",
-                        max_feeds=plan.profile_max_feeds,
-                        max_scroll_rounds=plan.profile_scroll_rounds,
-                        max_stagnant_rounds=plan.profile_stagnant_rounds,
-                    )
-                    executed_actions.append("profile_home")
-                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
-                    if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
-                        profile_payload,
-                        api_base=api_base,
-                        persona=persona,
-                    ):
-                        executed_actions.append("profile_note_detail")
-                        await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
-                elif current_payload is None:
-                    current_payload = await self._fetch_current_account_notes(
-                        api_base=api_base,
-                        limit=plan.note_limit,
-                    )
-                    executed_actions.append("current_home_fallback")
-                    await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
-                    if plan.open_profile_note_detail and await self._run_warmup_detail_peek(
-                        current_payload,
-                        api_base=api_base,
-                        persona=persona,
-                    ):
-                        executed_actions.append("current_note_detail_fallback")
-                        await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
+                    profile_payload: dict | None = None
+                    try:
+                        profile_payload = await self._fetch_profile_account_notes(
+                            profile_url,
+                            api_base=api_base,
+                            limit=plan.note_limit,
+                            scroll_mode="input",
+                            max_feeds=plan.profile_max_feeds,
+                            max_scroll_rounds=plan.profile_scroll_rounds,
+                            max_stagnant_rounds=plan.profile_stagnant_rounds,
+                        )
+                        executed_actions.append("profile_home")
+                        await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
+                    except SyncJobCancelled:
+                        raise
+                    except Exception as exc:
+                        record_action_failure("profile_home", exc)
+                    if plan.open_profile_note_detail and profile_payload is not None:
+                        try:
+                            if await self._run_warmup_detail_peek(
+                                profile_payload,
+                                api_base=api_base,
+                                persona=persona,
+                            ):
+                                executed_actions.append("profile_note_detail")
+                                await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
+                        except SyncJobCancelled:
+                            raise
+                        except Exception as exc:
+                            record_action_failure("profile_note_detail", exc)
+                elif not current_attempted:
+                    current_attempted = True
+                    try:
+                        current_payload = await self._fetch_current_account_notes(
+                            api_base=api_base,
+                            limit=plan.note_limit,
+                        )
+                        executed_actions.append("current_home_fallback")
+                        await self._sleep_creator_behavior_delay(plan.list_dwell_seconds, cancel_check)
+                    except SyncJobCancelled:
+                        raise
+                    except Exception as exc:
+                        record_action_failure("current_home_fallback", exc)
+                    if plan.open_profile_note_detail and current_payload is not None:
+                        try:
+                            if await self._run_warmup_detail_peek(
+                                current_payload,
+                                api_base=api_base,
+                                persona=persona,
+                            ):
+                                executed_actions.append("current_note_detail_fallback")
+                                await self._sleep_creator_behavior_delay(plan.detail_dwell_seconds, cancel_check)
+                        except SyncJobCancelled:
+                            raise
+                        except Exception as exc:
+                            record_action_failure("current_note_detail_fallback", exc)
 
+            if executed_actions and plan.occasional_long_pause_seconds > 0:
+                await self._sleep_creator_behavior_delay(plan.occasional_long_pause_seconds, cancel_check)
             await self._sleep_creator_behavior_delay(plan.final_transition_seconds, cancel_check)
             await self._emit_progress(
                 progress_callback,
                 {
                     **common_progress,
                     "phase": "creator_behavior_completed",
-                    "detail": f"{env.account_name} 的同步前置浏览已完成，正在切换到创作者中心",
+                    "detail": (
+                        f"{env.account_name} 的同步前置浏览已完成，正在切换到创作者中心"
+                        if not failed_actions
+                        else f"{env.account_name} 的部分前置动作不可用，已降级并继续主同步"
+                    ),
                     "behavior_actions": executed_actions,
+                    "behavior_failed_actions": failed_actions,
                 },
             )
             logger.info(
-                "创作中心同步前置路线完成: env_id=%s account=%s mode=%s actions=%s",
+                "创作中心同步前置路线完成: env_id=%s account=%s mode=%s actions=%s failed_actions=%s",
                 env.id,
                 env.account_name,
                 mode_value,
                 executed_actions,
+                failed_actions,
             )
         except SyncJobCancelled:
             raise
@@ -7348,6 +7408,7 @@ class XHSService:
                     "phase": "creator_behavior_skipped",
                     "detail": f"{env.account_name} 的同步前置浏览不可用，已继续主同步",
                     "behavior_actions": executed_actions,
+                    "behavior_failed_actions": failed_actions,
                     "error": self._sync_exception_message(exc),
                 },
             )

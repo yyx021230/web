@@ -7,6 +7,7 @@ import pytest
 from app.services.xhs_service import SyncJobCancelled, SyncSessionPersona, XHSService
 from app.services.xhs_sync_behavior import (
     CreatorSyncBehaviorMode,
+    CreatorSyncPace,
     build_creator_sync_behavior_plan,
 )
 
@@ -70,11 +71,48 @@ def test_creator_behavior_can_force_each_numbered_route(forced_mode: int):
     plan = build_creator_sync_behavior_plan(FixedRoll(1), forced_mode=forced_mode)
 
     assert int(plan.mode) == forced_mode
-    assert 0.7 <= plan.entry_pause_seconds <= 2.4
-    assert 1.4 <= plan.list_dwell_seconds <= 4.8
-    assert 2.5 <= plan.detail_dwell_seconds <= 7.5
-    assert 1 <= plan.profile_scroll_rounds <= 3
-    assert 8 <= plan.profile_max_feeds <= 24
+    assert 0.4 <= plan.entry_pause_seconds <= 3.5
+    assert 1.0 <= plan.list_dwell_seconds <= 8.0
+    assert 2.0 <= plan.detail_dwell_seconds <= 12.0
+    assert 1 <= plan.profile_scroll_rounds <= 4
+    assert 8 <= plan.profile_max_feeds <= 30
+
+
+@pytest.mark.parametrize(
+    ("roll", "expected"),
+    [
+        (1, CreatorSyncPace.QUICK),
+        (30, CreatorSyncPace.QUICK),
+        (31, CreatorSyncPace.BALANCED),
+        (80, CreatorSyncPace.BALANCED),
+        (81, CreatorSyncPace.SLOW),
+        (100, CreatorSyncPace.SLOW),
+    ],
+)
+def test_creator_behavior_selects_stable_session_pace(roll: int, expected: CreatorSyncPace):
+    plan = build_creator_sync_behavior_plan(FixedRoll(roll), forced_mode=1)
+
+    assert plan.pace is expected
+
+
+@pytest.mark.parametrize(
+    ("roll", "expected"),
+    [
+        (1, CreatorSyncBehaviorMode.DIRECT),
+        (25, CreatorSyncBehaviorMode.DIRECT),
+        (26, CreatorSyncBehaviorMode.CURRENT_HOME),
+        (70, CreatorSyncBehaviorMode.CURRENT_HOME),
+        (71, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
+        (100, CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
+    ],
+)
+def test_creator_behavior_avoids_profile_routes_when_profile_is_unavailable(
+    roll: int,
+    expected: CreatorSyncBehaviorMode,
+):
+    plan = build_creator_sync_behavior_plan(FixedRoll(roll), profile_available=False)
+
+    assert plan.mode is expected
 
 
 @pytest.mark.asyncio
@@ -101,7 +139,7 @@ async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatc
         progress_callback=capture_progress,
     )
 
-    assert delays == [1.55, 2.5]
+    assert delays == [round(plan.entry_pause_seconds, 2), round(plan.final_transition_seconds, 2)]
     assert progress[-1]["phase"] == "creator_behavior_completed"
     assert progress[-1]["behavior_actions"] == []
 
@@ -110,7 +148,7 @@ async def test_creator_direct_route_keeps_random_stabilization_delays(monkeypatc
 async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     plan = build_creator_sync_behavior_plan(
-        FixedRoll(4),
+        FixedRoll(50),
         forced_mode=int(CreatorSyncBehaviorMode.CURRENT_NOTE_DETAIL),
     )
     env = SimpleNamespace(id=17, account_name="行为账号", profile_url="")
@@ -145,7 +183,7 @@ async def test_creator_behavior_current_note_route_is_ordered_and_read_only(monk
 
     assert events == [
         "delay:1.55",
-        "current:http://mcp.test:4",
+        "current:http://mcp.test:8",
         "delay:3.10",
         "detail:feed-1",
         "delay:5.00",
@@ -206,7 +244,7 @@ async def test_creator_profile_detail_route_falls_back_when_profile_url_is_missi
 async def test_creator_mixed_route_randomizes_dwell_and_profile_scroll(monkeypatch):
     service = XHSService(None)  # type: ignore[arg-type]
     plan = build_creator_sync_behavior_plan(
-        FixedRoll(3),
+        FixedRoll(50),
         forced_mode=int(CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE),
     )
     env = SimpleNamespace(
@@ -247,15 +285,63 @@ async def test_creator_mixed_route_randomizes_dwell_and_profile_scroll(monkeypat
     assert profile_calls == [
         {
             "profile_url": env.profile_url,
-            "limit": 3,
+            "limit": 8,
             "scroll_mode": "input",
-            "max_feeds": 8,
+            "max_feeds": 24,
             "max_scroll_rounds": 3,
             "max_stagnant_rounds": 2,
         }
     ]
     assert progress[-1]["behavior_actions"] == ["current_home", "profile_home"]
     assert progress[-1]["behavior_parameters"]["profile_scroll_rounds"] == 3
+
+
+@pytest.mark.asyncio
+async def test_creator_mixed_route_continues_after_one_read_only_action_fails(monkeypatch):
+    service = XHSService(None)  # type: ignore[arg-type]
+    plan = build_creator_sync_behavior_plan(
+        FixedRoll(50),
+        forced_mode=int(CreatorSyncBehaviorMode.MIXED_HOME_AND_PROFILE),
+    )
+    env = SimpleNamespace(
+        id=21,
+        account_name="降级路线账号",
+        profile_url="https://www.xiaohongshu.com/user/profile/abc?xsec_token=xyz",
+    )
+    actions: list[str] = []
+    progress: list[dict] = []
+
+    async def no_wait(*_args, **_kwargs):
+        return None
+
+    async def broken_current(self, *, api_base=None, limit=60):
+        raise RuntimeError("current home unavailable")
+
+    async def working_profile(self, profile_url, api_base=None, limit=120, **kwargs):
+        actions.append("profile_home")
+        return {"feeds": []}
+
+    async def capture_progress(payload: dict):
+        progress.append(dict(payload))
+
+    monkeypatch.setattr(XHSService, "_sleep_creator_behavior_delay", no_wait)
+    monkeypatch.setattr(XHSService, "_fetch_current_account_notes", broken_current)
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", working_profile)
+
+    await service._run_creator_sync_behavior_prelude(
+        api_base="http://mcp.test",
+        env=env,
+        persona=_persona(),
+        plan=plan,
+        progress_callback=capture_progress,
+    )
+
+    assert actions == ["profile_home"]
+    assert progress[-1]["phase"] == "creator_behavior_completed"
+    assert progress[-1]["behavior_actions"] == ["profile_home"]
+    assert progress[-1]["behavior_failed_actions"] == [
+        {"action": "current_home", "error": "current home unavailable"}
+    ]
 
 
 @pytest.mark.asyncio
