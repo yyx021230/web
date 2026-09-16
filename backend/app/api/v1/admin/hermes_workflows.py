@@ -141,6 +141,7 @@ async def create_run(
         accounts=accounts,
         posts_per_account=request.posts_per_account,
         instruction=request.instruction,
+        adaptation_level=request.adaptation_level,
     )
     return ApiResponse(data=serialize_run(run, include_posts=True), message="任务已下发")
 

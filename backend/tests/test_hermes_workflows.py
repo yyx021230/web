@@ -123,6 +123,28 @@ async def test_explicit_types_validated_and_preserved_independently(client):
 
 
 @pytest.mark.asyncio
+async def test_adaptation_level_is_versioned_and_defaults_to_replica(client):
+    user_id, environment_id = await seed_owner()
+    headers = make_auth_headers(user_id)
+    base = {'account_id': environment_id, 'vehicle_model': '零跑A05', 'post_count': 1}
+    default_run = await client.post('/api/v1/hermes-workflows/runs', headers=headers, json=base)
+    assert default_run.status_code == 200, default_run.text
+    default_params = default_run.json()['data']['parameters']
+    assert default_params['adaptation_level'] == 'replica'
+    assert default_params['adaptation_contract']['version'] == 'hermes-adaptation-v4'
+    assert default_params['adaptation_contract']['source_rule'].startswith('每篇只使用')
+
+    light_run = await client.post('/api/v1/hermes-workflows/runs', headers=headers, json={**base, 'adaptation_level': 'light'})
+    assert light_run.status_code == 200, light_run.text
+    light_params = light_run.json()['data']['parameters']
+    assert light_params['adaptation_level'] == 'light'
+    assert light_params['adaptation_contract']['label'] == '轻度微改'
+
+    invalid = await client.post('/api/v1/hermes-workflows/runs', headers=headers, json={**base, 'adaptation_level': 'anything'})
+    assert invalid.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_quote_type_id_cannot_bypass_complete_price_requirement(client, monkeypatch):
     user_id, environment_id = await seed_owner()
     monkeypatch.setattr('app.services.hermes_workflow_service.policy_summaries', lambda: [{'vehicle_model': '零跑A05', 'allow_multi_config_quote': False, 'quote_rows': []}])
@@ -584,6 +606,7 @@ async def test_reject_regenerates_exactly_one_post_and_worker_returns_new_pendin
     assert child['posts'][0]['vehicle_model'] == post['vehicle_model']
     assert child['parameters']['copy_type'] == run['parameters']['copy_type']
     assert child['parameters']['image_type'] == run['parameters']['image_type']
+    assert child['parameters']['adaptation_level'] == run['parameters']['adaptation_level']
     assert child['parameters']['regeneration']['post_id'] == post['id']
     assert reason in child['parameters']['instruction']
     assert '不能作为政策' in child['parameters']['instruction']

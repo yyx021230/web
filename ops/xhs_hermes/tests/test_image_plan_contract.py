@@ -141,3 +141,20 @@ def test_explicit_plan_retry_preserves_copy_and_source(monkeypatch,tmp_path):
     assert row['prompt_template']=={'id':324}
     assert 'image_plan' not in row
     assert row['superseded_image_runs'][0]['image_plan']['errors']==['schema mismatch']
+
+
+def test_image_instructions_change_fidelity_without_relaxing_hard_guards():
+    copy = {'title': '零跑A05近期参考', 'content': '配置参考'}
+    template = {'chinese': '汽车海报，主标题与车辆主体', 'source_slot_count': 2}
+    case = {'vehicle_model': '零跑A05', 'brand': '零跑汽车'}
+    replica = runner.image_plan_instruction(copy, template, case, '斜前方', '', adaptation_level='replica')
+    interpretive = runner.image_plan_instruction(copy, template, case, '斜前方', '', adaptation_level='interpretive')
+    assert '完整复刻蓝图' in replica
+    assert '全新版式原型' in interpretive
+    assert 'visual_changes必须列出5至7项' in interpretive
+    assert '顶部居中大标题＋中部完整车辆＋底部横向信息条' in interpretive
+    assert 'layout_archetype必须逐字返回' in interpretive
+    for prompt in (replica, interpretive):
+        assert '车辆外形、车标、灯组、轮毂和比例严格跟随' in prompt
+        assert '不得出现明确禁用词' in prompt
+        assert '不画二维码、联系方式' in prompt

@@ -132,6 +132,7 @@ async def create_run(
         name=request.name,
         copy_type=request.copy_type,
         image_type=request.image_type,
+        adaptation_level=request.adaptation_level,
     )
     return ApiResponse(data=_user_run_payload(run, current_user.id), message="任务已进入 Hermes 队列")
 
@@ -165,6 +166,7 @@ async def create_batch_run(
         posts_per_account=1,
         instruction=request.instruction,
         name=request.name,
+        adaptation_level=request.adaptation_level,
     )
     return ApiResponse(data=_user_run_payload(run, current_user.id), message="批量任务已进入 Hermes 队列")
 

@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowUpRight, CarFront, ChevronDown, ChevronUp, FileText, History, Loader2, SlidersHorizontal, Sparkles, UsersRound } from 'lucide-react';
+import { ArrowUpRight, CarFront, ChevronDown, ChevronUp, FileText, History, Loader2, ShieldCheck, SlidersHorizontal, Sparkles, UsersRound } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { hermesWorkflowApi, type HermesAccount, type HermesPolicy, type HermesReferenceCatalog } from '@/services/hermesWorkflowApi';
+import { hermesWorkflowApi, type HermesAccount, type HermesAdaptationLevel, type HermesPolicy, type HermesReferenceCatalog } from '@/services/hermesWorkflowApi';
 import HermesCreationHistory from './HermesCreationHistory';
 import { HermesFrame } from './HermesFrame';
 import HermesPolicyViewer from './HermesPolicyViewer';
@@ -22,6 +22,7 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
   const [catalogError, setCatalogError] = useState('');
   const [picker, setPicker] = useState<'copy' | 'image' | null>(null);
   const [instruction, setInstruction] = useState('');
+  const [adaptationLevel, setAdaptationLevel] = useState<HermesAdaptationLevel>('replica');
   const [advanced, setAdvanced] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
@@ -73,7 +74,7 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
     if (single && imagePoolEmpty) return toast.error('当前车型资料条件下，该版式暂无可生产母版，请更换版式');
     lock.current = true; setSubmitting(true);
     try {
-      const payload = { instruction: instruction.trim() || undefined };
+      const payload = { instruction: instruction.trim() || undefined, adaptation_level: adaptationLevel };
       const response = single ? await hermesWorkflowApi.createRun({ ...payload, account_id: Number(Object.keys(counts)[0]), vehicle_model: selectedModels[0], post_count: 1, copy_type: copyType, image_type: imageType }) : await hermesWorkflowApi.createBatchRun({ ...payload, accounts: Object.entries(counts).map(([id, post_count]) => ({ environment_id: Number(id), post_count })), vehicle_models: selectedModels });
       toast.success(`任务 #${response.data.id} 已入队，共 ${total} 篇`);
       setRefreshKey(k => k + 1); setCollapsed(true); setInstruction('');
@@ -108,6 +109,24 @@ export default function HermesCreator({ single = false }: { single?: boolean }) 
           {single ? <select aria-label="生产车型" className={s.input} disabled={loading || !!error} value={selectedModels[0] || ''} onChange={e => setSelectedModels(e.target.value ? [e.target.value] : [])}><option value="">选择车型</option>{models.map(m => <option key={m}>{m}</option>)}</select> : <details className={s.dropdown}><summary className={s.button}><CarFront size={15} /><span>{selectedModels.length ? selectedModels.length === 1 ? selectedModels[0] : `已选 ${selectedModels.length} 款车型` : '选择生产车型'}</span><ChevronDown size={13} /></summary><div className={s.menu}><p className={s.small} style={{ padding: '4px 8px' }}>所选车型按篇轮换 · 最多 12 款</p>{models.map(m => <label className={s.option} key={m}><input type="checkbox" checked={selectedModels.includes(m)} onChange={() => toggleModel(m)} /><span>{m}</span><small className={s.small}>{policies.some(p => p.vehicle_model === m) ? '含政策' : '车型库'}</small></label>)}</div></details>}</div>
           <button type="button" className={s.preferenceButton} onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}><SlidersHorizontal size={14} />创作偏好<small>可选</small></button>
         </div>
+        <fieldset className={s.adaptationFieldset}>
+          <legend><span>创作幅度</span><small><ShieldCheck size={12} />事实与合规规则始终锁定</small></legend>
+          <div className={s.adaptationScale}>
+            {([
+              ['replica', '精准复刻', '最大程度保留母文母图'],
+              ['light', '轻度微改', '结构不变，表达与视觉轻调'],
+              ['interpretive', '灵感改编', '保留事实，整套版式重新设计'],
+            ] as const).map(([value, label, note], index) => <button
+              key={value}
+              type="button"
+              className={s.adaptationOption}
+              data-selected={adaptationLevel === value}
+              data-level={value}
+              aria-pressed={adaptationLevel === value}
+              onClick={() => setAdaptationLevel(value)}
+            ><span className={s.adaptationIndex}>0{index + 1}</span><span><strong>{label}</strong><small>{note}</small></span></button>)}
+          </div>
+        </fieldset>
         {single && (catalog ? <div className={s.typePair}><HermesTypeChoice kind="copy" type={catalog.copy_types.find(t => t.id === copyType)} onClick={() => setPicker('copy')} /><HermesTypeChoice kind="image" type={catalog.image_types.find(t => t.id === imageType)} onClick={() => setPicker('image')} /></div> : <div className={s.notice}>{catalogError || '正在加载文案方向、图片版式与真实案例…'}{catalogError && <button type="button" className={s.textButton} onClick={loadCatalog}>重试案例</button>}</div>)}
         </div>
         {single && imageQuoteBlocked && <p className={`${s.notice} ${s.error}`}>当前车型未提供完整的分配置报价，请更换版式或选择资料完整的车型。</p>}

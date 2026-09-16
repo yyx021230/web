@@ -307,8 +307,10 @@ class HermesWorkflowService:
         name: str | None = None,
         copy_type: str | None = None,
         image_type: str | None = None,
+        adaptation_level: str | None = None,
         commit: bool = True,
     ) -> HermesWorkflowRun:
+        from app.services.hermes_adaptation import adaptation_contract, normalize_adaptation_level
         account_plans: list[dict[str, Any]] = []
         from app.services.hermes_reference_types import validate_type, type_requires_quote_data, COPY_TYPES, IMAGE_TYPES, LEGACY_IMAGE_TYPES, TAXONOMY_VERSION
         try:
@@ -372,6 +374,8 @@ class HermesWorkflowService:
                 "name": (name or '').strip() or f"{' · '.join(sorted(model_names))} · {total_posts}篇",
                 "copy_type": copy_type,
                 "image_type": image_type,
+                "adaptation_level": normalize_adaptation_level(adaptation_level),
+                "adaptation_contract": adaptation_contract(adaptation_level),
                 "selection_contract": {
                     "version": TAXONOMY_VERSION,
                     "mode": "typed" if copy_type or image_type else "portfolio",
@@ -689,7 +693,8 @@ class HermesWorkflowService:
         regenerated = await self.create_run(
             source='regeneration', requested_by=reviewer.id, accounts=accounts, posts_per_account=1,
             instruction=instruction, name=f'{post.vehicle_model} · 单篇重生',
-            copy_type=params.get('copy_type'), image_type=params.get('image_type'), commit=False,
+            copy_type=params.get('copy_type'), image_type=params.get('image_type'),
+            adaptation_level=params.get('adaptation_level'), commit=False,
         )
         lineage = {'post_id': post.id, 'run_id': original.id, 'revision': int((post.source_detail or {}).get('revision', 1)),
                    'reason': reason, 'requested_by': reviewer.id, 'requested_at': _iso(cst_now_naive()),
@@ -906,7 +911,7 @@ class HermesWorkflowService:
             "selected_prompt_original", "selected_prompt_image", "image_template_type",
             "image_text_blocks", "slot_mappings", "adapted_prompt", "scene_change",
             "vehicle_image", "image_task_id", "ocr_lines", "ocr_config_comparison", "copy_validation",
-            "account_history", "account_repetition", "stage_timings",
+            "account_history", "account_repetition", "stage_timings", "adaptation_level", "adaptation_contract",
         ) if item.get(key) is not None}
         if errors:
             source_detail['error'] = '；'.join(errors)

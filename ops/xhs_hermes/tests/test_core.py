@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core import (  # noqa: E402
+    COMPETITOR_RE,
     QUOTE_TABLE_TYPE,
     STANDARD_TEMPLATE_TYPE,
     copy_content_type,
@@ -59,6 +60,10 @@ class CoreTest(unittest.TestCase):
         self.assertEqual(40, len(tasks))
         self.assertEqual(40, len({row["key"] for row in tasks}))
         self.assertEqual({5}, {sum(row["account_id"] == account["id"] for row in tasks) for account in config["accounts"]})
+
+    def test_deep_blue_color_is_not_mistaken_for_competitor_brand(self) -> None:
+        self.assertIsNone(COMPETITOR_RE.search("深蓝哑光杂志纸与深海军蓝背景"))
+        self.assertIsNotNone(COMPETITOR_RE.search("对比深蓝汽车S07"))
 
     def test_single_account_scope_keeps_exactly_five_posts(self) -> None:
         config = json.loads((ROOT / "config" / "daily_8x5.json").read_text(encoding="utf-8"))
@@ -300,6 +305,59 @@ class CoreTest(unittest.TestCase):
         )
         self.assertFalse(invalid["pass"])
 
+    def test_copy_validator_rejects_city_as_national_price_lookup_key(self) -> None:
+        mother = {"title": "示例", "content": "价格说明\n留【城市】\n#买车[话题]#"}
+        result = validate_copy(
+            title="零跑A05价格参考",
+            content=(
+                "405舒享版国补后价格按条件测算为¥56,232。\n"
+                "想知道你所在城市的国补后价格？留【城市】。\n"
+                "#零跑A05[话题]#"
+            ),
+            mother=mother,
+            case=self.case,
+        )
+        self.assertTrue(any("城市不能作为查询国补后价格" in value for value in result["hard_errors"]), result)
+
+    def test_copy_validator_rejects_promising_an_already_disclosed_quote_list(self) -> None:
+        mother = {"title": "示例", "content": "价格说明\n留【城市】\n#买车[话题]#"}
+        result = validate_copy(
+            title="零跑A05价格参考",
+            content=(
+                "405舒享版¥56,232、405悦享版¥59,752、510悦享版¥66,792、"
+                "510激光雷达版¥75,592，以上均按相应条件测算。\n"
+                "留【城市】，可发完整各配置报价详情。\n"
+                "#零跑A05[话题]#"
+            ),
+            mother=mother,
+            case=self.case,
+        )
+        self.assertTrue(any("再次承诺提供同一份报价详情" in value for value in result["hard_errors"]), result)
+
+    def test_copy_validator_rejects_comment_lead_variants(self) -> None:
+        mother = {"title": "示例", "content": "说明\n留【城市】\n#买车[话题]#"}
+        result = validate_copy(
+            title="零跑A05办理参考",
+            content="说明\n评论留城市，我帮你核对流程。\n#零跑A05[话题]#",
+            mother=mother,
+            case=self.case,
+        )
+        self.assertTrue(any("互动引导" in value for value in result["hard_errors"]), result)
+
+    def test_copy_validator_allows_prices_then_local_policy_cta(self) -> None:
+        mother = {"title": "示例", "content": "价格说明\n留【城市】\n#买车[话题]#"}
+        result = validate_copy(
+            title="零跑A05价格参考",
+            content=(
+                "405舒享版国补后价格按条件测算为¥56,232，510悦享版为¥66,792。\n"
+                "留【城市】，核对当地政策流程与适用条件。\n"
+                "#零跑A05[话题]#"
+            ),
+            mother=mother,
+            case=self.case,
+        )
+        self.assertTrue(result["pass"], result)
+
     def test_copy_validator_blocks_repeated_unknown_fact_placeholders(self) -> None:
         mother = {"title": "示例", "content": "参数速览\n续航参数\n动力参数\n留【城市】\n#买车[话题]#"}
         result = validate_copy(
@@ -402,6 +460,58 @@ class CoreTest(unittest.TestCase):
             [{"text": "零跑A05 9.99万", "confidence": 0.3}], copy=copy, case=self.case
         )
         self.assertTrue(any("未登记金额" in value for value in errors), errors)
+
+    def test_copy_structure_guard_tracks_requested_adaptation_level(self) -> None:
+        mother = {"content": "\n".join(f"母文第{i}行" for i in range(10))}
+        case = {"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []}
+        content = "零跑A05近期参考\n核心信息一\n核心信息二\n#零跑A05[话题]#"
+        replica = validate_copy(title="零跑A05近期参考", content=content, mother=mother, case=case)
+        light = validate_copy(
+            title="零跑A05近期参考", content=content, mother=mother, case=case, adaptation_level="light"
+        )
+        self.assertTrue(any("结构与母文严重偏离" in value for value in replica["hard_errors"]))
+        self.assertFalse(any("结构与母文严重偏离" in value for value in light["hard_errors"]))
+        self.assertEqual("light", light["fidelity"]["level"])
+        self.assertEqual(0.4, light["fidelity"]["line_ratio"])
+
+    def test_interpretive_copy_rejects_mother_signature_phrase_carryover(self) -> None:
+        mother = {
+            "title": "藏不住，新政来了",
+            "content": "还好发现了好时机\n甩城市+车型\n少套路多真诚\n#汽车[话题]#",
+        }
+        result = validate_copy(
+            title="零跑A05藏不住",
+            content="零跑A05还好发现了\n甩城市+车型\n#零跑A05[话题]#",
+            mother=mother,
+            case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
+            adaptation_level="interpretive",
+        )
+        self.assertTrue(any("母文套话" in value for value in result["hard_errors"]), result)
+
+    def test_interpretive_copy_rejects_manual_style_output(self) -> None:
+        mother = {
+            "title": "车型政策更新",
+            "content": "车型信息\n价格信息\n版本信息\n权益信息\n留【城市】\n#汽车[话题]#",
+        }
+        content = (
+            "最近准备看零跑A05的朋友，可以先把它放进清单。\n"
+            "1、这里逐项说明第一项车型参数和价格信息，内容写得很完整。\n"
+            "2、这里逐项说明第二项车型参数和价格信息，内容继续展开。\n"
+            "3、这里逐项说明第三项车型参数和价格信息，内容继续展开。\n"
+            "最后再补充一段很长的解释，重复说明所有政策、价格、权益和办理流程，"
+            "让整篇内容更像一份说明书而不是自然的分享。\n"
+            "留【城市】\n"
+            "#零跑A05[话题]#"
+        )
+        result = validate_copy(
+            title="零跑A05政策说明",
+            content=content,
+            mother=mother,
+            case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
+            adaptation_level="interpretive",
+        )
+        self.assertTrue(any("编号清单" in value for value in result["hard_errors"]), result)
+        self.assertTrue(any("开头过于模板化" in value for value in result["hard_errors"]), result)
 
 
 if __name__ == "__main__":

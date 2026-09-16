@@ -48,6 +48,18 @@
 .preferenceButton { min-height:38px; display:flex; align-items:center; justify-content:center; gap:7px; color:#637780; font-size:12px; padding:8px 4px; border-radius:8px; }
 .preferenceButton small { color:#929da4; font-size:10px; }
 .preferenceButton:hover,.preferenceButton[aria-expanded=true] { background:#f0f4f2; }
+.adaptationFieldset { border:0; min-width:0; margin:13px 0 0; padding:0; }
+.adaptationFieldset legend { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; color:#64717b; font-size:11px; margin-bottom:7px; }
+.adaptationFieldset legend small { display:flex; align-items:center; gap:5px; color:#87958c; font-size:10px; }
+.adaptationScale { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; padding:4px; border:1px solid #e2e6de; border-radius:13px; background:#eef0eb; }
+.adaptationOption { position:relative; display:flex; align-items:center; gap:9px; min-width:0; padding:9px 11px; border:1px solid transparent; border-radius:10px; color:#68736c; text-align:left; transition:background .18s,border-color .18s,box-shadow .18s,transform .18s; }
+.adaptationOption:hover { background:#f8f9f5; transform:translateY(-1px); }
+.adaptationOption[data-selected=true] { border-color:#d9ded5; background:#fff; color:#34443b; box-shadow:0 4px 14px #4b594414; }
+.adaptationIndex { display:grid; place-items:center; width:25px; height:25px; flex:none; border-radius:50%; background:#e6ebe3; color:#758174; font-size:9px; font-variant-numeric:tabular-nums; }
+.adaptationOption[data-selected=true] .adaptationIndex { background:#3e5046; color:#fff; }
+.adaptationOption>span:last-child { display:grid; min-width:0; gap:2px; }
+.adaptationOption strong { font-size:12px; font-weight:600; color:inherit; }
+.adaptationOption small { overflow:hidden; color:#929b94; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .composerBottom { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-top:10px; padding:10px 0; }
 .accountMemoryHint { display:flex; align-items:flex-start; gap:8px; color:#667b72; font-size:11px; line-height:1.6; }
 .accountMemoryHint>svg { margin-top:2px; flex-shrink:0; }
@@ -301,5 +313,6 @@
 @container(max-width:1000px){.publishLayout{grid-template-columns:1fr}.sticky{position:static}.scheduleGrid{grid-template-columns:1fr}}
 @container(max-width:700px){.typeBrowser{grid-template-columns:1fr;height:auto}.typeDialogBody{overflow:auto}.typeResults{height:auto;overflow:visible}.typeRail{height:auto;display:flex;overflow-x:auto;gap:5px;padding-bottom:8px}.typeRailTitle{display:none}.typeTab{min-width:145px;margin:0}.typeTab small{display:none}.typeChoice{padding:10px}.strategyLine{align-items:flex-start}}
 @container(max-width:650px){.shell{padding:5px}.scroll{padding:0 12px 28px;border-radius:16px}.header{align-items:flex-start;padding:12px 0 4px;flex-direction:column;gap:2px}.heading h1{font-size:16px}.nav{gap:20px;padding-left:36px}.nav a{padding:10px 0 13px}.nav a[aria-current=page]::after{bottom:4px}.composer{padding:10px 12px 0}.composerFields,.composerFields[data-mode=single]{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.composerFields:not([data-mode=single]) .field:first-child{grid-column:1/-1}.preferenceButton{justify-self:start;min-height:26px;padding:0}.typePair{grid-template-columns:1fr;gap:8px}.typeChoiceAction{font-size:10px;gap:4px}.composerBottom{flex-wrap:wrap}.submitGroup{width:100%;justify-content:flex-end}.accountMemoryHint{width:100%}.submitGroup .primary{flex:1}.advanced,.inspector,.compare{grid-template-columns:1fr}.dialog{inset:10px;border-radius:14px}.dialogBody{padding:14px}.dialogHead{padding:12px 14px}.dialogHead h2{font-size:15px}.dialogFoot{padding:12px}.grid,.historyList[data-mode=single]{grid-template-columns:minmax(0,1fr)}.publishRow{grid-template-columns:75px 1fr;gap:10px}.searchField{flex-basis:100%;max-width:none;min-width:0}.filters .input{max-width:100%;flex:1;min-width:0}.taskHead{gap:9px}.menu{width:min(340px,calc(100cqw - 100px))}.runSelection{margin-left:0}.extraFilters .dateFilter .menu{left:0;right:auto}}
+@container(max-width:650px){.adaptationFieldset legend{align-items:flex-start;flex-direction:column;gap:4px}.adaptationScale{grid-template-columns:1fr}.adaptationOption small{white-space:normal}}
 @container(max-width:650px){.composerTop>.composerIcon,.composer[data-collapsed=true] .composerTop>.muted{display:none}.composerTop strong{font-size:12px}.composer>.between{gap:8px}.filters>select.input{flex:1 1 calc(50% - 8px);min-width:110px}.typeDetailHead{padding:14px}.typeDetailHead h3{font-size:20px}.structureNote{padding-top:8px}}
 @media(prefers-reduced-motion:reduce){.shell *{transition:none!important;animation:none!important}}

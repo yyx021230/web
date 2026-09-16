@@ -116,7 +116,7 @@ export function HermesRunGroup({ run, admin = false, onRefresh, compact = false 
         <button className={s.iconButton} onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? '展开任务' : '收起任务'}><ChevronDown size={14} style={{ transform: collapsed ? 'rotate(-90deg)' : undefined }} /></button>
       </div>
     </header>
-    {(compact || run.parameters?.selection_contract?.mode === 'typed') && <div className={s.runSelection}>{compact && current.error ? <span className={s.danger} title={current.error}>任务异常 · 点击卡片查看原因</span> : <><span>文案 · {run.parameters?.selection_contract?.copy_label || '自动选材'}</span><span>图片 · {run.parameters?.selection_contract?.image_label || '自动选材'}</span></>}</div>}
+    {(compact || run.parameters?.selection_contract?.mode === 'typed') && <div className={s.runSelection}>{compact && current.error ? <span className={s.danger} title={current.error}>任务异常 · 点击卡片查看原因</span> : <><span>幅度 · {run.parameters?.adaptation_contract?.short_label || '复刻'}</span><span>文案 · {run.parameters?.selection_contract?.copy_label || '自动选材'}</span><span>图片 · {run.parameters?.selection_contract?.image_label || '自动选材'}</span></>}</div>}
     {run.parameters?.regeneration && <a className={s.regenerationLink} href={runLink(run.parameters.regeneration.run_id, historyMode(run), admin)}>来自任务 #{run.parameters.regeneration.run_id} · 原稿 #{run.parameters.regeneration.post_id} ↗</a>}
     {!collapsed && <>
       {error && <div role="alert" className={`${s.notice} ${s.error}`}>{error}<button className={s.textButton} onClick={load}>重试加载</button></div>}

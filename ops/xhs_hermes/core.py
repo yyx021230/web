@@ -57,7 +57,7 @@ BANNED_REPLACEMENTS = {
 
 COMPETITOR_RE = re.compile(
     r"比亚迪|奔驰|宝马|奥迪|理想|小鹏|特斯拉|问界|极氪|腾势|红旗|"
-    r"吉利|长安|深蓝(?!色|灰)|蔚来|小米汽车|别克|大众|丰田|本田|广汽|方程豹|"
+    r"吉利|长安|深蓝(?=\s*(?:汽车|S\d|SL\d|G\d|L\d|品牌|车型))|蔚来|小米汽车|别克|大众|丰田|本田|广汽|方程豹|"
     r"岚图|智己|奇瑞|星途|凯迪拉克|福特|日产|现代汽车|起亚|领克|"
     r"极狐|阿维塔|奔腾"
 )
@@ -103,6 +103,24 @@ TOPIC_RE = re.compile(r"#[^#\n]+\[话题\]#")
 CTA_RE = re.compile(
     r"【[^】]*(?:城市|车型)[^】]*】|(?:城市|所在城市)\s*[+＋/、]\s*车型|"
     r"(?:滴滴|溜|甩|敲|扣|戳|留)[^\n]{0,24}(?:城市|车型|💌)|立即咨询",
+    re.I,
+)
+CITY_CTA_RE = re.compile(
+    r"(?:想知道|了解|查看|获取|整理|核对|测算|报价|留|报|说|发|给)[^。！？!?\n]{0,36}"
+    r"(?:所在)?城市|(?:所在)?城市[^。！？!?\n]{0,36}"
+    r"(?:想知道|了解|查看|获取|整理|核对|测算|报价|留|报|说|发|给)|"
+    r"【[^】]*城市[^】]*】",
+    re.I,
+)
+NATIONAL_PRICE_RE = re.compile(r"国补后(?:价格|车价)|国补[^。！？!?\n]{0,10}(?:价格|车价)")
+PROMISED_DETAIL_RE = re.compile(
+    r"(?:可|可以|能|会|再|马上|立马)?\s*(?:发|给|提供|整理)[^。！？!?\n]{0,22}"
+    r"(?:各配置|全部|完整|详细|详情|明细|报价单|价格表)",
+    re.I,
+)
+COMMENT_LEAD_RE = re.compile(
+    r"(?:评论|留言|回复|在下方|下方)[^。！？!?\n]{0,16}(?:城市|车型)|"
+    r"(?:城市|车型)[^。！？!?\n]{0,16}(?:评论|留言|回复)",
     re.I,
 )
 IMAGE_LEAD_RE = re.compile(
@@ -162,6 +180,34 @@ def sanitize_copy(title: str, content: str) -> tuple[str, str, list[dict[str, st
         return value
 
     return apply(title.strip(), "title"), apply(content.strip(), "content"), changes
+
+
+def conversion_logic_errors(content: str) -> list[str]:
+    """Reject conversion copy whose requested information was already disclosed.
+
+    A city can change local-policy handling, but it is not the lookup key for the
+    nationally calculated price stored in the policy report.  The final CTA also
+    cannot promise to send the same complete quote list that the preceding copy
+    has already published.
+    """
+    lines = [line.strip() for line in str(content or "").splitlines() if line.strip()]
+    body = "\n".join(lines)
+    errors: list[str] = []
+    for line in lines:
+        if CITY_CTA_RE.search(line) and NATIONAL_PRICE_RE.search(line):
+            errors.append("城市不能作为查询国补后价格的前置条件；城市只用于地方政策流程或适用条件")
+            break
+    if COMMENT_LEAD_RE.search(body):
+        errors.append("出现评论、留言或回复形式的互动引导")
+
+    disclosed_configs = {
+        compact_text(value) for value in precise_config_mentions(body)
+        if compact_text(value)
+    }
+    disclosed_prices = money_values(body)
+    if len(disclosed_configs) >= 3 and len(disclosed_prices) >= 3 and PROMISED_DETAIL_RE.search(body):
+        errors.append("正文已公开完整配置价格，结尾不能再次承诺提供同一份报价详情")
+    return errors
 
 
 def compact_text(value: str) -> str:
@@ -571,6 +617,7 @@ def validate_copy(
     content: str,
     mother: dict[str, Any] | None,
     case: dict[str, Any],
+    adaptation_level: str = "replica",
 ) -> dict[str, Any]:
     full = f"{title}\n{content}"
     target = str(case.get("vehicle_model") or "")
@@ -608,6 +655,7 @@ def validate_copy(
     if banned:
         hard.append("出现明确禁用词：" + "、".join(sorted(set(banned))))
     hard.extend(policy_constraint_errors(full, case))
+    hard.extend(conversion_logic_errors(content))
 
     competitors = sorted(set(COMPETITOR_RE.findall(full)))
     if competitors:
@@ -662,13 +710,62 @@ def validate_copy(
     ):
         hard.append("当前政策没有完整分配置价格，不能承诺多配置报价")
 
+    fidelity: dict[str, Any] = {"level": adaptation_level}
     if mother:
         source_lines = [line for line in str(mother.get("content") or "").splitlines() if line.strip()]
         output_lines = [line for line in content.splitlines() if line.strip()]
         ratio = len(output_lines) / max(1, len(source_lines))
-        if ratio < 0.5 or ratio > 1.7:
+        thresholds = {
+            "replica": (0.5, 1.7, 0.75, 1.3),
+            "light": (0.4, 2.0, 0.65, 1.55),
+            "interpretive": (0.25, 2.5, 0.5, 2.0),
+        }
+        hard_min, hard_max, warning_min, warning_max = thresholds.get(adaptation_level, thresholds["replica"])
+        fidelity.update({
+            "mother_lines": len(source_lines),
+            "output_lines": len(output_lines),
+            "line_ratio": round(ratio, 3),
+        })
+        if adaptation_level == "interpretive":
+            signature_phrases = (
+                "藏不住", "还好发现了", "直接让人破防", "甩城市+车型",
+                "少套路多真诚", "别被套路当冤大头",
+            )
+            mother_full = f"{mother.get('title') or ''}\n{mother.get('content') or ''}"
+            carried = [phrase for phrase in signature_phrases if phrase in mother_full and phrase in full]
+            fidelity["carried_signature_phrases"] = carried
+            if len(carried) >= 2:
+                hard.append("灵感改编仍沿用多处母文套话：" + "、".join(carried))
+            content_length = len(content.strip())
+            paragraph_count = len([
+                line for line in output_lines
+                if not TOPIC_RE.search(line)
+            ])
+            fidelity.update({
+                "content_length": content_length,
+                "paragraph_count": paragraph_count,
+            })
+            if content_length < 260 or content_length > 480:
+                hard.append(f"灵感改编正文应控制在260至480字：当前{content_length}字")
+            if paragraph_count < 5 or paragraph_count > 8:
+                hard.append(f"灵感改编应使用5至8个短段落：当前{paragraph_count}段")
+            if re.search(r"(?:^|\n)\s*(?:\d+[、.．)]|[一二三四五六七八九十]+[、.．])", content):
+                hard.append("灵感改编不应使用编号清单")
+            generic_openings = ("最近准备", "可以先把", "这篇先帮你", "你到店前可以直接问")
+            opening = "".join(output_lines[:2])
+            carried_openings = [phrase for phrase in generic_openings if phrase in opening]
+            if carried_openings:
+                hard.append("灵感改编开头过于模板化：" + "、".join(carried_openings))
+            unique_configs = {
+                compact_text(value) for value in precise_config_mentions(content)
+                if compact_text(value)
+            }
+            fidelity["configuration_examples"] = len(unique_configs)
+            if len(unique_configs) > 2:
+                hard.append(f"灵感改编最多举2个配置版本：当前{len(unique_configs)}个")
+        if ratio < hard_min or ratio > hard_max:
             hard.append(f"正文结构与母文严重偏离：母文{len(source_lines)}行，输出{len(output_lines)}行")
-        elif ratio < 0.75 or ratio > 1.3:
+        elif ratio < warning_min or ratio > warning_max:
             warnings.append(f"正文行数与母文有差异：母文{len(source_lines)}行，输出{len(output_lines)}行")
 
     return {
@@ -676,6 +773,7 @@ def validate_copy(
         "hard_errors": list(dict.fromkeys(hard)),
         "warnings": list(dict.fromkeys(warnings)),
         "blocking_rule": "hard_errors_only",
+        "fidelity": fidelity,
     }
 
 

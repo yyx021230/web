@@ -5,6 +5,9 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+HermesAdaptationLevel = Literal["replica", "light", "interpretive"]
+
+
 class HermesAccountInput(BaseModel):
     environment_id: int = Field(..., gt=0, description="小红书账号环境 ID")
     vehicle_model: str = Field(..., min_length=2, max_length=160, description="生产车型")
@@ -20,6 +23,7 @@ class HermesRunCreate(BaseModel):
     copy_type: str | None = Field(None, max_length=80)
     image_type: str | None = Field(None, max_length=80)
     instruction: str | None = Field(None, max_length=1000)
+    adaptation_level: HermesAdaptationLevel = "replica"
 
 
 class HermesBatchAccountInput(BaseModel):
@@ -32,6 +36,7 @@ class HermesBatchRunCreate(BaseModel):
     accounts: list[HermesBatchAccountInput] = Field(..., min_length=1, max_length=8)
     vehicle_models: list[str] = Field(..., min_length=1, max_length=12)
     instruction: str | None = Field(None, max_length=1000)
+    adaptation_level: HermesAdaptationLevel = "replica"
 
     @field_validator("accounts")
     @classmethod
@@ -56,6 +61,7 @@ class HermesAdminRunCreate(BaseModel):
     accounts: list[HermesAccountInput] = Field(..., min_length=1, max_length=8)
     posts_per_account: int = Field(default=5, ge=1, le=5)
     instruction: str | None = Field(None, max_length=1000)
+    adaptation_level: HermesAdaptationLevel = "replica"
 
 
 class HermesReviewRequest(BaseModel):

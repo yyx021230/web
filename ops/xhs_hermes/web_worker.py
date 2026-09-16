@@ -21,13 +21,14 @@ from pathlib import Path
 from typing import Any
 from worker_runtime import apply_worker_limits, load_dotenv, runner_command
 from ocr_backend import backend_name
+from creative_profiles import adaptation_contract, normalize_adaptation_level
 
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CONFIG = ROOT / "config" / "daily_8x5.json"
 DEFAULT_CASES = ROOT / "config" / "cases.json"
 REPORT_FILE = ".web-report.json"
-PRODUCTION_REVISION = "2026-09-08-image-layout-v3"
+PRODUCTION_REVISION = "2026-09-16-adaptation-v4"
 STOP_REQUESTED = False
 PENDING_REPORT_LOCK = threading.Lock()
 
@@ -147,8 +148,11 @@ def build_run_config(run: dict[str, Any], path: Path) -> tuple[dict[str, Any], s
         })
     if not accounts:
         raise RuntimeError("run has no accounts")
+    adaptation_level = normalize_adaptation_level(parameters.get("adaptation_level"))
     base.update({
         "production_contract": "flexible",
+        "adaptation_level": adaptation_level,
+        "adaptation_contract": parameters.get("adaptation_contract") or adaptation_contract(adaptation_level),
         "accounts": accounts,
         "posts_per_account": max(int(account["post_count"]) for account in accounts),
         "operator_instruction": str(parameters.get("instruction") or "").strip(),

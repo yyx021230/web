@@ -174,7 +174,7 @@ describe('Hermes creation frontend interactions', () => {
     expect(button('下发 8 篇任务')?.disabled).toBe(false);
     expect(host.textContent).toContain('近 15 篇去重参考');
     await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-    expect(hermesWorkflowApi.createBatchRun).toHaveBeenCalledWith({ accounts: [{ environment_id: 27, post_count: 5 }, { environment_id: 42, post_count: 3 }], vehicle_models: ['零跑A05'], instruction: undefined });
+    expect(hermesWorkflowApi.createBatchRun).toHaveBeenCalledWith({ accounts: [{ environment_id: 27, post_count: 5 }, { environment_id: 42, post_count: 3 }], vehicle_models: ['零跑A05'], instruction: undefined, adaptation_level: 'replica' });
     expect(host.querySelector('[aria-label="展开创作参数"]')).not.toBeNull();
   });
 
@@ -187,7 +187,18 @@ describe('Hermes creation frontend interactions', () => {
     await click(host.querySelector('[aria-label="选择图片类型与实例"]')); await click(button('使用手账便签风'));
     expect(button('下发 1 篇任务')?.disabled).toBe(false);
     await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-    expect(hermesWorkflowApi.createRun).toHaveBeenCalledWith({ account_id: 42, vehicle_model: '零跑A05', post_count: 1, copy_type: 'drive_review', image_type: 'note_poster', instruction: undefined });
+    expect(hermesWorkflowApi.createRun).toHaveBeenCalledWith({ account_id: 42, vehicle_model: '零跑A05', post_count: 1, copy_type: 'drive_review', image_type: 'note_poster', instruction: undefined, adaptation_level: 'replica' });
+  });
+
+  it('submits the selected creative adaptation level', async () => {
+    await render(React.createElement(HermesCreator));
+    await click(host.querySelector('[aria-label="选择账号甲"]'));
+    await click(Array.from(host.querySelectorAll('label')).find(l => l.textContent === '零跑A05车型库')?.querySelector('input') || null);
+    const light = host.querySelector('[data-level="light"]');
+    await click(light);
+    expect(light?.getAttribute('aria-pressed')).toBe('true');
+    await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    expect(hermesWorkflowApi.createBatchRun).toHaveBeenCalledWith(expect.objectContaining({ adaptation_level: 'light' }));
   });
 
   it('copies the complete text without expanding the card or opening the inspector', async () => {

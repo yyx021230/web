@@ -4,6 +4,8 @@ export type HermesStatus =
   | 'queued' | 'running' | 'review_pending' | 'approved'
   | 'changes_requested' | 'ready_to_publish' | 'published' | 'failed';
 
+export type HermesAdaptationLevel = 'replica' | 'light' | 'interpretive';
+
 export interface HermesAccount {
   id: number;
   name: string;
@@ -73,6 +75,16 @@ export interface HermesRun {
     name?: string;
     copy_type?: string;
     image_type?: string;
+    adaptation_level?: HermesAdaptationLevel;
+    adaptation_contract?: {
+      version: string;
+      level: HermesAdaptationLevel;
+      label: string;
+      short_label: string;
+      description: string;
+      hard_guard: string;
+      source_rule: string;
+    };
     selection_contract?: { version: string; mode: string; copy_label?: string; image_label?: string; rule: string };
     policy_snapshot_at?: string;
     policy_fingerprint?: string;
@@ -157,13 +169,14 @@ async function read<T>(url: string, config: { params?: unknown; timeout?: number
 export const hermesWorkflowApi = {
   referenceTypes: () => read<HermesReferenceCatalog>('/hermes-workflows/reference-types'),
   bootstrap: () => read<{ accounts: HermesAccount[]; vehicle_models: string[]; policies: HermesPolicy[]; limits: { max_posts_per_run: number } }>('/hermes-workflows/bootstrap'),
-  createRun: (payload: { name?: string; account_id: number; vehicle_model: string; case_id?: string; post_count: number; copy_type?: string; image_type?: string; instruction?: string }) =>
+  createRun: (payload: { name?: string; account_id: number; vehicle_model: string; case_id?: string; post_count: number; copy_type?: string; image_type?: string; instruction?: string; adaptation_level?: HermesAdaptationLevel }) =>
     api.post<HermesRun>('/hermes-workflows/runs', payload),
   createBatchRun: (payload: {
     name?: string;
     accounts: Array<{ environment_id: number; post_count: number }>;
     vehicle_models: string[];
     instruction?: string;
+    adaptation_level?: HermesAdaptationLevel;
   }) => api.post<HermesRun>('/hermes-workflows/runs/batch', payload),
   listRuns: (query?: HermesRunQuery | string) => read<{ items: HermesRun[]; total: number }>('/hermes-workflows/runs', { params: { limit: 8, ...(typeof query === 'string' ? { status: query } : query) } }),
   getRun: (runId: number) => read<HermesRun>(`/hermes-workflows/runs/${runId}`),

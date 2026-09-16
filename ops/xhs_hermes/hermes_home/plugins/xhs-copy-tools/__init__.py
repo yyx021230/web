@@ -102,6 +102,7 @@ def _handle_validate(params: dict[str, Any], **_: Any) -> str:
             content=str(params.get("content") or ""),
             mother=mother,
             case=case,
+            adaptation_level=str(params.get("adaptation_level") or os.environ.get("XHS_ADAPTATION_LEVEL") or "replica"),
         )
         return _json({"success": True, "case_id": case_id, **result})
     except Exception as exc:
@@ -150,6 +151,7 @@ VALIDATE_SCHEMA = {
             "selected_mother_id": {"type": "integer"},
             "title": {"type": "string"},
             "content": {"type": "string"},
+            "adaptation_level": {"type": "string", "enum": ["replica", "light", "interpretive"]},
         },
         "required": ["case_id", "selected_mother_id", "title", "content"],
     },
