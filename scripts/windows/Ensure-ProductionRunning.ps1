@@ -100,7 +100,18 @@ try {
 
     $backendReady = Test-HttpOk "http://127.0.0.1:8000/health/ready"
     $frontendReady = Test-HttpOk "http://127.0.0.1:3000/"
-    if (-not $backendReady -or -not $frontendReady) {
+    $workersReady = $true
+    $receiptPath = Join-Path $releaseRoot 'current.json'
+    if (Test-Path $receiptPath) {
+        $receipt = Get-Content $receiptPath -Raw | ConvertFrom-Json
+        $workers = @('ai-worker')
+        if ($receipt.core.postprocessWorker) { $workers += 'ai-postprocess-worker' }
+        foreach ($service in $workers) {
+            $ids = @(docker ps --filter "label=com.docker.compose.project=$ComposeProjectName" --filter "label=com.docker.compose.service=$service" --filter 'status=running' --format '{{.ID}}')
+            if ($LASTEXITCODE -ne 0 -or $ids.Count -ne 1) { $workersReady = $false }
+        }
+    }
+    if (-not $backendReady -or -not $frontendReady -or -not $workersReady) {
         Write-RecoveryLog "Application endpoint unavailable; restoring the pinned production release"
         $startScript = Join-Path $ProjectRoot "scripts\windows\Start-Production.ps1"
         if (-not (Test-Path $startScript -PathType Leaf)) {

@@ -4,6 +4,9 @@ import pytest
 
 from app.db.session import async_session as session_factory
 from app.models.user import User
+from app.models.user_xhs_env import UserXHSEnvironment
+from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_environment import XHSEnvironment
 from tests.conftest import make_auth_headers
 
 
@@ -129,6 +132,60 @@ async def test_prompt_discovery_seed_is_randomized_but_stable_across_pages(clien
     assert len(set(seed_one_first + seed_one_second)) == 12
     assert seed_one_first != await listed(2, 1)
     assert len(await listed(2_147_483_646, 1)) == 6
+
+
+@pytest.mark.asyncio
+async def test_prompt_performance_source_uses_visible_account_notes_and_ranks_real_metrics(client):
+    await _seed_prompt_users()
+    async with session_factory() as db:
+        visible_env = XHSEnvironment(id=10, shop_id="visible", account_name="高表现账号", status="active")
+        hidden_env = XHSEnvironment(id=11, shop_id="hidden", account_name="其他账号", status="active")
+        db.add_all([visible_env, hidden_env])
+        await db.flush()
+        db.add(UserXHSEnvironment(user_id=2, environment_id=10))
+        db.add_all([
+            XHSAccountNote(
+                id=101, environment_id=10, feed_id="top-note", account_name="高表现账号",
+                title="高阅读封面", content="高阅读帖子正文", cover_image_url="https://cdn.example.com/top.webp",
+                view_count=12000, liked_count=800, collected_count=300, comment_count=90, share_count=40,
+                status="active",
+            ),
+            XHSAccountNote(
+                id=105, environment_id=10, feed_id="stale-cover", account_name="高表现账号",
+                title="本地封面已丢失", cover_image_url="/uploads/xhs/definitely-missing.webp",
+                view_count=50000, comment_count=100, status="active",
+            ),
+            XHSAccountNote(
+                id=102, environment_id=10, feed_id="no-cover", account_name="高表现账号",
+                title="没有封面", cover_image_url="", view_count=99999, status="active",
+            ),
+            XHSAccountNote(
+                id=104, environment_id=10, feed_id="low-note", account_name="高表现账号",
+                title="普通表现帖子", cover_image_url="/uploads/low.webp", view_count=3999,
+                comment_count=29, status="active",
+            ),
+            XHSAccountNote(
+                id=103, environment_id=11, feed_id="hidden-note", account_name="其他账号",
+                title="无权限帖子", cover_image_url="/uploads/hidden.webp", view_count=999999, status="active",
+            ),
+        ])
+        await db.commit()
+
+    guest = await client.get("/api/v1/prompts", params={"source_kind": "performance"})
+    assert guest.status_code == 401
+    response = await client.get(
+        "/api/v1/prompts",
+        headers=make_auth_headers(2),
+        params={"source_kind": "performance"},
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["total"] == 1
+    assert [item["title"] for item in data["items"]] == ["高阅读封面"]
+    assert data["items"][0]["source_kind"] == "performance"
+    assert data["items"][0]["source_name"] == "高表现账号"
+    assert data["items"][0]["view_count"] == 12000
+    assert data["items"][0]["interaction_count"] == 1230
 
 
 @pytest.mark.asyncio

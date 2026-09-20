@@ -68,6 +68,35 @@ export interface AIImageRuntimeConfig {
   poll_interval_seconds: number;
 }
 
+export interface AIImageHistoryItem {
+  id: number;
+  client_request_id?: string | null;
+  model_name: string;
+  prompt: string;
+  params: {
+    width?: number;
+    height?: number;
+    style?: string | null;
+    quality?: string | null;
+    count?: number;
+    generation_mode?: 'fast' | 'precision' | null;
+    _input_reference_count?: number;
+  };
+  status: string;
+  result_urls: string[];
+  error?: string | null;
+  elapsed_seconds?: number | null;
+  created_at?: string | null;
+  finished_at?: string | null;
+}
+
+export interface AIImageHistoryResponse {
+  items: AIImageHistoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 function resolveErrorMessage(data: unknown, fallback: string): string {
   if (data && typeof data === 'object') {
     const body = data as { message?: unknown; detail?: unknown; data?: unknown };
@@ -182,9 +211,15 @@ export const aiApi = {
   },
 
   getHistory: (page = 1, limit = 60) =>
-    api.get<{ items: Record<string, unknown>[]; total: number }>('/ai-image/history', {
+    api.get<AIImageHistoryResponse>('/ai-image/history', {
       params: { page, limit },
     }),
+
+  hideHistoryTask: (taskId: string | number) =>
+    api.delete<{ hidden: boolean; task_id: number }>(`/ai-image/history/${taskId}`),
+
+  clearHistory: () =>
+    api.delete<{ hidden_count: number }>('/ai-image/history'),
 
   getActiveTasks: () =>
     api.get<ActiveImageTasksResponse>('/ai-image/active'),

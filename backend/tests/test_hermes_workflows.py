@@ -131,7 +131,7 @@ async def test_adaptation_level_is_versioned_and_defaults_to_replica(client):
     assert default_run.status_code == 200, default_run.text
     default_params = default_run.json()['data']['parameters']
     assert default_params['adaptation_level'] == 'replica'
-    assert default_params['adaptation_contract']['version'] == 'hermes-adaptation-v4'
+    assert default_params['adaptation_contract']['version'] == 'hermes-adaptation-v7'
     assert default_params['adaptation_contract']['source_rule'].startswith('每篇只使用')
 
     light_run = await client.post('/api/v1/hermes-workflows/runs', headers=headers, json={**base, 'adaptation_level': 'light'})

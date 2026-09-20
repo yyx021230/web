@@ -7,7 +7,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 import run_daily_8x5 as runner
-from core import ACCOUNT_HIGH_SIMILARITY, account_repetition_check, select_diverse_rows
+from core import (
+    ACCOUNT_HIGH_SIMILARITY,
+    account_repetition_check,
+    select_diverse_rows,
+    template_usage_weight,
+)
 
 
 BODY = ('第一段先解释日常通勤的实际需要与预算安排，先把用车场景想清楚。\n'
@@ -183,3 +188,42 @@ def test_only_high_overlap_available_relaxes_once_instead_of_looping():
     assert selected['id'] == 1
     assert selected['selection_relaxed']
     assert selected['selection_note'] == 'near_duplicate_cap_relaxed'
+
+
+def test_weekly_template_usage_smoothly_reduces_selection_probability():
+    assert template_usage_weight(0) == 1.0
+    assert template_usage_weight(1) > template_usage_weight(4) > template_usage_weight(12) > 0
+    pool = [
+        {'id': 1, 'title': '未使用模板', 'content': BODY},
+        {'id': 2, 'title': '高频模板', 'content': OTHER},
+    ]
+    selected_counts = {1: 0, 2: 0}
+    for seed in range(240):
+        selected = select_diverse_rows(
+            pool,
+            count=1,
+            historical_texts_by_account={42: []},
+            task_account_ids=[42],
+            vehicle_terms=[],
+            candidate_window=2,
+            tolerate_moderate_similarity=True,
+            weekly_usage_counts={1: 0, 2: 8},
+            rng=random.Random(seed),
+        )[0]
+        selected_counts[selected['id']] += 1
+        assert selected['selection_week_usage'] in {0, 8}
+        assert selected['selection_usage_weight'] > 0
+    assert selected_counts[1] > selected_counts[2] * 8
+
+
+def test_current_week_ledger_starts_on_monday(tmp_path):
+    for day, template_id in [('2026-09-13', 13), ('2026-09-14', 14), ('2026-09-16', 16)]:
+        folder = tmp_path / day
+        folder.mkdir()
+        (folder / 'delivery.json').write_text(
+            '{"posts":[{"mother_copy_id":%d,"selected_prompt_id":%d}]}' % (template_id, template_id),
+            encoding='utf-8',
+        )
+    rows = runner.current_week_ledger_rows(tmp_path, '2026-09-17')
+    assert {row['mother_copy_id'] for row in rows} == {14, 16}
+    assert runner.template_usage_counts(rows, 'selected_prompt_id') == {14: 1, 16: 1}

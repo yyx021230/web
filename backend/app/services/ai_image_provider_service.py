@@ -33,6 +33,7 @@ _CONTENT_TYPE_EXT = {
 }
 _DEFAULT_PROVIDER_MAX_CONCURRENT = 1
 _PROVIDER_RUNNING: dict[int, int] = {}
+_PROVIDER_FAILURE_STREAK: dict[int, int] = {}
 _PROVIDER_SLOT_LOCK = asyncio.Lock()
 _MENTALOUT_RETRYABLE_ERROR_MARKER = "Tool choice 'image_generation' not found in 'tools' parameter."
 _OPENAI_PENDING_ERROR_MARKER = "openai_error"
@@ -78,6 +79,49 @@ def _choose_weighted_provider(providers: list[AIImageProvider]) -> AIImageProvid
     for provider in providers:
         population.extend([provider] * max(1, int(provider.weight or 1)))
     return random.choice(population)
+
+
+def _provider_circuit_open(provider: AIImageProvider) -> bool:
+    if str(provider.last_health_status or "unknown").lower() != "unhealthy":
+        return False
+    local_streak = _PROVIDER_FAILURE_STREAK.get(provider.id)
+    if local_streak is not None and local_streak < 3:
+        return False
+    checked_at = provider.last_checked_at
+    if checked_at is None:
+        return True
+    if checked_at.tzinfo is not None:
+        checked_at = checked_at.astimezone(timezone.utc).replace(tzinfo=None)
+    cooldown = max(
+        10,
+        int(getattr(settings, "ai_provider_circuit_breaker_seconds", 300) or 300),
+    )
+    return (datetime.now(timezone.utc).replace(tzinfo=None) - checked_at).total_seconds() < cooldown
+
+
+def _provider_selection_score(provider: AIImageProvider) -> float:
+    """Lower is better; capacity dominates, while quality signals break close ties."""
+    running = _provider_running_count(provider.id)
+    capacity = _provider_max_concurrent(provider)
+    utilization = running / capacity
+    total = int(provider.success_count or 0) + int(provider.failure_count or 0)
+    failure_rate = (int(provider.failure_count or 0) / total) if total else 0.0
+    latency_penalty = min(max(float(provider.avg_latency_ms or 0.0), 0.0) / 300_000.0, 2.0)
+    health = str(provider.last_health_status or "unknown").lower()
+    health_penalty = 0.35 if health == "degraded" else (1.5 if health == "unhealthy" else 0.0)
+    default_bonus = 0.05 if provider.is_default else 0.0
+    weight_bonus = min(max(int(provider.weight or 1), 1), 20) * 0.005
+    priority_penalty = max(int(provider.priority or 0), 0) / 10_000.0
+    return (
+        utilization * 2.0
+        + failure_rate
+        + latency_penalty * 0.4
+        + health_penalty
+        + priority_penalty
+        - default_bonus
+        - weight_bonus
+        + random.random() * 0.01
+    )
 
 
 def _normalize_generation_mode(value: Any) -> str:
@@ -767,9 +811,17 @@ class AIImageProviderService:
                     for provider in eligible
                     if _provider_running_count(provider.id) < _provider_max_concurrent(provider)
                 ]
-                if available:
-                    defaults = [provider for provider in available if provider.is_default]
-                    provider = _choose_weighted_provider(defaults or available)
+                circuit_ready = [
+                    provider
+                    for provider in available
+                    if not _provider_circuit_open(provider)
+                    and (
+                        str(provider.last_health_status or "unknown").lower() != "unhealthy"
+                        or _provider_running_count(provider.id) == 0
+                    )
+                ]
+                if circuit_ready:
+                    provider = min(circuit_ready, key=_provider_selection_score)
                     _PROVIDER_RUNNING[provider.id] = _provider_running_count(provider.id) + 1
                     return provider
 
@@ -1158,6 +1210,7 @@ class AIImageProviderService:
         return await self.get_provider_test_status(task_id)
 
     async def _mark_success(self, provider: AIImageProvider, elapsed_ms: float) -> None:
+        _PROVIDER_FAILURE_STREAK.pop(provider.id, None)
         provider.last_health_status = "healthy"
         provider.last_health_error = None
         provider.last_checked_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -1170,6 +1223,7 @@ class AIImageProviderService:
         await self.db.commit()
 
     async def _mark_failure(self, provider: AIImageProvider, error: str, elapsed_ms: float | None = None) -> None:
+        _PROVIDER_FAILURE_STREAK[provider.id] = _PROVIDER_FAILURE_STREAK.get(provider.id, 0) + 1
         provider.last_health_status = "unhealthy"
         provider.last_health_error = error[:1000]
         provider.last_checked_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -1603,6 +1657,10 @@ class AIImageProviderService:
             status, err = "unhealthy", str(e)
 
         provider.last_health_status = status
+        if status == "healthy":
+            _PROVIDER_FAILURE_STREAK.pop(provider.id, None)
+        elif status == "unhealthy":
+            _PROVIDER_FAILURE_STREAK[provider.id] = 3
         provider.last_health_error = err
         provider.last_checked_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_ms = (time.time() - start) * 1000.0

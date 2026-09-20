@@ -54,6 +54,9 @@ $originalGitCommit = ""
 $originalBuildTime = ""
 $rootEnvBackupPath = Join-Path $releaseRoot "predeploy-root-$imageTag.env"
 $candidateReceiptPath = Join-Path $releaseRoot "candidate-$imageTag.json"
+$overridePath = Join-Path $ProjectRoot 'docker-compose.override.yml'
+$overrideBackupPath = Join-Path $releaseRoot "predeploy-override-$imageTag.yml"
+if (Test-Path $overridePath) { Copy-Item $overridePath $overrideBackupPath }
 
 foreach ($fingerprint in @($McpSourceSha256, $McpBinarySha256)) {
     if ($fingerprint -notmatch '^[0-9a-fA-F]{64}$') {
@@ -186,7 +189,7 @@ function Assert-BackgroundQueuesDrained(
     [string]$RedisId,
     [string]$Phase
 ) {
-    $activeTasksSql = "SELECT count(*) FROM ai_tasks WHERE status IN ('queued','processing');"
+    $activeTasksSql = "SELECT count(*) FROM ai_tasks WHERE status IN ('queued','processing','postprocessing');"
     $activeTasksRaw = docker exec $PostgresId psql -U $DatabaseUser -d $DatabaseName -Atc $activeTasksSql
     if ($LASTEXITCODE -ne 0) { throw "Unable to verify active AI tasks during $Phase" }
     $activeTasks = [int]($activeTasksRaw | Select-Object -Last 1)
@@ -201,9 +204,12 @@ SELECT
     if ($LASTEXITCODE -ne 0) { throw "Unable to verify active Dify/XHS tasks during $Phase" }
     $otherActiveTasks = [int]($otherTasksRaw | Select-Object -Last 1)
     $pendingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:pending | Select-Object -Last 1) } else { 0 }
+    $batchTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:pending:batch | Select-Object -Last 1) } else { 0 }
     $processingTasks = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:tasks:processing | Select-Object -Last 1) } else { 0 }
-    if ($activeTasks -gt 0 -or $pendingTasks -gt 0 -or $processingTasks -gt 0 -or $otherActiveTasks -gt 0) {
-        throw "Background tasks are active during $Phase (ai_database=$activeTasks ai_pending=$pendingTasks ai_processing=$processingTasks dify_xhs_hermes=$otherActiveTasks)"
+    $postprocessPending = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:postprocess:pending | Select-Object -Last 1) } else { 0 }
+    $postprocessRunning = if ($RedisId) { [int](docker exec $RedisId redis-cli LLEN ai:image:postprocess:processing | Select-Object -Last 1) } else { 0 }
+    if ($activeTasks -gt 0 -or $pendingTasks -gt 0 -or $batchTasks -gt 0 -or $processingTasks -gt 0 -or $postprocessPending -gt 0 -or $postprocessRunning -gt 0 -or $otherActiveTasks -gt 0) {
+        throw "Background tasks are active during $Phase (ai_database=$activeTasks ai_interactive=$pendingTasks ai_batch=$batchTasks ai_processing=$processingTasks watermark_pending=$postprocessPending watermark_processing=$postprocessRunning dify_xhs_hermes=$otherActiveTasks)"
     }
 }
 
@@ -261,6 +267,9 @@ try {
     $currentBackendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q backend)".Trim()
     $currentRedisId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q redis)".Trim()
     $currentMinioId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q minio)".Trim()
+    $currentPostprocessWorkerId = [string](docker ps -q --filter "label=com.docker.compose.project=$ComposeProjectName" --filter "label=com.docker.compose.service=ai-postprocess-worker" | Select-Object -First 1)
+    $currentPostprocessWorkerId = $currentPostprocessWorkerId.Trim()
+    $hadPostprocessWorker = [bool]$currentPostprocessWorkerId
     if (-not $currentPostgresId -or -not $currentBackendId -or -not $currentRedisId -or -not $currentMinioId) {
         throw "Unable to resolve the existing production containers for Compose project '$ComposeProjectName'"
     }
@@ -272,6 +281,7 @@ try {
     $originalBackendImageId = "$(docker inspect --format '{{.Image}}' $currentBackendId)".Trim()
     $currentFrontendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps --all -q frontend)".Trim()
     $originalFrontendImageId = if ($currentFrontendId) { "$(docker inspect --format '{{.Image}}' $currentFrontendId)".Trim() } else { "" }
+    $env:HERMES_BACKEND_ORIGIN = Read-ContainerEnvValue $currentFrontendId 'HERMES_BACKEND_ORIGIN' 'http://backend:8000'
     if (-not $originalBackendImageId -or -not $originalFrontendImageId) {
         throw "Unable to preserve current backend/frontend image IDs for automatic rollback"
     }
@@ -358,8 +368,10 @@ try {
             throw "Immutable release tag already exists with different source: $imageTag"
         }
     } else {
-        docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build --pull=false backend frontend
-        if ($LASTEXITCODE -ne 0) { throw "Release image build failed" }
+        foreach ($service in @('backend', 'frontend')) {
+            docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") build --pull=false $service
+            if ($LASTEXITCODE -ne 0) { throw "Release image build failed: $service" }
+        }
     }
     docker run --rm --entrypoint python $candidateBackendImage -m compileall -q -f /app/app
     if ($LASTEXITCODE -ne 0) {
@@ -387,14 +399,7 @@ try {
         }
     }
 
-    # The candidate is ready. Close the user entrypoint only for the final
-    # queue gate and switch. Existing API and worker processes stay alive until
-    # all accepted work has finished; a non-empty queue aborts and reopens the
-    # frontend without touching those processes.
-    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop frontend | Out-Null
-    $servicesStopped = $true
-    Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "post-build preflight"
-
+    # Archive source while the old application is still serving users.
     if (Test-Path $sourceSnapshot) { Remove-Item -Force $sourceSnapshot }
     $sourceItems = @("backend", "frontend", "scripts", "docker-compose.yml", "docker-compose.dev.yml") |
         Where-Object { Test-Path (Join-Path $ProjectRoot $_) }
@@ -418,10 +423,28 @@ try {
         -C $ProjectRoot @sourceItems
     if ($LASTEXITCODE -ne 0) { throw "Source snapshot failed" }
 
+    $drainDeadline = (Get-Date).AddMinutes(20)
+    while ($true) {
+        try {
+            Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId 'post-build preflight'
+            break
+        } catch {
+            if ($_.Exception.Message -notlike 'Background tasks are active*' -or (Get-Date) -ge $drainDeadline) { throw }
+            Write-Host "Waiting for accepted work; keeping production open: $($_.Exception.Message)"
+            Start-Sleep -Seconds 15
+        }
+    }
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop frontend | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to close frontend for cutover' }
+    $servicesStopped = $true
+
     # The user entrypoint has remained closed since the post-build gate. Check
     # once more before stopping API and worker processes.
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "frontend-closed preflight"
     docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop backend ai-worker | Out-Null
+    if ($currentPostprocessWorkerId) {
+        docker stop --time 2700 $currentPostprocessWorkerId | Out-Null
+    }
     $applicationServicesStopped = $true
     Assert-BackgroundQueuesDrained $currentPostgresId $databaseUser $databaseName $redisId "application-stopped preflight"
 
@@ -432,7 +455,7 @@ try {
         $backupScript = Join-Path $ProjectRoot "scripts\windows\Backup-Release.ps1"
         # The daily job keeps a full uploads archive. Releases only mutate code
         # and schema, so avoid extending downtime by recompressing immutable files.
-        $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot -SkipUploads
+        $backupDir = & $backupScript -ProjectRoot $ProjectRoot -BackupRoot $BackupRoot -SkipUploads -RetentionDays 0
     }
     if (-not $backupDir) { throw "Backup did not return a path" }
 
@@ -461,6 +484,13 @@ try {
     Set-EnvValue $rootEnvPath "RELEASE_SOURCE_SHA256" $packageSha
     Set-EnvValue $rootEnvPath "MCP_SOURCE_SHA256" $McpSourceSha256
     Set-EnvValue $rootEnvPath "MCP_BINARY_SHA256" $McpBinarySha256
+    Set-EnvValue $rootEnvPath 'HERMES_BACKEND_ORIGIN' $env:HERMES_BACKEND_ORIGIN
+    if ($env:HERMES_BACKEND_ORIGIN -eq 'http://hermes-api:8000') {
+        Set-EnvValue $rootEnvPath 'HERMES_SCHEDULER_ENABLED' 'false'
+    }
+    if (Test-Path $overridePath) {
+        & (Join-Path $ProjectRoot 'scripts\windows\Normalize-CoreFrontendOverride.ps1') -OverridePath $overridePath
+    }
 
     $migrationAttempted = $true
     docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath run --rm --no-deps backend alembic upgrade head
@@ -474,7 +504,7 @@ try {
     $migrationAttempted = $observedMigrationRevision -ne $preMigrationRevision
     if ($migrationExitCode -ne 0) { throw "Database migration failed" }
     $postMigrationRevision = $observedMigrationRevision
-    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-deps backend ai-worker frontend
+    docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-deps backend ai-worker ai-postprocess-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
     $deadline = (Get-Date).AddMinutes(3)
@@ -494,6 +524,7 @@ try {
     $newPostgresId = "$(docker compose ps -q postgres)".Trim()
     $newBackendId = "$(docker compose ps -q backend)".Trim()
     $newWorkerId = "$(docker compose ps -q ai-worker)".Trim()
+    $newPostprocessWorkerId = "$(docker compose ps -q ai-postprocess-worker)".Trim()
     $newPgMount = Resolve-MountSource $newPostgresId "/var/lib/postgresql/data"
     $newUploadsMount = Resolve-MountSource $newBackendId "/app/uploads"
     if ($newPgMount -ne $originalPgMount -or $newUploadsMount -ne $originalUploadsMount) {
@@ -501,8 +532,13 @@ try {
     }
     $newBackendImageId = "$(docker inspect --format '{{.Image}}' $newBackendId)".Trim()
     $newWorkerImageId = "$(docker inspect --format '{{.Image}}' $newWorkerId)".Trim()
-    if ($newBackendImageId -ne $newWorkerImageId) {
-        throw "Backend and AI worker are running different image IDs"
+    $newPostprocessWorkerImageId = "$(docker inspect --format '{{.Image}}' $newPostprocessWorkerId)".Trim()
+    $newPostprocessWorkerState = "$(docker inspect --format '{{.State.Status}}' $newPostprocessWorkerId)".Trim()
+    if ($newBackendImageId -ne $newWorkerImageId -or $newBackendImageId -ne $newPostprocessWorkerImageId) {
+        throw "Backend and AI workers are running different image IDs"
+    }
+    if ($newPostprocessWorkerState -ne 'running') {
+        throw "AI postprocess worker is not running after release"
     }
 
     if ($InstallDailyBackup) {
@@ -528,8 +564,10 @@ try {
             backendImageId = $newBackendImageId
             mcpSourceSha256 = $McpSourceSha256
             mcpBinarySha256 = $McpBinarySha256
+            postprocessWorker = $true
         }
     }
+    if ($previousRelease.hermesRelease) { $release.hermesRelease = $previousRelease.hermesRelease }
     $releaseJson = $release | ConvertTo-Json -Depth 6
     $releaseJson | Set-Content -Encoding UTF8 $candidateReceiptPath
     & (Join-Path $ProjectRoot "scripts\windows\Assert-ReleaseState.ps1") `
@@ -549,6 +587,7 @@ catch {
         if (Test-Path $rootEnvBackupPath) {
             Copy-Item -Force $rootEnvBackupPath $rootEnvPath
         }
+        if (Test-Path $overrideBackupPath) { Copy-Item -Force $overrideBackupPath $overridePath }
         if (Test-Path $sourceSnapshot) {
             try {
                 tar -xzf $sourceSnapshot -C $ProjectRoot
@@ -582,13 +621,19 @@ catch {
         }
         try {
             if ($applicationServicesStopped) {
-                docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-build --no-deps backend ai-worker frontend
+                if (-not $hadPostprocessWorker) {
+                    $createdPostprocessIds = @(docker ps -q --filter "label=com.docker.compose.project=$ComposeProjectName" --filter 'label=com.docker.compose.service=ai-postprocess-worker')
+                    if ($createdPostprocessIds.Count -gt 0) { docker stop --time 2700 $createdPostprocessIds | Out-Null }
+                }
+                $rollbackServices = @('backend', 'ai-worker', 'frontend')
+                if ($hadPostprocessWorker) { $rollbackServices += 'ai-postprocess-worker' }
+                docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-build --no-deps $rollbackServices
                 if ($LASTEXITCODE -ne 0) { throw "old application containers failed to start" }
             } else {
                 # Initial/post-build queue gates only close the frontend. Do not
                 # recreate API or worker containers that may still be draining
                 # an accepted task; just reopen the user entrypoint.
-                docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-build --no-deps frontend
+                docker start $currentFrontendId
                 if ($LASTEXITCODE -ne 0) { throw "frontend failed to reopen" }
             }
         } catch {

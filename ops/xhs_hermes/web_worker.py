@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_CONFIG = ROOT / "config" / "daily_8x5.json"
 DEFAULT_CASES = ROOT / "config" / "cases.json"
 REPORT_FILE = ".web-report.json"
-PRODUCTION_REVISION = "2026-09-16-adaptation-v4"
+PRODUCTION_REVISION = "2026-09-17-adaptation-v5"
 STOP_REQUESTED = False
 PENDING_REPORT_LOCK = threading.Lock()
 

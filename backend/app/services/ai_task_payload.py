@@ -25,6 +25,11 @@ def compact_terminal_task_params(params: dict[str, Any] | None) -> dict[str, Any
             compacted.pop(key, None)
             removed = True
     compacted.pop("_processing_started_at", None)
+    compacted.pop("_postprocessing_started_at", None)
+    compacted.pop("_postprocess_source_urls", None)
+    compacted.pop("_generation_elapsed_seconds", None)
+    compacted.pop("_generation_provider", None)
+    compacted.pop("_generation_upstream_debug", None)
 
     if removed:
         compacted["_input_reference_payload_removed"] = True

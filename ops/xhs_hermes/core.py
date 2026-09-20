@@ -19,6 +19,7 @@ EXACT_BANNED_TERMS = (
     "送你", "免费", "发你", "评论区", "国旗", "国家", "薅", "崩", "秒发",
     "底价", "全网最低", "最便宜", "抄底", "闭眼冲", "直降", "下调",
     "非节假日不用冲量", "崩了", "降价", "大跳水", "被割韭菜",
+    "不当韭菜", "割韭菜", "韭菜", "智商税", "破防",
 )
 
 # Longest keys win so that, for example, 崩了 is handled before 崩.
@@ -26,6 +27,11 @@ BANNED_REPLACEMENTS = {
     "非节假日不用冲量": "近期政策窗口",
     "全网最低": "近期行情",
     "被割韭菜": "多花冤枉钱",
+    "不当韭菜": "少花冤枉钱",
+    "割韭菜": "让人多花冤枉钱",
+    "智商税": "冤枉钱",
+    "破防": "值得关注",
+    "韭菜": "冤枉钱",
     "站外引流": "进一步了解",
     "大跳水": "行情调整",
     "闭眼冲": "按需考虑",
@@ -100,6 +106,17 @@ CONFIG_NAME_RE = re.compile(
     re.I,
 )
 TOPIC_RE = re.compile(r"#[^#\n]+\[话题\]#")
+EMOJI_RE = re.compile(
+    "[\U0001F1E6-\U0001F1FF\U0001F300-\U0001FAFF\u2600-\u27BF]"
+)
+XHS_OPENING_HOOK_RE = re.compile(
+    r"你|纠结|怎么选|值不值|适不适合|先别|别急|通勤|接娃|周末|预算|"
+    r"第一次|新手|最容易|没想到|真正|到底|如果"
+)
+XHS_CONVERSATIONAL_RE = re.compile(
+    r"如果你|你会|你更|你家|我更建议|我会选|先别急|别只看|这点(?:真)?要注意|"
+    r"说真的|划重点|看完|搞清楚|更适合|更省心"
+)
 CTA_RE = re.compile(
     r"【[^】]*(?:城市|车型)[^】]*】|(?:城市|所在城市)\s*[+＋/、]\s*车型|"
     r"(?:滴滴|溜|甩|敲|扣|戳|留)[^\n]{0,24}(?:城市|车型|💌)|立即咨询",
@@ -475,6 +492,35 @@ def _memory_text(value: str, vehicle_terms: Sequence[str]) -> MemoryText:
     return MemoryText(text=text, grams=ngrams(text))
 
 
+def template_usage_weight(usage_count: int, decay_power: float = 1.6) -> float:
+    """Return a smooth weekly reuse weight without permanently banning a template."""
+    count = max(0, int(usage_count or 0))
+    power = max(0.0, float(decay_power))
+    return 1.0 / ((1.0 + count) ** power)
+
+
+def usage_weighted_order(
+    rows: Sequence[dict[str, Any]],
+    usage_counts: dict[int, int] | None,
+    *,
+    id_key: str = "id",
+    decay_power: float = 1.6,
+    rng: random.Random | random.SystemRandom | None = None,
+) -> list[dict[str, Any]]:
+    """Build a weighted random order; higher weekly use tends to appear later."""
+    randomizer = rng or random.SystemRandom()
+    counts = usage_counts or {}
+    ranked: list[tuple[float, dict[str, Any]]] = []
+    for row in rows:
+        row_id = int(row.get(id_key) or 0)
+        weight = template_usage_weight(counts.get(row_id, 0), decay_power)
+        # Efraimidis-Spirakis weighted sampling without replacement.
+        ticket = max(1e-12, min(1.0, randomizer.random())) ** (1.0 / weight)
+        ranked.append((ticket, row))
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [row for _, row in ranked]
+
+
 def select_diverse_rows(
     pool: Sequence[dict[str, Any]],
     *,
@@ -490,6 +536,8 @@ def select_diverse_rows(
     near_duplicate_cap: float = 0.72,
     account_near_duplicate_cap: float | None = None,
     tolerate_moderate_similarity: bool = False,
+    weekly_usage_counts: dict[int, int] | None = None,
+    usage_decay_power: float = 1.6,
     rng: random.Random | random.SystemRandom | None = None,
 ) -> list[dict[str, Any]]:
     """Random-window selection with diversity as a score, never a retry loop.
@@ -502,6 +550,7 @@ def select_diverse_rows(
     if len(task_account_ids) != count:
         raise ValueError("task_account_ids length must equal count")
     randomizer = rng or random.SystemRandom()
+    usage_counts = weekly_usage_counts or {}
     excluded = set(excluded_ids or set())
     available = [row for row in pool if int(row.get(id_key) or 0) not in excluded]
     randomizer.shuffle(available)
@@ -543,6 +592,10 @@ def select_diverse_rows(
                 "structure_id": digest,
                 "account_overlap": account_overlap,
                 "batch_overlap": batch_overlap,
+                "weekly_usage": int(usage_counts.get(int(row.get(id_key) or 0), 0)),
+                "usage_weight": template_usage_weight(
+                    usage_counts.get(int(row.get(id_key) or 0), 0), usage_decay_power,
+                ),
                 # Lower is better. A tiny random tiebreaker avoids stable first-row bias.
                 "score": (account_overlap, batch_overlap, randomizer.random()),
             }
@@ -563,6 +616,16 @@ def select_diverse_rows(
 
         feasible = [row for row in candidates if below_caps(row)]
 
+        def usage_weighted_pick(rows: list[dict[str, Any]]) -> dict[str, Any]:
+            total = sum(row["usage_weight"] for row in rows)
+            target = randomizer.random() * total
+            cumulative = 0.0
+            for row in rows:
+                cumulative += row["usage_weight"]
+                if target <= cumulative:
+                    return row
+            return rows[-1]
+
         # A random window keeps the selection non-deterministic. Expand once only
         # when that window contains an exact/recent structural collision; this is
         # bounded and cannot fall into a regenerate loop.
@@ -571,7 +634,9 @@ def select_diverse_rows(
             feasible = [row for row in candidates if below_caps(row)]
             selection_note = "expanded_for_diversity"
 
-        if feasible:
+        if feasible and usage_counts:
+            best = usage_weighted_pick(feasible)
+        elif feasible:
             # Once safely below the high-similarity boundary, normal similarity
             # is acceptable. Do not always force the least-similar writing style.
             best = min(feasible, key=lambda row: row['score'][2] if tolerate_moderate_similarity else row['score'])
@@ -605,6 +670,8 @@ def select_diverse_rows(
         chosen["selection_batch_similarity"] = round(best_score[1], 4)
         chosen["selection_relaxed"] = relaxed
         chosen["selection_note"] = selection_note
+        chosen["selection_week_usage"] = int(best["weekly_usage"])
+        chosen["selection_usage_weight"] = round(float(best["usage_weight"]), 6)
         selected.append(chosen)
         selected_memory.append((account_id, best_memory))
         selected_structure_ids.add(best["structure_id"])
@@ -752,10 +819,44 @@ def validate_copy(
             if re.search(r"(?:^|\n)\s*(?:\d+[、.．)]|[一二三四五六七八九十]+[、.．])", content):
                 hard.append("灵感改编不应使用编号清单")
             generic_openings = ("最近准备", "可以先把", "这篇先帮你", "你到店前可以直接问")
-            opening = "".join(output_lines[:2])
+            body_lines = [line for line in output_lines if not TOPIC_RE.search(line)]
+            opening = "".join(body_lines[:2])
             carried_openings = [phrase for phrase in generic_openings if phrase in opening]
             if carried_openings:
                 hard.append("灵感改编开头过于模板化：" + "、".join(carried_openings))
+            emoji_count = len(EMOJI_RE.findall(content))
+            reader_dialogue = bool(re.search(r"你|你的|你家", "\n".join(body_lines)))
+            opening_hook = bool(XHS_OPENING_HOOK_RE.search(opening))
+            conversational = bool(XHS_CONVERSATIONAL_RE.search("\n".join(body_lines)))
+            expressive = bool(re.search(r"[？！!?]", f"{title}\n" + "\n".join(body_lines[:3])))
+            short_paragraphs = sum(1 for line in body_lines if len(line) <= 58)
+            voice_score = sum((
+                2 <= emoji_count <= 6,
+                reader_dialogue,
+                opening_hook,
+                conversational,
+                expressive,
+                short_paragraphs >= max(3, len(body_lines) - 2),
+            ))
+            fidelity.update({
+                "emoji_count": emoji_count,
+                "reader_dialogue": reader_dialogue,
+                "opening_hook": opening_hook,
+                "conversational": conversational,
+                "expressive_punctuation": expressive,
+                "short_paragraphs": short_paragraphs,
+                "xiaohongshu_voice_score": voice_score,
+            })
+            if emoji_count < 2:
+                hard.append("灵感改编缺少小红书式视觉节奏：正文至少自然使用2个Emoji")
+            elif emoji_count > 6:
+                hard.append(f"灵感改编Emoji过密：当前{emoji_count}个，最多6个")
+            if not reader_dialogue:
+                hard.append("灵感改编缺少直接面向读者的口语表达")
+            if not opening_hook:
+                hard.append("灵感改编前两段缺少具体纠结、场景或疑问钩子")
+            if voice_score < 4:
+                hard.append(f"灵感改编小红书语感不足：当前{voice_score}/6")
             unique_configs = {
                 compact_text(value) for value in precise_config_mentions(content)
                 if compact_text(value)

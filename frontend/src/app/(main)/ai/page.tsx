@@ -4,9 +4,16 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Download, Share2, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
-  ImagePlus, Images, Upload, Trash2, Image as ImageIcon, Save, Zap, ScanLine, RotateCcw, SlidersHorizontal, ArrowUp,
+  ImagePlus, Images, Trash2, Image as ImageIcon, Save, Zap, ScanLine, RotateCcw, SlidersHorizontal, ArrowUp,
 } from 'lucide-react';
-import { aiApi, type ActiveImageTasksResponse, type AIImageRuntimeConfig, type ImageTaskResponse, type QueueStatus } from '@/services/aiApi';
+import {
+  aiApi,
+  type ActiveImageTasksResponse,
+  type AIImageHistoryItem,
+  type AIImageRuntimeConfig,
+  type ImageTaskResponse,
+  type QueueStatus,
+} from '@/services/aiApi';
 import { materialApi } from '@/services/materialApi';
 import { promptsApi } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
@@ -29,6 +36,7 @@ interface ChatMessage {
   refImages?: RefImageItem[]; // 参考图片列表（用于图生图）
   taskId?: string; // 异步任务的 task_id（用于轮询）
   clientRequestId?: string; // 前端提交请求幂等 ID（用于找回任务）
+  historyTaskId?: string; // 服务端持久化任务 ID（终态记录也保留）
 }
 
 interface GenerationRequestSnapshot {
@@ -87,6 +95,27 @@ const generationModes = [
   },
 ];
 const getGenerationModeLabel = (mode: 'fast' | 'precision') => mode === 'precision' ? '精细创作' : '快速出图';
+const getQualityLabel = (quality: string) => quality === 'high' ? '高质量' : quality === 'medium' ? '中质量' : '低质量';
+
+const isCompactPromptMessage = (message: ChatMessage) => (
+  message.type === 'prompt'
+  && !message.refImages?.length
+  && message.content.trim().length <= 36
+);
+
+const getPromptParametersTitle = (message: ChatMessage) => {
+  if (!message.params) return undefined;
+  const { params } = message;
+  return [
+    `模型：${params.model}`,
+    `尺寸：${params.size}`,
+    `风格：${params.style}`,
+    params.generationMode ? `模式：${getGenerationModeLabel(params.generationMode)}` : null,
+    params.quality ? `质量：${getQualityLabel(params.quality)}` : null,
+    `数量：${params.count} 张`,
+    `时间：${message.timestamp}`,
+  ].filter(Boolean).join(' · ');
+};
 
 const qualities = [
   { id: 'low', label: '低', desc: '快速/便宜' },
@@ -269,7 +298,7 @@ const PREFERENCES_SCOPE_BASE = 'ai_image_preferences';
 const PROMPT_MAX_LEN = 8000;
 
 /** 持久化相关常量 */
-const MAX_HISTORY = 50; // 最多保留 50 条消息（含 prompt + result）
+const MAX_HISTORY = 100; // 页面展示最近 50 次创作；数据库保留完整历史
 const MAX_HISTORY_PAIRS = Math.floor(MAX_HISTORY / 2); // 按 prompt+result 成对保留
 const DEFAULT_PROMPT_SHARE_CATEGORY = 'AI生图分享';
 
@@ -348,6 +377,73 @@ function clampHistoryByPairs(source: ChatMessage[]): ChatMessage[] {
   return normalized.slice(-(MAX_HISTORY_PAIRS * 2));
 }
 
+function messagePairKeys(pair: ChatMessage[]): Set<string> {
+  const promptMessage = pair.find(message => message.type === 'prompt');
+  const resultMessage = pair.find(message => message.type === 'result');
+  const keys = new Set<string>();
+  const taskId = resultMessage?.historyTaskId || resultMessage?.taskId;
+  if (taskId) keys.add(`task:${taskId}`);
+  if (resultMessage?.clientRequestId) keys.add(`request:${resultMessage.clientRequestId}`);
+  resultMessage?.images.forEach(image => {
+    if (image.url) keys.add(`image:${image.url}`);
+  });
+  if (promptMessage && resultMessage) {
+    keys.add(`legacy:${promptMessage.content.trim()}|${resultMessage.content.trim()}|${promptMessage.timestamp}`);
+  }
+  return keys;
+}
+
+function mergeMessageHistory(localMessages: ChatMessage[], serverMessages: ChatMessage[]): ChatMessage[] {
+  const localPairs = normalizeMessagePairs(localMessages).reduce<ChatMessage[][]>((pairs, _, index, source) => {
+    if (index % 2 === 0) pairs.push(source.slice(index, index + 2));
+    return pairs;
+  }, []);
+  const serverPairs = normalizeMessagePairs(serverMessages).reduce<ChatMessage[][]>((pairs, _, index, source) => {
+    if (index % 2 === 0) pairs.push(source.slice(index, index + 2));
+    return pairs;
+  }, []);
+  const consumedLocalPairs = new Set<number>();
+
+  const enrichedServerPairs = serverPairs.map(serverPair => {
+    const serverKeys = messagePairKeys(serverPair);
+    const localIndex = localPairs.findIndex((localPair, index) => (
+      !consumedLocalPairs.has(index)
+      && Array.from(messagePairKeys(localPair)).some(key => serverKeys.has(key))
+    ));
+    if (localIndex < 0) return serverPair;
+
+    consumedLocalPairs.add(localIndex);
+    const localPair = localPairs[localIndex];
+    const localPrompt = localPair[0];
+    const localResult = localPair[1];
+    const serverPrompt = serverPair[0];
+    const serverResult = serverPair[1];
+    const likedByUrl = new Map(localResult.images.map(image => [image.url, image.liked]));
+    return [
+      {
+        ...serverPrompt,
+        id: localPrompt.id,
+        params: localPrompt.params || serverPrompt.params,
+        refImages: localPrompt.refImages || serverPrompt.refImages,
+      },
+      {
+        ...serverResult,
+        id: localResult.id,
+        images: serverResult.images.map(image => ({ ...image, liked: likedByUrl.get(image.url) || false })),
+      },
+    ];
+  });
+
+  const unmatchedLocalPairs = localPairs.filter((_, index) => !consumedLocalPairs.has(index));
+  const pendingLocalPairs = unmatchedLocalPairs.filter(pair => Boolean(pair[1]?.taskId || pair[1]?.clientRequestId));
+  const settledLocalPairs = unmatchedLocalPairs.filter(pair => !pendingLocalPairs.includes(pair));
+  return clampHistoryByPairs([
+    ...settledLocalPairs.flat(),
+    ...enrichedServerPairs.flat(),
+    ...pendingLocalPairs.flat(),
+  ]);
+}
+
 function getUserScopedKey(base: string): string {
   try {
     const raw = localStorage.getItem('app_current_user');
@@ -384,6 +480,7 @@ function getWaitingContent(status?: string, recovering = false): string {
   if (recovering) return '任务仍在后台处理，正在重新确认状态...';
   if (status === 'queued') return '任务已提交，正在排队...';
   if (status === 'processing') return '正在生成图片，请稍候...';
+  if (status === 'postprocessing') return '图片已生成，正在完成去水印处理...';
   return '正在生成图片，请稍候...';
 }
 
@@ -453,6 +550,65 @@ async function buildImageResults(
   }));
 }
 
+function historyTimestamp(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function historyItemToMessages(item: AIImageHistoryItem): ChatMessage[] {
+  const taskId = String(item.id);
+  const width = Number(item.params?.width) || 1024;
+  const height = Number(item.params?.height) || 1024;
+  const count = Math.max(1, Number(item.params?.count) || item.result_urls.length || 1);
+  const timestamp = historyTimestamp(item.created_at);
+  const modelInfo = models.find(model => model.id === item.model_name);
+  const isActive = item.status === 'queued' || item.status === 'processing' || item.status === 'postprocessing';
+  const images = item.result_urls.map((url, index) => ({
+    id: `history-${taskId}-${index}`,
+    url,
+    width,
+    height,
+    liked: false,
+  }));
+  let content = '';
+  if (item.status === 'failed') content = `生成失败: ${item.error || '未知错误'}`;
+  else if (item.status === 'cancelled') content = '已取消';
+  else if (item.status === 'completed' && images.length === 0) content = '生成失败: 历史成图文件缺失';
+  else if (isActive) content = getWaitingContent(item.status);
+
+  return [
+    {
+      id: `server-prompt-${taskId}`,
+      type: 'prompt',
+      content: item.prompt,
+      images: [],
+      timestamp,
+      historyTaskId: taskId,
+      params: {
+        model: modelInfo?.name || item.model_name,
+        modelId: item.model_name,
+        size: `${width}×${height}`,
+        style: item.params?.style || '写实',
+        count,
+        quality: item.params?.quality || undefined,
+        generationMode: item.params?.generation_mode || undefined,
+      },
+    },
+    {
+      id: `server-result-${taskId}`,
+      type: 'result',
+      content,
+      images,
+      timestamp,
+      historyTaskId: taskId,
+      taskId: isActive ? taskId : undefined,
+      clientRequestId: isActive ? (item.client_request_id || undefined) : undefined,
+    },
+  ];
+}
+
 export default function AIPage() {
   const initialPreset = getDefaultPreset('seedream');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -473,6 +629,7 @@ export default function AIPage() {
   const [selectedGenerationMode, setSelectedGenerationMode] = useState<'fast' | 'precision'>('fast');
   const [imageCount, setImageCount] = useState(1);
   const [previewImage, setPreviewImage] = useState<AIImageResult | null>(null);
+  const [previewReferenceImage, setPreviewReferenceImage] = useState<RefImageItem | null>(null);
   const [refImages, setRefImages] = useState<RefImageItem[]>([]); // 参考图片列表
   const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -494,7 +651,6 @@ export default function AIPage() {
   const forceScrollToBottomRef = useRef(false);
   const composerExpandedByUserRef = useRef(false);
   const lastScrollTopRef = useRef(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -547,6 +703,15 @@ export default function AIPage() {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [modelMenuOpen, settingsMenuOpen]);
+
+  useEffect(() => {
+    if (!previewReferenceImage) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewReferenceImage(null);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [previewReferenceImage]);
 
   useEffect(() => {
     if (importedCreativeRef.current) return;
@@ -709,12 +874,6 @@ export default function AIPage() {
     pollTimersRef.current = {};
   }, []);
 
-  const clearPendingState = useCallback(() => {
-    writePendingStates([]);
-    clearAllPollTimers();
-    logDebug('clearPendingState');
-  }, [clearAllPollTimers, logDebug, writePendingStates]);
-
   const persistMessages = useCallback((source: ChatMessage[]) => {
     const { storageKey } = getActiveKeys();
     try {
@@ -762,6 +921,7 @@ export default function AIPage() {
           content: getWaitingContent(undefined, pending.status === 'reconciling'),
           images: [],
           timestamp: ts,
+          historyTaskId: taskId,
           taskId,
           clientRequestId: pending.clientRequestId,
         });
@@ -770,6 +930,7 @@ export default function AIPage() {
           if (next[i].id === pending.resultMsgId) {
             next[i] = {
               ...next[i],
+              historyTaskId: taskId || next[i].historyTaskId,
               taskId,
               clientRequestId: pending.clientRequestId,
               content: next[i].images.length > 0 ? '' : getWaitingContent(undefined, pending.status === 'reconciling'),
@@ -799,31 +960,55 @@ export default function AIPage() {
     if (nextSize !== selectedSize) setSelectedSize(nextSize);
   }, [selectedModel, selectedRatio, selectedResolutionTier, selectedSize]);
 
-  /** 处理图片文件上传为 base64（支持多选） */
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  /** 将剪贴板图片转换为参考图，沿用原有的数量和大小限制。 */
+  const addPastedReferenceImages = (files: File[]) => {
     if (files.length === 0) return;
     const remainingSlots = 10 - refImages.length;
+    if (remainingSlots <= 0) {
+      toast.error('最多添加 10 张参考图');
+      return;
+    }
     const toProcess = files.slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      toast.warning(`最多添加 10 张参考图，本次已添加前 ${remainingSlots} 张`);
+    }
 
     const promises = toProcess.map(file => {
       if (file.size > 10 * 1024 * 1024) {
-        alert(`图片 "${file.name}" 大小不能超过 10MB`);
+        toast.error(`图片“${file.name || '粘贴图片'}”大小不能超过 10MB`);
         return Promise.resolve(null);
       }
       return new Promise<RefImageItem | null>(resolve => {
         const reader = new FileReader();
-        reader.onload = () => resolve({ data: reader.result as string, name: file.name, source: 'local' as const });
+        reader.onload = () => resolve({
+          data: reader.result as string,
+          name: file.name || `粘贴图片-${Date.now()}`,
+          source: 'local' as const,
+        });
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(file);
       });
     });
 
     Promise.all(promises).then(results => {
       const newImages = results.filter(Boolean) as RefImageItem[];
-      if (newImages.length > 0) setRefImages(prev => [...prev, ...newImages]);
+      if (newImages.length > 0) setRefImages(prev => [...prev, ...newImages].slice(0, 10));
     });
-    // 重置 input 以便重新选择同一文件
-    e.target.value = '';
+  };
+
+  const handlePromptPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const itemFiles = Array.from(event.clipboardData.items)
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter((file): file is File => file !== null);
+    const imageFiles = itemFiles.length > 0
+      ? itemFiles
+      : Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) return;
+    event.preventDefault();
+    addPastedReferenceImages(imageFiles);
   };
 
   useEffect(() => {
@@ -866,7 +1051,9 @@ export default function AIPage() {
       void refreshActiveTasks();
       const images = await buildImageResults(data.image_urls, taskId, width, height);
       setMessages(prev => prev.map(msg =>
-        msg.id === resultMsgId ? { ...msg, images, taskId: undefined, clientRequestId: undefined, content: '' } : msg
+        msg.id === resultMsgId
+          ? { ...msg, images, historyTaskId: taskId, taskId: undefined, clientRequestId: undefined, content: '' }
+          : msg
       ));
       removePendingState({ taskId, resultMsgId, clientRequestId });
       return true;
@@ -881,6 +1068,7 @@ export default function AIPage() {
           ? {
               ...msg,
               content: data.status === 'cancelled' ? '已取消' : `生成失败: ${data.error || '未知错误'}`,
+              historyTaskId: taskId,
               taskId: undefined,
               clientRequestId: undefined,
             }
@@ -892,7 +1080,7 @@ export default function AIPage() {
 
     setMessages(prev => prev.map(msg =>
       msg.id === resultMsgId
-        ? { ...msg, taskId, clientRequestId, content: getWaitingContent(data.status) }
+        ? { ...msg, historyTaskId: taskId, taskId, clientRequestId, content: getWaitingContent(data.status) }
         : msg
     ));
     return false;
@@ -980,8 +1168,46 @@ export default function AIPage() {
     pollTimersRef.current[timerKey] = window.setInterval(recoverOnce, getPollIntervalMs());
   }, [applyTaskStatus, clearPollTimer, finishTerminalTaskLookupError, getPollIntervalMs, startPoll, upsertPendingMessages, upsertPendingState]);
 
-  // 客户端首次加载时从 localStorage 恢复历史记录
+  const restoreServerHistory = useCallback(async (fallbackLocalMessages: ChatMessage[] = []) => {
+    try {
+      const response = await aiApi.getHistory(1, MAX_HISTORY_PAIRS);
+      const items = response.data.items || [];
+      const serverMessages = items
+        .slice()
+        .reverse()
+        .flatMap(historyItemToMessages);
+      const localBase = messagesRef.current.length > 0 ? messagesRef.current : fallbackLocalMessages;
+      const merged = mergeMessageHistory(localBase, serverMessages);
+      setMessages(current => mergeMessageHistory(current.length > 0 ? current : fallbackLocalMessages, serverMessages));
+      logDebug('loadServerHistory', { count: items.length, total: response.data.total });
+
+      items.filter(item => item.status === 'queued' || item.status === 'processing' || item.status === 'postprocessing').forEach(item => {
+        const taskId = String(item.id);
+        const resultMessage = merged.find(message => (
+          message.type === 'result'
+          && (message.historyTaskId === taskId || message.taskId === taskId || (
+            item.client_request_id && message.clientRequestId === item.client_request_id
+          ))
+        ));
+        const width = Number(item.params?.width) || 1024;
+        const height = Number(item.params?.height) || 1024;
+        startPoll(
+          taskId,
+          item.model_name,
+          resultMessage?.id || `server-result-${taskId}`,
+          width,
+          height,
+          item.client_request_id || undefined,
+        );
+      });
+    } catch (error) {
+      logDebug('loadServerHistoryFailed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  }, [logDebug, startPoll]);
+
+  // 本地缓存负责秒开和未提交状态，服务端任务历史负责跨浏览器持久恢复。
   useEffect(() => {
+    let restoredLocalMessages: ChatMessage[] = [];
     try {
       if (!scopedKeys) return;
       const { storageKey, pendingKey, preferencesScope } = scopedKeys;
@@ -1018,6 +1244,7 @@ export default function AIPage() {
       }
       if (saved) {
         const parsed = clampHistoryByPairs(JSON.parse(saved) as ChatMessage[]);
+        restoredLocalMessages = parsed;
         setMessages(parsed);
         if (savedFrom !== storageKey) {
           localStorage.setItem(storageKey, JSON.stringify(parsed));
@@ -1070,6 +1297,7 @@ export default function AIPage() {
                     content: getWaitingContent(undefined, pending.status === 'reconciling'),
                     images: [],
                     timestamp: ts,
+                    historyTaskId: pending.taskId,
                     taskId: pending.taskId,
                     clientRequestId: pending.clientRequestId,
                   }];
@@ -1104,8 +1332,8 @@ export default function AIPage() {
         })();
       }
     } catch { /* ignore */ }
-    setLoaded(true);
-  }, [logDebug, removePendingState, scopedKeys, startPoll, startRequestRecovery, upsertPendingMessages, upsertPendingState, writePendingStates]);
+    void restoreServerHistory(restoredLocalMessages).finally(() => setLoaded(true));
+  }, [logDebug, removePendingState, restoreServerHistory, scopedKeys, startPoll, startRequestRecovery, upsertPendingMessages, upsertPendingState, writePendingStates]);
 
   const isGenerating = pendingTaskCount > 0 || reconcilingPending;
   const generationGroups = messages.reduce<ChatMessage[][]>((groups, message) => {
@@ -1233,27 +1461,31 @@ export default function AIPage() {
       if (data.status === 'completed' && data.image_urls && data.image_urls.length > 0) {
         const images = await buildImageResults(data.image_urls, data.task_id, width, height);
         setMessages(prev => prev.map(msg =>
-          msg.id === resultMsgId ? { ...msg, images, taskId: undefined, clientRequestId: undefined, content: '' } : msg
+          msg.id === resultMsgId
+            ? { ...msg, images, historyTaskId: data.task_id, taskId: undefined, clientRequestId: undefined, content: '' }
+            : msg
         ));
         removePendingState({ resultMsgId, clientRequestId });
       } else if (data.status === 'failed') {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
-            ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [], taskId: undefined, clientRequestId: undefined }
+            ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [], historyTaskId: data.task_id, taskId: undefined, clientRequestId: undefined }
             : msg
         ));
         removePendingState({ resultMsgId, clientRequestId });
       } else if (data.status === 'cancelled') {
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
-            ? { ...msg, content: '已取消', images: [], taskId: undefined, clientRequestId: undefined }
+            ? { ...msg, content: '已取消', images: [], historyTaskId: data.task_id, taskId: undefined, clientRequestId: undefined }
             : msg
         ));
         removePendingState({ resultMsgId, clientRequestId });
       } else {
         // 异步模型，更新 taskId 并开始轮询
         setMessages(prev => prev.map(msg =>
-          msg.id === resultMsgId ? { ...msg, taskId: data.task_id, clientRequestId, content: getWaitingContent(data.status) } : msg
+          msg.id === resultMsgId
+            ? { ...msg, historyTaskId: data.task_id, taskId: data.task_id, clientRequestId, content: getWaitingContent(data.status) }
+            : msg
         ));
         upsertPendingState({
           promptMsgId,
@@ -1482,13 +1714,22 @@ export default function AIPage() {
     }
   };
 
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
     if (!confirm('确定要清空所有对话记录吗？')) return;
-    setMessages([]);
-    const { storageKey } = getActiveKeys();
-    const storageCandidates = getFallbackKeys(STORAGE_KEY_BASE, storageKey);
-    storageCandidates.forEach(k => localStorage.removeItem(k));
-    clearPendingState();
+    try {
+      await aiApi.clearHistory();
+      setMessages(current => {
+        const activeMessages = normalizeMessagePairs(current).filter((message, index, source) => {
+          if (index % 2 === 0) return Boolean(source[index + 1]?.taskId || source[index + 1]?.clientRequestId);
+          return Boolean(message.taskId || message.clientRequestId);
+        });
+        persistMessages(activeMessages);
+        return activeMessages;
+      });
+      toast.success('历史记录已清空');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '清空历史记录失败');
+    }
   };
 
   /** 从图库选择参考图（单选） */
@@ -1612,6 +1853,14 @@ export default function AIPage() {
   };
 
   const deleteMessage = async (msgId: string) => {
+    const currentMessages = messagesRef.current;
+    const currentIndex = currentMessages.findIndex(message => message.id === msgId);
+    const pairedResult = currentIndex < 0
+      ? undefined
+      : currentMessages[currentIndex].type === 'result'
+        ? currentMessages[currentIndex]
+        : currentMessages[currentIndex + 1];
+    const historyTaskId = pairedResult?.historyTaskId;
     pendingCancelRef.current = null;
     setMessages(prev => {
       const idx = prev.findIndex(m => m.id === msgId);
@@ -1657,6 +1906,14 @@ export default function AIPage() {
         logDebug('cancelTaskOnDeleteFailed', { error: e instanceof Error ? e.message : String(e) });
       }
     }
+    const persistedTaskId = historyTaskId || pendingToCancel?.taskId;
+    if (persistedTaskId) {
+      try {
+        await aiApi.hideHistoryTask(persistedTaskId);
+      } catch (error) {
+        toast.error(error instanceof Error ? `删除记录未同步：${error.message}` : '删除记录未同步到服务器');
+      }
+    }
   };
 
   useEffect(() => {
@@ -1668,8 +1925,6 @@ export default function AIPage() {
   return (
     <div className={cn(studio.studio, 'relative h-full overflow-hidden')}>
       <div aria-hidden="true" className={studio.atmosphere} />
-
-      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
 
       <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
         <section aria-label="创作结果" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1705,15 +1960,30 @@ export default function AIPage() {
                     {group.map((msg) => (
                     <div key={msg.id} className={cn('group/msg relative', msg.type === 'prompt' ? studio.promptColumn : studio.resultColumn)}>
                       {msg.type === 'prompt' && (
-                        <div className={cn(studio.promptRecord, msg.refImages?.length === 1 && studio.singleReference, 'relative')}>
+                        <div
+                          className={cn(
+                            studio.promptRecord,
+                            msg.refImages?.length === 1 && studio.singleReference,
+                            isCompactPromptMessage(msg) && studio.compactPromptRecord,
+                            'relative',
+                          )}
+                          data-compact={isCompactPromptMessage(msg) ? 'true' : undefined}
+                        >
                           <div className="min-w-0 flex-1">
                             <div className={cn(studio.promptBody, 'relative group/bubble')}>
                               {msg.refImages && msg.refImages.length > 0 && (
                                 <div className={studio.referenceStrip}>
                                   {msg.refImages.map((img, idx) => (
-                                    <div key={`${img.data}-${idx}`} className={studio.referenceThumbnail}>
+                                    <button
+                                      type="button"
+                                      key={`${img.data}-${idx}`}
+                                      className={studio.referenceThumbnail}
+                                      aria-label={`放大查看参考图 ${idx + 1}：${img.name || '未命名图片'}`}
+                                      onClick={() => setPreviewReferenceImage(img)}
+                                    >
                                       <img src={img.data} alt={img.name || `参考图 ${idx + 1}`} className="h-full w-full object-contain" />
-                                    </div>
+                                      <span className={studio.referenceZoomHint} aria-hidden="true"><Maximize2 /></span>
+                                    </button>
                                   ))}
                                   {msg.refImages.length > 1 && <div className="flex items-center gap-1 self-center text-[10px] text-slate-400">
                                     <ImageIcon className="h-3 w-3" />
@@ -1721,10 +1991,16 @@ export default function AIPage() {
                                   </div>}
                                 </div>
                               )}
-                              <p className={cn(studio.promptText, 'whitespace-pre-wrap break-words')}>{msg.content}</p>
+                              <p className={cn(studio.promptText, 'whitespace-pre-wrap break-words')}>
+                                {isCompactPromptMessage(msg) ? msg.content.trim() : msg.content}
+                              </p>
                             </div>
                             {msg.params && (
-                              <div className={studio.recordParameters}>
+                              <div
+                                className={studio.recordParameters}
+                                data-testid="prompt-parameters"
+                                title={getPromptParametersTitle(msg)}
+                              >
                                 <span>{msg.params.model}</span>
                                 <span>{msg.params.size}</span>
                                 <span>{msg.params.style}</span>
@@ -1732,7 +2008,7 @@ export default function AIPage() {
                                   <span>{getGenerationModeLabel(msg.params.generationMode)}</span>
                                 )}
                                 {msg.params.quality && (
-                                  <span>{msg.params.quality === 'high' ? '高质量' : msg.params.quality === 'medium' ? '中质量' : '低质量'}</span>
+                                  <span>{getQualityLabel(msg.params.quality)}</span>
                                 )}
                                 <span>{msg.params.count} 张</span>
                                 <time className="ml-auto">{msg.timestamp}</time>
@@ -2073,16 +2349,6 @@ export default function AIPage() {
               <div className={studio.referenceActions} role="group" aria-label="添加参考图">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={refImages.length >= 10}
-                  className={cn(studio.sourceAction, studio.localSourceAction)}
-                  title="从电脑选择图片"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>本地导入</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setGalleryPickerOpen(true)}
                   disabled={refImages.length >= 10}
                   className={cn(studio.sourceAction, studio.gallerySourceAction)}
@@ -2107,34 +2373,46 @@ export default function AIPage() {
             <div className={studio.composerBody}>
               <button
                 type="button"
-                aria-label="展开并添加参考图"
+                aria-label="从我的图库添加参考图"
                 className={studio.compactReferenceAction}
                 onClick={(event) => {
                   event.stopPropagation();
                   expandComposer();
-                  requestAnimationFrame(() => fileInputRef.current?.click());
+                  setGalleryPickerOpen(true);
                 }}
               >
-                <ImagePlus />
+                <Images />
               </button>
               <div className={studio.composerDraft}>
                 {refImages.length > 0 && <div className={cn(studio.composerReferences, 'scrollbar-thin')}>
                   {refImages.map((img, idx) => <div
                     key={idx}
                     className={studio.composerReferenceThumbnail}
-                    title={`${img.source === 'local' ? '本地导入' : '我的图库'} · ${img.name}`}
+                    title={`${img.source === 'local' ? '粘贴图片' : '我的图库'} · ${img.name}`}
                   >
-                    <img src={img.data} alt={img.name} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      className={studio.composerReferencePreview}
+                      aria-label={`放大查看参考图 ${idx + 1}：${img.name || '未命名图片'}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setPreviewReferenceImage(img);
+                      }}
+                    >
+                      <img src={img.data} alt={img.name} className="h-full w-full object-cover" />
+                      <span className={studio.composerReferenceZoom} aria-hidden="true"><Maximize2 /></span>
+                    </button>
                     <span className={cn(
                       studio.referenceSourceBadge,
                       img.source === 'local' ? studio.localSourceBadge : studio.gallerySourceBadge,
                     )}>
-                      {img.source === 'local' ? '本地' : '图库'}
+                      {img.source === 'local' ? '粘贴' : '图库'}
                     </span>
-                    <button onClick={() => removeRefImage(idx)} aria-label={'移除参考图 ' + (idx + 1)} className="absolute right-0 top-0 rounded-full bg-slate-900/70 p-0.5 text-white hover:bg-red-500"><X className="h-3 w-3" /></button>
+                    <button onClick={() => removeRefImage(idx)} aria-label={'移除参考图 ' + (idx + 1)} className="absolute right-0 top-0 z-10 rounded-full bg-slate-900/70 p-0.5 text-white hover:bg-red-500"><X className="h-3 w-3" /></button>
                   </div>)}
                 </div>}
                 <textarea ref={promptInputRef} id="ai-creation-prompt" aria-label="画面描述" value={prompt} onChange={e => setPrompt(e.target.value)}
+                  onPaste={handlePromptPaste}
                   onFocus={() => {
                     composerExpandedByUserRef.current = true;
                     setComposerCompact(false);
@@ -2146,8 +2424,8 @@ export default function AIPage() {
                       handleGenerate();
                     }
                   }}
-                  placeholder={refImages.length ? '描述你希望如何修改参考图…' : '描述你想创造的画面，或者添加一张参考图…'}
-                  className={cn(studio.promptInput, 'border-0 bg-transparent pt-0.5 text-[13px] leading-[1.75] tracking-[0.01em] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0')}
+                  placeholder={refImages.length ? '描述你希望如何修改参考图，也可以继续粘贴图片…' : '描述你想创造的画面，或直接粘贴一张参考图…'}
+                  className={cn(studio.promptInput, 'border-0 bg-transparent pt-0.5 text-[15px] leading-[1.7] tracking-[0.005em] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0')}
                 />
               </div>
               <button
@@ -2176,7 +2454,39 @@ export default function AIPage() {
         </section>
       </div>
 
-      {/* ===== 图片预览弹窗 ===== */}
+      {/* ===== 参考图预览弹窗 ===== */}
+      {previewReferenceImage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="参考图预览"
+          onClick={() => setPreviewReferenceImage(null)}
+        >
+          <button
+            type="button"
+            aria-label="关闭参考图预览"
+            onClick={() => setPreviewReferenceImage(null)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <figure className="flex max-h-[90vh] max-w-[94vw] flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
+            <div className="overflow-hidden rounded-[24px] border border-white/20 bg-slate-950/30 shadow-2xl">
+              <img
+                src={previewReferenceImage.data}
+                alt={previewReferenceImage.name || '参考图'}
+                className="block max-h-[82vh] max-w-[92vw] object-contain"
+              />
+            </div>
+            <figcaption className="max-w-[80vw] truncate rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white/85 backdrop-blur-md">
+              {previewReferenceImage.name || '参考图'}
+            </figcaption>
+          </figure>
+        </div>
+      )}
+
+      {/* ===== 生成结果预览弹窗 ===== */}
       {previewImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
           <button onClick={() => setPreviewImage(null)} className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20">

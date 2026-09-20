@@ -61,8 +61,8 @@ fi
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15)
 SCP=(scp -o BatchMode=yes -o ConnectTimeout=15)
 if [[ -n "$WIN_PASS" ]]; then
-  SSH=(sshpass -p "$WIN_PASS" ssh -o ConnectTimeout=15)
-  SCP=(sshpass -p "$WIN_PASS" scp -o ConnectTimeout=15)
+  SSH=(sshpass -p "$WIN_PASS" ssh -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
+  SCP=(sshpass -p "$WIN_PASS" scp -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
 fi
 TARGET="${WIN_USER}@${WIN_IP}"
 
@@ -87,9 +87,7 @@ echo "[3/6] Prepare remote release directories"
 
 echo "[4/6] Upload release package and deployment scripts"
 "${SCP[@]}" "$TARBALL" "${TARGET}:${REMOTE_PACKAGE}"
-for script in "$PROJECT"/scripts/windows/*.ps1; do
-  "${SCP[@]}" "$script" "${TARGET}:${REMOTE_SCRIPT_DIR}/$(basename "$script")"
-done
+"${SCP[@]}" "$PROJECT"/scripts/windows/*.ps1 "${TARGET}:${REMOTE_SCRIPT_DIR}/"
 
 echo "[5/6] Deploy with backup, migration, health check, and automatic rollback"
 BACKUP_ARG=""

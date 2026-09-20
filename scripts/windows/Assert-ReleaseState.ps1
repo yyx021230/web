@@ -92,6 +92,13 @@ $checks = [ordered]@{
 }
 
 $failed = @($checks.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })
+if ($expected.postprocessWorker) {
+    $postprocessId = Get-ServiceContainer 'ai-postprocess-worker'
+    $postprocess = @(docker inspect $postprocessId | ConvertFrom-Json)[0]
+    $checks.postprocessWorkerImage = "$($postprocess.Image)" -eq "$($backend.Image)"
+    $checks.postprocessWorkerRunning = "$($postprocess.State.Status)" -eq 'running'
+    $failed = @($checks.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })
+}
 $result = [ordered]@{
     verified = $failed.Count -eq 0
     checkedAt = (Get-Date).ToUniversalTime().ToString("o")

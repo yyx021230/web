@@ -51,11 +51,13 @@ Set-EnvValue $envPath "MCP_BINARY_SHA256" $env:MCP_BINARY_SHA256
 
 Push-Location $ProjectRoot
 try {
+    $coreServices = @('backend', 'ai-worker')
+    if ($receipt.core.postprocessWorker) { $coreServices += 'ai-postprocess-worker' }
     if ($Restart) {
-        docker compose --project-name $ComposeProjectName --env-file $envPath -f docker-compose.yml stop backend ai-worker | Out-Null
+        docker compose --project-name $ComposeProjectName --env-file $envPath -f docker-compose.yml stop $coreServices | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Failed to stop production core services" }
     }
-    docker compose --project-name $ComposeProjectName --env-file $envPath -f docker-compose.yml up -d --no-build --no-deps backend ai-worker | Out-Null
+    docker compose --project-name $ComposeProjectName --env-file $envPath -f docker-compose.yml up -d --no-build --no-deps $coreServices | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Failed to start pinned production core services" }
 
     # Frontend is released independently by the Hermes bundle. Recover the

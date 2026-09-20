@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import csv
 import io
+import os
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy import BigInteger, cast, select, func, or_
@@ -10,12 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_optional_current_user
 from app.core.roles import has_role
+from app.config import settings
 from app.db.session import get_db
 from app.adapters.storage import storage
 from app.models.prompt import PromptCategory, PromptExample
 from app.models.prompt_moderation import PromptReport, PromptAuditLog
 from app.models.user import User
+from app.models.xhs_account_note import XHSAccountNote
 from app.schemas.common import ApiResponse
+from app.services.xhs_service import XHSService
 
 router = APIRouter()
 
@@ -33,6 +39,22 @@ REPORT_REASONS = {
 
 def _is_admin(user: User | None) -> bool:
     return has_role(user, "admin")
+
+
+def _prompt_cover_is_available(url: str | None) -> bool:
+    value = str(url or "").strip()
+    if not value.startswith("/uploads/"):
+        return bool(value)
+
+    root = Path(settings.storage_path).resolve()
+    relative = unquote(urlsplit(value).path.removeprefix("/uploads/"))
+    candidate = (root / relative).resolve()
+    root_text = str(root)
+    candidate_text = str(candidate)
+    return (
+        (candidate_text == root_text or candidate_text.startswith(root_text + os.sep))
+        and candidate.is_file()
+    )
 
 
 def _normalize_report_reason(raw: str | None) -> str:
@@ -65,7 +87,7 @@ async def get_prompts(
     keyword: str | None = None,
     category: str | None = None,
     owner: bool = Query(False, description="仅查看自己上传的提示词"),
-    source_kind: str | None = Query(None, pattern="^(internal|external)$", description="内容来源：内部或外部"),
+    source_kind: str | None = Query(None, pattern="^(internal|external|performance)$", description="内容来源：内部素材、外部素材或优质帖子"),
     random_seed: int | None = Query(None, ge=1, le=2_147_483_646, description="发现页稳定随机种子"),
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=1000),
@@ -73,6 +95,119 @@ async def get_prompts(
     current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取社区提示词列表"""
+    if source_kind == "performance":
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="登录后查看优质帖子封面")
+
+        environments = await XHSService(db).list_environments(current_user, include_inactive=True)
+        allowed_environment_ids = [int(item.id) for item in environments]
+        if not allowed_environment_ids:
+            return ApiResponse(data={"items": [], "total": 0, "page": page, "limit": limit})
+
+        interaction_score = (
+            func.coalesce(XHSAccountNote.liked_count, 0)
+            + func.coalesce(XHSAccountNote.collected_count, 0) * 2
+            + func.coalesce(XHSAccountNote.comment_count, 0) * 3
+            + func.coalesce(XHSAccountNote.share_count, 0) * 4
+        )
+        performance_score = func.coalesce(XHSAccountNote.view_count, 0) + interaction_score * 12
+        note_conditions = [
+            XHSAccountNote.environment_id.in_(allowed_environment_ids),
+            XHSAccountNote.status == "active",
+            XHSAccountNote.cover_image_url.is_not(None),
+            func.length(func.trim(XHSAccountNote.cover_image_url)) > 0,
+            or_(XHSAccountNote.view_count >= 4000, XHSAccountNote.comment_count >= 30),
+        ]
+        if category:
+            note_conditions.append(
+                or_(
+                    XHSAccountNote.primary_content_tag == category,
+                    XHSAccountNote.secondary_content_tag == category,
+                )
+            )
+        if keyword:
+            pattern = f"%{keyword.strip()}%"
+            note_conditions.append(
+                or_(
+                    XHSAccountNote.title.ilike(pattern),
+                    XHSAccountNote.content.ilike(pattern),
+                    XHSAccountNote.account_name.ilike(pattern),
+                    XHSAccountNote.profile_nickname.ilike(pattern),
+                )
+            )
+
+        raw_total = int((await db.execute(
+            select(func.count()).select_from(XHSAccountNote).where(*note_conditions)
+        )).scalar() or 0)
+        ordering = (
+            performance_score.desc(),
+            XHSAccountNote.view_count.desc(),
+            XHSAccountNote.published_at.desc(),
+            XHSAccountNote.id.desc(),
+        )
+        target_end = page * limit
+        batch_size = max(100, min(500, target_end + limit))
+        scanned = 0
+        unavailable_count = 0
+        available_notes: list[XHSAccountNote] = []
+        while scanned < raw_total and len(available_notes) < target_end:
+            batch = list((await db.execute(
+                select(XHSAccountNote)
+                .where(*note_conditions)
+                .order_by(*ordering)
+                .offset(scanned)
+                .limit(batch_size)
+            )).scalars().all())
+            if not batch:
+                break
+            scanned += len(batch)
+            for note in batch:
+                if _prompt_cover_is_available(note.cover_image_url):
+                    available_notes.append(note)
+                else:
+                    unavailable_count += 1
+
+        notes = available_notes[(page - 1) * limit:target_end]
+        total = max(len(available_notes), raw_total - unavailable_count)
+
+        items = []
+        for note in notes:
+            title = (note.title or "").strip() or "未命名帖子"
+            account_name = (note.profile_nickname or note.account_name or "小红书账号").strip()
+            interactions = int(note.liked_count or 0) + int(note.collected_count or 0) + int(note.comment_count or 0) + int(note.share_count or 0)
+            items.append(
+                {
+                    "id": -int(note.id),
+                    "title": title,
+                    "name": title,
+                    "chinese": (note.content or "").strip() or title,
+                    "english": "",
+                    "image_url": note.cover_image_url or "",
+                    "category": (note.secondary_content_tag or note.primary_content_tag or "高表现内容").strip(),
+                    "param_type": "高表现封面",
+                    "source_kind": "performance",
+                    "source_name": account_name,
+                    "source_url": note.post_url,
+                    "source_license": f"阅读 {int(note.view_count or 0):,} · 互动 {interactions:,}",
+                    "source_author": account_name,
+                    "external_id": f"xhs-note:{note.feed_id or note.id}",
+                    "created_by": None,
+                    "created_by_name": account_name,
+                    "is_public": False,
+                    "can_edit": False,
+                    "can_delete": False,
+                    "is_mine": False,
+                    "created_at": str(note.published_at or note.created_at or ""),
+                    "view_count": int(note.view_count or 0),
+                    "liked_count": int(note.liked_count or 0),
+                    "collected_count": int(note.collected_count or 0),
+                    "comment_count": int(note.comment_count or 0),
+                    "share_count": int(note.share_count or 0),
+                    "interaction_count": interactions,
+                }
+            )
+        return ApiResponse(data={"items": items, "total": total, "page": page, "limit": limit})
+
     conditions = [
         PromptExample.deleted_at.is_(None),
         PromptCategory.deleted_at.is_(None),

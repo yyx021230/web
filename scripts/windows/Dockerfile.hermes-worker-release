@@ -13,5 +13,4 @@ ENV APP_VERSION=${APP_VERSION} \
     GIT_COMMIT=${GIT_COMMIT} \
     BUILD_TIME=${BUILD_TIME}
 
-COPY ops/xhs_hermes/run_daily_8x5.py /app/web/ops/xhs_hermes/run_daily_8x5.py
-COPY ops/xhs_hermes/web_worker.py /app/web/ops/xhs_hermes/web_worker.py
+COPY ops/xhs_hermes/*.py /app/web/ops/xhs_hermes/

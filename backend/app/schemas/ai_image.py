@@ -33,6 +33,10 @@ class GenerateImageRequest(BaseModel):
         default="fast",
         description="GPT Image 2.5 创作模式：fast 快速出图，precision 精细创作",
     )
+    queue_lane: Literal["interactive", "batch"] = Field(
+        default="interactive",
+        description="任务车道：前台实时生成使用 interactive，批量工作流使用 batch",
+    )
     count: int = Field(default=1, ge=1, le=4, description="生成数量（当前支持 1/2/4，最大 4）")
     # 单图兼容（base64 或 URL）
     image_data: Optional[str] = Field(

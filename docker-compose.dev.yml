@@ -24,3 +24,9 @@ services:
       APP_ENV: development
       DEPLOYMENT_ENVIRONMENT: development
       PRODUCTION_CONFIRMATION: ""
+
+  ai-postprocess-worker:
+    environment:
+      APP_ENV: development
+      DEPLOYMENT_ENVIRONMENT: development
+      PRODUCTION_CONFIRMATION: ""

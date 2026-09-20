@@ -447,7 +447,7 @@ async def test_enabled_shadow_observes_one_legacy_generation_execution(
 
     monkeypatch.setattr(settings, "ai_image_shadow_enabled", True)
     monkeypatch.setattr(ai_image_task_queue, "enqueue_task", fake_enqueue)
-    monkeypatch.setattr(AIImageService, "_run_generation_pipeline", fake_pipeline)
+    monkeypatch.setattr(AIImageService, "_run_generation_stage", fake_pipeline)
 
     async with async_session() as db:
         await _seed_user(db)
@@ -486,7 +486,7 @@ async def test_legacy_execution_timeout_is_mirrored_as_unknown_result(
         return ({"status": "completed", "image_urls": []}, [], [])
 
     monkeypatch.setattr(settings, "ai_image_shadow_enabled", True)
-    monkeypatch.setattr(AIImageService, "_run_generation_pipeline", slow_pipeline)
+    monkeypatch.setattr(AIImageService, "_run_generation_stage", slow_pipeline)
     monkeypatch.setattr(
         AIImageService,
         "_task_timeout_seconds",

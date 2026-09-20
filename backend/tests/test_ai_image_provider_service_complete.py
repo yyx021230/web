@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -51,6 +52,16 @@ def test_provider_helpers_cover_formats_limits_and_debug(monkeypatch, tmp_path):
     provider.weight = 2
     monkeypatch.setattr(module.random, "choice", lambda population: population[-1])
     assert module._choose_weighted_provider([provider]) is provider
+
+    provider.last_health_status = "unhealthy"
+    provider.last_checked_at = datetime.utcnow()
+    module._PROVIDER_FAILURE_STREAK[provider.id] = 2
+    assert module._provider_circuit_open(provider) is False
+    module._PROVIDER_FAILURE_STREAK[provider.id] = 3
+    assert module._provider_circuit_open(provider) is True
+    provider.last_checked_at = datetime.utcnow() - timedelta(minutes=10)
+    assert module._provider_circuit_open(provider) is False
+    module._PROVIDER_FAILURE_STREAK.clear()
 
     assert module._generate_image_filename("seed", "image/jpeg").endswith(".jpg")
     encoded = base64.b64encode(b"GIF89a-data").decode()
@@ -179,6 +190,43 @@ async def test_request_retries_request_error_and_exhaustion(monkeypatch):
 
 async def _async_none():
     return None
+
+
+@pytest.mark.asyncio
+async def test_provider_selection_balances_capacity_instead_of_pin_to_default(monkeypatch):
+    default = _provider(
+        id=901,
+        name="Default",
+        is_default=True,
+        config={"max_concurrent": 10},
+        last_health_status="healthy",
+        avg_latency_ms=50_000,
+    )
+    alternative = _provider(
+        id=902,
+        name="Alternative",
+        is_default=False,
+        config={"max_concurrent": 10},
+        last_health_status="healthy",
+        avg_latency_ms=50_000,
+    )
+    service = AIImageProviderService(SimpleNamespace())
+
+    async def list_providers(_model_name):
+        return [default, alternative]
+
+    monkeypatch.setattr(service, "list_providers", list_providers)
+    monkeypatch.setattr(module.random, "random", lambda: 0.0)
+    module._PROVIDER_RUNNING.clear()
+    module._PROVIDER_RUNNING[default.id] = 8
+    selected = await service._acquire_provider_slot(
+        model_name="gptimage2",
+        has_reference=False,
+        wait_interval=0,
+    )
+    assert selected.id == alternative.id
+    await service._release_provider_slot(alternative.id)
+    module._PROVIDER_RUNNING.clear()
 
 
 @pytest.mark.asyncio

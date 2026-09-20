@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "b36e8d1f4a2c"
+CURRENT_REVISION = "c47f2a6d9b10"
 
 
 def _run_alembic(path: Path, *args: str) -> None:
@@ -114,6 +114,9 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
         }
         assert account_note_info["feed_id"][3] == 0
         assert "uq_xhs_account_notes_env_creator_key" in _indexes(connection, "xhs_account_notes")
+
+        assert "history_hidden_at" in _columns(connection, "ai_tasks")
+        assert "ix_ai_tasks_history_hidden_at" in _indexes(connection, "ai_tasks")
 
         creator_sync_columns = _columns(connection, "xhs_creator_sync_rows")
         assert {

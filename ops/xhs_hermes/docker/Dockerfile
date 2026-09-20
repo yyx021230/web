@@ -8,7 +8,7 @@ LABEL org.opencontainers.image.title="Hermes XHS production worker" \
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 HERMES_OCR_BACKEND=rapidocr \
     HERMES_REPO=/opt/hermes-agent HERMES_PYTHON=/opt/venv/bin/python PYTHONPATH=/opt/hermes-agent \
-    HERMES_MAX_TEXT_WORKERS=2 HERMES_MAX_IMAGE_WORKERS=5 HERMES_OCR_THREADS=2 \
+    HERMES_MAX_TEXT_WORKERS=3 HERMES_MAX_IMAGE_WORKERS=3 HERMES_OCR_THREADS=2 \
     HERMES_HOME=/app/web/ops/xhs_hermes/hermes_home \
     PATH=/opt/venv/bin:$PATH TZ=Asia/Shanghai
 

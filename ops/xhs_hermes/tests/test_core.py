@@ -344,6 +344,16 @@ class CoreTest(unittest.TestCase):
         )
         self.assertTrue(any("互动引导" in value for value in result["hard_errors"]), result)
 
+    def test_copy_sanitizer_removes_semantic_hype_variants(self) -> None:
+        title, content, changes = sanitize_copy(
+            "这次真的破防",
+            "不当韭菜，也别再交智商税。",
+        )
+        self.assertNotIn("破防", title)
+        self.assertNotIn("韭菜", content)
+        self.assertNotIn("智商税", content)
+        self.assertTrue(changes)
+
     def test_copy_validator_allows_prices_then_local_policy_cta(self) -> None:
         mother = {"title": "示例", "content": "价格说明\n留【城市】\n#买车[话题]#"}
         result = validate_copy(
@@ -512,6 +522,58 @@ class CoreTest(unittest.TestCase):
         )
         self.assertTrue(any("编号清单" in value for value in result["hard_errors"]), result)
         self.assertTrue(any("开头过于模板化" in value for value in result["hard_errors"]), result)
+
+    def test_interpretive_copy_rejects_editorial_copy_without_xhs_voice(self) -> None:
+        mother = {
+            "title": "车型政策更新",
+            "content": "车型信息\n价格信息\n版本信息\n权益信息\n#汽车[话题]#",
+        }
+        content = (
+            "零跑A05的版本选择可以从通勤半径开始判断，核心差异集中在续航需求。\n"
+            "日常城区代步对应基础续航场景，跨城频率较高则需要考虑更长续航。\n"
+            "预算部分应同时关注车型本身和政策适用条件，避免只看单一数字。\n"
+            "配置方面可结合充电条件、每周里程与家庭用车频率进行判断。\n"
+            "相关权益存在适用范围，具体执行仍应以当地流程为准。\n"
+            "整体来看，先确认使用边界，再做版本选择会更加稳妥。\n"
+            "#零跑A05[话题]#"
+        )
+        result = validate_copy(
+            title="零跑A05版本选择思路",
+            content=content,
+            mother=mother,
+            case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
+            adaptation_level="interpretive",
+        )
+        self.assertTrue(any("视觉节奏" in value for value in result["hard_errors"]), result)
+        self.assertTrue(any("面向读者" in value for value in result["hard_errors"]), result)
+
+    def test_interpretive_copy_accepts_xhs_voice_with_original_structure(self) -> None:
+        mother = {
+            "title": "车型政策更新",
+            "content": "车型信息\n价格信息\n版本信息\n权益信息\n#汽车[话题]#",
+        }
+        content = (
+            "每天通勤不到40公里，零跑A05到底要不要上长续航？🤔\n"
+            "如果你也卡在这里，先别急着只看续航数字，真实的充电条件比纸面参数更重要。\n"
+            "家里能稳定补能、平时主要城区代步，基础续航其实更容易把预算留在真正需要的地方。\n"
+            "但每周都有跨城行程，或者临时出门比较多，我更建议把续航余量放在前面考虑。🚗\n"
+            "这点真的要注意：政策和权益都有适用条件，先核对当地流程，再判断哪个版本更省心。\n"
+            "买车不是数字越大越好，适合自己的使用半径，才是每天开起来不后悔的选择。✨\n"
+            "#零跑A05[话题]#"
+        )
+        result = validate_copy(
+            title="A05通勤党怎么选？",
+            content=content,
+            mother=mother,
+            case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
+            adaptation_level="interpretive",
+        )
+        voice_errors = [
+            value for value in result["hard_errors"]
+            if "小红书" in value or "Emoji" in value or "面向读者" in value or "钩子" in value
+        ]
+        self.assertEqual([], voice_errors, result)
+        self.assertGreaterEqual(result["fidelity"]["xiaohongshu_voice_score"], 4)
 
 
 if __name__ == "__main__":

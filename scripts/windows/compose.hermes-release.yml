@@ -80,8 +80,8 @@ services:
       XHS_BACKEND_BASE_URL: http://backend:8000/api/v1
       HERMES_OCR_BACKEND: rapidocr
       HERMES_OCR_THREADS: "1"
-      HERMES_MAX_TEXT_WORKERS: "1"
-      HERMES_MAX_IMAGE_WORKERS: "1"
+      HERMES_MAX_TEXT_WORKERS: "3"
+      HERMES_MAX_IMAGE_WORKERS: "3"
     volumes:
       - hermes-config:/app/web/ops/xhs_hermes/config
       - hermes-state:/app/web/ops/xhs_hermes/state

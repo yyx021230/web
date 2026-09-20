@@ -82,7 +82,7 @@ describe('image-first prompt gallery', () => {
   it('opens AI creation with the selected prompt already imported', async () => {
     await mount();
     const useLink = Array.from(host.querySelectorAll('a')).find(link => link.textContent?.trim() === '使用创意');
-    expect(useLink?.getAttribute('href')).toBe(`/ai?prompt=${encodeURIComponent(entry.chinese)}&from=prompt-library`);
+    expect(useLink?.getAttribute('href')).toBe(`/ai?prompt=${encodeURIComponent(entry.chinese)}&from=prompt-library&reference=${encodeURIComponent(entry.image_url)}`);
   });
 
   it('lets guests browse but requests login before personal actions', async () => {
@@ -98,20 +98,50 @@ describe('image-first prompt gallery', () => {
     const useLink = Array.from(host.querySelectorAll('a')).find(link => link.textContent?.trim() === '使用创意')!;
     await act(async () => useLink.click());
     expect(requestLogin).toHaveBeenCalledWith({
-      next: `/ai?prompt=${encodeURIComponent(entry.chinese)}&from=prompt-library`,
-      reason: '登录后将这个提示词带入 AI 生图',
+      next: `/ai?prompt=${encodeURIComponent(entry.chinese)}&from=prompt-library&reference=${encodeURIComponent(entry.image_url)}`,
+      reason: '登录后将这个提示词和参考图带入 AI 生图',
     });
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), undefined);
   });
 
-  it('filters the gallery by internal and external sources', async () => {
+  it('uses product-facing names and loads each inspiration source', async () => {
     await mount();
     expect(button('全部').getAttribute('aria-pressed')).toBe('true');
-    expect(button('外部').disabled).toBe(false);
-    expect(button('内部').disabled).toBe(false);
-    await act(async () => button('外部').click());
-    expect(button('外部').getAttribute('aria-pressed')).toBe('true');
+    expect(button('外部素材').disabled).toBe(false);
+    expect(button('内部素材').disabled).toBe(false);
+    expect(button('优质帖子').disabled).toBe(false);
+    await act(async () => button('外部素材').click());
+    expect(button('外部素材').getAttribute('aria-pressed')).toBe('true');
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), 'external');
+    await act(async () => button('优质帖子').click());
+    expect(button('优质帖子').getAttribute('aria-pressed')).toBe('true');
+    expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), 'performance');
+  });
+
+  it('presents performance covers as account data instead of editable prompts', async () => {
+    const performanceEntry: PromptItem = {
+      ...entry,
+      id: -18,
+      title: '真实高表现帖子',
+      chinese: '真实帖子文案',
+      source_kind: 'performance',
+      source_name: '云凌胜',
+      source_license: '阅读 12,000 · 互动 1,230',
+      source_url: 'https://www.xiaohongshu.com/explore/note-18',
+      can_edit: false,
+      can_delete: false,
+    };
+    vi.mocked(promptsApi.getPrompts).mockResolvedValue(result([performanceEntry]));
+    await mount();
+    await act(async () => button('优质帖子').click());
+    await act(async () => (host.querySelector('[aria-label="查看提示词：真实高表现帖子"]') as HTMLButtonElement).click());
+
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('帖子文案');
+    expect(dialog.textContent).toContain('优质帖子');
+    expect(dialog.textContent).toContain('阅读 12,000 · 互动 1,230');
+    expect(dialog.textContent).toContain('复制文案');
+    expect(dialog.textContent).toContain('用作参考图');
   });
 
   it('has an explicit retry state and preserves access when a cover fails', async () => {

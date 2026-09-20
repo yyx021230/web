@@ -21,3 +21,4 @@ class AITask(Base):
     elapsed_seconds = Column(Float)
     created_at = Column(DateTime, server_default=func.now())
     finished_at = Column(DateTime)
+    history_hidden_at = Column(DateTime, nullable=True, index=True)

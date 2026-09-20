@@ -6,14 +6,74 @@ import pytest
 
 from sqlalchemy import select
 
+from app.config import settings
 from app.models.ai_image_provider import AIImageProvider
 from app.db.session import async_session
 from app.core.security import create_access_token
 from app.models.ai_task import AITask
 from app.models.user import User
 from app.services.ai_image_service import AIImageService
-from app.services.ai_task_queue import ai_image_task_queue
+from app.services.ai_task_queue import ai_image_postprocess_queue, ai_image_task_queue
 from app.scripts.ai_worker import AIImageWorker
+
+
+@pytest.mark.asyncio
+async def test_generation_releases_to_postprocess_queue_before_watermark_cleanup(client, monkeypatch):
+    postprocess_ids: list[int] = []
+    generation_calls = 0
+
+    async def fake_stage(self, prompt, params, user_id=None, task_id=None):
+        nonlocal generation_calls
+        generation_calls += 1
+        return (
+            {
+                "status": "completed",
+                "image_urls": ["https://upstream/image.png"],
+                "provider": {"id": 9, "name": "fast"},
+            },
+            ["https://upstream/image.png"],
+            ["/uploads/ai-images/raw.png"],
+        )
+
+    async def fake_postprocess_enqueue(task_id: int, **_kwargs) -> bool:
+        postprocess_ids.append(int(task_id))
+        return True
+
+    async def fake_remove(self, source_urls):
+        assert source_urls == ["/uploads/ai-images/raw.png"]
+        return ["/uploads/ai-images/clean.png"]
+
+    monkeypatch.setattr(settings, "remove_ai_watermarks_enabled", True)
+    monkeypatch.setattr(AIImageService, "_run_generation_stage", fake_stage)
+    monkeypatch.setattr(AIImageService, "_remove_watermarks", fake_remove)
+    monkeypatch.setattr(ai_image_postprocess_queue, "enqueue_task", fake_postprocess_enqueue)
+
+    async with async_session() as db:
+        db.add(User(id=99, username="postprocess_user", email="postprocess@example.com", hashed_password="x"))
+        db.add(AITask(
+            id=991,
+            user_id=99,
+            model_name="gptimage2",
+            prompt="pipeline",
+            params={"_queue_lane": "interactive"},
+            status="queued",
+        ))
+        await db.commit()
+        service = AIImageService(db=db)
+        assert await service.execute_submitted_task(991) == "postprocessing"
+        task = await db.get(AITask, 991)
+        await db.refresh(task)
+        assert task.status == "postprocessing"
+        assert task.result_urls == []
+        assert task.params["_postprocess_source_urls"] == ["/uploads/ai-images/raw.png"]
+        assert postprocess_ids == [991]
+
+        assert await service.execute_postprocessing_task(991) == "completed"
+        await db.refresh(task)
+        assert task.status == "completed"
+        assert task.result_urls == ["/uploads/ai-images/clean.png"]
+        assert "_postprocess_source_urls" not in task.params
+        assert generation_calls == 1
 
 
 @pytest.mark.asyncio
@@ -177,6 +237,44 @@ async def test_submit_enqueues_task_in_redis_queue(client, monkeypatch):
         assert task is not None
         assert task.status == "queued"
         assert task.prompt == "queued prompt"
+
+
+@pytest.mark.asyncio
+async def test_generate_endpoint_returns_accepted_without_running_model(client, monkeypatch):
+    queued_task_ids: list[int] = []
+
+    async def fake_enqueue_task(task_id: int, **_kwargs) -> bool:
+        queued_task_ids.append(task_id)
+        return True
+
+    async def fail_if_generation_runs(*_args, **_kwargs):
+        raise AssertionError("提交接口不应等待或执行模型生成")
+
+    monkeypatch.setattr(ai_image_task_queue, "enqueue_task", fake_enqueue_task)
+    monkeypatch.setattr(AIImageService, "_run_generation_stage", fail_if_generation_runs)
+
+    async with async_session() as db:
+        db.add(User(id=31, username="async_submit_user", email="async-submit@example.com", hashed_password="x"))
+        await db.commit()
+
+    response = await client.post(
+        "/api/v1/ai-image/generate",
+        headers={"Authorization": f"Bearer {create_access_token(subject='31')}"},
+        json={
+            "prompt": "return a task id immediately",
+            "client_request_id": "async-submit-request-1",
+            "model": "gptimage2",
+            "width": 1024,
+            "height": 1024,
+        },
+    )
+
+    assert response.status_code == 202
+    data = response.json()["data"]
+    assert data["status"] == "queued"
+    assert data["task_id"].isdigit()
+    assert data["client_request_id"] == "async-submit-request-1"
+    assert queued_task_ids == [int(data["task_id"])]
 
 
 @pytest.mark.asyncio
@@ -389,6 +487,8 @@ async def test_wait_endpoint_returns_completed_task_and_history_tracking_id(clie
             client_request_id="xhs-p123-c0123456789ab-rtestrun-s1",
             model_name="gptimage2",
             prompt="wait for completed image",
+            params={"width": 768, "height": 1024, "style": "写实", "quality": "high", "count": 1,
+                    "provider": {"api_key": "must-not-leak"}, "upstream_debug": {"raw": "private"}},
             status="completed",
             result_urls=["/uploads/ai-images/wait-completed.png"],
         ))
@@ -404,7 +504,53 @@ async def test_wait_endpoint_returns_completed_task_and_history_tracking_id(clie
 
     history_resp = await client.get("/api/v1/ai-image/history?page=1&limit=10", headers=headers)
     assert history_resp.status_code == 200
-    assert history_resp.json()["data"]["items"][0]["client_request_id"] == "xhs-p123-c0123456789ab-rtestrun-s1"
+    history_item = history_resp.json()["data"]["items"][0]
+    assert history_item["client_request_id"] == "xhs-p123-c0123456789ab-rtestrun-s1"
+    assert history_item["params"] == {
+        "width": 768,
+        "height": 1024,
+        "style": "写实",
+        "quality": "high",
+        "count": 1,
+    }
+    assert history_item["created_at"].endswith("Z")
+
+
+@pytest.mark.asyncio
+async def test_history_soft_delete_and_clear_are_user_scoped(client):
+    async with async_session() as db:
+        db.add_all([
+            User(id=94, username="history_owner", email="history-owner@example.com", hashed_password="x"),
+            User(id=95, username="history_other", email="history-other@example.com", hashed_password="x"),
+        ])
+        db.add_all([
+            AITask(id=394, user_id=94, model_name="gptimage2", prompt="owner completed", status="completed"),
+            AITask(id=395, user_id=94, model_name="gptimage2", prompt="owner active", status="processing"),
+            AITask(id=396, user_id=95, model_name="gptimage2", prompt="other completed", status="completed"),
+            AITask(id=397, user_id=94, model_name="gptimage2", prompt="owner failed", status="failed"),
+        ])
+        await db.commit()
+
+    owner_headers = {"Authorization": f"Bearer {create_access_token(subject='94')}"}
+    assert (await client.delete("/api/v1/ai-image/history/396", headers=owner_headers)).status_code == 404
+    hidden = await client.delete("/api/v1/ai-image/history/394", headers=owner_headers)
+    assert hidden.status_code == 200
+
+    history = await client.get("/api/v1/ai-image/history", headers=owner_headers)
+    assert [item["id"] for item in history.json()["data"]["items"]] == [397, 395]
+
+    cleared = await client.delete("/api/v1/ai-image/history", headers=owner_headers)
+    assert cleared.status_code == 200
+    assert cleared.json()["data"]["hidden_count"] == 1
+
+    history_after_clear = await client.get("/api/v1/ai-image/history", headers=owner_headers)
+    assert [item["id"] for item in history_after_clear.json()["data"]["items"]] == [395]
+
+    async with async_session() as db:
+        owner_completed = await db.get(AITask, 394)
+        other_completed = await db.get(AITask, 396)
+        assert owner_completed is not None and owner_completed.history_hidden_at is not None
+        assert other_completed is not None and other_completed.history_hidden_at is None
 
 
 @pytest.mark.asyncio
@@ -575,7 +721,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
             self.processing: list[int] = []
             self.membership: set[int] = set()
 
-        async def enqueue_task(self, task_id: int) -> bool:
+        async def enqueue_task(self, task_id: int, *, lane: str = "interactive") -> bool:
             task_id = int(task_id)
             if task_id in self.membership:
                 return False
@@ -583,7 +729,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
             self.pending.append(task_id)
             return True
 
-        async def reserve_task(self, timeout: int = 5) -> int | None:
+        async def reserve_task(self, timeout: int = 5, *, lane: str = "interactive") -> int | None:
             if not self.pending:
                 return None
             task_id = self.pending.pop(0)
@@ -596,7 +742,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
                 self.processing.remove(task_id)
             self.membership.discard(task_id)
 
-        async def requeue_reserved_task(self, task_id: int) -> bool:
+        async def requeue_reserved_task(self, task_id: int, *, lane: str = "interactive") -> bool:
             task_id = int(task_id)
             if task_id in self.processing:
                 self.processing.remove(task_id)
@@ -609,7 +755,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
             self.processing.clear()
             return drained
 
-        async def requeue_drained_tasks(self, task_ids) -> int:
+        async def requeue_drained_tasks(self, task_ids, *, lane: str = "interactive") -> int:
             count = 0
             for task_id in task_ids:
                 task_id = int(task_id)
@@ -627,7 +773,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
                     count += 1
             return count
 
-        async def enqueue_missing_tasks(self, task_ids) -> int:
+        async def enqueue_missing_tasks(self, task_ids, *, lane: str = "interactive") -> int:
             count = 0
             for task_id in task_ids:
                 task_id = int(task_id)
@@ -673,7 +819,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
     ):
         monkeypatch.setattr(ai_image_task_queue, name, getattr(fake_queue, name))
 
-    async def fake_run_generation_pipeline(
+    async def fake_run_generation_stage(
         self,
         prompt: str,
         params: dict,
@@ -686,7 +832,7 @@ async def test_ai_worker_processes_submitted_task_across_backend_restart_simulat
             ["/uploads/ai-images/generated.png"],
         )
 
-    monkeypatch.setattr(AIImageService, "_run_generation_pipeline", fake_run_generation_pipeline)
+    monkeypatch.setattr(AIImageService, "_run_generation_stage", fake_run_generation_stage)
 
     async with async_session() as db:
         db.add(User(id=5, username="worker_user", email="worker@example.com", hashed_password="x"))

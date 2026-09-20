@@ -253,11 +253,12 @@ def build_scheduler_loop_specs(
             "xhs-configured-tasks",
             lambda: xhs_configured_task_loop(session_factory),
         ),
-        SchedulerLoopSpec(
+    ]
+    if settings.hermes_scheduler_enabled:
+        specs.append(SchedulerLoopSpec(
             "hermes-content-production",
             lambda: hermes_workflow_schedule_loop(session_factory),
-        ),
-    ]
+        ))
     if settings.xhs_enable_sync_task_loop:
         specs.append(
             SchedulerLoopSpec(

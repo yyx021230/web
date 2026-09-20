@@ -71,12 +71,14 @@ from core import (  # noqa: E402
     sanitize_image_plan_lead_language,
     select_diverse_rows,
     structure_digest,
+    template_usage_weight,
+    usage_weighted_order,
     validate_copy,
     validate_image_plan,
 )
 from policy_sync import sync_policy  # noqa: E402
 from policy_constraints import policy_constraints_instruction  # noqa: E402
-from selection_types import copy_type_pool, image_type_pool, required_prompt_count  # noqa: E402
+from selection_types import catalog, copy_type_pool, image_type_pool, required_prompt_count  # noqa: E402
 from creative_profiles import (  # noqa: E402
     adaptation_contract,
     copy_adaptation_instruction,
@@ -84,6 +86,7 @@ from creative_profiles import (  # noqa: E402
     image_adaptation_instruction,
     interpretive_layout_by_id,
     interpretive_layout_direction,
+    interpretive_narrative_direction,
     normalize_adaptation_level,
     visual_change_contract_errors,
 )
@@ -493,6 +496,21 @@ def recent_ledger_rows(output_root: Path, batch_date: str, days: int) -> list[di
     return rows
 
 
+def current_week_ledger_rows(output_root: Path, batch_date: str) -> list[dict[str, Any]]:
+    """Read completed deliveries from Monday through the day before this batch."""
+    current = dt.date.fromisoformat(batch_date)
+    return recent_ledger_rows(output_root, batch_date, current.weekday())
+
+
+def template_usage_counts(rows: list[dict[str, Any]], field: str) -> dict[int, int]:
+    counts: dict[int, int] = {}
+    for row in rows:
+        template_id = int(row.get(field) or 0)
+        if template_id > 0:
+            counts[template_id] = counts.get(template_id, 0) + 1
+    return counts
+
+
 def latest_account_posts(recent: list[dict[str, Any]], account_id: int) -> list[dict[str, Any]]:
     rows = [row for row in recent if int(row.get('environment_id') or 0) == account_id
             and row.get('status', 'active') == 'active']
@@ -619,7 +637,7 @@ def build_account_memory(
                 {"title": row.get("title"), "view_count": row.get("view_count"), "score": performance(row)}
                 for row in top
             ],
-            "learning_mode": "dedupe_and_observe; enable template weighting only after provenance-matched results accumulate",
+            "learning_mode": "dedupe_and_observe; current-week template reuse is probability-decayed from delivery provenance",
         }
     return memory
 
@@ -651,11 +669,9 @@ def prepare_portfolio(
             if document:
                 recent_by_account[account_id].append(document)
 
-    mother_excluded = {
-        int(row.get("mother_copy_id") or 0)
-        for row in mother_ledger
-        if int(row.get("mother_copy_id") or 0) > 0
-    }
+    usage_decay_power = float(config.get("template_usage_decay_power") or 1.6)
+    mother_usage_counts = template_usage_counts(mother_ledger, "mother_copy_id")
+    prompt_usage_counts = template_usage_counts(prompt_ledger, "selected_prompt_id")
     mother_pool = [
         row for row in mothers
         if has_lead_structure(row)
@@ -679,11 +695,12 @@ def prepare_portfolio(
         historical_texts_by_account=recent_by_account,
         task_account_ids=account_ids + reserve_accounts,
         vehicle_terms=vehicle_terms,
-        excluded_ids=mother_excluded,
         candidate_window=48,
         near_duplicate_cap=ACCOUNT_HIGH_SIMILARITY,
         account_near_duplicate_cap=ACCOUNT_HIGH_SIMILARITY,
         tolerate_moderate_similarity=True,
+        weekly_usage_counts=mother_usage_counts,
+        usage_decay_power=usage_decay_power,
     )
     primary_mothers = selected_mothers[:len(tasks)]
     reserve_mothers = selected_mothers[len(tasks):]
@@ -694,11 +711,6 @@ def prepare_portfolio(
         original = str(row.get("selected_prompt_original") or "")
         if account_id in prompt_history and original:
             prompt_history[account_id].append(original)
-    historical_prompt_excluded = {
-        int(row.get("selected_prompt_id") or 0)
-        for row in prompt_ledger
-        if int(row.get("selected_prompt_id") or 0) > 0
-    }
     batch_prompt_ids: set[int] = set()
 
     assignments: dict[str, dict[str, Any]] = {}
@@ -714,22 +726,17 @@ def prepare_portfolio(
                                      total_tasks=len(tasks), case_tasks=len(case_tasks))
         if len(pool) < need:
             raise RuntimeError(f"图片类型「{config.get('requested_image_type') or '跟随母图结构'}」可用母版不足：{len(pool)}条，需要{need}条（含备用）；未调用生成接口")
-        prompt_excluded = historical_prompt_excluded | batch_prompt_ids
-        available_count = sum(int(row.get("id") or 0) not in prompt_excluded for row in pool)
-        if available_count < need:
-            # Historical cooldown is soft; within-batch prompt and structure
-            # uniqueness remains hard. Copy and image templates are intentionally
-            # sampled independently so a quote image may complement ordinary copy.
-            prompt_excluded = set(batch_prompt_ids)
         selected = select_diverse_rows(
             pool,
             count=need,
             historical_texts_by_account=prompt_history,
             task_account_ids=([task["account_id"] for task in case_tasks] * 2)[:need],
             vehicle_terms=vehicle_terms,
-            excluded_ids=prompt_excluded,
+            excluded_ids=set(batch_prompt_ids),
             text_getter=lambda row: str(row.get("chinese") or ""),
             candidate_window=48,
+            weekly_usage_counts=prompt_usage_counts,
+            usage_decay_power=usage_decay_power,
         )
         batch_prompt_ids.update(int(row.get("id") or 0) for row in selected)
         for prompt in selected[:len(case_tasks)]:
@@ -766,6 +773,12 @@ def prepare_portfolio(
             batch_date,
             mother_ledger,
         ),
+        "template_usage": {
+            "period": "current_calendar_week_before_batch",
+            "decay_power": usage_decay_power,
+            "mother_copy": {str(key): value for key, value in sorted(mother_usage_counts.items())},
+            "image_prompt": {str(key): value for key, value in sorted(prompt_usage_counts.items())},
+        },
         "source_counts": {
             "copy_library": len(mothers),
             "eligible_copy_mothers": len(mother_pool),
@@ -774,6 +787,11 @@ def prepare_portfolio(
             "requested_copy_type": config.get('requested_copy_type'),
             "requested_image_type": config.get('requested_image_type'),
             "recent_posts_missing_body": sum(not row.get("content") for row in recent),
+            "weekly_used_copy_templates": len(mother_usage_counts),
+            "weekly_used_image_templates": len(prompt_usage_counts),
+            "weekly_copy_template_uses": sum(mother_usage_counts.values()),
+            "weekly_image_template_uses": sum(prompt_usage_counts.values()),
+            "template_usage_decay_power": usage_decay_power,
             "planned_content_types": {
                 kind: sum(copy_content_type(row) == kind for row in primary_mothers)
                 for kind in (STANDARD_TEMPLATE_TYPE, QUOTE_TABLE_TYPE)
@@ -926,6 +944,8 @@ def run_copy_subprocess(payload: dict[str, Any], run_dir: Path, suffix: str) -> 
     input_path = work / f"{payload['key']}-{suffix}.input.json"
     output_path = work / f"{payload['key']}-{suffix}.output.json"
     atomic_json(input_path, payload)
+    # A crashed worker must not make an earlier successful payload look current.
+    output_path.unlink(missing_ok=True)
     worker_python = hermes_python()
     if not worker_python.exists():
         raise RuntimeError(f"Hermes Python not found: {worker_python}")
@@ -948,6 +968,64 @@ def run_copy_subprocess(payload: dict[str, Any], run_dir: Path, suffix: str) -> 
     return result
 
 
+def source_layout_contract(template: dict[str, Any]) -> dict[str, str]:
+    """Resolve the mother's functional layout type from the shared catalog."""
+    analysis = catalog.image_layout_analysis(template)
+    layout_type = str(analysis.get("type") or "").strip()
+    definition = next(
+        (row for row in catalog.IMAGE_TYPES if row["id"] == layout_type),
+        None,
+    )
+    if definition is None:
+        name = "跟随母图"
+        structure = "保持母图原有的信息组织类别、核心关系和阅读顺序，不跨类型重构。"
+        return {
+            "id": "source_locked",
+            "name": name,
+            "structure": structure,
+            "reason": str(analysis.get("reason") or "未能可靠归类，采用保守锁定"),
+            "marker": f"画面功能类型固定为【{name}（source_locked）】：{structure}",
+        }
+    name = str(definition["name"])
+    structure = str(definition["structure"])
+    return {
+        "id": layout_type,
+        "name": name,
+        "structure": structure,
+        "reason": str(analysis.get("reason") or ""),
+        "marker": f"画面功能类型固定为【{name}（{layout_type}）】：{structure}",
+    }
+
+
+def image_layout_type_contract_errors(
+    plan: dict[str, Any],
+    template: dict[str, Any],
+    adaptation_level: str,
+) -> list[str]:
+    """Reject interpretive plans that drift into another functional image type."""
+    if normalize_adaptation_level(adaptation_level) != "interpretive":
+        return []
+    source_layout = source_layout_contract(template)
+    expected_type = source_layout["id"]
+    errors: list[str] = []
+    if str(plan.get("layout_type") or "").strip() != expected_type:
+        errors.append(f"灵感改编必须保持母图功能类型：{expected_type}")
+    prompt = str(plan.get("adapted_prompt") or "").strip()
+    if not prompt.startswith(source_layout["marker"]):
+        errors.append(f"adapted_prompt第一句必须声明并锁定母图功能类型：{source_layout['marker']}")
+    if expected_type != "source_locked":
+        actual_type = catalog.classify_image({"chinese": prompt})
+        # A single-image poster can shift emphasis between the vehicle and its
+        # headline without changing the asset's functional information type.
+        poster_family = {"hero", "headline"}
+        compatible = expected_type == actual_type or {
+            expected_type, actual_type,
+        }.issubset(poster_family)
+        if actual_type and not compatible:
+            errors.append(f"改编提示词已偏离母图类型：应为{expected_type}，实际识别为{actual_type}")
+    return list(dict.fromkeys(errors))
+
+
 def image_plan_instruction(
     copy: dict[str, Any],
     template: dict[str, Any],
@@ -959,10 +1037,13 @@ def image_plan_instruction(
     required_layout_archetype: str = "",
 ) -> str:
     adaptation_level = normalize_adaptation_level(adaptation_level)
+    source_layout = source_layout_contract(template)
+    source_layout_type = source_layout["id"]
     layout_direction = (
-        interpretive_layout_by_id(required_layout_archetype)
+        interpretive_layout_by_id(required_layout_archetype, source_layout_type)
         or interpretive_layout_direction(
-            template.get("id"), template.get("chinese"), copy.get("title"), case.get("vehicle_model")
+            template.get("id"), template.get("chinese"), copy.get("title"), case.get("vehicle_model"),
+            source_layout_type=source_layout_type,
         )
     )
     quote_rows = case.get("quote_rows") if isinstance(case.get("quote_rows"), list) else []
@@ -995,6 +1076,19 @@ def image_plan_instruction(
             "同一便签内可拆出配置名和价格文字槽，但仍放在同一张原便签内。原注释位置保留必要条件："
             + json.dumps(quote_rows, ensure_ascii=False)
         )
+        if adaptation_level == "interpretive":
+            quote_rule = (
+                f"本母图包含多配置报价，且功能类型已锁定为【{source_layout['name']}】。"
+                "改编后必须继续使用同一种报价组织类型：表格仍使用共同表头、行列和配置—价格对应关系；"
+                "卡片仍使用彼此独立的配置卡片及各卡内部的配置—价格对应关系。不得在表格、卡片、纯大字价格海报之间互相转换。"
+                "允许重新设计同类型内部的表头造型、卡片造型、间距、视觉层级、颜色和材质，但不得改变配置与金额的绑定关系，"
+                "也不得删掉使它成立为报价表或报价卡片的核心结构。每个配置名和金额必须逐字来自下列政策登记；"
+                "政策登记是可用数据池，不是必须全部展示的清单。补贴后金额必须带‘按相应条件测算’语义，不能写成无条件成交价；"
+                "national_scrappage_after_price对外统一表述为国补后价格，不得写成报废价格或落地价。"
+                + local_price_rule
+                + "原注释位置保留必要条件："
+                + json.dumps(quote_rows, ensure_ascii=False)
+            )
         fact_rule = (
             "通用非事实文案可以沿用母图；报价载体中的配置名和金额可以来自第7条政策登记，不要求在正文逐字出现；"
             "除此之外的汽车日期、参数、权益或承诺必须已在本篇标题/正文中出现。"
@@ -1008,7 +1102,10 @@ def image_plan_instruction(
     if adaptation_level == "interpretive":
         vehicle_layout_rule = "母图车辆位置与占比不再保留；在车型识别准确的前提下，必须按指定版式改变车辆偏置、裁切、尺度和与文字的遮挡关系。"
         slot_wording_rule = "只保持文字槽的信息角色和优先级；必须重新安排方向、位置、换行和字体，不得沿用母版居中排布。"
-        carrier_rule = "必须按指定版式重做信息载体、页面网格和留白；不得保留母版载体形状、相对位置或上下三段结构。"
+        carrier_rule = (
+            f"必须在【{source_layout['name']}】类型内部重做载体造型、页面网格和留白；可以改变具体形状、位置和视觉样式，"
+            f"但必须继续满足该类型的核心结构：{source_layout['structure']}不得跨成其他功能类型。"
+        )
         change_rule = (
             "visual_changes必须列出5至7项互不重复的变化，dimension只允许palette、scene、material、decoration、lighting、typography、composition；"
             "必须同时包含palette、typography、composition，并从其余维度至少选择两项。每项必须填写母版状态from与新方案to。"
@@ -1016,8 +1113,12 @@ def image_plan_instruction(
         layout_requirement = (
             f"11. 本次程序指定的版式原型是【{layout_direction['name']}】，layout_archetype必须逐字返回"
             f"“{layout_direction['id']}”。必须落实以下结构：{layout_direction['brief']}"
-            "adapted_prompt必须明确写出车辆如何裁切、标题放在哪个方向、页面如何分区、信息由什么载体承载；"
-            "不能只换背景风格后继续沿用原构图。"
+            "这个原型只是同类型内部的视觉设计方向，不能覆盖或改变母图功能类型。"
+            "adapted_prompt必须明确写出车辆如何裁切、标题放在哪个方向、页面如何分区、同类型信息载体如何重新设计；"
+            "不能只换背景风格后继续沿用原构图，也不能为了追求变化跨成另一类图片。"
+            f"\n12. 母图功能类型硬锁定为【{source_layout['name']}（{source_layout_type}）】。"
+            f"layout_type必须逐字返回“{source_layout_type}”，adapted_prompt第一句必须逐字写入："
+            f"“{source_layout['marker']}”不得省略、改写或改成其他类型。"
         )
     elif adaptation_level == "light":
         vehicle_layout_rule = "母图车辆继续提供镜头、摆位和主体占比，不改变阅读流向。"
@@ -1058,7 +1159,7 @@ def image_plan_instruction(
 当前档位：{adaptation_level}（{adaptation_contract(adaptation_level)['label']}）。
 
 返回：
-{{"adapted_prompt":"完整中文提示词","slot_mappings":[{{"source":"母版原文字槽1的完整原句","output":"对应的新文字1","action":"按档位处理"}},{{"source":"母版原文字槽2的完整原句","output":"对应的新文字2","action":"按档位处理"}}],"visual_changes":[{{"dimension":"palette","from":"母版主色","to":"新主色"}}],"layout_archetype":"{layout_direction['id'] if adaptation_level == 'interpretive' else 'source_locked'}","composition_signature":"一句话描述新版页面网格、车辆裁切、标题方向和信息载体","scene_change":"概括实际视觉变化","vehicle_angle":"{angle}"}}
+{{"adapted_prompt":"完整中文提示词","slot_mappings":[{{"source":"母版原文字槽1的完整原句","output":"对应的新文字1","action":"按档位处理"}},{{"source":"母版原文字槽2的完整原句","output":"对应的新文字2","action":"按档位处理"}}],"visual_changes":[{{"dimension":"palette","from":"母版主色","to":"新主色"}}],"layout_type":"{source_layout_type}","layout_archetype":"{layout_direction['id'] if adaptation_level == 'interpretive' else 'source_locked'}","composition_signature":"一句话描述新版页面网格、车辆裁切、标题方向和同类型信息载体","scene_change":"概括实际视觉变化","vehicle_angle":"{angle}"}}
 上面只是字段示例，不是只返回两槽。所有可见标题、配置名、价格、条件备注都必须有各自映射，不能漏项；同一便签可以拆出多个文字槽。{carrier_rule}
 
 母图提示词：
@@ -1081,7 +1182,7 @@ def apply_image_plan_patch(previous: dict[str, Any], patch: dict[str, Any]) -> d
     """Apply exact, unambiguous edits; the complete plan must pass validation again."""
     allowed = {
         "prompt_replacements", "slot_mappings", "visual_changes",
-        "layout_archetype", "composition_signature",
+        "layout_type", "layout_archetype", "composition_signature",
     }
     if not patch or set(patch) - allowed:
         raise ValueError("修补只能返回提示词替换及必要的文字、视觉或版式字段")
@@ -1113,7 +1214,7 @@ def apply_image_plan_patch(previous: dict[str, Any], patch: dict[str, Any]) -> d
         if not isinstance(patch["visual_changes"], list):
             raise ValueError("visual_changes必须是数组")
         result["visual_changes"] = patch["visual_changes"]
-    for key in ("layout_archetype", "composition_signature"):
+    for key in ("layout_type", "layout_archetype", "composition_signature"):
         if key in patch:
             result[key] = str(patch[key] or "").strip()
     result.pop("text_blocks", None)
@@ -1135,6 +1236,7 @@ def build_image_plan(
     trace_dir: Path | None = None,
 ) -> dict[str, Any]:
     source = str(template.get("chinese") or "")
+    source_layout = source_layout_contract(template)
     desired_angle = angle_for_prompt(source)
     if desired_angle not in car_images:
         desired_angle = next(iter(car_images))
@@ -1151,7 +1253,7 @@ def build_image_plan(
                 key: previous_result.get(key)
                 for key in (
                     "adapted_prompt", "slot_mappings", "visual_changes",
-                    "layout_archetype", "composition_signature",
+                    "layout_type", "layout_archetype", "composition_signature",
                 )
             }
             instruction += (
@@ -1160,7 +1262,7 @@ def build_image_plan(
                 '{"prompt_replacements":[{"old":"上一版唯一出现的完整片段","new":"修正片段"}]}'
                 "。只有文字映射需要修改时才额外返回完整slot_mappings数组；"
                 "只有视觉变化清单不合规时才额外返回完整visual_changes数组，否则不要重复这些数组。"
-                "只有版式原型字段不合规时才返回layout_archetype或composition_signature。"
+                "只有功能类型或版式原型字段不合规时才返回layout_type、layout_archetype或composition_signature。"
                 "old必须逐字匹配上一版且各替换互不重叠；修改可见文字时同步对应映射。"
                 "未改部分将由程序原样保留，并重新执行全部校验。\n上一版："
                 + json.dumps(draft, ensure_ascii=False)
@@ -1202,6 +1304,8 @@ def build_image_plan(
             "selected_prompt_source_section": template.get("source_section_title"),
             "selected_prompt_full_original": template.get("source_full_original"),
             "selected_prompt_structure_id": template.get("structure_id") or structure_digest(normalize_structure(source)),
+            "selected_prompt_week_usage": int(template.get("selection_week_usage") or 0),
+            "selected_prompt_usage_weight": float(template.get("selection_usage_weight") or 1.0),
             "template_type": str(template.get("template_type") or prompt_template_type(template)),
             "source_slot_count": int(template.get("source_slot_count") or 0),
             "selected_prompt_image": (
@@ -1213,11 +1317,15 @@ def build_image_plan(
             "plan_attempt": attempt,
             "adaptation_level": normalize_adaptation_level(adaptation_level),
             "adaptation_contract": adaptation_contract(adaptation_level),
+            "source_layout_type": source_layout["id"],
+            "source_layout_name": source_layout["name"],
+            "source_layout_structure": source_layout["structure"],
             "required_layout_archetype": (
                 (
-                    interpretive_layout_by_id(required_layout_archetype)
+                    interpretive_layout_by_id(required_layout_archetype, source_layout["id"])
                     or interpretive_layout_direction(
-                        template.get("id"), source, copy.get("title"), case.get("vehicle_model")
+                        template.get("id"), source, copy.get("title"), case.get("vehicle_model"),
+                        source_layout_type=source_layout["id"],
                     )
                 )["id"]
                 if normalize_adaptation_level(adaptation_level) == "interpretive" else ""
@@ -1228,6 +1336,7 @@ def build_image_plan(
             result["selected_prompt_image"] = ""
         errors = validate_image_plan(result, copy, case)
         errors.extend(visual_change_contract_errors(result, adaptation_level))
+        errors.extend(image_layout_type_contract_errors(result, template, adaptation_level))
         if trace_path:
             atomic_json(trace_path.with_suffix('.validation.json'), {"result": result, "errors": errors})
         if not errors:
@@ -1597,16 +1706,9 @@ class ProductionRun:
             'limit_per_account': ACCOUNT_HISTORY_LIMIT,
             'accounts': build_avoidance_briefs(self.tasks, recent),
         })
-        mother_ledger = recent_ledger_rows(
-            self.output_root,
-            self.args.batch_date,
-            int(self.config.get("mother_history_days") or 7),
-        )
-        prompt_ledger = recent_ledger_rows(
-            self.output_root,
-            self.args.batch_date,
-            int(self.config.get("prompt_history_days") or 2),
-        )
+        weekly_ledger = current_week_ledger_rows(self.output_root, self.args.batch_date)
+        mother_ledger = weekly_ledger
+        prompt_ledger = weekly_ledger
         portfolio = prepare_portfolio(
             config=self.config,
             cases=self.cases,
@@ -1630,11 +1732,41 @@ class ProductionRun:
             "policy_fingerprints": self.policy_fingerprints(),
             "policy_metadata": self.policy_metadata,
             "source_counts": portfolio["source_counts"],
+            "template_usage": portfolio["template_usage"],
             "account_memory": portfolio["account_memory"],
             "car_images": portfolio["car_images"],
             "posts": {},
         }
+        layout_usage: dict[str, int] = {}
+        narrative_usage: dict[str, int] = {}
+        account_layouts: dict[int, set[str]] = {}
+        account_narratives: dict[int, set[str]] = {}
+        interpretive = normalize_adaptation_level(self.config.get("adaptation_level")) == "interpretive"
         for key, assignment in portfolio["assignments"].items():
+            creative_direction: dict[str, Any] = {}
+            if interpretive:
+                account_id = int(assignment["account_id"])
+                source_type = source_layout_contract(assignment["prompt_template"])["id"]
+                layout = interpretive_layout_direction(
+                    key, assignment["case_id"], assignment["prompt_template"].get("id"),
+                    source_layout_type=source_type,
+                    usage_counts=layout_usage,
+                    excluded_ids=account_layouts.setdefault(account_id, set()),
+                )
+                narrative = interpretive_narrative_direction(
+                    key, assignment["case_id"], assignment["mother"].get("id"),
+                    usage_counts=narrative_usage,
+                    excluded_ids=account_narratives.setdefault(account_id, set()),
+                )
+                layout_usage[layout["id"]] = layout_usage.get(layout["id"], 0) + 1
+                narrative_usage[narrative["id"]] = narrative_usage.get(narrative["id"], 0) + 1
+                account_layouts[account_id].add(layout["id"])
+                account_narratives[account_id].add(narrative["id"])
+                creative_direction = {
+                    "layout": layout,
+                    "narrative": narrative,
+                    "source_layout_type": source_type,
+                }
             self.state["posts"][key] = {
                 **{name: assignment[name] for name in ("key", "account_id", "account_name", "slot", "case_id", "content_type")},
                 "status": "planned",
@@ -1643,6 +1775,7 @@ class ProductionRun:
                 "prompt_template": assignment["prompt_template"],
                 "reserve_prompt_template": assignment["reserve_prompt_template"],
                 "avoidance_brief": {**portfolio["avoidance_briefs"].get(assignment["account_id"], {}), 'vehicle_terms': fetched['vehicle_terms']},
+                "creative_direction": creative_direction,
             }
         self.save()
         emit("portfolio_ready", **portfolio["source_counts"], posts=len(self.state["posts"]))
@@ -1661,7 +1794,7 @@ class ProductionRun:
                     "mother_id": int(mother["id"]),
                     "model": self.config.get("copy_model") or "gpt-5.5",
                     "avoidance_brief": row.get("avoidance_brief") or {},
-                    "operator_instruction": self.config.get("operator_instruction") or "",
+                    "operator_instruction": self.copy_operator_instruction(row),
                     "adaptation_level": self.config.get("adaptation_level") or "replica",
                 }
                 try:
@@ -1675,6 +1808,17 @@ class ProductionRun:
                     return row["key"], result
                 failures.append({"mother_id": mother.get("id"), "attempt": attempt, "error": result.get("error"), "validation": result.get("validation")})
         return row["key"], {"ok": False, "failures": failures, "error": "all copy attempts failed"}
+
+    def copy_operator_instruction(self, row: dict[str, Any]) -> str:
+        base = str(self.config.get("operator_instruction") or "").strip()
+        narrative = (row.get("creative_direction") or {}).get("narrative") or {}
+        if not narrative:
+            return base
+        direction = (
+            f"本篇已分配差异化叙事骨架【{narrative.get('name')}】：{narrative.get('brief')}"
+            "这是本批次跨帖去重约束，必须落实到开头、段落推进和收束，不能退回通用的场景提问—建议—注意事项模板。"
+        )
+        return "\n".join(value for value in (base, direction) if value)
 
     def copy_stage(self) -> None:
         pending = [row for row in self.state["posts"].values() if not row.get("copy", {}).get("ok")]
@@ -1714,6 +1858,15 @@ class ProductionRun:
             self._prompt_catalog = all_fallback_prompts
         fallback_pools: dict[str, list[dict[str, Any]]] = {}
         randomizer = random.SystemRandom()
+        prompt_usage_counts = {
+            int(key): int(value)
+            for key, value in ((self.state.get("template_usage") or {}).get("image_prompt") or {}).items()
+        }
+        usage_decay_power = float(
+            (self.state.get("template_usage") or {}).get("decay_power")
+            or self.config.get("template_usage_decay_power")
+            or 1.6
+        )
         for case_id in {row["case_id"] for row in pending}:
             case = self.cases[case_id]
             pool = safe_prompt_pool(
@@ -1721,7 +1874,15 @@ class ProductionRun:
                 allow_quote_table=bool(case.get("allow_multi_config_quote")),
             )
             pool = image_type_pool(pool, self.config.get('requested_image_type'), prompt_template_type)
-            randomizer.shuffle(pool)
+            if prompt_usage_counts:
+                pool = list(reversed(usage_weighted_order(
+                    pool,
+                    prompt_usage_counts,
+                    decay_power=usage_decay_power,
+                    rng=randomizer,
+                )))
+            else:
+                randomizer.shuffle(pool)
             fallback_pools[case_id] = pool
 
         def take_fallback(case_id: str) -> dict[str, Any] | None:
@@ -1735,6 +1896,11 @@ class ProductionRun:
                     if not prompt_id or prompt_id in used_prompt_ids or structure_id in used_structure_ids:
                         continue
                     template["structure_id"] = structure_id
+                    template["selection_week_usage"] = int(prompt_usage_counts.get(prompt_id, 0))
+                    template["selection_usage_weight"] = round(
+                        template_usage_weight(prompt_usage_counts.get(prompt_id, 0), usage_decay_power),
+                        6,
+                    )
                     used_prompt_ids.add(prompt_id)
                     used_structure_ids.add(structure_id)
                     return template
@@ -1764,6 +1930,9 @@ class ProductionRun:
                         public_root=self.online.public_root,
                         operator_instruction=str(self.config.get("operator_instruction") or ""),
                         adaptation_level=str(self.config.get("adaptation_level") or "replica"),
+                        required_layout_archetype=str(
+                            (((row.get("creative_direction") or {}).get("layout") or {}).get("id") or "")
+                        ),
                         trace_dir=self.run_dir / "image-plans",
                     )
                     return row["key"], {"ok": True, "used_reserve_prompt": index > 1, **plan}
@@ -1791,6 +1960,9 @@ class ProductionRun:
                         public_root=self.online.public_root,
                         operator_instruction=str(self.config.get("operator_instruction") or ""),
                         adaptation_level=str(self.config.get("adaptation_level") or "replica"),
+                        required_layout_archetype=str(
+                            (((row.get("creative_direction") or {}).get("layout") or {}).get("id") or "")
+                        ),
                         trace_dir=self.run_dir / "image-plans",
                     )
                     return row["key"], {
@@ -1880,6 +2052,7 @@ class ProductionRun:
             "quality": str(self.config.get("image_quality") or "high"),
             "count": 1,
             "images_data": [plan["vehicle_image"]["url"]],
+            "queue_lane": "batch",
         }
         deadline = time.time() + 1200
         last_submit_error: Exception | None = None
@@ -2123,8 +2296,11 @@ class ProductionRun:
                 "content_type": copy_content_type(copy),
                 "adaptation_level": self.config.get("adaptation_level") or "replica",
                 "adaptation_contract": self.config.get("adaptation_contract") or adaptation_contract(self.config.get("adaptation_level")),
+                "creative_direction": row.get("creative_direction") or {},
                 "mother_copy_id": int(copy.get("selected_mother_id") or mother.get("id") or 0),
                 "mother_structure_id": mother.get("structure_id"),
+                "mother_week_usage": int(mother.get("selection_week_usage") or 0),
+                "mother_usage_weight": float(mother.get("selection_usage_weight") or 1.0),
                 "mother_title": mother.get("title"),
                 "mother_content": mother.get("content"),
                 "title": copy.get("title"),
@@ -2140,6 +2316,8 @@ class ProductionRun:
                 )},
                 "selected_prompt_id": plan.get("selected_prompt_id"),
                 "selected_prompt_structure_id": plan.get("selected_prompt_structure_id"),
+                "selected_prompt_week_usage": int(plan.get("selected_prompt_week_usage") or 0),
+                "selected_prompt_usage_weight": float(plan.get("selected_prompt_usage_weight") or 1.0),
                 "selected_prompt_original": plan.get("selected_prompt_original"),
                 "selected_prompt_source_section": plan.get("selected_prompt_source_section"),
                 "selected_prompt_full_original": plan.get("selected_prompt_full_original"),

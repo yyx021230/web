@@ -15,7 +15,7 @@ export interface AIGenerationTask {
   width: number;
   height: number;
   style?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'queued' | 'processing' | 'postprocessing' | 'completed' | 'failed' | 'cancelled';
   resultUrls?: string[];
   error?: string;
   createdAt: string;

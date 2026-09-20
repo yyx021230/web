@@ -53,9 +53,17 @@ cp .env.example .env
 # 运行数据库迁移
 alembic upgrade head
 
-# 启动服务
+# 终端 1：启动 API 服务
 uvicorn app.main:app --reload --port 8000
+
+# 终端 2：启动生图队列 Worker（异步生图必需）
+python -m app.scripts.ai_worker
+
+# 终端 3：启动去水印 Worker（异步后处理必需）
+python -m app.scripts.ai_postprocess_worker
 ```
+
+只启动 FastAPI 时，提交接口仍会正常返回任务 ID，但任务会一直停留在“排队中”；本地调试生图必须同时保持上述三个后端进程运行。
 
 #### 前端
 ```bash

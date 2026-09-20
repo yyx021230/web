@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from redis.exceptions import RedisError, TimeoutError as RedisTimeoutError
 
@@ -79,6 +81,20 @@ class _FakeRedis:
         self.lists.setdefault(destination, []).insert(0, value)
         return value
 
+    async def blmove(self, source, destination, timeout, src="LEFT", dest="RIGHT"):
+        if self.reserve_error:
+            raise self.reserve_error
+        values = self.lists.setdefault(source, [])
+        if not values:
+            return None
+        value = values.pop(0 if src == "LEFT" else -1)
+        destination_values = self.lists.setdefault(destination, [])
+        if dest == "RIGHT":
+            destination_values.append(value)
+        else:
+            destination_values.insert(0, value)
+        return value
+
     async def lrem(self, key, count, value):
         values = self.lists.setdefault(key, [])
         original = len(values)
@@ -122,6 +138,26 @@ def queue(monkeypatch):
     return instance, fake
 
 
+def test_queue_creates_async_redis_client_inside_running_loop(monkeypatch):
+    created_in_loops = []
+
+    def fake_from_url(*_args, **_kwargs):
+        created_in_loops.append(asyncio.get_running_loop())
+        return _FakeRedis()
+
+    monkeypatch.setattr("app.services.ai_task_queue.Redis.from_url", fake_from_url)
+    service = AIImageTaskQueue(
+        redis_url="redis://test",
+        pending_key="pending",
+        processing_key="processing",
+        membership_key="tracked",
+    )
+
+    assert created_in_loops == []
+    assert asyncio.run(service.enqueue_task(10)) is True
+    assert len(created_in_loops) == 1
+
+
 @pytest.mark.asyncio
 async def test_queue_enqueue_reserve_ack_and_status(queue):
     service, redis = queue
@@ -133,18 +169,33 @@ async def test_queue_enqueue_reserve_ack_and_status(queue):
     status = await service.get_status()
     assert status == {
         "pending": 3,
+        "pending_interactive": 3,
+        "pending_batch": 0,
         "processing": False,
         "processing_count": 0,
         "tracked": 3,
         "redis_available": True,
     }
     reserved = await service.reserve_task(timeout=0)
-    assert reserved == 12
+    assert reserved == 10
     assert (await service.get_status())["processing"] is True
-    await service.ack_task(12)
-    assert "12" not in redis.sets["tracked"]
+    await service.ack_task(10)
+    assert "10" not in redis.sets["tracked"]
     await service.close()
     assert redis.closed is True
+
+
+@pytest.mark.asyncio
+async def test_queue_keeps_interactive_and_batch_lanes_separate(queue):
+    service, _redis = queue
+    assert await service.enqueue_task(20, lane="interactive") is True
+    assert await service.enqueue_task(21, lane="batch") is True
+    status = await service.get_status()
+    assert status["pending_interactive"] == 1
+    assert status["pending_batch"] == 1
+    assert await service.reserve_task(lane="interactive") == 20
+    await service.ack_task(20)
+    assert await service.reserve_task(lane="batch") == 21
 
 
 @pytest.mark.asyncio
@@ -156,8 +207,8 @@ async def test_queue_requeue_remove_drain_and_discard(queue):
     assert await service.remove_pending_task(2) is True
     assert await service.remove_pending_task(99) is False
 
-    assert await service.reserve_task() == 3
-    assert await service.requeue_reserved_task(3) is True
+    assert await service.reserve_task() == 1
+    assert await service.requeue_reserved_task(1) is True
     assert await service.requeue_reserved_task(99) is False
     assert await service.reserve_task() == 3
     drained = await service.drain_processing_tasks()

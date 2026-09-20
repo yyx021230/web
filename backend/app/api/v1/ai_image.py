@@ -1,8 +1,11 @@
 """AI 生图 API"""
 
-import asyncio
+from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import asyncio
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -24,7 +27,32 @@ from app.core.roles import has_role
 router = APIRouter()
 
 
-@router.post("/generate", response_model=ApiResponse[ImageTaskResponse])
+def _history_timestamp(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return normalized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _history_params(value: object) -> dict:
+    params = value if isinstance(value, dict) else {}
+    allowed = (
+        "width",
+        "height",
+        "style",
+        "quality",
+        "count",
+        "generation_mode",
+        "_input_reference_count",
+    )
+    return {key: params[key] for key in allowed if params.get(key) is not None}
+
+
+@router.post(
+    "/generate",
+    response_model=ApiResponse[ImageTaskResponse],
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def generate_image(
     req: GenerateImageRequest,
     db: AsyncSession = Depends(get_db),
@@ -51,6 +79,11 @@ async def generate_image(
             client_request_id=req.client_request_id,
             params=params,
             user_id=current_user.id,
+            queue_lane=(
+                req.queue_lane
+                if req.queue_lane == "interactive" or has_role(current_user, "admin")
+                else "interactive"
+            ),
         )
         return ApiResponse(data=ImageTaskResponse(**result))
     except ValueError as e:
@@ -191,12 +224,13 @@ async def get_history(
                 "client_request_id": t.client_request_id,
                 "model_name": t.model_name,
                 "prompt": t.prompt,
+                "params": _history_params(t.params),
                 "status": t.status,
-                "result_urls": t.result_urls,
+                "result_urls": t.result_urls or [],
                 "error": t.error,
                 "elapsed_seconds": t.elapsed_seconds,
-                "created_at": str(t.created_at),
-                "finished_at": str(t.finished_at) if t.finished_at else None,
+                "created_at": _history_timestamp(t.created_at),
+                "finished_at": _history_timestamp(t.finished_at),
             }
             for t in items
         ],
@@ -204,6 +238,31 @@ async def get_history(
         "page": page,
         "limit": limit,
     })
+
+
+@router.delete("/history/{task_id}")
+async def hide_history_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """从当前用户的生图历史中隐藏单条记录，保留后台审计任务。"""
+    service = AIImageService(db=db)
+    hidden = await service.hide_history_task(current_user.id, task_id)
+    if not hidden:
+        raise HTTPException(status_code=404, detail="历史记录不存在")
+    return ApiResponse(data={"hidden": True, "task_id": task_id})
+
+
+@router.delete("/history")
+async def clear_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """清空当前用户已结束的生图历史，进行中任务继续保留。"""
+    service = AIImageService(db=db)
+    hidden_count = await service.clear_history(current_user.id)
+    return ApiResponse(data={"hidden_count": hidden_count})
 
 
 @router.get("/models", response_model=ApiResponse[list[ModelInfo]])

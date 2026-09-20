@@ -20,8 +20,23 @@ class AIImageWorker:
     def __init__(self):
         self._stop_event = asyncio.Event()
         self._active_tasks: set[asyncio.Task] = set()
+        legacy_concurrency = max(
+            1,
+            int(getattr(settings, "ai_task_worker_concurrency", 15) or 15),
+        )
+        self._interactive_concurrency = max(
+            1,
+            int(
+                getattr(settings, "ai_task_interactive_concurrency", legacy_concurrency)
+                or legacy_concurrency
+            ),
+        )
+        self._batch_concurrency = max(
+            1,
+            int(getattr(settings, "ai_task_batch_concurrency", 1) or 1),
+        )
         self._semaphore = asyncio.Semaphore(
-            max(1, int(getattr(settings, "ai_task_worker_concurrency", 15) or 15))
+            self._interactive_concurrency + self._batch_concurrency
         )
         self._poll_timeout = max(
             1,
@@ -29,7 +44,7 @@ class AIImageWorker:
         )
         self._min_interval = max(
             0.0,
-            float(getattr(settings, "ai_task_worker_min_interval_seconds", 10.0) or 0.0),
+            float(getattr(settings, "ai_task_worker_min_interval_seconds", 1.0) or 0.0),
         )
         self._last_started_at = 0.0
         self._rate_lock = asyncio.Lock()
@@ -91,7 +106,7 @@ class AIImageWorker:
         except Exception:
             logger.exception("AI worker task exited unexpectedly")
 
-    async def _process_reserved_task(self, task_id: int) -> None:
+    async def _process_reserved_task(self, task_id: int, lane: str = "interactive") -> None:
         await self._wait_rate_limit()
         try:
             async with async_session() as session:
@@ -100,7 +115,25 @@ class AIImageWorker:
             logger.info("AI task %s finished with status=%s", task_id, status)
         except Exception:
             logger.exception("AI worker failed while processing task %s; requeueing", task_id)
-            await ai_image_task_queue.requeue_reserved_task(task_id)
+            await ai_image_task_queue.requeue_reserved_task(task_id, lane=lane)
+
+    async def _lane_consumer(self, lane: str, worker_number: int) -> None:
+        while not self._stop_event.is_set():
+            try:
+                task_id = await ai_image_task_queue.reserve_task(
+                    timeout=self._poll_timeout,
+                    lane=lane,
+                )
+            except Exception:
+                logger.exception("AI worker lane=%s worker=%d failed to reserve task", lane, worker_number)
+                await asyncio.sleep(2.0)
+                continue
+            if task_id is None:
+                continue
+            if self._stop_event.is_set():
+                await ai_image_task_queue.requeue_reserved_task(task_id, lane=lane)
+                break
+            await self._process_reserved_task(task_id, lane=lane)
 
     async def _reconciliation_loop(self) -> None:
         logger.info(
@@ -140,36 +173,27 @@ class AIImageWorker:
             else None
         )
         logger.info(
-            "AI worker started: concurrency=%d poll_timeout=%ds min_interval=%.1fs",
-            max(1, int(getattr(settings, "ai_task_worker_concurrency", 15) or 15)),
+            "AI worker started: interactive=%d batch=%d total=%d poll_timeout=%ds min_interval=%.1fs",
+            self._interactive_concurrency,
+            self._batch_concurrency,
+            self._interactive_concurrency + self._batch_concurrency,
             self._poll_timeout,
             self._min_interval,
         )
 
+        consumers = [
+            asyncio.create_task(self._lane_consumer("interactive", index + 1))
+            for index in range(self._interactive_concurrency)
+        ] + [
+            asyncio.create_task(self._lane_consumer("batch", index + 1))
+            for index in range(self._batch_concurrency)
+        ]
+
         try:
-            while not self._stop_event.is_set():
-                await self._semaphore.acquire()
-                if self._stop_event.is_set():
-                    self._semaphore.release()
-                    break
-
-                try:
-                    task_id = await ai_image_task_queue.reserve_task(timeout=self._poll_timeout)
-                except Exception:
-                    self._semaphore.release()
-                    logger.exception("AI worker failed to reserve task from Redis")
-                    await asyncio.sleep(2.0)
-                    continue
-
-                if task_id is None:
-                    self._semaphore.release()
-                    continue
-
-                task = asyncio.create_task(self._process_reserved_task(task_id))
-                self._active_tasks.add(task)
-                task.add_done_callback(self._on_task_done)
+            await self._stop_event.wait()
         finally:
             self._stop_event.set()
+            await asyncio.gather(*consumers, return_exceptions=True)
             if reconciliation_task is not None:
                 await reconciliation_task
 

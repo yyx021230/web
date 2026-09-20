@@ -33,8 +33,8 @@ install_recovery = (
 entrypoint = (ROOT / "deploy-to-windows.sh").read_text(encoding="utf-8")
 
 require(
-    compose.count("${APP_IMAGE_TAG:?") == 3,
-    "backend, ai-worker and frontend must require APP_IMAGE_TAG",
+    compose.count("${APP_IMAGE_TAG:?") == 4,
+    "backend, both AI workers and frontend must require APP_IMAGE_TAG",
 )
 require(
     "${APP_VERSION:?" in compose and "${GIT_COMMIT:?" in compose,

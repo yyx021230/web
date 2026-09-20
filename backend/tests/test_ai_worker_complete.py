@@ -79,7 +79,7 @@ async def test_worker_rate_limit_recovery_and_processing_paths(monkeypatch):
 
     fake_service.execute_submitted_task.side_effect = RuntimeError("provider down")
     await worker._process_reserved_task(11)
-    module.ai_image_task_queue.requeue_reserved_task.assert_awaited_once_with(11)
+    module.ai_image_task_queue.requeue_reserved_task.assert_awaited_once_with(11, lane="interactive")
 
 
 @pytest.mark.asyncio
@@ -126,12 +126,17 @@ async def test_reconciliation_loop_logs_results_and_recovers_from_error(monkeypa
 @pytest.mark.asyncio
 async def test_worker_run_handles_empty_queue_reserve_error_and_drains(monkeypatch):
     worker = AIImageWorker()
+    worker._interactive_concurrency = 1
+    worker._batch_concurrency = 1
     worker._recover_tasks = AsyncMock()
     worker._process_reserved_task = AsyncMock()
     calls = 0
 
-    async def reserve_with_task(timeout):
+    async def reserve_with_task(timeout, lane):
         nonlocal calls
+        if lane == "batch":
+            await asyncio.sleep(0)
+            return None
         calls += 1
         if calls == 1:
             return 42
@@ -141,12 +146,14 @@ async def test_worker_run_handles_empty_queue_reserve_error_and_drains(monkeypat
     monkeypatch.setattr(module.ai_image_task_queue, "reserve_task", reserve_with_task)
     await worker.run()
     worker._recover_tasks.assert_awaited_once()
-    worker._process_reserved_task.assert_awaited_once_with(42)
+    worker._process_reserved_task.assert_awaited_once_with(42, lane="interactive")
 
     empty_worker = AIImageWorker()
+    empty_worker._interactive_concurrency = 1
+    empty_worker._batch_concurrency = 1
     empty_worker._recover_tasks = AsyncMock()
 
-    async def reserve_empty(timeout):
+    async def reserve_empty(timeout, lane):
         empty_worker.request_stop()
         return None
 
@@ -154,9 +161,11 @@ async def test_worker_run_handles_empty_queue_reserve_error_and_drains(monkeypat
     await empty_worker.run()
 
     error_worker = AIImageWorker()
+    error_worker._interactive_concurrency = 1
+    error_worker._batch_concurrency = 1
     error_worker._recover_tasks = AsyncMock()
 
-    async def reserve_error(timeout):
+    async def reserve_error(timeout, lane):
         raise RuntimeError("redis down")
 
     async def stop_after_error(seconds):

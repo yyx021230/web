@@ -23,8 +23,8 @@ services:
       XHS_WORKER_INTERNAL_TOKEN: ${XHS_WORKER_INTERNAL_TOKEN:?existing Web worker token is required}
       HERMES_OCR_BACKEND: rapidocr
       HERMES_OCR_THREADS: "1"
-      HERMES_MAX_TEXT_WORKERS: "1"
-      HERMES_MAX_IMAGE_WORKERS: "1"
+      HERMES_MAX_TEXT_WORKERS: "3"
+      HERMES_MAX_IMAGE_WORKERS: "3"
     volumes:
       - hermes-config:/app/web/ops/xhs_hermes/config
       - hermes-state:/app/web/ops/xhs_hermes/state

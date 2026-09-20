@@ -54,6 +54,10 @@ const csp = [
 
 const nextConfig = {
   output: 'standalone',
+  // Keep release builds on the single-process path verified locally.
+  experimental: {
+    webpackBuildWorker: false,
+  },
   images: {
     remotePatterns: [],
     minimumCacheTTL: 31_536_000,

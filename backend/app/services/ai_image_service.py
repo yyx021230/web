@@ -24,12 +24,14 @@ from app.config import settings
 from app.services.request_queue import image_generation_queue
 from app.services.ai_image_provider_service import AIImageProviderService
 from app.services.ai_image_shadow import mirror_ai_image_shadow_safely
-from app.services.ai_task_queue import ai_image_task_queue
+from app.services.ai_task_queue import ai_image_postprocess_queue, ai_image_task_queue
 from app.services.ai_task_payload import compact_terminal_task_params
 
 logger = logging.getLogger("app")
 
 MAX_USER_ACTIVE_IMAGE_TASKS = 6
+MAX_BATCH_ACTIVE_IMAGE_TASKS = 200
+ACTIVE_IMAGE_TASK_STATUSES = ("queued", "processing", "postprocessing")
 _DIMENSION_PROMPT_MARKER = "画幅约束："
 _WATERMARK_SEMAPHORES = weakref.WeakKeyDictionary()
 
@@ -186,6 +188,10 @@ class AIImageService:
         }
 
     @staticmethod
+    def _queue_lane_from_params(params: dict | None) -> str:
+        return ai_image_task_queue.normalize_lane((params or {}).get("_queue_lane"))
+
+    @staticmethod
     def _parse_naive_datetime(value: str | None) -> datetime | None:
         if not value:
             return None
@@ -286,7 +292,7 @@ class AIImageService:
             # Refresh before finalizing so this session cannot overwrite that evidence
             # with an older identity-map copy of params.
             await session.refresh(task)
-        if not task or task.status not in ("queued", "processing"):
+        if not task or task.status not in ACTIVE_IMAGE_TASK_STATUSES:
             return False
 
         task.status = status
@@ -447,7 +453,7 @@ class AIImageService:
             raise ValueError("recover_incomplete_tasks 需要数据库会话")
 
         drained_processing_ids = await ai_image_task_queue.drain_processing_tasks()
-        requeue_processing_ids: list[int] = []
+        requeue_processing_ids: dict[str, list[int]] = {"interactive": [], "batch": []}
         reset_processing_ids: list[int] = []
         review_processing_ids: list[int] = []
         discarded_processing_ids: list[int] = []
@@ -476,11 +482,11 @@ class AIImageService:
                         task.error = None
                         task.elapsed_seconds = None
                         task.finished_at = None
-                        requeue_processing_ids.append(task_id)
+                        requeue_processing_ids[self._queue_lane_from_params(task.params)].append(task_id)
                         reset_processing_ids.append(task_id)
                         reset_processing += 1
                 elif task.status == "queued":
-                    requeue_processing_ids.append(task_id)
+                    requeue_processing_ids[self._queue_lane_from_params(task.params)].append(task_id)
                 else:
                     discarded_processing_ids.append(task_id)
 
@@ -501,21 +507,32 @@ class AIImageService:
                         result_unknown=True,
                     )
 
-        if requeue_processing_ids:
-            await ai_image_task_queue.requeue_drained_tasks(requeue_processing_ids)
+        for lane, task_ids in requeue_processing_ids.items():
+            if task_ids:
+                if lane == "batch":
+                    await ai_image_task_queue.requeue_drained_tasks(task_ids, lane=lane)
+                else:
+                    await ai_image_task_queue.requeue_drained_tasks(task_ids)
         if discarded_processing_ids:
             await ai_image_task_queue.discard_tasks(discarded_processing_ids)
 
-        queued_result = await self.db.execute(
-            select(AITask.id).where(AITask.status == "queued")
-        )
-        queued_ids = [int(task_id) for task_id in queued_result.scalars().all()]
-        enqueued_missing = await ai_image_task_queue.enqueue_missing_tasks(queued_ids)
+        queued_result = await self.db.execute(select(AITask).where(AITask.status == "queued"))
+        queued_by_lane: dict[str, list[int]] = {"interactive": [], "batch": []}
+        for task in queued_result.scalars().all():
+            queued_by_lane[self._queue_lane_from_params(task.params)].append(int(task.id))
+        enqueued_missing = 0
+        for lane, task_ids in queued_by_lane.items():
+            if not task_ids:
+                continue
+            if lane == "batch":
+                enqueued_missing += await ai_image_task_queue.enqueue_missing_tasks(task_ids, lane=lane)
+            else:
+                enqueued_missing += await ai_image_task_queue.enqueue_missing_tasks(task_ids)
 
         return {
             "reset_processing": reset_processing,
             "waiting_review": len(review_processing_ids),
-            "requeued_processing": len(requeue_processing_ids),
+            "requeued_processing": sum(len(task_ids) for task_ids in requeue_processing_ids.values()),
             "enqueued_missing": enqueued_missing,
             "discarded_processing": len(discarded_processing_ids),
         }
@@ -648,7 +665,7 @@ class AIImageService:
 
         raise WatermarkRemovalError(f"去水印接口处理失败: {last_error or '未知错误'}")
 
-    async def _run_generation_pipeline(
+    async def _run_generation_stage(
         self,
         prompt: str,
         params: dict,
@@ -685,7 +702,22 @@ class AIImageService:
                 "stored_count": len(stored_urls),
             },
         )
-        # AI 水印移除 (visible + invisible + metadata)
+        return result, raw_urls, stored_urls
+
+    async def _run_generation_pipeline(
+        self,
+        prompt: str,
+        params: dict,
+        user_id: int | None = None,
+        task_id: int | None = None,
+    ) -> tuple[dict, list[str], list[str]]:
+        result, raw_urls, stored_urls = await self._run_generation_stage(
+            prompt=prompt,
+            params=params,
+            user_id=user_id,
+            task_id=task_id,
+        )
+        # Legacy synchronous callers still run the complete pipeline inline.
         if stored_urls and result.get("status") == "completed":
             stored_urls = await self._remove_watermarks(stored_urls)
             await mirror_ai_image_shadow_safely(
@@ -902,12 +934,14 @@ class AIImageService:
         params: dict,
         user_id: int | None = None,
         client_request_id: str | None = None,
+        queue_lane: str = "interactive",
     ) -> dict:
         """提交生图任务：立即返回 task_id，后台异步执行"""
         if not self.db:
             raise ValueError("submit 模式需要数据库会话")
 
         normalized_user_id = user_id or 0
+        normalized_queue_lane = ai_image_task_queue.normalize_lane(queue_lane)
         normalized_client_request_id = self._normalize_client_request_id(client_request_id)
         await self._lock_user_active_tasks(normalized_user_id)
         if normalized_client_request_id:
@@ -921,17 +955,24 @@ class AIImageService:
             if existing_task is not None:
                 return self._task_response(existing_task)
 
-        active_count_result = await self.db.execute(
-            select(func.count())
-            .select_from(AITask)
-            .where(
+        active_tasks_result = await self.db.execute(
+            select(AITask.params).where(
                 AITask.user_id == normalized_user_id,
-                AITask.status.in_(("queued", "processing")),
+                AITask.status.in_(ACTIVE_IMAGE_TASK_STATUSES),
             )
         )
-        active_count = int(active_count_result.scalar() or 0)
-        if active_count >= MAX_USER_ACTIVE_IMAGE_TASKS:
-            raise ValueError(f"最多同时提交 {MAX_USER_ACTIVE_IMAGE_TASKS} 个生图任务，请等待当前任务完成后再试")
+        active_count = sum(
+            1
+            for active_params in active_tasks_result.scalars().all()
+            if self._queue_lane_from_params(active_params) == normalized_queue_lane
+        )
+        active_limit = (
+            MAX_BATCH_ACTIVE_IMAGE_TASKS
+            if normalized_queue_lane == "batch"
+            else MAX_USER_ACTIVE_IMAGE_TASKS
+        )
+        if active_count >= active_limit:
+            raise ValueError(f"最多同时提交 {active_limit} 个生图任务，请等待当前任务完成后再试")
 
         ai_task = AITask(
             user_id=normalized_user_id,
@@ -939,7 +980,10 @@ class AIImageService:
             model_name=self.adapter.name,
             prompt=prompt,
             negative_prompt=params.get("negative_prompt"),
-            params={k: v for k, v in params.items() if k != "negative_prompt"},
+            params={
+                **{k: v for k, v in params.items() if k != "negative_prompt"},
+                "_queue_lane": normalized_queue_lane,
+            },
             status="queued",
         )
         self.db.add(ai_task)
@@ -947,7 +991,10 @@ class AIImageService:
         await self.db.refresh(ai_task)
         await mirror_ai_image_shadow_safely(ai_task.id, phase="queued")
         try:
-            await ai_image_task_queue.enqueue_task(ai_task.id)
+            if normalized_queue_lane == "batch":
+                await ai_image_task_queue.enqueue_task(ai_task.id, lane=normalized_queue_lane)
+            else:
+                await ai_image_task_queue.enqueue_task(ai_task.id)
         except Exception as exc:
             ai_task.status = "failed"
             ai_task.error = f"任务入队失败: {exc}"
@@ -971,18 +1018,22 @@ class AIImageService:
         }
 
     async def get_active_tasks(self, user_id: int) -> dict:
-        """Return the current user's active queued/processing image tasks."""
+        """Return the current user's active image tasks across all pipeline stages."""
         if not self.db:
             raise ValueError("get_active_tasks 需要数据库会话")
         result = await self.db.execute(
             select(AITask)
             .where(
                 AITask.user_id == int(user_id),
-                AITask.status.in_(("queued", "processing")),
+                AITask.status.in_(ACTIVE_IMAGE_TASK_STATUSES),
             )
             .order_by(AITask.created_at.asc(), AITask.id.asc())
         )
-        tasks = list(result.scalars().all())
+        tasks = [
+            task
+            for task in result.scalars().all()
+            if self._queue_lane_from_params(task.params) == "interactive"
+        ]
         return {
             "active_count": len(tasks),
             "max_active": MAX_USER_ACTIVE_IMAGE_TASKS,
@@ -1000,6 +1051,154 @@ class AIImageService:
                 for task in tasks
             ],
         }
+
+    async def _stage_task_for_postprocessing(
+        self,
+        task_id: int,
+        *,
+        source_urls: list[str],
+        generation_elapsed_seconds: float,
+        provider: dict | None,
+        upstream_debug: dict | None,
+    ) -> bool:
+        """Persist the generation result before handing it to the watermark worker."""
+        if not self.db:
+            raise ValueError("后处理入队需要数据库会话")
+        result = await self.db.execute(select(AITask).where(AITask.id == int(task_id)))
+        task = result.scalar_one_or_none()
+        if task is not None:
+            await self.db.refresh(task)
+        if not task or task.status not in ("queued", "processing"):
+            return False
+
+        task.status = "postprocessing"
+        task.error = None
+        task.result_urls = []
+        task.finished_at = None
+        task.elapsed_seconds = None
+        task.params = {
+            **compact_terminal_task_params(task.params),
+            "_postprocess_source_urls": list(source_urls),
+            "_generation_elapsed_seconds": float(generation_elapsed_seconds),
+            "_generation_provider": provider,
+            "_generation_upstream_debug": upstream_debug,
+        }
+        await self.db.commit()
+        await mirror_ai_image_shadow_safely(
+            task.id,
+            phase="postprocess_queued",
+            details={"image_count": len(source_urls)},
+        )
+        try:
+            await ai_image_postprocess_queue.enqueue_task(task.id)
+        except Exception:
+            # The DB state is the source of truth. The postprocess worker's
+            # periodic recovery will enqueue it after Redis becomes available.
+            logger.exception("去水印任务入队失败，将由恢复扫描续跑: task_id=%s", task.id)
+        return True
+
+    async def recover_postprocessing_tasks(self) -> dict[str, int]:
+        """Recover watermark work without ever regenerating an already-created image."""
+        if not self.db:
+            raise ValueError("recover_postprocessing_tasks 需要数据库会话")
+
+        drained_ids = await ai_image_postprocess_queue.drain_processing_tasks()
+        requeue_ids: list[int] = []
+        discard_ids: list[int] = []
+        if drained_ids:
+            result = await self.db.execute(select(AITask).where(AITask.id.in_(drained_ids)))
+            task_map = {int(task.id): task for task in result.scalars().all()}
+            for task_id in drained_ids:
+                task = task_map.get(task_id)
+                if task is not None and task.status == "postprocessing":
+                    requeue_ids.append(task_id)
+                else:
+                    discard_ids.append(task_id)
+        if requeue_ids:
+            await ai_image_postprocess_queue.requeue_drained_tasks(requeue_ids)
+        if discard_ids:
+            await ai_image_postprocess_queue.discard_tasks(discard_ids)
+
+        result = await self.db.execute(select(AITask.id).where(AITask.status == "postprocessing"))
+        active_ids = [int(task_id) for task_id in result.scalars().all()]
+        enqueued_missing = await ai_image_postprocess_queue.enqueue_missing_tasks(active_ids)
+        return {
+            "requeued_processing": len(requeue_ids),
+            "discarded_processing": len(discard_ids),
+            "enqueued_missing": enqueued_missing,
+        }
+
+    async def enqueue_missing_postprocessing_tasks(self) -> int:
+        """Repair DB-to-Redis handoff gaps without disturbing in-flight work."""
+        if not self.db:
+            raise ValueError("enqueue_missing_postprocessing_tasks 需要数据库会话")
+        result = await self.db.execute(select(AITask.id).where(AITask.status == "postprocessing"))
+        return await ai_image_postprocess_queue.enqueue_missing_tasks(
+            [int(task_id) for task_id in result.scalars().all()]
+        )
+
+    async def execute_postprocessing_task(self, task_id: int) -> str:
+        """Run watermark cleanup for a previously generated and persisted image."""
+        if not self.db:
+            raise ValueError("execute_postprocessing_task 需要数据库会话")
+        result = await self.db.execute(select(AITask).where(AITask.id == int(task_id)))
+        task = result.scalar_one_or_none()
+        if not task:
+            return "missing"
+        if task.status != "postprocessing":
+            return task.status or "skipped"
+
+        params = dict(task.params or {})
+        source_urls = [str(url) for url in params.get("_postprocess_source_urls") or [] if url]
+        if not source_urls:
+            await self._finish_task_if_active(
+                self.db,
+                task.id,
+                status="failed",
+                error="图片已生成，但后处理中间文件记录缺失",
+            )
+            return "failed"
+
+        params["_postprocessing_started_at"] = self._now_naive_utc().isoformat()
+        task.params = params
+        await self.db.commit()
+        started_at = time.time()
+        generation_elapsed = float(params.get("_generation_elapsed_seconds") or 0.0)
+        try:
+            service = AIImageService(model_name=task.model_name, db=self.db)
+            cleaned_urls = await asyncio.wait_for(
+                service._remove_watermarks(source_urls),
+                timeout=service._task_timeout_seconds(),
+            )
+            await mirror_ai_image_shadow_safely(
+                task.id,
+                phase="watermark_finished",
+                details={"image_count": len(cleaned_urls)},
+            )
+            await self._finish_task_if_active(
+                self.db,
+                task.id,
+                status="completed",
+                result_urls=cleaned_urls,
+                elapsed_seconds=generation_elapsed + (time.time() - started_at),
+                provider=params.get("_generation_provider"),
+                upstream_debug=params.get("_generation_upstream_debug"),
+            )
+            return "completed"
+        except asyncio.TimeoutError:
+            error = "图片已生成，但去水印处理超时，请稍后重试"
+        except Exception as exc:
+            error = str(exc)
+        await self._finish_task_if_active(
+            self.db,
+            task.id,
+            status="failed",
+            error=error,
+            elapsed_seconds=generation_elapsed + (time.time() - started_at),
+            provider=params.get("_generation_provider"),
+            upstream_debug=params.get("_generation_upstream_debug"),
+        )
+        return "failed"
 
     async def execute_submitted_task(self, task_id: int) -> str:
         """由独立 worker 消费并执行已提交的任务。"""
@@ -1028,8 +1227,8 @@ class AIImageService:
                 raise ValueError(f"Model '{task.model_name}' not registered")
             task_params = task.params or {}
             service = AIImageService(model_name=task.model_name, db=self.db)
-            gen_result, raw_urls, stored_urls = await asyncio.wait_for(
-                service._run_generation_pipeline(
+            gen_result, _raw_urls, stored_urls = await asyncio.wait_for(
+                service._run_generation_stage(
                     prompt=task.prompt,
                     params=task_params,
                     user_id=task.user_id,
@@ -1038,9 +1237,20 @@ class AIImageService:
                 timeout=service._task_timeout_seconds(),
             )
             elapsed = time.time() - start_time
-            final_status = (
-                "completed" if gen_result.get("status") == "completed" else "failed"
-            )
+            final_status = "completed" if gen_result.get("status") == "completed" else "failed"
+            if (
+                final_status == "completed"
+                and stored_urls
+                and bool(getattr(settings, "remove_ai_watermarks_enabled", True))
+            ):
+                staged = await self._stage_task_for_postprocessing(
+                    task.id,
+                    source_urls=stored_urls,
+                    generation_elapsed_seconds=elapsed,
+                    provider=gen_result.get("provider"),
+                    upstream_debug=gen_result.get("upstream_debug"),
+                )
+                return "postprocessing" if staged else "skipped"
             await self._finish_task_if_active(
                 self.db,
                 task.id,
@@ -1137,6 +1347,10 @@ class AIImageService:
                         await ai_image_task_queue.remove_pending_task(int(task_id))
                     except Exception as exc:
                         logger.warning("移除已取消的待处理生图任务失败: task_id=%s error=%s", task_id, exc)
+                    try:
+                        await ai_image_postprocess_queue.remove_pending_task(int(task_id))
+                    except Exception as exc:
+                        logger.warning("移除已取消的去水印任务失败: task_id=%s error=%s", task_id, exc)
             return
 
         await self.adapter.cancel_task(task_id)
@@ -1155,12 +1369,53 @@ class AIImageService:
 
     async def get_history(self, user_id: int, page: int = 1, limit: int = 20) -> tuple[list[AITask], int]:
         """获取用户生图历史"""
-        query = select(AITask).where(AITask.user_id == user_id)
+        query = select(AITask).where(
+            AITask.user_id == user_id,
+            AITask.history_hidden_at.is_(None),
+        )
         count_stmt = select(func.count()).select_from(query.subquery())
         total_result = await self.db.execute(count_stmt)
         total = total_result.scalar() or 0
 
-        items_stmt = query.order_by(AITask.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        items_stmt = query.order_by(AITask.created_at.desc(), AITask.id.desc()).offset((page - 1) * limit).limit(limit)
         items_result = await self.db.execute(items_stmt)
         items = list(items_result.scalars().all())
         return items, total
+
+    async def hide_history_task(self, user_id: int, task_id: int) -> bool:
+        """Hide one task from the owner's creation history without deleting audit data."""
+        if not self.db:
+            raise ValueError("hide_history_task 需要数据库会话")
+        result = await self.db.execute(
+            select(AITask).where(
+                AITask.id == int(task_id),
+                AITask.user_id == int(user_id),
+            )
+        )
+        task = result.scalar_one_or_none()
+        if task is None:
+            return False
+        if task.history_hidden_at is None:
+            task.history_hidden_at = self._now_naive_utc()
+            await self.db.commit()
+        return True
+
+    async def clear_history(self, user_id: int) -> int:
+        """Hide terminal tasks while leaving active generations visible and running."""
+        if not self.db:
+            raise ValueError("clear_history 需要数据库会话")
+        result = await self.db.execute(
+            select(AITask).where(
+                AITask.user_id == int(user_id),
+                AITask.history_hidden_at.is_(None),
+                AITask.status.in_(("completed", "failed", "cancelled")),
+            )
+        )
+        tasks = list(result.scalars().all())
+        if not tasks:
+            return 0
+        hidden_at = self._now_naive_utc()
+        for task in tasks:
+            task.history_hidden_at = hidden_at
+        await self.db.commit()
+        return len(tasks)

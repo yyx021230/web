@@ -152,9 +152,78 @@ def test_image_instructions_change_fidelity_without_relaxing_hard_guards():
     assert '完整复刻蓝图' in replica
     assert '全新版式原型' in interpretive
     assert 'visual_changes必须列出5至7项' in interpretive
-    assert '顶部居中大标题＋中部完整车辆＋底部横向信息条' in interpretive
     assert 'layout_archetype必须逐字返回' in interpretive
+    assert '母图功能类型硬锁定' in interpretive
+    assert '不得跨成其他功能类型' in interpretive
     for prompt in (replica, interpretive):
         assert '车辆外形、车标、灯组、轮毂和比例严格跟随' in prompt
         assert '不得出现明确禁用词' in prompt
         assert '不画二维码、联系方式' in prompt
+
+
+def test_interpretive_quote_table_keeps_table_type_while_redesigning_style():
+    template = {
+        'id': 901,
+        'chinese': (
+            '多配置报价表格，共同表头为配置和国补后价格，四行车型版本使用横线和纵线组成单元格，'
+            '右下角放条件备注。'
+        ),
+        'template_type': 'multi_config_quote',
+        'source_slot_count': 10,
+    }
+    rows = [
+        {'configuration': '405舒享版', 'national_scrappage_after_price': '56232'},
+        {'configuration': '510悦享版', 'national_scrappage_after_price': '66792'},
+    ]
+    prompt = runner.image_plan_instruction(
+        {'title': '零跑A05报价参考', 'content': '不同配置按政策条件测算。'},
+        template,
+        {
+            'brand': '零跑汽车', 'vehicle_model': '零跑A05',
+            'allow_multi_config_quote': True, 'quote_rows': rows,
+        },
+        '斜前方', '', adaptation_level='interpretive',
+        required_layout_archetype='spatial_installation',
+    )
+    assert '母图功能类型硬锁定为【表格对照（table）】' in prompt
+    assert 'layout_type必须逐字返回“table”' in prompt
+    assert '表格仍使用共同表头、行列和配置—价格对应关系' in prompt
+    assert '不得在表格、卡片、纯大字价格海报之间互相转换' in prompt
+    # spatial_installation is incompatible with tables and must be replaced.
+    assert 'layout_archetype必须逐字返回“spatial_installation”' not in prompt
+
+
+def test_interpretive_layout_type_contract_rejects_cross_type_drift():
+    template = {
+        'chinese': '共同表头和四行配置报价表格，横线纵线构成规整单元格。',
+    }
+    contract = runner.source_layout_contract(template)
+    assert contract['id'] == 'table'
+    good = {
+        'layout_type': 'table',
+        'adapted_prompt': contract['marker'] + ' 使用非对称编辑排版重做表头、行距、材质与车辆裁切。',
+    }
+    assert runner.image_layout_type_contract_errors(good, template, 'interpretive') == []
+
+    wrong_field = {**good, 'layout_type': 'cards'}
+    errors = runner.image_layout_type_contract_errors(wrong_field, template, 'interpretive')
+    assert '灵感改编必须保持母图功能类型：table' in errors
+
+    drifted = {
+        'layout_type': 'table',
+        'adapted_prompt': '四张独立权益卡片并排排列，每张卡片内部写一项价格。',
+    }
+    errors = runner.image_layout_type_contract_errors(drifted, template, 'interpretive')
+    assert any('第一句必须声明并锁定母图功能类型' in error for error in errors)
+    assert any('实际识别为cards' in error for error in errors)
+
+
+def test_interpretive_layout_type_contract_accepts_single_poster_emphasis_shift():
+    template = {'chinese': '汽车占据停车场画面中央，完整车图为主，顶部保留标题。'}
+    contract = runner.source_layout_contract(template)
+    assert contract['id'] == 'hero'
+    plan = {
+        'layout_type': 'hero',
+        'adapted_prompt': contract['marker'] + ' 使用醒目的巨型标题与完整单车主视觉，保留汽车主体和留白。',
+    }
+    assert runner.image_layout_type_contract_errors(plan, template, 'interpretive') == []

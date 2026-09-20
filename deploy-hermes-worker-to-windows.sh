@@ -30,16 +30,17 @@ fi
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15)
 SCP=(scp -o BatchMode=yes -o ConnectTimeout=15)
 if [[ -n "$WIN_PASS" ]]; then
-  SSH=(sshpass -p "$WIN_PASS" ssh -o ConnectTimeout=15)
-  SCP=(sshpass -p "$WIN_PASS" scp -o ConnectTimeout=15)
+  SSH=(sshpass -p "$WIN_PASS" ssh -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
+  SCP=(sshpass -p "$WIN_PASS" scp -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
 fi
 TARGET="${WIN_USER}@${WIN_IP}"
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/hermes-worker-release.XXXXXX")"
 trap 'rm -rf "$STAGE" "$ARCHIVE"' EXIT
 
 git archive --format=tar HEAD \
-  ops/xhs_hermes/run_daily_8x5.py \
-  ops/xhs_hermes/web_worker.py \
+  ops/xhs_hermes \
+  backend/app backend/pyproject.toml backend/alembic.ini \
+  scripts/windows/Dockerfile.hermes-api-release \
   scripts/windows/Dockerfile.hermes-worker-release \
   | tar -xf - -C "$STAGE"
 (

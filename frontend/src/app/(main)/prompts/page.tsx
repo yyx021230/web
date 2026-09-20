@@ -34,12 +34,13 @@ const emptyForm: PromptForm = {
   param_type: '通用',
 };
 
-type SourceFilter = 'all' | 'external' | 'internal';
+type SourceFilter = 'all' | 'external' | 'internal' | 'performance';
 
 const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
   { value: 'all', label: '全部' },
-  { value: 'external', label: '外部' },
-  { value: 'internal', label: '内部' },
+  { value: 'external', label: '外部素材' },
+  { value: 'internal', label: '内部素材' },
+  { value: 'performance', label: '优质帖子' },
 ];
 
 
@@ -579,6 +580,7 @@ export default function PromptsPage() {
                 aria-pressed={tab.value === activeSource}
                 onClick={() => {
                   if (tab.value === activeSource) return;
+                  if (tab.value === 'performance' && !requireLogin('/prompts', '登录后查看优质帖子封面')) return;
                   discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
                   setActiveSource(tab.value);
                 }}
@@ -639,10 +641,10 @@ export default function PromptsPage() {
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.Content className={styles.menu} align="end" sideOffset={6}>
-                      <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleCopy(prompt.chinese, `cn-${prompt.id}`)}><Copy size={15} />复制提示词</DropdownMenu.Item>
+                      <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleCopy(prompt.chinese, `cn-${prompt.id}`)}><Copy size={15} />{prompt.source_kind === 'performance' ? '复制帖子文案' : '复制提示词'}</DropdownMenu.Item>
                       {prompt.english && <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleCopy(prompt.english, `en-${prompt.id}`)}><Copy size={15} />复制英文提示词</DropdownMenu.Item>}
                       {prompt.can_edit && <DropdownMenu.Item className={styles.menuItem} onSelect={() => openEdit(prompt)}><Pencil size={15} />编辑</DropdownMenu.Item>}
-                      {prompt.can_delete ? <DropdownMenu.Item className={cn(styles.menuItem, styles.danger)} onSelect={() => handleDelete(prompt.id)}><Trash2 size={15} />删除</DropdownMenu.Item>
+                      {prompt.source_kind === 'performance' ? null : prompt.can_delete ? <DropdownMenu.Item className={cn(styles.menuItem, styles.danger)} onSelect={() => handleDelete(prompt.id)}><Trash2 size={15} />删除</DropdownMenu.Item>
                         : <DropdownMenu.Item className={styles.menuItem} onSelect={() => handleReport(prompt)}><Flag size={15} />举报</DropdownMenu.Item>}
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
@@ -653,9 +655,9 @@ export default function PromptsPage() {
                     <b>{prompt.source_author || prompt.source_name || prompt.created_by_name || '灵感收录'}</b>
                   </button>
                   <div className={styles.cardActions}>
-                    <Link className={styles.useCreative} href={getCreativeHref(prompt)}
-                      onClick={event => protectLink(event, getCreativeHref(prompt), '登录后将这个提示词带入 AI 生图')}>
-                      <Shuffle size={14} />使用创意
+                    <Link className={styles.useCreative} href={getCreativeHref(prompt, true)}
+                      onClick={event => protectLink(event, getCreativeHref(prompt, true), '登录后将这个提示词和参考图带入 AI 生图')}>
+                      <Shuffle size={14} />{prompt.source_kind === 'performance' ? '参考这篇' : '使用创意'}
                     </Link>
                     <button
                       className={styles.favoriteButton}
@@ -836,13 +838,15 @@ export default function PromptsPage() {
                       <Heart />{favoriteIds.has(previewPrompt.id) ? '已收藏' : '收藏'}
                     </button>
                     <button onClick={() => handleCopy(previewPrompt.chinese, `preview-cn-${previewPrompt.id}`)}>
-                      {copiedId === `preview-cn-${previewPrompt.id}` ? <><Check />已复制</> : <><Copy />复制提示词</>}
+                      {copiedId === `preview-cn-${previewPrompt.id}`
+                        ? <><Check />已复制</>
+                        : <><Copy />{previewPrompt.source_kind === 'performance' ? '复制文案' : '复制提示词'}</>}
                     </button>
                   </div>
                 </div>
 
                 <div className={styles.detailBody}>
-                  <div className={styles.detailSectionLabel}>提示词</div>
+                  <div className={styles.detailSectionLabel}>{previewPrompt.source_kind === 'performance' ? '帖子文案' : '提示词'}</div>
                   <div className={cn(styles.promptText, promptExpanded && styles.promptTextExpanded)}>
                     {previewPrompt.chinese}
                   </div>
@@ -869,15 +873,15 @@ export default function PromptsPage() {
                     </div>
                   )}
 
-                  {previewPrompt.source_kind === 'external' && (
+                  {(previewPrompt.source_kind === 'external' || previewPrompt.source_kind === 'performance') && (
                     <div className={styles.sourceAttribution}>
                       <div>
-                        <span>外部灵感</span>
-                        <b>{previewPrompt.source_name || '开放素材库'}</b>
+                        <span>{previewPrompt.source_kind === 'performance' ? '优质帖子' : '外部素材'}</span>
+                        <b>{previewPrompt.source_name || (previewPrompt.source_kind === 'performance' ? '小红书账号' : '开放素材库')}</b>
                         {previewPrompt.source_license && <small>{previewPrompt.source_license}</small>}
                       </div>
                       {previewPrompt.source_url && (
-                        <a href={previewPrompt.source_url} target="_blank" rel="noreferrer">查看原始内容</a>
+                        <a href={previewPrompt.source_url} target="_blank" rel="noreferrer">{previewPrompt.source_kind === 'performance' ? '查看原帖' : '查看原始内容'}</a>
                       )}
                     </div>
                   )}
@@ -897,9 +901,9 @@ export default function PromptsPage() {
                 </div>
 
                 <div className={styles.detailFooter}>
-                  <Link className={styles.detailUseCreative} href={getCreativeHref(previewPrompt)}
-                    onClick={event => protectLink(event, getCreativeHref(previewPrompt), '登录后将这个提示词带入 AI 生图')}>
-                    <Shuffle />使用创意
+                  <Link className={styles.detailUseCreative} href={getCreativeHref(previewPrompt, true)}
+                    onClick={event => protectLink(event, getCreativeHref(previewPrompt, true), '登录后将这个提示词和参考图带入 AI 生图')}>
+                    <Shuffle />{previewPrompt.source_kind === 'performance' ? '带入文案' : '使用创意'}
                   </Link>
                   <Link className={styles.detailReference} href={getCreativeHref(previewPrompt, true)}
                     onClick={event => protectLink(event, getCreativeHref(previewPrompt, true), '登录后用这张图片继续创作')}>

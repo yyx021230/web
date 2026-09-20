@@ -337,6 +337,7 @@ async def test_release_error_does_not_block_coordinator_shutdown(client, monkeyp
 
 
 def test_scheduler_loop_specs_and_setting_normalization(monkeypatch):
+    monkeypatch.setattr(settings, "hermes_scheduler_enabled", True)
     monkeypatch.setattr(settings, "xhs_enable_sync_task_loop", True)
     monkeypatch.setattr(settings, "xhs_enable_scheduled_publish_loop", True)
     monkeypatch.setattr(settings, "xhs_enable_profile_stat_sync_loop", True)
@@ -347,6 +348,10 @@ def test_scheduler_loop_specs_and_setting_normalization(monkeypatch):
         "legacy-post-sync",
         "scheduled-publish",
         "profile-stat-sync",
+    ]
+    monkeypatch.setattr(settings, "hermes_scheduler_enabled", False)
+    assert [spec.name for spec in build_scheduler_loop_specs(async_session)] == [
+        name for name in names if name != "hermes-content-production"
     ]
 
     monkeypatch.setattr(settings, "scheduler_leader_lease_seconds", 5)

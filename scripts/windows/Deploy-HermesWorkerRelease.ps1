@@ -16,6 +16,8 @@ $receiptPath = Join-Path $release 'release-receipt.json'
 $utf8 = New-Object Text.UTF8Encoding($false)
 $stamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
 $workerTag = "ztqc/hermes-worker:$Version-$Commit"
+$apiTag = "ztqc/hermes-api:$Version-$Commit"
+$releaseLock = [IO.File]::Open((Join-Path $ProjectRoot '.release\deploy.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
 
 function ReplaceWorkerSetting([string]$Block, [string]$Old, [string]$New, [string]$Name) {
     if ($Block.Contains($New)) { return $Block }
@@ -63,9 +65,11 @@ if ($LASTEXITCODE -ne 0 -or [int]($enabled.Trim()) -ne 0) { throw 'Hermes schedu
 
 $currentWorker = Container 'web-hermes-worker-1'
 $previousImage = $currentWorker.configuredImage
+$currentApi = Container 'web-hermes-api-1'
+$previousApiImage = $currentApi.configuredImage
 $untouchedNames = @(
-    'web-frontend-1', 'web-hermes-frontend-1', 'web-hermes-api-1',
-    'web-backend-1', 'web-ai-worker-1', 'web-postgres-1', 'web-redis-1', 'web-minio-1'
+    'web-frontend-1', 'web-hermes-frontend-1',
+    'web-backend-1', 'web-ai-worker-1', 'web-ai-postprocess-worker-1', 'web-postgres-1', 'web-redis-1', 'web-minio-1'
 )
 $untouched = @($untouchedNames | ForEach-Object { Container $_ })
 $backup = Join-Path $release ('private\service-before-' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
@@ -85,10 +89,27 @@ Exec {
         --build-arg BUILD_TIME=$stamp `
         -t $workerTag .
 } 'Hermes Worker image build failed'
+Exec {
+    docker build --pull=false -f scripts/windows/Dockerfile.hermes-api-release `
+        --build-arg BASE_IMAGE=$previousApiImage `
+        --build-arg APP_VERSION=$Version `
+        --build-arg GIT_COMMIT=$Commit `
+        --build-arg BUILD_TIME=$stamp `
+        -t $apiTag .
+} 'Hermes API image build failed'
 
 $raw = [IO.File]::ReadAllText($live)
 if (-not $raw.Contains($previousImage)) { throw "Live override does not contain current worker image: $previousImage" }
 $raw = $raw.Replace($previousImage, $workerTag)
+if (-not $raw.Contains($previousApiImage)) { throw 'Live override does not contain current Hermes API image' }
+$raw = $raw.Replace($previousApiImage, $apiTag)
+$apiMatch = [regex]::Match($raw, '(?ms)^  hermes-api:\r?\n.*?(?=^  hermes-worker:)')
+if (-not $apiMatch.Success) { throw 'Cannot isolate Hermes API block' }
+$apiBlock = $apiMatch.Value
+$apiBlock = [regex]::Replace($apiBlock, '(?m)^      APP_VERSION:.*$', "      APP_VERSION: `"$Version`"")
+$apiBlock = [regex]::Replace($apiBlock, '(?m)^      GIT_COMMIT:.*$', "      GIT_COMMIT: `"$Commit`"")
+$apiBlock = [regex]::Replace($apiBlock, '(?m)^      BUILD_TIME:.*$', "      BUILD_TIME: `"$stamp`"")
+$raw = $raw.Substring(0, $apiMatch.Index) + $apiBlock + $raw.Substring($apiMatch.Index + $apiMatch.Length)
 $workerMatch = [regex]::Match($raw, '(?ms)^  hermes-worker:\r?\n.*?(?=^volumes:\r?$)')
 if (-not $workerMatch.Success) { throw 'Cannot isolate Hermes Worker Compose block' }
 $workerBlock = $workerMatch.Value
@@ -103,8 +124,8 @@ if (-not $workerBlock.Contains('HERMES_RUN_CONCURRENCY:')) {
 }
 $workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_RUN_CONCURRENCY: "1"' '      HERMES_RUN_CONCURRENCY: "10"' 'run concurrency'
 $workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_OCR_THREADS: "2"' '      HERMES_OCR_THREADS: "1"' 'OCR threads'
-$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_TEXT_WORKERS: "2"' '      HERMES_MAX_TEXT_WORKERS: "1"' 'text workers per run'
-$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_IMAGE_WORKERS: "5"' '      HERMES_MAX_IMAGE_WORKERS: "1"' 'image workers per run'
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_TEXT_WORKERS: "1"' '      HERMES_MAX_TEXT_WORKERS: "3"' 'text workers per run'
+$workerBlock = ReplaceWorkerSetting $workerBlock '      HERMES_MAX_IMAGE_WORKERS: "1"' '      HERMES_MAX_IMAGE_WORKERS: "3"' 'image workers per run'
 $workerBlock = ReplaceWorkerSetting $workerBlock '    mem_limit: 1536m' '    mem_limit: 6g' 'memory limit'
 $workerBlock = ReplaceWorkerSetting $workerBlock '    cpus: 2.0' '    cpus: 8.0' 'CPU limit'
 $workerBlock = ReplaceWorkerSetting $workerBlock '    pids_limit: 256' '    pids_limit: 1024' 'PID limit'
@@ -116,6 +137,8 @@ Exec {
 } 'Candidate Hermes compose validation failed'
 
 try {
+    $active = docker exec web-postgres-1 psql -U postgres -d ai_creative -At -c "SELECT count(*) FROM hermes_workflow_runs WHERE status IN ('queued','claimed','running','generating');"
+    if ($LASTEXITCODE -ne 0 -or [int]($active.Trim()) -ne 0) { throw 'Hermes received new work during build; cutover stopped' }
     $temporaryPools = @(docker ps -a --filter 'name=web-hermes-pool-' --format '{{.Names}}')
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect temporary Hermes worker pool' }
     foreach ($temporaryPool in $temporaryPools) {
@@ -124,14 +147,16 @@ try {
     Exec { docker stop --timeout 2700 web-hermes-worker-1 } 'Hermes Worker drain failed'
     Copy-Item $candidate $live -Force
     Set-Location $ProjectRoot
+    Exec { docker compose --profile hermes up -d --no-deps --no-build hermes-api } 'Hermes API cutover failed'
+    $api = WaitHealthy 'web-hermes-api-1' $apiTag
     Exec { docker compose --profile hermes up -d --no-deps --no-build hermes-worker } 'Hermes Worker cutover failed'
     $worker = WaitHealthy 'web-hermes-worker-1' $workerTag
 
     $workerInspect = (docker inspect web-hermes-worker-1 | ConvertFrom-Json)[0]
     foreach ($expectedEnvironment in @(
         'HERMES_RUN_CONCURRENCY=10',
-        'HERMES_MAX_TEXT_WORKERS=1',
-        'HERMES_MAX_IMAGE_WORKERS=1',
+        'HERMES_MAX_TEXT_WORKERS=3',
+        'HERMES_MAX_IMAGE_WORKERS=3',
         'HERMES_OCR_THREADS=1'
     )) {
         if ($workerInspect.Config.Env -notcontains $expectedEnvironment) {
@@ -169,10 +194,10 @@ try {
         status = 'live-verified'
         deployedAt = [DateTime]::UtcNow.ToString('o')
         revision = $Commit
-        serviceVersions = @{ worker = $Version }
-        image = @{ worker = $worker.image; reference = $workerTag }
+        serviceVersions = @{ worker = $Version; api = $Version }
+        image = @{ worker = $worker.image; reference = $workerTag; api = $api.image; apiReference = $apiTag }
         sourceArchiveSha256 = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
-        scope = 'Hermes production reads the complete paginated internal prompt catalog only'
+        scope = 'Complete Hermes modules, creative gradients and independent batch image queue'
         internalPromptCount = [int]($internalCount.Trim())
         runConcurrency = 10
         workerSlotsVerified = $slotCount
@@ -183,6 +208,7 @@ try {
         rollback = @{
             composeBackup = (Join-Path $backup 'docker-compose.override.yml')
             previousWorker = $previousImage
+            previousApi = $previousApiImage
             databaseRestore = $false
         }
     }
@@ -204,6 +230,8 @@ try {
 } catch {
     Copy-Item (Join-Path $backup 'docker-compose.override.yml') $live -Force
     Set-Location $ProjectRoot
-    docker compose --profile hermes up -d --no-deps --no-build hermes-worker | Out-Host
+    docker compose --profile hermes up -d --no-deps --no-build hermes-api hermes-worker | Out-Host
     throw
+} finally {
+    $releaseLock.Dispose()
 }

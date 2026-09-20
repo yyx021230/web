@@ -68,11 +68,19 @@ class Settings(BaseSettings):
     ai_task_stale_after_minutes: int = 30
     ai_task_cleanup_interval_seconds: int = 60
     ai_task_queue_key: str = "ai:image:tasks:pending"
+    ai_task_batch_queue_key: str = "ai:image:tasks:pending:batch"
     ai_task_processing_key: str = "ai:image:tasks:processing"
     ai_task_membership_key: str = "ai:image:tasks:membership"
     ai_task_worker_concurrency: int = 15
+    ai_task_interactive_concurrency: int = 18
+    ai_task_batch_concurrency: int = 12
     ai_task_worker_poll_timeout_seconds: int = 5
-    ai_task_worker_min_interval_seconds: float = 10.0
+    ai_task_worker_min_interval_seconds: float = 1.0
+    ai_postprocess_queue_key: str = "ai:image:postprocess:pending"
+    ai_postprocess_processing_key: str = "ai:image:postprocess:processing"
+    ai_postprocess_membership_key: str = "ai:image:postprocess:membership"
+    ai_postprocess_worker_concurrency: int = 12
+    ai_provider_circuit_breaker_seconds: int = 300
     ai_image_shadow_enabled: bool = False
     ai_image_reconciliation_enabled: bool = False
     ai_image_reconciliation_interval_seconds: int = 60
@@ -85,7 +93,7 @@ class Settings(BaseSettings):
     )
     remove_ai_watermarks_timeout: int = 240
     remove_ai_watermarks_strict: bool = True
-    remove_ai_watermarks_max_concurrent: int = 4
+    remove_ai_watermarks_max_concurrent: int = 12
     remove_ai_watermarks_retries: int = 5
     remove_ai_watermarks_retry_delay_seconds: float = 5.0
 
@@ -136,6 +144,7 @@ class Settings(BaseSettings):
     xhs_report_refresh_shadow_enabled: bool = False
     dify_task_shadow_enabled: bool = False
     scheduler_leader_enabled: bool = True
+    hermes_scheduler_enabled: bool = True
     scheduler_leader_lease_seconds: int = 30
     scheduler_leader_heartbeat_seconds: int = 10
     xhs_enable_scheduled_publish_loop: bool = True

@@ -11,3 +11,7 @@ services:
   ai-worker:
     env_file:
       - ./backend/.env.internal
+
+  ai-postprocess-worker:
+    env_file:
+      - ./backend/.env.internal
