@@ -267,8 +267,7 @@ try {
     $currentBackendId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q backend)".Trim()
     $currentRedisId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q redis)".Trim()
     $currentMinioId = "$(docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath ps -q minio)".Trim()
-    $currentPostprocessWorkerId = [string](docker ps -q --filter "label=com.docker.compose.project=$ComposeProjectName" --filter "label=com.docker.compose.service=ai-postprocess-worker" | Select-Object -First 1)
-    $currentPostprocessWorkerId = $currentPostprocessWorkerId.Trim()
+    $currentPostprocessWorkerId = "$(docker ps -q --filter "label=com.docker.compose.project=$ComposeProjectName" --filter "label=com.docker.compose.service=ai-postprocess-worker" | Select-Object -First 1)".Trim()
     $hadPostprocessWorker = [bool]$currentPostprocessWorkerId
     if (-not $currentPostgresId -or -not $currentBackendId -or -not $currentRedisId -or -not $currentMinioId) {
         throw "Unable to resolve the existing production containers for Compose project '$ComposeProjectName'"
@@ -582,6 +581,8 @@ catch {
     $deploymentError = $_.Exception.Message
     $rollbackErrors = [System.Collections.Generic.List[string]]::new()
     Write-Warning "Deployment failed: $deploymentError"
+    Write-Warning $_.ScriptStackTrace
+    Write-Warning $_.InvocationInfo.PositionMessage
     if ($servicesStopped) {
         Write-Warning "Restoring previous source, images, and database state..."
         if (Test-Path $rootEnvBackupPath) {
