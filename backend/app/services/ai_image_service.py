@@ -18,14 +18,16 @@ from sqlalchemy import select, func, text
 from app.db.session import async_session
 from app.models.ai_task import AITask
 from app.adapters.ai_model.base import AIModelAdapter
+from app.adapters.ai_model.image_results import requested_image_count, validate_image_count
 from app.adapters.ai_model.registry import model_registry
 from app.adapters.storage import get_storage
 from app.config import settings
 from app.services.request_queue import image_generation_queue
-from app.services.ai_image_provider_service import AIImageProviderService
+from app.services.ai_image_provider_service import AIImageProviderService, _PROVIDER_TEST_TASK_MODEL
 from app.services.ai_image_shadow import mirror_ai_image_shadow_safely
 from app.services.ai_task_queue import ai_image_postprocess_queue, ai_image_task_queue
 from app.services.ai_task_payload import compact_terminal_task_params
+from app.services.ai_image_progress import definitely_not_dispatched, image_task_progress
 
 logger = logging.getLogger("app")
 
@@ -70,12 +72,12 @@ def _watermark_semaphore() -> asyncio.Semaphore:
     return existing[1]
 
 
-async def _complete_critical_write_before_cancellation(coro) -> None:
+async def _complete_critical_write_before_cancellation(coro):
     """Finish evidence persistence before propagating a worker timeout."""
 
     task = asyncio.create_task(coro)
     try:
-        await asyncio.shield(task)
+        return await asyncio.shield(task)
     except asyncio.CancelledError:
         await task
         raise
@@ -255,6 +257,7 @@ class AIImageService:
             "created_at": str(task.created_at) if task.created_at else None,
             "finished_at": str(task.finished_at) if task.finished_at else None,
             "elapsed_seconds": task.elapsed_seconds,
+            "progress": image_task_progress(task.status, task.params),
         }
 
     async def _lock_user_active_tasks(self, user_id: int) -> None:
@@ -285,7 +288,10 @@ class AIImageService:
         shadow_phase: str | None = None,
         result_unknown: bool = False,
     ) -> bool:
-        result = await session.execute(select(AITask).where(AITask.id == task_id))
+        result = await session.execute(
+            select(AITask).where(AITask.id == task_id)
+            .with_for_update().execution_options(populate_existing=True)
+        )
         task = result.scalar_one_or_none()
         if task is not None:
             # Provider callbacks persist accepted upstream IDs in a separate session.
@@ -295,13 +301,29 @@ class AIImageService:
         if not task or task.status not in ACTIVE_IMAGE_TASK_STATUSES:
             return False
 
+        checked = validate_image_count(
+            {"status": status, "image_urls": result_urls or [], "error": error},
+            requested_image_count(task.params),
+        )
+        status, error = checked["status"], checked.get("error")
+        if result_urls is not None:
+            result_urls = checked["image_urls"]
+        if status == "failed" and task.status == "postprocessing":
+            task.params = {**(task.params or {}),
+                           "_postprocess_failed": not bool((task.params or {}).get("_generation_error")),
+                           "_generated_source_urls": (task.params or {}).get("_postprocess_source_urls") or []}
         task.status = status
         if provider:
             task.params = {**(task.params or {}), "provider": provider}
         if upstream_debug:
             task.params = {**(task.params or {}), "upstream_debug": upstream_debug}
+        if result_unknown:
+            task.params = {**(task.params or {}), "_upstream_result_unknown": True}
         if result_urls is not None:
             task.result_urls = result_urls
+            task.params = {**(task.params or {}), "_image_result_counts": {
+                "requested": requested_image_count(task.params), "delivered": len(result_urls),
+            }}
         task.error = error
         task.elapsed_seconds = elapsed_seconds
         task.finished_at = self._now_naive_utc()
@@ -324,13 +346,20 @@ class AIImageService:
         task_id: int,
         provider: dict | None,
     ) -> bool:
-        if not provider:
-            return False
-        result = await session.execute(select(AITask).where(AITask.id == int(task_id)))
+        result = await session.execute(
+            select(AITask).where(AITask.id == int(task_id))
+            .with_for_update().execution_options(populate_existing=True)
+        )
         task = result.scalar_one_or_none()
         if not task or task.status not in ("queued", "processing"):
             return False
-        task.params = {**(task.params or {}), "provider": provider}
+        now = self._now_naive_utc().isoformat()
+        task.params = {
+            **(task.params or {}),
+            **({"provider": provider} if provider else {}),
+            "_routing": {"phase": "submitting", "since": now},
+            "_upstream_dispatch_started_at": now,
+        }
         await session.commit()
         await mirror_ai_image_shadow_safely(
             task_id,
@@ -338,6 +367,27 @@ class AIImageService:
             details={"provider": provider},
         )
         return True
+
+    async def _mark_task_waiting(self, task_id: int, details: dict, *, changed: bool) -> bool:
+        async with async_session() as session:
+            if not changed:
+                # Avoid loading or rewriting base64 references on each routing poll.
+                status = await session.scalar(select(AITask.status).where(AITask.id == task_id))
+                return status in ("queued", "processing")
+            task = (await session.execute(
+                select(AITask).where(AITask.id == task_id)
+                .with_for_update().execution_options(populate_existing=True)
+            )).scalar_one_or_none()
+            if not task or task.status not in ("queued", "processing"):
+                return False
+            previous = (task.params or {}).get("_routing") or {}
+            since = previous.get("since") if previous.get("phase") == "waiting_provider" else None
+            task.params = {**(task.params or {}), "_routing": {
+                "phase": "waiting_provider", "reason": details.get("reason"),
+                "since": since or self._now_naive_utc().isoformat(),
+            }}
+            await session.commit()
+            return True
 
     async def _mark_task_upstream_accepted(
         self,
@@ -410,14 +460,17 @@ class AIImageService:
             raise ValueError("cleanup_stale_tasks 需要数据库会话")
 
         cutoff = self._now_naive_utc() - timedelta(minutes=stale_after_minutes)
-        result = await self.db.execute(select(AITask).where(AITask.status == "processing"))
+        result = await self.db.execute(
+            select(AITask).where(AITask.status == "processing")
+            .with_for_update(skip_locked=True).execution_options(populate_existing=True)
+        )
         tasks = list(result.scalars().all())
         if not tasks:
             return 0
 
         now = self._now_naive_utc()
         recovered = 0
-        recovered_task_ids: list[int] = []
+        recovered_task_ids: list[tuple[int, bool]] = []
         for task in tasks:
             processing_started_at = self._parse_naive_datetime(
                 (task.params or {}).get("_processing_started_at")
@@ -426,6 +479,7 @@ class AIImageService:
             ) or task.created_at
             if processing_started_at is not None and processing_started_at >= cutoff:
                 continue
+            unknown = not definitely_not_dispatched(task.params)
             task.status = "failed"
             task.error = f"任务超时未完成，已自动失败（超过 {stale_after_minutes} 分钟未收尾）"
             task.elapsed_seconds = (
@@ -434,16 +488,18 @@ class AIImageService:
                 else None
             )
             task.finished_at = now
-            task.params = compact_terminal_task_params(task.params)
+            task.params = compact_terminal_task_params({
+                **(task.params or {}), "_upstream_result_unknown": unknown,
+            })
             recovered += 1
-            recovered_task_ids.append(int(task.id))
+            recovered_task_ids.append((int(task.id), unknown))
         await self.db.commit()
-        for task_id in recovered_task_ids:
+        for task_id, unknown in recovered_task_ids:
             await mirror_ai_image_shadow_safely(
                 task_id,
-                phase="result_unknown",
+                phase="result_unknown" if unknown else "failed",
                 details={"reason": "stale_processing_cleanup"},
-                result_unknown=True,
+                result_unknown=unknown,
             )
         return recovered
 
@@ -453,6 +509,14 @@ class AIImageService:
             raise ValueError("recover_incomplete_tasks 需要数据库会话")
 
         drained_processing_ids = await ai_image_task_queue.drain_processing_tasks()
+        # This startup recovery belongs to the single generation worker. Redis
+        # may have lost its processing list while durable tasks still exist.
+        orphan_ids = (await self.db.execute(
+            select(AITask.id).where(
+                AITask.status == "processing", AITask.model_name != _PROVIDER_TEST_TASK_MODEL,
+            )
+        )).scalars().all()
+        drained_processing_ids = list(dict.fromkeys([*drained_processing_ids, *orphan_ids]))
         requeue_processing_ids: dict[str, list[int]] = {"interactive": [], "batch": []}
         reset_processing_ids: list[int] = []
         review_processing_ids: list[int] = []
@@ -471,10 +535,13 @@ class AIImageService:
                     discarded_processing_ids.append(task_id)
                     continue
                 if task.status == "processing":
-                    if settings.ai_image_shadow_enabled:
+                    if not definitely_not_dispatched(task.params):
                         task.status = "failed"
                         task.error = "Worker 重启时上游结果未知，已停止自动重试并等待核验"
                         task.finished_at = self._now_naive_utc()
+                        task.params = compact_terminal_task_params({
+                            **(task.params or {}), "_upstream_result_unknown": True,
+                        })
                         review_processing_ids.append(task_id)
                         discarded_processing_ids.append(task_id)
                     else:
@@ -497,7 +564,7 @@ class AIImageService:
                         task_id,
                         phase="worker_recovered",
                         details={"reason": "worker_restart"},
-                        result_unknown=True,
+                        result_unknown=False,
                     )
                 for task_id in review_processing_ids:
                     await mirror_ai_image_shadow_safely(
@@ -516,7 +583,9 @@ class AIImageService:
         if discarded_processing_ids:
             await ai_image_task_queue.discard_tasks(discarded_processing_ids)
 
-        queued_result = await self.db.execute(select(AITask).where(AITask.status == "queued"))
+        queued_result = await self.db.execute(select(AITask).where(
+            AITask.status == "queued", AITask.model_name != _PROVIDER_TEST_TASK_MODEL,
+        ))
         queued_by_lane: dict[str, list[int]] = {"interactive": [], "batch": []}
         for task in queued_result.scalars().all():
             queued_by_lane[self._queue_lane_from_params(task.params)].append(int(task.id))
@@ -683,6 +752,7 @@ class AIImageService:
         result = self._normalize_failed_result(
             await self._generate_with_configured_provider(upstream_prompt, params, user_id, task_id)
         )
+        result = validate_image_count(result, requested_image_count(params))
         await mirror_ai_image_shadow_safely(
             task_id,
             phase="upstream_finished",
@@ -694,6 +764,10 @@ class AIImageService:
         )
         raw_urls = result.get("image_urls", [])
         stored_urls = await _store_images(raw_urls)
+        stored_result = validate_image_count(
+            {**result, "image_urls": stored_urls}, requested_image_count(params),
+        )
+        result = {**stored_result, "image_urls": raw_urls}
         await mirror_ai_image_shadow_safely(
             task_id,
             phase="result_stored",
@@ -718,8 +792,10 @@ class AIImageService:
             task_id=task_id,
         )
         # Legacy synchronous callers still run the complete pipeline inline.
-        if stored_urls and result.get("status") == "completed":
+        if stored_urls:
             stored_urls = await self._remove_watermarks(stored_urls)
+            checked = validate_image_count({**result, "image_urls": stored_urls}, requested_image_count(params))
+            result = {**checked, "image_urls": raw_urls}
             await mirror_ai_image_shadow_safely(
                 task_id,
                 phase="watermark_finished",
@@ -788,6 +864,7 @@ class AIImageService:
                             elapsed_seconds=elapsed,
                             provider=result.get("provider"),
                             upstream_debug=result.get("upstream_debug"),
+                            result_unknown=bool(result.get("result_unknown")),
                         )
 
                 # 返回持久化后的 URL
@@ -883,26 +960,24 @@ class AIImageService:
             provider_service = AIImageProviderService(self.db)
             provider_model_name = self.adapter.name
             providers = await provider_service.list_providers(provider_model_name)
+            await provider_service.release_routing_read_transaction()
             if providers:
-                async def mark_selected_provider(provider: dict) -> None:
+                async def mark_selected_provider(provider: dict) -> bool:
                     if not task_id:
-                        return
-                    try:
-                        async def persist() -> None:
-                            async with async_session() as session:
-                                await self._mark_task_provider(
-                                    session,
-                                    int(task_id),
-                                    provider,
-                                )
+                        return True
+                    async def persist() -> bool:
+                        async with async_session() as session:
+                            return await self._mark_task_provider(session, int(task_id), provider)
+                    return await _complete_critical_write_before_cancellation(persist())
 
-                        await _complete_critical_write_before_cancellation(persist())
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to mark selected image provider: task_id=%s error=%s",
-                            task_id,
-                            exc,
-                        )
+                last_wait_reason = None
+                async def mark_routing_wait(details: dict) -> bool:
+                    nonlocal last_wait_reason
+                    active = await self._mark_task_waiting(
+                        int(task_id), details, changed=last_wait_reason != details.get("reason"),
+                    )
+                    last_wait_reason = details.get("reason")
+                    return active
 
                 provider_result = await provider_service.generate(
                     prompt=prompt,
@@ -911,6 +986,7 @@ class AIImageService:
                     model_name=provider_model_name,
                     on_provider_selected=mark_selected_provider if task_id else None,
                     on_upstream_accepted=mark_upstream_accepted if task_id else None,
+                    on_routing_wait=mark_routing_wait if task_id else None,
                 )
                 if not self._should_fallback_to_adapter(provider_result):
                     return provider_result
@@ -925,6 +1001,9 @@ class AIImageService:
                 }
         adapter_params = dict(params)
         if task_id:
+            async with async_session() as session:
+                if not await self._mark_task_provider(session, int(task_id), None):
+                    return {"status": "cancelled", "image_urls": [], "error": "任务已取消"}
             adapter_params["_on_upstream_accepted"] = mark_upstream_accepted
         return await self.adapter.generate_image(prompt=prompt, **adapter_params)
 
@@ -1060,11 +1139,16 @@ class AIImageService:
         generation_elapsed_seconds: float,
         provider: dict | None,
         upstream_debug: dict | None,
+        generation_error: str | None = None,
+        result_unknown: bool = False,
     ) -> bool:
         """Persist the generation result before handing it to the watermark worker."""
         if not self.db:
             raise ValueError("后处理入队需要数据库会话")
-        result = await self.db.execute(select(AITask).where(AITask.id == int(task_id)))
+        result = await self.db.execute(
+            select(AITask).where(AITask.id == int(task_id))
+            .with_for_update().execution_options(populate_existing=True)
+        )
         task = result.scalar_one_or_none()
         if task is not None:
             await self.db.refresh(task)
@@ -1082,6 +1166,8 @@ class AIImageService:
             "_generation_elapsed_seconds": float(generation_elapsed_seconds),
             "_generation_provider": provider,
             "_generation_upstream_debug": upstream_debug,
+            "_generation_error": generation_error,
+            "_upstream_result_unknown": result_unknown,
         }
         await self.db.commit()
         await mirror_ai_image_shadow_safely(
@@ -1175,16 +1261,23 @@ class AIImageService:
                 phase="watermark_finished",
                 details={"image_count": len(cleaned_urls)},
             )
+            checked = validate_image_count(
+                {"status": "failed" if params.get("_generation_error") else "completed",
+                 "image_urls": cleaned_urls, "error": params.get("_generation_error")},
+                requested_image_count(params),
+            )
             await self._finish_task_if_active(
                 self.db,
                 task.id,
-                status="completed",
-                result_urls=cleaned_urls,
+                status=checked["status"],
+                error=checked.get("error"),
+                result_urls=checked["image_urls"],
                 elapsed_seconds=generation_elapsed + (time.time() - started_at),
                 provider=params.get("_generation_provider"),
                 upstream_debug=params.get("_generation_upstream_debug"),
+                result_unknown=bool(params.get("_upstream_result_unknown")),
             )
-            return "completed"
+            return checked["status"]
         except asyncio.TimeoutError:
             error = "图片已生成，但去水印处理超时，请稍后重试"
         except Exception as exc:
@@ -1205,7 +1298,10 @@ class AIImageService:
         if not self.db:
             raise ValueError("execute_submitted_task 需要数据库会话")
 
-        result = await self.db.execute(select(AITask).where(AITask.id == int(task_id)))
+        result = await self.db.execute(
+            select(AITask).where(AITask.id == int(task_id))
+            .with_for_update().execution_options(populate_existing=True)
+        )
         task = result.scalar_one_or_none()
         if not task:
             return "missing"
@@ -1216,6 +1312,9 @@ class AIImageService:
         task.error = None
         task.finished_at = None
         task.elapsed_seconds = None
+        task.params = {**(task.params or {}), "_routing": {
+            "phase": "preparing", "since": self._now_naive_utc().isoformat(),
+        }}
         self._mark_processing_started(task)
         await self.db.commit()
         await mirror_ai_image_shadow_safely(task.id, phase="worker_started")
@@ -1237,48 +1336,53 @@ class AIImageService:
                 timeout=service._task_timeout_seconds(),
             )
             elapsed = time.time() - start_time
-            final_status = "completed" if gen_result.get("status") == "completed" else "failed"
+            final_status = gen_result.get("status") if gen_result.get("status") in {"completed", "cancelled"} else "failed"
             if (
-                final_status == "completed"
+                final_status != "cancelled"
                 and stored_urls
                 and bool(getattr(settings, "remove_ai_watermarks_enabled", True))
             ):
                 staged = await self._stage_task_for_postprocessing(
-                    task.id,
+                    int(task_id),
                     source_urls=stored_urls,
                     generation_elapsed_seconds=elapsed,
                     provider=gen_result.get("provider"),
                     upstream_debug=gen_result.get("upstream_debug"),
+                    generation_error=gen_result.get("error") if final_status == "failed" else None,
+                    result_unknown=bool(gen_result.get("result_unknown")),
                 )
                 return "postprocessing" if staged else "skipped"
             await self._finish_task_if_active(
                 self.db,
-                task.id,
+                int(task_id),
                 status=final_status,
                 error=gen_result.get("error"),
                 result_urls=stored_urls,
                 elapsed_seconds=elapsed,
                 provider=gen_result.get("provider"),
                 upstream_debug=gen_result.get("upstream_debug"),
+                result_unknown=bool(gen_result.get("result_unknown")),
             )
             return final_status
         except asyncio.TimeoutError:
             elapsed = time.time() - start_time
+            await self.db.refresh(task)
+            unknown = not definitely_not_dispatched(task.params)
             await self._finish_task_if_active(
                 self.db,
-                task.id,
+                int(task_id),
                 status="failed",
-                error=self._task_timeout_error(),
+                error=self._task_timeout_error() if unknown else "任务等待超时，尚未发送到上游，可重新提交",
                 elapsed_seconds=elapsed,
-                shadow_phase="result_unknown",
-                result_unknown=True,
+                shadow_phase="result_unknown" if unknown else "failed",
+                result_unknown=unknown,
             )
             return "failed"
         except Exception as e:
             elapsed = time.time() - start_time
             await self._finish_task_if_active(
                 self.db,
-                task.id,
+                int(task_id),
                 status="failed",
                 error=str(e),
                 elapsed_seconds=elapsed,
@@ -1323,7 +1427,10 @@ class AIImageService:
     async def cancel(self, task_id: str, user_id: int | None = None) -> None:
         """取消任务"""
         if task_id.isdigit() and self.db:
-            result = await self.db.execute(select(AITask).where(AITask.id == int(task_id)))
+            result = await self.db.execute(
+                select(AITask).where(AITask.id == int(task_id))
+                .with_for_update().execution_options(populate_existing=True)
+            )
             task = result.scalar_one_or_none()
             if task:
                 if user_id is not None and task.user_id != user_id:

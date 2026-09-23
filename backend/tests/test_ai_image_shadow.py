@@ -482,7 +482,9 @@ async def test_legacy_execution_timeout_is_mirrored_as_unknown_result(
     monkeypatch,
 ):
     async def slow_pipeline(self, prompt, params, user_id=None, task_id=None):
-        await asyncio.sleep(0.05)
+        async with async_session() as session:
+            await self._mark_task_provider(session, task_id, {"id": 1})
+        await asyncio.sleep(0.2)
         return ({"status": "completed", "image_urls": []}, [], [])
 
     monkeypatch.setattr(settings, "ai_image_shadow_enabled", True)
@@ -490,7 +492,7 @@ async def test_legacy_execution_timeout_is_mirrored_as_unknown_result(
     monkeypatch.setattr(
         AIImageService,
         "_task_timeout_seconds",
-        staticmethod(lambda: 0.01),
+        staticmethod(lambda: 0.1),
     )
 
     async with async_session() as db:

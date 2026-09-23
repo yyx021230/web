@@ -1,6 +1,7 @@
 """社区提示词 API"""
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import os
@@ -8,7 +9,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
-from sqlalchemy import BigInteger, cast, select, func, or_
+from sqlalchemy import BigInteger, and_, cast, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_optional_current_user
@@ -22,6 +23,7 @@ from app.models.user import User
 from app.models.xhs_account_note import XHSAccountNote
 from app.schemas.common import ApiResponse
 from app.services.xhs_service import XHSService
+from app.services.prompt_image_metadata import add_prompt_image_dimensions
 
 router = APIRouter()
 
@@ -89,12 +91,16 @@ async def get_prompts(
     owner: bool = Query(False, description="仅查看自己上传的提示词"),
     source_kind: str | None = Query(None, pattern="^(internal|external|performance)$", description="内容来源：内部素材、外部素材或优质帖子"),
     random_seed: int | None = Query(None, ge=1, le=2_147_483_646, description="发现页稳定随机种子"),
+    after_id: int | None = Query(None, ge=1, le=2_147_483_647, description="发现页上一批的末尾 ID，避免删除导致翻页跳项"),
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取社区提示词列表"""
+    use_discovery_cursor = random_seed is not None and not keyword and not category and not owner and source_kind != "performance"
+    if after_id is not None and not use_discovery_cursor:
+        raise HTTPException(status_code=400, detail="续页游标仅支持带随机种子的发现页")
     if source_kind == "performance":
         if current_user is None:
             raise HTTPException(status_code=401, detail="登录后查看优质帖子封面")
@@ -206,6 +212,7 @@ async def get_prompts(
                     "interaction_count": interactions,
                 }
             )
+        await asyncio.to_thread(add_prompt_image_dimensions, items, settings.storage_path)
         return ApiResponse(data={"items": items, "total": total, "page": page, "limit": limit})
 
     conditions = [
@@ -252,7 +259,7 @@ async def get_prompts(
     total = total_result.scalar() or 0
 
     ordered_stmt = base_stmt
-    if random_seed is not None and not keyword and not category and not owner:
+    if use_discovery_cursor:
         # A seeded permutation keeps infinite-scroll pages stable without the
         # duplicates and omissions caused by ORDER BY random().
         modulus = 2_147_483_647
@@ -260,15 +267,24 @@ async def get_prompts(
         offset = (random_seed * 48_271) % modulus
         order_key = (cast(PromptExample.id, BigInteger) * multiplier + offset) % modulus
         ordered_stmt = ordered_stmt.order_by(order_key.asc(), PromptExample.id.asc())
+        if after_id is not None:
+            # Compute the anchor from the ID even if that record was just deleted.
+            anchor_key = (after_id * multiplier + offset) % modulus
+            ordered_stmt = ordered_stmt.where(or_(
+                order_key > anchor_key,
+                and_(order_key == anchor_key, PromptExample.id > after_id),
+            ))
     else:
         ordered_stmt = ordered_stmt.order_by(PromptExample.created_at.desc(), PromptExample.id.desc())
 
     result = await db.execute(
         ordered_stmt
-        .offset((page - 1) * limit)
-        .limit(limit)
+        .offset(0 if after_id is not None else (page - 1) * limit)
+        .limit(limit + 1)
     )
     rows = result.all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
 
     creator_ids = {example.created_by for example, _ in rows if example.created_by is not None}
     creator_map: dict[int, str] = {}
@@ -313,12 +329,17 @@ async def get_prompts(
             }
         )
 
+    if use_discovery_cursor:
+        # Workflow/template searches do not need cover geometry or filesystem IO.
+        await asyncio.to_thread(add_prompt_image_dimensions, items, settings.storage_path)
     return ApiResponse(
         data={
             "items": items,
             "total": total,
             "page": page,
             "limit": limit,
+            "has_more": has_more,
+            "next_cursor": rows[-1][0].id if use_discovery_cursor and has_more and rows else None,
         }
     )
 

@@ -748,6 +748,7 @@ type AccountDetailSyncStrategyDraft = {
 };
 
 type AccountPostSyncStrategyDraft = {
+  homepageSyncMode: 'supplement_only' | 'create_missing';
   activeRunnerId: number | null;
   runnerAssignments: Record<string, number[]>;
   selectedEnvIds: number[];
@@ -1977,12 +1978,13 @@ export default function XHSPublishManagePage() {
         scrape_environment_ids: normalizedRunnerIds.length > 1 ? normalizedRunnerIds.join(',') : undefined,
         sync_account_limit: assignedPublishEnvIds.length || undefined,
         runner_account_assignments: JSON.stringify(normalizedAssignments),
+        homepage_sync_mode: strategy.homepageSyncMode,
         concurrency: Math.min(normalizedRunnerIds.length, 5),
       });
       setAccountNotesSyncJob(job);
       setAccountSyncProgressPanel('account_notes');
       setAccountPostSyncStrategy(null);
-      toast.success(`账号帖子同步任务已开始：${normalizedRunnerIds.length} 个测试账号，${selectedEnvIds.length} 个发布账号已下发`);
+      toast.success(`${strategy.homepageSyncMode === 'create_missing' ? '主页新增并补充' : '主页信息补充'}任务已开始：${normalizedRunnerIds.length} 个测试账号，${selectedEnvIds.length} 个发布账号已下发`);
     } catch (err: any) {
       toast.error(`同步失败: ${err.message}`);
     } finally {
@@ -2087,6 +2089,7 @@ export default function XHSPublishManagePage() {
         ? [accountEnvId]
         : [];
     setAccountPostSyncStrategy({
+      homepageSyncMode: 'supplement_only',
       activeRunnerId: defaultActiveRunnerId,
       runnerAssignments: defaultAssignments,
       selectedEnvIds: defaultSelectedEnvIds,
@@ -4968,7 +4971,9 @@ export default function XHSPublishManagePage() {
                     const kindLabel = run.source === 'manual_import'
                       ? '创作者中心表格导入'
                       : run.sync_kind === 'posts'
-                        ? '主页帖子补充'
+                        ? run.request_config?.homepage_sync_mode === 'create_missing'
+                          ? '主页新增并补充'
+                          : '主页帖子补充'
                         : run.sync_kind === 'engagement'
                           ? '创作中心主同步'
                           : '帖子详情补充';
@@ -5063,6 +5068,15 @@ export default function XHSPublishManagePage() {
               <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">
                 Job ID · {activeAccountSyncPanelJob.job_id.slice(0, 8)}
               </span>
+              {accountSyncProgressPanel === 'account_notes' && (
+                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+                  activeAccountSyncPanelJob.homepage_sync_mode === 'create_missing'
+                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                    : 'border-indigo-200 bg-indigo-50 text-indigo-600'
+                }`}>
+                  {activeAccountSyncPanelJob.homepage_sync_mode === 'create_missing' ? '新增并补充' : '只补充信息'}
+                </span>
+              )}
               {activeAccountSyncPanelJob.progress?.runner_name && (
                 <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
                   当前账号 · {activeAccountSyncPanelJob.progress.runner_name}
@@ -5302,7 +5316,7 @@ export default function XHSPublishManagePage() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Sync Strategy</div>
                 <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-950">主页帖子同步策略</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  左边先点测试账号，右边再把发布账号明确分配给它。主页任务只补齐创作者中心主记录的帖子 ID、访问令牌、链接、封面和账号信息；主页存在但创作者中心尚未建档的帖子会暂缓，不会直接入库。
+                  先选择本轮的数据处理模式，再分配测试账号和发布账号。模式只影响本次任务，默认使用更稳妥的“只补充信息”。
                 </p>
               </div>
               <button
@@ -5312,6 +5326,39 @@ export default function XHSPublishManagePage() {
                 aria-label="关闭策略弹窗"
               >
                 ×
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAccountPostSyncStrategy((current) => current ? { ...current, homepageSyncMode: 'supplement_only' } : current)}
+                className={`rounded-[20px] border p-4 text-left transition-all ${
+                  accountPostSyncStrategy.homepageSyncMode === 'supplement_only'
+                    ? 'border-indigo-300 bg-indigo-50 shadow-[0_10px_28px_rgba(99,102,241,0.12)]'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-bold text-slate-950">只补充信息</span>
+                  <span className={`h-4 w-4 rounded-full border-4 ${accountPostSyncStrategy.homepageSyncMode === 'supplement_only' ? 'border-indigo-600 bg-white' : 'border-slate-200 bg-white'}`} />
+                </span>
+                <span className="mt-2 block text-xs leading-5 text-slate-500">创作者中心正常时使用。只给已有帖子补帖子 ID、链接、封面和账号信息，不新建记录。</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountPostSyncStrategy((current) => current ? { ...current, homepageSyncMode: 'create_missing' } : current)}
+                className={`rounded-[20px] border p-4 text-left transition-all ${
+                  accountPostSyncStrategy.homepageSyncMode === 'create_missing'
+                    ? 'border-amber-300 bg-amber-50 shadow-[0_10px_28px_rgba(245,158,11,0.12)]'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-bold text-slate-950">新增并补充</span>
+                  <span className={`h-4 w-4 rounded-full border-4 ${accountPostSyncStrategy.homepageSyncMode === 'create_missing' ? 'border-amber-500 bg-white' : 'border-slate-200 bg-white'}`} />
+                </span>
+                <span className="mt-2 block text-xs leading-5 text-slate-500">创作者中心异常时使用。主页新帖子先建档，恢复后再由创作者中心合并并补齐指标。</span>
               </button>
             </div>
 
@@ -5560,7 +5607,11 @@ export default function XHSPublishManagePage() {
                   disabled={accountNotesSyncing || accountPostSyncAssignedPublishCount === 0}
                   onClick={() => handleSyncAccountNotes(accountPostSyncStrategy)}
                 >
-                  {accountNotesSyncing ? '提交中...' : '按策略开始同步'}
+                  {accountNotesSyncing
+                    ? '提交中...'
+                    : accountPostSyncStrategy.homepageSyncMode === 'create_missing'
+                      ? '开始新增并补充'
+                      : '开始补充信息'}
                 </button>
               </div>
             </div>

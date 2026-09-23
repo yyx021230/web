@@ -67,6 +67,10 @@ def test_car_model_validation_filename_and_oss_helpers(monkeypatch):
     assert module._normalize_key(" A-B_C.jpg ") == "abcjpg"
     assert module._detect_angle("car-front.JPG") == "正前方"
     assert module._detect_angle("车型_斜后.png") == "斜后方"
+    assert module._detect_angle("车型_内饰全景.jpg") == "内饰全景"
+    assert module._detect_angle("车型_中控全景.jpg") == "中控台"
+    assert module._detect_angle("车型_前排座舱.jpg") == "前排空间"
+    assert module._detect_angle("车型_后排座椅.jpg") == "后排座椅"
     assert module._detect_angle("unknown.png") is None
     assert module._slugify("  C10 / 新款  ") == "C10-新款"
     assert module._slugify("///") == "car-model"

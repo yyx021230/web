@@ -786,6 +786,7 @@ def _new_job(
     sync_account_limit: int | None = None,
     runner_account_assignments: str | None = None,
     concurrency: int | None = None,
+    homepage_sync_mode: str | None = None,
     sync_mode: str | None = None,
     sync_limit: int | None = None,
     sync_limit_per_runner: int | None = None,
@@ -811,6 +812,7 @@ def _new_job(
         "sync_account_limit": sync_account_limit,
         "runner_account_assignments": runner_account_assignments,
         "concurrency": concurrency,
+        "homepage_sync_mode": homepage_sync_mode,
         "sync_mode": sync_mode,
         "sync_limit": sync_limit,
         "sync_limit_per_runner": sync_limit_per_runner,
@@ -920,6 +922,7 @@ async def _run_account_note_sync_job(
     runner_account_assignments: str | None = None,
     details: bool,
     concurrency: int | None = None,
+    homepage_sync_mode: str = "supplement_only",
     sync_mode: str = "all",
     sync_limit: int | None = None,
     sync_limit_per_runner: int | None = None,
@@ -1008,6 +1011,7 @@ async def _run_account_note_sync_job(
                     scrape_environment_ids=scrape_environment_ids,
                     sync_account_limit=sync_account_limit,
                     runner_account_assignments=runner_account_assignments,
+                    homepage_sync_mode=homepage_sync_mode,
                     concurrency=concurrency,
                     limit_per_env=60,
                     progress_callback=report_progress,
@@ -1960,6 +1964,7 @@ async def sync_account_notes(
     scrape_environment_ids: str | None = Query(default=None),
     sync_account_limit: int | None = Query(default=None, ge=1, le=1000),
     runner_account_assignments: str | None = Query(default=None),
+    homepage_sync_mode: str = Query(default="supplement_only", pattern="^(supplement_only|create_missing)$"),
     concurrency: int = Query(default=5, ge=1, le=5),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
@@ -1971,6 +1976,7 @@ async def sync_account_notes(
         scrape_environment_ids=scrape_environment_ids,
         sync_account_limit=sync_account_limit,
         runner_account_assignments=runner_account_assignments,
+        homepage_sync_mode=homepage_sync_mode,
         concurrency=concurrency,
     )
     history_run = await _create_sync_history_run(
@@ -1985,6 +1991,7 @@ async def sync_account_notes(
             "scrape_environment_ids": scrape_environment_ids,
             "sync_account_limit": sync_account_limit,
             "runner_account_assignments": runner_account_assignments,
+            "homepage_sync_mode": homepage_sync_mode,
             "concurrency": concurrency,
         },
         targets=await _resolve_sync_history_targets(
@@ -2005,6 +2012,7 @@ async def sync_account_notes(
             runner_account_assignments=runner_account_assignments,
             details=False,
             concurrency=concurrency,
+            homepage_sync_mode=homepage_sync_mode,
             history_run_id=history_run.id,
         )
     )
@@ -2415,6 +2423,7 @@ async def retry_failed_account_note_sync_history(
             scrape_environment_ids=config.get("scrape_environment_ids"),
             sync_account_limit=len(failed_environment_ids),
             runner_account_assignments=filtered_assignments,
+            homepage_sync_mode=config.get("homepage_sync_mode", "supplement_only"),
             concurrency=config.get("concurrency", 5),
         )
         retry_config = {
@@ -2423,6 +2432,7 @@ async def retry_failed_account_note_sync_history(
             "scrape_environment_ids": config.get("scrape_environment_ids"),
             "sync_account_limit": len(failed_environment_ids),
             "runner_account_assignments": filtered_assignments,
+            "homepage_sync_mode": config.get("homepage_sync_mode", "supplement_only"),
             "concurrency": config.get("concurrency", 5),
         }
         history_run = await _create_sync_history_run(
@@ -2451,6 +2461,7 @@ async def retry_failed_account_note_sync_history(
                 runner_account_assignments=filtered_assignments,
                 details=False,
                 concurrency=retry_config.get("concurrency"),
+                homepage_sync_mode=retry_config["homepage_sync_mode"],
                 history_run_id=history_run.id,
             )
         )
@@ -3142,6 +3153,7 @@ async def worker_sync_account_notes(
     scrape_environment_ids: str | None = Query(default=None),
     sync_account_limit: int | None = Query(default=None, ge=1, le=1000),
     runner_account_assignments: str | None = Query(default=None),
+    homepage_sync_mode: str = Query(default="supplement_only", pattern="^(supplement_only|create_missing)$"),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_xhs_worker_token),
 ):
@@ -3153,6 +3165,7 @@ async def worker_sync_account_notes(
         scrape_environment_ids=scrape_environment_ids,
         sync_account_limit=sync_account_limit,
         runner_account_assignments=runner_account_assignments,
+        homepage_sync_mode=homepage_sync_mode,
         limit_per_env=60,
     )
     return ApiResponse(data=result, message="账号帖子同步完成")

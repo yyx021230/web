@@ -54,7 +54,11 @@ def parse_variants(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             if segment['id'] not in current['segment_ids']:
                 current['segment_ids'].append(segment['id'])
-            fact = re.match(r'^-\s*([^:：]+)[:：]\s*(.+)$', line.strip())
+            # A numeric ratio in a field name (e.g. seats 4:6) is not the
+            # key/value delimiter. Keep the source excerpt untouched.
+            fact = re.match(r'^-\s*(.+?)(?:(?<!\d)[:：]|[:：](?!\d))\s*(.+)$', line.strip())
+            if not fact:
+                fact = re.match(r'^-\s*([^:：]+)[:：]\s*(.+)$', line.strip())
             if not fact:
                 continue
             key, value = fact.group(1).strip(), fact.group(2).strip()
@@ -115,15 +119,29 @@ def knowledge_for_case(case: dict[str, Any], mother: dict[str, Any] | None = Non
         return result
     result['status'] = 'matched'
     result['missing_policy_variants'] = sorted(set(policy_trims) - {r.get('policy_configuration', '') for r in rows})
-    # Do not add unrelated technical material when the mother has no such slots.
+    # Basic identity remains available even for price-only mothers. Topic
+    # retrieval must not make a known seat count/powertrain appear unsupported.
+    identity = re.compile(r'^(?:能源类型|级别|车身结构|座位数|座位数\(个\)|车门数|车门数\(个\))$')
     mother_text = str((mother or {}).get('title') or '') + '\n' + str((mother or {}).get('content') or '')
-    topics = ['空间|后排|尺寸|轴距|座椅|行李箱', '续航|电池|充电|快充', '功率|扭矩|动力|加速|电机', '底盘|悬架|轮胎|驱动|操控', '座舱|屏|车机|芯片|语音', '智驾|辅助|雷达|摄像头|泊车', '安全|气囊|制动', '外观|颜色|车身']
-    active = [p for p in topics if re.search(p, mother_text)]
-    relevant = lambda f: any(re.search(p, f['key']) for p in active)
+    topics = ['空间|后排|尺寸|轴距|座椅|行李箱', '续航|电池|充电|快充', '功率|扭矩|动力|加速|电机', '底盘|悬架|轮胎|驱动|操控', '座舱|屏|车机|芯片|语音', '智驾|辅助|雷达|摄像头|泊车|巡航|领航|ACC|LCC|LKA|AEB|APA|RPA|HPA', '安全|气囊|制动', '外观|颜色|车身']
+    active = [p for p in topics if re.search(p, mother_text, re.I)]
+    relevant = lambda f: bool(identity.search(f['key'])) or any(re.search(p, f['key'], re.I) for p in active)
     all_sets = [{(compact(f['key']), compact(f['value'])) for f in r['facts']} for r in rows]
     common = set.intersection(*all_sets)
     if not result['missing_policy_variants']:
-        result['common_facts'] = [f for f in rows[0]['facts'] if (compact(f['key']), compact(f['value'])) in common and relevant(f)][:16]
+        result['common_facts'] = [f for f in rows[0]['facts'] if (compact(f['key']), compact(f['value'])) in common and relevant(f)]
     for row in rows:
-        result['variants'].append({**row, 'facts': [f for f in row['facts'] if relevant(f)][:18]})
+        result['variants'].append({**row, 'facts': [f for f in row['facts'] if relevant(f)]})
     return result
+
+
+def editorial_knowledge(knowledge: dict[str, Any]) -> dict[str, Any]:
+    """Lossless factual view: keep every scoped excerpt, omit repeated transport metadata."""
+    return {
+        'status': knowledge.get('status'), 'vehicle_model': knowledge.get('vehicle_model'),
+        'missing_policy_variants': knowledge.get('missing_policy_variants', []),
+        'common_facts': [fact['source_excerpt'] for fact in knowledge.get('common_facts', [])],
+        'variants': [{**{key: row.get(key) for key in ('brand','model','variant','policy_configuration')},
+                      'facts':[fact['source_excerpt'] for fact in row.get('facts', [])]}
+                     for row in knowledge.get('variants', [])],
+    }

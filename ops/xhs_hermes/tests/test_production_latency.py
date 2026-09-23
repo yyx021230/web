@@ -285,10 +285,79 @@ def test_worker_only_replaces_confirmed_exhausted_image_plans():
         post('plan-failed', image_plan_ok=False),
         post('submitted', image_plan_ok=True, image_status='submitted'),
         post('image-failed', image_plan_ok=True, image_status='failed'),
+        post('unknown-upstream', image_plan_ok=True, image_status='review_required'),
     ]}
     assert web_worker.retryable_image_keys(delivery) == ['plan-ready', 'plan-failed', 'submitted', 'image-failed']
     assert web_worker.image_recovery_arguments(delivery) == ['--retry-image-keys', 'image-failed']
     assert web_worker.image_recovery_arguments({'posts': [post('legacy')]}) == []
+
+
+@pytest.mark.parametrize('failure', ['poll', 'download', 'unknown', 'watermark', 'submission'])
+def test_image_recovery_does_not_regenerate_possibly_paid_result(monkeypatch, tmp_path, failure):
+    run = make_run(tmp_path, ['p'], monkeypatch)
+    run.config['image_attempts'] = 3
+    row = run.state['posts']['p']
+    row['copy'] = {'ok': True, 'title': '标题', 'content': '内容'}
+    row['image_plan'] = {'ok': True}
+    submissions = []
+    run.online.absolute_url = lambda url: url
+
+    def submit(_row, attempt, correction):
+        submissions.append(attempt)
+        if failure == 'submission':
+            raise runner.ImageSubmissionUncertain('same-key', 'response lost')
+        return 'accepted-123', {'prompt': 'original prompt'}
+
+    def wait(*args):
+        if failure == 'poll':
+            raise TimeoutError('polling disconnected')
+        if failure in {'unknown', 'watermark'}:
+            return {'status': 'failed', 'error': 'needs review', 'progress': {
+                'phase': 'review_required' if failure == 'unknown' else 'postprocess_failed',
+            }}
+        return {'status': 'completed', 'image_urls': ['https://example.test/generated.png']}
+
+    def download(*args):
+        raise OSError('download disconnected')
+
+    run.submit_image = submit
+    run.wait_image_task = wait
+    run.download_image = download
+    key, result = run.image_job(row, tmp_path / 'ocr')
+    assert submissions == [1]
+    assert key == 'p' and result['ok'] is False
+    row['image'] = result
+    assert result['status'] == ('review_required' if failure in {'unknown', 'watermark'} else 'submitted')
+    if failure != 'submission':
+        assert result['task_id'] == 'accepted-123'
+        run.image_job(row, tmp_path / 'ocr')
+        assert submissions == [1]
+    else:
+        run.image_job(row, tmp_path / 'ocr')
+        assert submissions == [1, 1]
+        assert result['client_request_id'] == 'same-key'
+
+
+def test_confirmed_ocr_rejection_still_allows_bounded_regeneration(monkeypatch, tmp_path):
+    run = make_run(tmp_path, ['p'], monkeypatch)
+    run.config['image_attempts'] = 2
+    row = run.state['posts']['p']
+    row['copy'] = {'ok': True, 'title': '标题', 'content': '内容'}
+    row['image_plan'] = {'ok': True}
+    submissions = []
+    run.online.absolute_url = lambda url: url
+    def submit(_row, attempt, correction):
+        submissions.append((attempt, correction))
+        return f'task-{attempt}', {'prompt': 'same prompt'}
+    run.submit_image = submit
+    run.wait_image_task = lambda *args: {'status': 'completed', 'image_urls': ['/result.png']}
+    run.download_image = lambda *args: None
+    monkeypatch.setattr(runner, 'ocr_image', lambda *args: ['OCR result'])
+    checks = iter([['wrong vehicle text'], []])
+    monkeypatch.setattr(runner, 'image_ocr_errors', lambda *args, **kwargs: next(checks))
+    _, result = run.image_job(row, tmp_path / 'ocr')
+    assert submissions == [(1, ''), (2, 'wrong vehicle text')]
+    assert result['ok'] is True and result['task_id'] == 'task-2'
 
 
 def test_pipeline_does_not_double_shared_gpt_concurrency(monkeypatch, tmp_path):

@@ -117,6 +117,27 @@ def _attempt(task_id: str, *, provider_id: int | None = 91) -> dict:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("upstream_count, stored_count, duplicate", [(1, 1, False), (4, 1, False), (4, 4, False), (4, 4, True)])
+async def test_reconciliation_requires_all_requested_images(client, upstream_count, stored_count, duplicate):
+    from unittest.mock import AsyncMock
+
+    async with async_session() as db:
+        task, job = await _seed_review_job(db, attempts=[_attempt("count-batch")])
+        task.params = {**task.params, "count": 4}
+        await db.commit()
+        fetcher = AsyncMock(return_value={"status": "completed", "image_urls": [f"/up/{i}.png" for i in range(upstream_count)]})
+        persister = AsyncMock(return_value=[f"/clean/{0 if duplicate else i}.png" for i in range(stored_count)])
+        service = AIImageReconciliationService(db, status_fetcher=fetcher, image_persister=persister)
+        await service.reconcile_job(job.id)
+        await db.refresh(task)
+        expected_status = "completed" if upstream_count == stored_count == 4 and not duplicate else "failed"
+        assert task.status == expected_status
+        assert len(task.result_urls) == (1 if duplicate else stored_count)
+        assert fetcher.call_args.args[0]["expected_count"] == 4
+        assert job.status == ("succeeded" if expected_status == "completed" else "failed")
+
+
+@pytest.mark.asyncio
 async def test_upstream_acceptance_is_persisted_once_in_task_and_shadow(client):
     async with async_session() as db:
         await _seed_user(db)
@@ -176,6 +197,7 @@ async def test_batch_id_survives_platform_timeout_for_later_reconciliation(
         model_name="gptimage2",
         on_provider_selected=None,
         on_upstream_accepted=None,
+        on_routing_wait=None,
     ):
         if on_provider_selected:
             await on_provider_selected(
@@ -653,7 +675,8 @@ async def test_default_status_fetcher_uses_provider_query_and_never_resubmits(
 ):
     calls: list[tuple[int, str]] = []
 
-    async def fake_status(self, provider_id: int, upstream_task_id: str) -> dict:
+    async def fake_status(self, provider_id: int, upstream_task_id: str, expected_count=None) -> dict:
+        assert expected_count == 1
         calls.append((provider_id, upstream_task_id))
         return {
             "task_id": upstream_task_id,

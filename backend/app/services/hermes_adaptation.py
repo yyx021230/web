@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 
-ADAPTATION_CONTRACT_VERSION = "hermes-adaptation-v7"
+ADAPTATION_CONTRACT_VERSION = "hermes-adaptation-v10"
 DEFAULT_ADAPTATION_LEVEL = "replica"
 
 _PROFILES: dict[str, dict[str, Any]] = {
@@ -25,8 +25,8 @@ _PROFILES: dict[str, dict[str, Any]] = {
     "interpretive": {
         "label": "灵感改编",
         "short_label": "改编",
-        "description": "锁定功能类型，分配差异化叙事与视觉方案",
-        "copy": "只保留选题逻辑、事实优先级和转化目的，并按批次分配不同叙事骨架，避免跨车型套用同一节奏。",
+        "description": "保留母文选题，自由改写表达并审核同批重复",
+        "copy": "依据母文真实话题与目标车型资料规划写作，成稿后检查跑题、事实和同批语义重复，不套固定叙事骨架。",
         "image": "保留车型、事实、信息优先级和母图功能类型，并按批次均衡不同版式原型与视觉语言。",
     },
 }

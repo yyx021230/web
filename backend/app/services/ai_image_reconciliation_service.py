@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.ai_model.registry import model_registry
+from app.adapters.ai_model.image_results import requested_image_count, unique_image_urls, validate_image_count
 from app.db.session import async_session
 from app.models.ai_task import AITask
 from app.models.job import Job, JobStatus, TERMINAL_JOB_STATUSES
@@ -173,12 +174,13 @@ class AIImageReconciliationService:
             return {**self.serialize_job(job, task), "changed": False, "skipped": True}
 
         query_results: dict[tuple[str, Any, Any], dict[str, Any]] = {}
+        expected_count = requested_image_count(task.params if task is not None else None)
         for attempt in attempts:
             if attempt.get("status") in {"completed", "failed"}:
                 continue
-            upstream_result = await self._status_fetcher(copy.deepcopy(attempt))
-            query_results[_attempt_identity(attempt)] = _safe_status_result(
-                upstream_result
+            upstream_result = await self._status_fetcher({**copy.deepcopy(attempt), "expected_count": expected_count})
+            query_results[_attempt_identity(attempt)] = validate_image_count(
+                _safe_status_result(upstream_result), expected_count,
             )
 
         completed_urls: list[str] = []
@@ -191,19 +193,25 @@ class AIImageReconciliationService:
             attempt["checked_at"] = now.isoformat()
             attempt["error"] = query_result.get("error")
             attempt["image_count"] = len(query_result.get("image_urls") or [])
-            if query_result["status"] == "completed":
+            if query_result["status"] in {"completed", "failed"}:
                 completed_urls.extend(
                     str(url) for url in query_result.get("image_urls") or [] if url
                 )
 
         completed_urls = list(dict.fromkeys(completed_urls))[:4]
-        recovered_urls = list(summary.get("recovered_image_urls") or [])
-        if completed_urls and not recovered_urls:
-            recovered_urls = await self._image_persister(completed_urls)
+        recovered_urls = unique_image_urls(summary.get("recovered_image_urls"))
+        if completed_urls and len(completed_urls) > len(recovered_urls):
+            recovered_urls = unique_image_urls(await self._image_persister(completed_urls))
             if recovered_urls and task is not None:
-                task.status = "completed"
+                has_complete_batch = any(attempt.get("status") == "completed" for attempt in attempts)
+                checked = validate_image_count(
+                    {"status": "completed" if has_complete_batch else "failed", "image_urls": recovered_urls,
+                     "error": None if has_complete_batch else next((a.get("error") for a in attempts if a.get("error")), "批次未完整成功")},
+                    expected_count,
+                )
+                task.status = checked["status"]
                 task.result_urls = recovered_urls
-                task.error = None
+                task.error = checked.get("error")
                 task.finished_at = now
 
         statuses = [str(attempt.get("status") or "unknown") for attempt in attempts]
@@ -258,7 +266,7 @@ class AIImageReconciliationService:
         summary["requires_reconciliation"] = False
         summary["duplicate_success_count"] = completed_count
         summary["duplicate_charge_risk"] = len(attempts) > 1
-        if completed_count:
+        if completed_count and len(recovered_urls) >= expected_count:
             summary["resolution"] = {
                 "outcome": "succeeded",
                 "method": "automatic",
@@ -291,7 +299,7 @@ class AIImageReconciliationService:
                     for attempt in attempts
                     if attempt.get("error")
                 ),
-                "上游任务确认失败",
+                (task.error if task is not None else None) or "上游任务确认失败",
             )
             if task is not None and task.status != "completed":
                 task.status = "failed"
@@ -465,11 +473,12 @@ class AIImageReconciliationService:
             return await AIImageProviderService(self.db).get_upstream_task_status(
                 int(provider_id),
                 task_id,
+                expected_count=attempt.get("expected_count"),
             )
         if capability == "legacy_batch_gateway":
             adapter = model_registry.get("gptimage2")
             if adapter is not None:
-                return await adapter.get_task_status(task_id)
+                return await adapter.get_task_status(task_id, expected_count=attempt.get("expected_count"))
         return {
             "task_id": task_id,
             "status": "unsupported",

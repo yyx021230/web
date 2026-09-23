@@ -48,6 +48,14 @@ DEFAULT_OUTPUT_ROOT = REPO_ROOT / "outputs" / "xhs_hermes"
 DEFAULT_BACKEND = "http://47.98.127.132:18080/api/backend"
 DEFAULT_RELAY = "http://47.98.127.132:48731/v1"
 
+
+class ImageSubmissionUncertain(RuntimeError):
+    """Resume the same idempotency key instead of charging a new attempt."""
+
+    def __init__(self, request_id: str, message: str):
+        super().__init__(message)
+        self.request_id = request_id
+
 from core import (  # noqa: E402
     ACCOUNT_HISTORY_LIMIT,
     ACCOUNT_HIGH_SIMILARITY,
@@ -86,7 +94,6 @@ from creative_profiles import (  # noqa: E402
     image_adaptation_instruction,
     interpretive_layout_by_id,
     interpretive_layout_direction,
-    interpretive_narrative_direction,
     normalize_adaptation_level,
     visual_change_contract_errors,
 )
@@ -94,6 +101,9 @@ from worker_runtime import (  # noqa: E402
     apply_worker_limits, hermes_python, hermes_repo as resolve_hermes_repo, load_dotenv,
 )
 from ocr_backend import prepare_ocr  # noqa: E402
+from copy_editorial import (  # noqa: E402
+    editorial_instruction, parse_plans, parse_review, plan_messages, review_messages,
+)
 
 
 NEGATIVE_PROMPT = (
@@ -497,9 +507,32 @@ def recent_ledger_rows(output_root: Path, batch_date: str, days: int) -> list[di
 
 
 def current_week_ledger_rows(output_root: Path, batch_date: str) -> list[dict[str, Any]]:
-    """Read completed deliveries from Monday through the day before this batch."""
+    """Read this week's completed work, including today's sibling web runs."""
     current = dt.date.fromisoformat(batch_date)
-    return recent_ledger_rows(output_root, batch_date, current.weekday())
+    web_run = bool(re.fullmatch(r'run-\d+', output_root.name))
+    shared_root = output_root.parent if web_run else output_root
+    roots = [shared_root, *sorted(shared_root.glob('run-*'))]
+    rows: list[dict[str, Any]] = []
+    for root in roots:
+        if not root.is_dir() or (web_run and root.resolve() == output_root.resolve()):
+            continue
+        for offset in range(current.weekday() + 1):
+            day = root / (current - dt.timedelta(days=offset)).isoformat()
+            for folder in [day, *sorted(day.glob('account-*'))]:
+                final = folder / 'delivery.json'
+                path = final if final.exists() else folder / 'delivery_candidate.json'
+                if not path.exists():
+                    continue
+                try:
+                    payload = json.loads(path.read_text(encoding='utf-8'))
+                    entries = payload.get('posts') or []
+                    if not isinstance(entries, list):
+                        continue
+                    rows.extend(item for item in entries if isinstance(item, dict)
+                                and (item.get('hard_pass', path == final) is True))
+                except (OSError, ValueError, AttributeError):
+                    continue
+    return rows
 
 
 def template_usage_counts(rows: list[dict[str, Any]], field: str) -> dict[int, int]:
@@ -873,6 +906,12 @@ def copy_worker(input_path: Path, output_path: Path) -> int:
 本次任务补充要求（只能在母文核心逻辑、当前创作档位和当前政策允许范围内执行，冲突时以上述规则为准）：
 {str(payload.get('operator_instruction') or '').strip() or '无'}
 
+已核验的母文选题计划（只指导写作，不得把分析文字原样写给读者）：
+{editorial_instruction(payload['editorial_plan']) if payload.get('editorial_plan') else '跟随母文实际选题，不套用预设叙事骨架。'}
+
+上次成稿及需修复的问题（若有，只修真实问题，保留未出错的内容）：
+{json.dumps(payload.get('revision') or {}, ensure_ascii=False)}
+
 该账号最近15条已同步发布内容（仅避高度重复，不是新模板或事实来源；缺正文的不推测补全）：
 {json.dumps(brief.get('recent_posts') or [], ensure_ascii=False)}
 历史读取情况：{brief.get('history_status') or 'legacy_snapshot'}，已读{brief.get('history_posts') or 0}条，缺正文{brief.get('history_missing_body') or 0}条。
@@ -924,6 +963,7 @@ def copy_worker(input_path: Path, output_path: Path) -> int:
             'account_repetition': repetition,
             "adaptation_level": adaptation_level,
             "adaptation_contract": contract,
+            "editorial_plan": payload.get("editorial_plan"),
         }
         if not ok:
             result["error"] = "independent validation failed or required tool sequence missing"
@@ -1738,9 +1778,7 @@ class ProductionRun:
             "posts": {},
         }
         layout_usage: dict[str, int] = {}
-        narrative_usage: dict[str, int] = {}
         account_layouts: dict[int, set[str]] = {}
-        account_narratives: dict[int, set[str]] = {}
         interpretive = normalize_adaptation_level(self.config.get("adaptation_level")) == "interpretive"
         for key, assignment in portfolio["assignments"].items():
             creative_direction: dict[str, Any] = {}
@@ -1753,18 +1791,10 @@ class ProductionRun:
                     usage_counts=layout_usage,
                     excluded_ids=account_layouts.setdefault(account_id, set()),
                 )
-                narrative = interpretive_narrative_direction(
-                    key, assignment["case_id"], assignment["mother"].get("id"),
-                    usage_counts=narrative_usage,
-                    excluded_ids=account_narratives.setdefault(account_id, set()),
-                )
                 layout_usage[layout["id"]] = layout_usage.get(layout["id"], 0) + 1
-                narrative_usage[narrative["id"]] = narrative_usage.get(narrative["id"], 0) + 1
                 account_layouts[account_id].add(layout["id"])
-                account_narratives[account_id].add(narrative["id"])
                 creative_direction = {
                     "layout": layout,
-                    "narrative": narrative,
                     "source_layout_type": source_type,
                 }
             self.state["posts"][key] = {
@@ -1780,6 +1810,98 @@ class ProductionRun:
         self.save()
         emit("portfolio_ready", **portfolio["source_counts"], posts=len(self.state["posts"]))
 
+    def editorial_lock(self, case_id: str) -> Any:
+        # Only planning/admission is serialized per vehicle. Drafts and other
+        # vehicles still run concurrently under the existing text-worker limit.
+        with self.lock:
+            if not hasattr(self, "_editorial_locks"):
+                self._editorial_locks: dict[str, Any] = {}
+                self._editorial_accepted: dict[str, dict[str, Any]] = {}
+            return self._editorial_locks.setdefault(case_id, threading.RLock())
+
+    def editorial_plan(self, row: dict[str, Any], mother: dict[str, Any]) -> dict[str, Any]:
+        from vehicle_knowledge import editorial_knowledge, knowledge_for_case
+        with self.editorial_lock(row['case_id']):
+            cached = (row.get('editorial_plans') or {}).get(str(mother['id']))
+            if cached:
+                return cached
+            # Plan a bounded group of primary mothers together. Reserve mothers
+            # are planned only when needed, not allowed to replace facts silently.
+            rows = [row]
+            if mother['id'] == row['mother']['id']:
+                rows += [other for other in self.state['posts'].values()
+                         if other['key'] != row['key'] and other['case_id'] == row['case_id']
+                         and not other.get('copy', {}).get('ok')
+                         and not (other.get('editorial_plans') or {}).get(str(other['mother']['id']))][:3]
+            inputs = [{'key': item['key'], 'mother': mother if item is row else item['mother']} for item in rows]
+            case = self.cases[row['case_id']]
+            knowledge = {item['key']: editorial_knowledge(knowledge_for_case(case, item['mother'])) for item in inputs}
+            previous = [plan for other in self.state['posts'].values()
+                        if other['case_id'] == row['case_id']
+                        for plan in (other.get('editorial_plans') or {}).values()]
+            messages = plan_messages(inputs, case, knowledge, previous)
+            try:
+                plans = self.editorial_request(
+                    messages, lambda raw: parse_plans(raw, inputs, case, knowledge),
+                    f"{row['key']}-m{mother['id']}-plan", max_tokens=6000,
+                )
+            except RuntimeError:
+                if len(rows) == 1:
+                    raise
+                # One unsupported mother must not poison otherwise valid peers.
+                # Retry this row alone before considering its reserved mother.
+                rows, inputs = [row], inputs[:1]
+                knowledge = {row['key']: knowledge[row['key']]}
+                plans = self.editorial_request(
+                    plan_messages(inputs, case, knowledge, previous),
+                    lambda raw: parse_plans(raw, inputs, case, knowledge),
+                    f"{row['key']}-m{mother['id']}-individual-plan", max_tokens=3000,
+                )
+            with self.lock:
+                for item, plan in zip(rows, plans):
+                    item.setdefault('editorial_plans', {})[str(plan['mother_id'])] = plan
+                self.save()
+            return row['editorial_plans'][str(mother['id'])]
+
+    def editorial_request(self, messages: list[dict[str, Any]], parser: Callable, label: str,
+                          max_tokens: int = 3000) -> Any:
+        errors: list[str] = []
+        for attempt in range(1, 3):
+            try:
+                raw = relay_json(messages, model=self.config.get('copy_model') or 'gpt-5.5',
+                                 max_tokens=max_tokens,
+                                 trace_path=self.run_dir / 'editorial' / f'{label}-{attempt}.json')
+                return parser(raw)
+            except (ValueError, ImagePlanResponseError) as exc:
+                errors.append(str(exc))
+                messages = [*messages, {'role': 'user', 'content':
+                    'Your response failed schema/source validation: ' + str(exc)
+                    + '. Return the complete corrected JSON. Do not fabricate missing evidence.'}]
+        raise RuntimeError('editorial response invalid: ' + '; '.join(errors))
+
+    def review_copy(self, row: dict[str, Any], mother: dict[str, Any], draft: dict[str, Any],
+                    plan: dict[str, Any], label: str) -> dict[str, Any]:
+        from vehicle_knowledge import editorial_knowledge, knowledge_for_case
+        with self.editorial_lock(row['case_id']):
+            peers_by_key = {}
+            for other in self.state['posts'].values():
+                if other['case_id'] != row['case_id'] or other['key'] == row['key']:
+                    continue
+                accepted = self._editorial_accepted.get(other['key']) or other.get('copy', {})
+                if accepted.get('ok'):
+                    peers_by_key[other['key']] = {'key': other['key'], 'title': accepted.get('title'),
+                        'content': accepted.get('content'), 'editorial_plan': accepted.get('editorial_plan') or {}}
+            peers = list(peers_by_key.values())
+            case = self.cases[row['case_id']]
+            messages = review_messages(mother, case, editorial_knowledge(knowledge_for_case(case, mother)), draft, plan, peers)
+            verdict = self.editorial_request(messages, lambda raw: parse_review(raw, draft, peers), label)
+            atomic_json(self.run_dir / 'editorial' / f'{label}.verdict.json', verdict)
+            if verdict['ok']:
+                # Admission and peer snapshot share the lock, so two parallel
+                # drafts cannot both pass against an obsolete empty peer list.
+                self._editorial_accepted[row['key']] = dict(draft, editorial_plan=plan, editorial_review=verdict)
+            return verdict
+
     def copy_job(self, row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         candidates = [row["mother"]]
         if row.get("reserve_mother"):
@@ -1787,6 +1909,13 @@ class ProductionRun:
         attempts_per = int(self.config.get("copy_attempts_per_mother") or 2)
         failures: list[dict[str, Any]] = []
         for mother_index, mother in enumerate(candidates, start=1):
+            interpretive = normalize_adaptation_level(self.config.get('adaptation_level')) == 'interpretive'
+            try:
+                plan = self.editorial_plan(row, mother) if interpretive else None
+            except Exception as exc:
+                failures.append({'mother_id': mother['id'], 'stage': 'editorial_plan', 'error': str(exc)})
+                continue
+            revision: dict[str, Any] = {}
             for attempt in range(1, attempts_per + 1):
                 payload = {
                     "key": row["key"],
@@ -1796,29 +1925,37 @@ class ProductionRun:
                     "avoidance_brief": row.get("avoidance_brief") or {},
                     "operator_instruction": self.copy_operator_instruction(row),
                     "adaptation_level": self.config.get("adaptation_level") or "replica",
+                    "editorial_plan": plan,
+                    "revision": revision,
                 }
+                result: dict[str, Any] = {}
                 try:
                     result = run_copy_subprocess(payload, self.run_dir, f"m{mother_index}-a{attempt}")
+                    if result.get('ok') and interpretive:
+                        result['editorial_review'] = self.review_copy(
+                            row, mother, result, plan, f"{row['key']}-m{mother_index}-a{attempt}-review")
+                        result['editorial_plan'] = plan
+                        if not result['editorial_review']['ok']:
+                            result['ok'] = False
+                            result['error'] = result['editorial_review']['feedback']
                 except Exception as exc:
-                    result = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+                    result.update({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
                 if result.get("ok"):
                     result["mother"] = mother
                     result["outer_attempt"] = attempt
                     result["used_reserve_mother"] = mother_index > 1
+                    result['previous_failures'] = failures
                     return row["key"], result
-                failures.append({"mother_id": mother.get("id"), "attempt": attempt, "error": result.get("error"), "validation": result.get("validation")})
+                revision = {'title': result.get('title'), 'content': result.get('content'),
+                            'feedback': result.get('error'), 'validation': result.get('validation')}
+                failures.append({"mother_id": mother.get("id"), "attempt": attempt, **revision,
+                                 'editorial_review': result.get('editorial_review')})
         return row["key"], {"ok": False, "failures": failures, "error": "all copy attempts failed"}
 
     def copy_operator_instruction(self, row: dict[str, Any]) -> str:
-        base = str(self.config.get("operator_instruction") or "").strip()
-        narrative = (row.get("creative_direction") or {}).get("narrative") or {}
-        if not narrative:
-            return base
-        direction = (
-            f"本篇已分配差异化叙事骨架【{narrative.get('name')}】：{narrative.get('brief')}"
-            "这是本批次跨帖去重约束，必须落实到开头、段落推进和收束，不能退回通用的场景提问—建议—注意事项模板。"
-        )
-        return "\n".join(value for value in (base, direction) if value)
+        # Legacy checkpoints may contain a hash-assigned narrative. It is not
+        # evidence about the mother and must not override the editorial plan.
+        return str(self.config.get("operator_instruction") or "").strip()
 
     def copy_stage(self) -> None:
         pending = [row for row in self.state["posts"].values() if not row.get("copy", {}).get("ok")]
@@ -2076,7 +2213,7 @@ class ProductionRun:
                 # be duplicated by reconnect logic.
                 time.sleep(15 if "最多同时提交" in str(exc) else 5)
         else:
-            raise RuntimeError(f"image submit timed out with same idempotency key: {last_submit_error!r}")
+            raise ImageSubmissionUncertain(request_id, f"image submit timed out with same idempotency key: {last_submit_error!r}")
         data = response.get("data") if isinstance(response.get("data"), dict) else response
         task_id = str(data.get("task_id") or "")
         if not task_id:
@@ -2112,9 +2249,15 @@ class ProductionRun:
     def image_job(self, row: dict[str, Any], ocr_binary: Path) -> tuple[str, dict[str, Any]]:
         max_attempts = int(self.config.get("image_attempts") or 2)
         previous = row.get("image") or {}
+        if previous.get("status") == "review_required":
+            return row["key"], previous
         correction = ""
         failures: list[dict[str, Any]] = []
         for attempt in range(max(1, int(previous.get("attempt") or 1)), max_attempts + 1):
+            task_id = None
+            terminal = None
+            prompt = ""
+            ocr_rejected = False
             try:
                 if attempt == int(previous.get("attempt") or 0) and previous.get("task_id") and previous.get("status") == "submitted":
                     task_id = str(previous["task_id"])
@@ -2123,6 +2266,12 @@ class ProductionRun:
                     task_id, body = self.submit_image(row, attempt, correction)
                     prompt = str(body["prompt"])
                 terminal = self.wait_image_task(task_id, str(self.config.get("image_model") or "gptimage2"))
+                if (terminal.get("progress") or {}).get("phase") in {"review_required", "postprocess_failed"}:
+                    return row["key"], {
+                        "ok": False, "status": "review_required", "attempt": attempt,
+                        "task_id": task_id, "generation_prompt": prompt,
+                        "error": terminal.get("error"), "progress": terminal.get("progress"),
+                    }
                 urls = terminal.get("image_urls") if isinstance(terminal.get("image_urls"), list) else []
                 if str(terminal.get("status") or "") != "completed" or not urls:
                     raise RuntimeError(f"image task terminal status: {terminal}")
@@ -2142,6 +2291,7 @@ class ProductionRun:
                     configuration_audit=configuration_audit,
                 )
                 if errors:
+                    ocr_rejected = True
                     correction = "；".join(errors)
                     failures.append({"attempt": attempt, "task_id": task_id, "errors": errors, "ocr_lines": lines,
                                      "ocr_config_comparison": configuration_audit})
@@ -2161,8 +2311,20 @@ class ProductionRun:
                     "ocr_hard_errors": [],
                     "previous_failures": failures,
                 }
+            except ImageSubmissionUncertain as exc:
+                return row["key"], {
+                    "ok": False, "status": "submitted", "attempt": attempt,
+                    "client_request_id": exc.request_id, "error": str(exc),
+                }
             except Exception as exc:
                 failures.append({"attempt": attempt, "error": f"{type(exc).__name__}: {exc}"})
+                if task_id and (terminal is None or (terminal.get("status") == "completed" and not ocr_rejected)):
+                    # A polling/download/OCR exception is not a generation
+                    # failure. Resume the accepted task, never submit a new one.
+                    return row["key"], {
+                        "ok": False, "status": "submitted", "attempt": attempt,
+                        "task_id": task_id, "generation_prompt": prompt, "failures": failures,
+                    }
                 if attempt >= max_attempts:
                     return row["key"], {"ok": False, "status": "failed", "failures": failures}
         return row["key"], {"ok": False, "status": "failed", "failures": failures}
@@ -2295,7 +2457,9 @@ class ProductionRun:
                 "vehicle_model": self.cases[row["case_id"]]["vehicle_model"],
                 "content_type": copy_content_type(copy),
                 "adaptation_level": self.config.get("adaptation_level") or "replica",
-                "adaptation_contract": self.config.get("adaptation_contract") or adaptation_contract(self.config.get("adaptation_level")),
+                "adaptation_contract": copy.get("adaptation_contract") or self.config.get("adaptation_contract") or adaptation_contract(self.config.get("adaptation_level")),
+                "editorial_plan": copy.get("editorial_plan"),
+                "editorial_review": copy.get("editorial_review"),
                 "creative_direction": row.get("creative_direction") or {},
                 "mother_copy_id": int(copy.get("selected_mother_id") or mother.get("id") or 0),
                 "mother_structure_id": mother.get("structure_id"),

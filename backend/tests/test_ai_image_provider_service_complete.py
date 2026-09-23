@@ -339,7 +339,12 @@ async def test_generate_success_failure_callbacks_and_no_provider(client, monkey
         monkeypatch.setattr(service, "_call_provider", failure_call)
         failed = await service.generate("prompt", {}, on_provider_selected=bad_callback)
         assert failed["status"] == "failed"
+        assert failed["error"] == "callback failed"
+        assert failed["upstream_debug"] is None
+        assert provider.failure_count == 0
+        failed = await service.generate("prompt", {}, on_provider_selected=callback)
         assert failed["upstream_debug"]["response"]["status_code"] == 524
+        assert failed["result_unknown"] is True
         provider.is_enabled = False
         await db.commit()
         unavailable = await service.generate("prompt", {})

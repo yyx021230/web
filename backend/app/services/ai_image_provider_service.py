@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.storage import get_storage
+from app.adapters.ai_model.image_results import batch_result, requested_image_count, validate_image_count
 from app.config import settings
 from app.models.ai_task import AITask
 from app.models.ai_image_provider import AIImageProvider
@@ -53,9 +54,18 @@ logger = logging.getLogger("app")
 class UpstreamProviderError(ValueError):
     """Provider error that carries a sanitized upstream response snapshot."""
 
-    def __init__(self, message: str, debug: dict[str, Any] | None = None):
+    def __init__(self, message: str, debug: dict[str, Any] | None = None, *, result_unknown: bool = False):
         super().__init__(message)
         self.debug = debug or {}
+        self.result_unknown = result_unknown
+
+
+class ProviderWaitTimeout(ValueError):
+    pass
+
+
+class ProviderRoutingCancelled(ValueError):
+    pass
 
 
 def _strip_slashes(value: str) -> str:
@@ -554,16 +564,21 @@ async def _request_with_retries(
 ) -> httpx.Response:
     last_error: Exception | None = None
     retryable_statuses = set(retry_on_statuses or set())
+    safe_method = method.upper() in {"GET", "HEAD", "OPTIONS"}
     for attempt in range(retries):
         try:
             response = await client.request(method, url, **kwargs)
         except httpx.RequestError as exc:
             last_error = exc
+            # POST may have been accepted before a read/write timeout. Only
+            # connection establishment failures prove that nothing was sent.
+            if not safe_method and not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)):
+                raise
             if attempt >= retries - 1:
                 break
             await asyncio.sleep(retry_delay * (attempt + 1))
             continue
-        if response.status_code in retryable_statuses and attempt < retries - 1:
+        if safe_method and response.status_code in retryable_statuses and attempt < retries - 1:
             logger.warning(
                 "Retrying %s %s after upstream status %s (%d/%d)",
                 method,
@@ -582,6 +597,14 @@ async def _request_with_retries(
 class AIImageProviderService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def release_routing_read_transaction(self) -> None:
+        # Waiting/network I/O must not pin every pool connection while the
+        # dispatch callback needs another connection to persist its evidence.
+        if (isinstance(self.db, AsyncSession) and self.db.in_transaction()
+                and not self.db.new and not self.db.dirty and not self.db.deleted):
+            # Project sessions use expire_on_commit=False, retaining the snapshot.
+            await self.db.commit()
 
     async def ensure_default_providers(self, created_by: int | None = None) -> int:
         """补齐内置 GPT Image 2 入口；不覆盖用户已经编辑过的入口。"""
@@ -710,7 +733,8 @@ class AIImageProviderService:
         return created
 
     async def list_providers(self, model_name: str | None = None) -> list[AIImageProvider]:
-        stmt = select(AIImageProvider)
+        # Waiting tasks retain ORM instances; SELECT alone does not refresh them.
+        stmt = select(AIImageProvider).execution_options(populate_existing=True)
         if model_name:
             stmt = stmt.where(AIImageProvider.model_name == model_name)
         stmt = stmt.order_by(AIImageProvider.priority.asc(), AIImageProvider.id.asc())
@@ -797,10 +821,14 @@ class AIImageProviderService:
         has_reference: bool,
         generation_mode: str | None = None,
         wait_interval: float = 0.5,
+        on_wait: Callable[[dict], Awaitable[bool | None]] | None = None,
     ) -> AIImageProvider | None:
         """按启用状态、任务类型、并发容量和权重选择一个 provider，并占用一个运行槽。"""
+        started = time.monotonic()
+        timeout = max(1, int(settings.ai_provider_wait_timeout_seconds))
         while True:
             providers = await self.list_providers(model_name)
+            await self.release_routing_read_transaction()
             eligible = self._eligible_providers(providers, has_reference, generation_mode)
             if not eligible:
                 return None
@@ -825,6 +853,13 @@ class AIImageProviderService:
                     _PROVIDER_RUNNING[provider.id] = _provider_running_count(provider.id) + 1
                     return provider
 
+            reason = "cooldown" if available else "capacity"
+            if on_wait and await on_wait({"reason": reason}) is False:
+                raise ProviderRoutingCancelled("任务已取消，未发送到上游")
+            if time.monotonic() - started >= timeout:
+                raise ProviderWaitTimeout(
+                    f"等待生图入口超过 {timeout} 秒，尚未发送到上游，请检查入口容量或健康状态后重试"
+                )
             await asyncio.sleep(wait_interval)
 
     async def _release_provider_slot(self, provider_id: int) -> None:
@@ -842,11 +877,15 @@ class AIImageProviderService:
         wait_interval: float = 0.5,
     ) -> None:
         """占用指定 provider 的运行槽，用于后台真实测试指定入口。"""
+        await self.release_routing_read_transaction()
+        started = time.monotonic()
         while True:
             async with _PROVIDER_SLOT_LOCK:
                 if _provider_running_count(provider.id) < _provider_max_concurrent(provider):
                     _PROVIDER_RUNNING[provider.id] = _provider_running_count(provider.id) + 1
                     return
+            if time.monotonic() - started >= max(1, int(settings.ai_provider_wait_timeout_seconds)):
+                raise ProviderWaitTimeout("测试入口并发已满，等待超时，尚未发送到上游")
             await asyncio.sleep(wait_interval)
 
     @staticmethod
@@ -862,10 +901,12 @@ class AIImageProviderService:
         params: dict,
         user_id: int | None = None,
         model_name: str = "gptimage2",
-        on_provider_selected: Callable[[dict], Awaitable[None]] | None = None,
+        on_provider_selected: Callable[[dict], Awaitable[bool | None]] | None = None,
         on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
+        on_routing_wait: Callable[[dict], Awaitable[bool | None]] | None = None,
     ) -> dict:
         providers = await self.list_providers(model_name)
+        await self.release_routing_read_transaction()
         has_reference = bool(params.get("image_data") or params.get("image_url") or params.get("images_data"))
         generation_mode = (
             _normalize_generation_mode(params.get("generation_mode"))
@@ -889,11 +930,18 @@ class AIImageProviderService:
                 "provider": None,
             }
 
-        provider = await self._acquire_provider_slot(
-            model_name=model_name,
-            has_reference=has_reference,
-            generation_mode=generation_mode,
-        )
+        try:
+            provider = await self._acquire_provider_slot(
+                model_name=model_name,
+                has_reference=has_reference,
+                generation_mode=generation_mode,
+                on_wait=on_routing_wait,
+            )
+        except (ProviderWaitTimeout, ProviderRoutingCancelled) as exc:
+            return {
+                "task_id": "", "status": "cancelled" if isinstance(exc, ProviderRoutingCancelled) else "failed",
+                "image_urls": [], "error": str(exc), "provider_configured": True, "provider": None,
+            }
         if not provider:
             return {
                 "task_id": "",
@@ -905,38 +953,53 @@ class AIImageProviderService:
             }
 
         start = time.time()
-        request_model = _resolve_provider_request_model(provider, params)
-        provider_meta = {
-            "id": provider.id,
-            "name": provider.name,
-            "provider_kind": provider.provider_kind,
-            "provider_model": request_model,
-        }
-        if on_provider_selected:
-            try:
-                await on_provider_selected(provider_meta)
-            except Exception as exc:
-                logger.warning(
-                    "Failed to persist selected image provider: provider_id=%s error=%s",
-                    provider.id,
-                    exc,
-                )
+        provider_id = provider.id
+        provider_meta = None
+        request_started = False
         try:
+            request_model = _resolve_provider_request_model(provider, params)
+            provider_meta = {
+                "id": provider.id,
+                "name": provider.name,
+                "provider_kind": provider.provider_kind,
+                "provider_model": request_model,
+            }
+            if on_provider_selected:
+                # Fail closed if dispatch evidence cannot be saved. Never send a
+                # cancelled task or an untraceable billable request upstream.
+                if await on_provider_selected(provider_meta) is False:
+                    return {"task_id": "", "status": "cancelled", "image_urls": [],
+                            "error": "任务已取消，未发送到上游", "provider_configured": True, "provider": None}
+            request_started = True
             result = await self._call_provider(
                 provider,
                 prompt,
                 params,
                 on_upstream_accepted=on_upstream_accepted,
             )
+            result = validate_image_count(result, requested_image_count(params))
             elapsed_ms = (time.time() - start) * 1000.0
-            await self._mark_success(provider, elapsed_ms)
+            try:
+                if result.get("status") == "completed":
+                    await self._mark_success(provider, elapsed_ms)
+                else:
+                    await self._mark_failure(provider, result.get("error") or "生成未完整完成", elapsed_ms)
+            except Exception:
+                # A statistics write must not discard an already paid-for result.
+                logger.exception("Failed to record image provider success: %s", provider_id)
+                await self.db.rollback()
             result["provider"] = provider_meta
             result["provider_configured"] = True
             return result
         except Exception as e:
             elapsed_ms = (time.time() - start) * 1000.0
-            error = str(e)
-            await self._mark_failure(provider, error, elapsed_ms)
+            error = str(e).strip() or type(e).__name__
+            if request_started:
+                try:
+                    await self._mark_failure(provider, error, elapsed_ms)
+                except Exception:
+                    logger.exception("Failed to record image provider failure")
+                    await self.db.rollback()
             upstream_debug = getattr(e, "debug", None)
             return {
                 "task_id": "",
@@ -946,14 +1009,23 @@ class AIImageProviderService:
                 "upstream_debug": upstream_debug,
                 "provider_configured": True,
                 "provider": provider_meta,
+                "result_unknown": request_started and (
+                    bool(getattr(e, "result_unknown", False))
+                    or (isinstance(e, httpx.RequestError)
+                        and not isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)))
+                    or (_find_status_code(upstream_debug) or 0) >= 500
+                    or _find_status_code(upstream_debug) in {408, 499}
+                    or 200 <= (_find_status_code(upstream_debug) or 0) < 300
+                ),
             }
         finally:
-            await self._release_provider_slot(provider.id)
+            await self._release_provider_slot(provider_id)
 
     async def get_upstream_task_status(
         self,
         provider_id: int,
         upstream_task_id: str,
+        expected_count: int | None = None,
     ) -> dict[str, Any]:
         """Query a previously accepted batch without submitting new work."""
 
@@ -1009,59 +1081,7 @@ class AIImageProviderService:
                 "error": f"查询上游任务失败：{str(exc)[:300]}",
             }
 
-        raw_status = str(data.get("status") or "").strip()
-        tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
-        image_urls: list[str] = []
-        for item in tasks:
-            if not isinstance(item, dict):
-                continue
-            image_url = _batch_task_image_url(item, api_base)
-            item_status = item.get("status")
-            if image_url and (
-                _batch_success_status(item_status)
-                or _batch_success_status(raw_status)
-                or not item_status
-            ):
-                image_urls.append(image_url)
-        if image_urls:
-            return {
-                "task_id": task_id,
-                "status": "completed",
-                "raw_status": raw_status,
-                "image_urls": image_urls,
-                "error": None,
-            }
-        if _batch_failure_status(raw_status):
-            error = next(
-                (
-                    _batch_task_error(item)
-                    for item in tasks
-                    if isinstance(item, dict) and _batch_task_error(item)
-                ),
-                "",
-            )
-            return {
-                "task_id": task_id,
-                "status": "failed",
-                "raw_status": raw_status,
-                "image_urls": [],
-                "error": error or f"任务{raw_status or 'failed'}",
-            }
-        if _batch_success_status(raw_status):
-            return {
-                "task_id": task_id,
-                "status": "unknown",
-                "raw_status": raw_status,
-                "image_urls": [],
-                "error": "上游任务已完成但没有返回图片",
-            }
-        return {
-            "task_id": task_id,
-            "status": "generating",
-            "raw_status": raw_status,
-            "image_urls": [],
-            "error": None,
-        }
+        return batch_result(data, task_id, api_base, expected_count)
 
     async def test_provider(self, provider_id: int, prompt: str, params: dict) -> dict:
         """后台真实调用指定入口生成测试图片。"""
@@ -1082,7 +1102,11 @@ class AIImageProviderService:
             "provider_kind": provider.provider_kind,
             "provider_model": _resolve_provider_request_model(provider, params),
         }
-        await self._acquire_specific_provider_slot(provider)
+        try:
+            await self._acquire_specific_provider_slot(provider)
+        except ProviderWaitTimeout as exc:
+            return {"id": provider.id, "status": "failed", "image_urls": [], "error": str(exc),
+                    "elapsed_seconds": 0.0, "provider": provider_meta}
         start = time.time()
         try:
             result = await self._call_provider(provider, prompt, params)
@@ -1257,6 +1281,27 @@ class AIImageProviderService:
         raise ValueError(f"不支持的 provider_kind: {provider.provider_kind}")
 
     async def _call_openai_images(self, provider: AIImageProvider, prompt: str, params: dict) -> dict:
+        image_urls: list[str] = []
+        try:
+            return await self._collect_openai_images(provider, prompt, params, image_urls)
+        except Exception as exc:
+            if not image_urls:
+                raise
+            debug = getattr(exc, "debug", None)
+            error = str(exc).strip() or type(exc).__name__
+            return {
+                "task_id": "", "status": "failed", "image_urls": image_urls,
+                "error": f"请求 {requested_image_count(params)} 张，已生成 {len(image_urls)} 张，后续生成失败：{error}；未重跑已成功图片",
+                "upstream_debug": debug,
+                "result_unknown": bool(getattr(exc, "result_unknown", False))
+                or (isinstance(exc, httpx.RequestError)
+                    and not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)))
+                or (_find_status_code(debug) or 0) >= 500,
+            }
+
+    async def _collect_openai_images(
+        self, provider: AIImageProvider, prompt: str, params: dict, image_urls: list[str],
+    ) -> dict:
         base_url, path = _normalize_base_url(provider.endpoint_url)
         ref_sources = _collect_reference_sources(params)
         has_reference = bool(ref_sources)
@@ -1268,8 +1313,8 @@ class AIImageProviderService:
         retryable_statuses = {502, 503, 504}
         tool_choice_attempts = _tool_choice_retry_attempts(provider)
         tool_choice_delay = _tool_choice_retry_delay(provider)
-        pending_attempts = _pending_retry_attempts(provider)
-        pending_delay = _pending_retry_delay(provider)
+        # A pending response is not permission to submit another paid image.
+        pending_attempts = 1
         request_model = _resolve_provider_request_model(provider, params)
         payload: dict[str, Any] = {
             "model": request_model,
@@ -1285,7 +1330,6 @@ class AIImageProviderService:
             payload["quality"] = quality
 
         timeout = provider.config.get("timeout", 180)
-        image_urls: list[str] = []
         task_id = ""
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             attempts = 1 if send_n else count
@@ -1298,6 +1342,8 @@ class AIImageProviderService:
                                 "model": request_model,
                                 "prompt": prompt,
                             }
+                            if send_n:
+                                data["n"] = str(count)
                             if provider.config.get("send_size", False) and params.get("width") and params.get("height"):
                                 data["size"] = f"{int(params['width'])}x{int(params['height'])}"
                             if quality:
@@ -1347,7 +1393,7 @@ class AIImageProviderService:
                             break
                         if pending_attempt >= pending_attempts:
                             preview = _response_body_preview(resp)
-                            error = f"上游返回 202 处理中，重试 {pending_attempts} 次后仍未返回图片"
+                            error = "上游已返回处理中，但此同步入口无法查询结果；已停止重复提交，请核验上游任务"
                             if preview:
                                 error = f"{error}；上游响应预览: {preview}"
                             debug = _upstream_response_debug(
@@ -1357,15 +1403,7 @@ class AIImageProviderService:
                                 path=path,
                                 request_kind=request_kind,
                             )
-                            raise UpstreamProviderError(error, debug)
-                        logger.warning(
-                            "OpenAI-compatible provider %s returned pending openai_error status; retrying request %d/%d",
-                            provider.name or provider.id,
-                            pending_attempt + 1,
-                            pending_attempts,
-                        )
-                        if pending_delay > 0:
-                            await asyncio.sleep(pending_delay)
+                            raise UpstreamProviderError(error, debug, result_unknown=True)
                     if resp.status_code < 400:
                         break
                     error = self._extract_error(resp)
@@ -1446,11 +1484,11 @@ class AIImageProviderService:
             )
             raise UpstreamProviderError(error, debug)
 
-        return {
+        return validate_image_count({
             "task_id": task_id or str(int(time.time())),
             "status": "completed",
             "image_urls": image_urls,
-        }
+        }, count)
 
     def _extract_error(self, resp: httpx.Response) -> str:
         html_error = _upstream_html_error(resp)
@@ -1548,30 +1586,27 @@ class AIImageProviderService:
                             batch_id,
                         )
 
+                batch_state = {"task_id": str(batch_id), "image_urls": []}
                 for _ in range(int(provider.config.get("max_polls", 200))):
                     await asyncio.sleep(float(provider.config.get("poll_interval", 3)))
-                    poll = await _request_with_retries(client, "GET", f"{api_base}/api/batches/{batch_id}")
-                    if poll.status_code >= 400:
+                    try:
+                        poll = await _request_with_retries(client, "GET", f"{api_base}/api/batches/{batch_id}")
+                        if poll.status_code >= 400:
+                            continue
+                        data = poll.json()
+                    except (httpx.RequestError, ValueError):
+                        # Keep the accepted ID and any known images while a GET
+                        # fails; do not turn a polling interruption into a POST.
                         continue
-                    data = poll.json()
                     status = data.get("status", "")
                     tasks = data.get("tasks", [])
-                    image_urls = []
-                    for item in tasks:
-                        if not isinstance(item, dict):
-                            continue
-                        img_url = _batch_task_image_url(item, api_base)
-                        task_status = item.get("status")
-                        if img_url and (_batch_success_status(task_status) or _batch_success_status(status) or not task_status):
-                            image_urls.append(img_url)
-                    if image_urls:
-                        return {
-                            "task_id": str(batch_id),
-                            "status": "completed",
-                            "image_urls": image_urls,
-                        }
-                    if _batch_success_status(status) and tasks:
-                        raise ValueError("任务成功但无图片 URL")
+                    batch_state = batch_result(data, str(batch_id), api_base, payload["count"])
+                    if batch_state["status"] == "completed":
+                        return {key: batch_state[key] for key in ("task_id", "status", "image_urls")}
+                    if batch_state["status"] == "failed" and batch_state["image_urls"]:
+                        return batch_state
+                    if batch_state["status"] == "unknown":
+                        return {**batch_state, "status": "failed", "result_unknown": True}
                     if _batch_failure_status(status):
                         err = ""
                         for item in tasks:
@@ -1579,7 +1614,11 @@ class AIImageProviderService:
                                 err = _batch_task_error(item)
                                 if err:
                                     break
-                        if submit_attempt < max_submit_attempts and _is_retryable_mentalout_error(err):
+                        all_rejected = len(tasks) >= payload["count"] and all(
+                            isinstance(item, dict) and (not item.get("status") or _batch_failure_status(item["status"]))
+                            for item in tasks
+                        )
+                        if all_rejected and submit_attempt < max_submit_attempts and _is_retryable_mentalout_error(err):
                             logger.warning(
                                 "MentalOut batch %s failed with retryable upstream error; retrying submit %d/%d",
                                 batch_id,
@@ -1590,23 +1629,9 @@ class AIImageProviderService:
                                 await asyncio.sleep(retry_delay)
                             break
                         raise ValueError(err or f"任务{status or 'failed'}")
-                    if status == "retrying" and tasks:
-                        first = next((item for item in tasks if isinstance(item, dict)), None)
-                        if first and int(first.get("attempts") or 0) >= int(first.get("maxAttempts") or 6):
-                            err = _batch_task_error(first) or "超过最大重试次数"
-                            if submit_attempt < max_submit_attempts and _is_retryable_mentalout_error(err):
-                                logger.warning(
-                                    "MentalOut batch %s exhausted upstream attempts with retryable error; retrying submit %d/%d",
-                                    batch_id,
-                                    submit_attempt + 1,
-                                    max_submit_attempts,
-                                )
-                                if retry_delay > 0:
-                                    await asyncio.sleep(retry_delay)
-                                break
-                            raise ValueError(err)
                 else:
-                    raise ValueError("生成超时")
+                    return {**batch_state, "status": "failed", "result_unknown": True,
+                            "error": f"批次仍未完整结束：请求 {payload['count']} 张，已返回 {len(batch_state['image_urls'])} 张；请查询原任务，未重新生成"}
 
             logger.error(
                 "MentalOut upstream retry exhausted after %d submit attempts for prompt=%r size=%sx%s",

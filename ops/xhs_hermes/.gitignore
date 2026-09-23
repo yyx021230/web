@@ -1,5 +1,7 @@
 .env
 hermes_home/cache/
 hermes_home/logs/
+# Failed provider calls can dump full prompts and request details here.
+hermes_home/sessions/
 hermes_home/state.db*
 state/policy/

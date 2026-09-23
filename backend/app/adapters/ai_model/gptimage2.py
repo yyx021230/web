@@ -17,6 +17,7 @@ from urllib.parse import unquote
 
 import httpx
 from app.adapters.ai_model.base import AIModelAdapter
+from app.adapters.ai_model.image_results import batch_result
 from app.config import settings
 
 # 轮询配置
@@ -520,7 +521,7 @@ class GPTImage2Adapter(AIModelAdapter):
                 # Observability must never fail the legacy generation request.
                 pass
 
-        result = await self._poll_batch(batch_id, api_url=batch_base_url)
+        result = await self._poll_batch(batch_id, api_url=batch_base_url, expected_count=batch_count)
         if result.get("status") == "completed" and result.get("image_urls"):
             stored_urls = []
             for url in result["image_urls"]:
@@ -570,84 +571,42 @@ class GPTImage2Adapter(AIModelAdapter):
                 image_urls.append(local_url)
         return image_urls
 
-    async def _poll_batch(self, batch_id: str, api_url: str | None = None) -> dict:
+    async def _poll_batch(self, batch_id: str, api_url: str | None = None, expected_count: int | None = None) -> dict:
         """轮询 batch 状态直到完成"""
         base = _normalize_batch_base_url(api_url or "https://image.mentalout.top")
+        state = {"task_id": batch_id, "image_urls": []}
         async with httpx.AsyncClient(timeout=60.0) as client:
             for _ in range(_BATCH_MAX_POLLS):
                 await asyncio.sleep(_BATCH_POLL_INTERVAL)
 
                 try:
                     resp = await _request_with_retries(client, "GET", f"{base}/api/batches/{batch_id}")
+                    if resp.status_code >= 400:
+                        continue
                     data = resp.json()
                 except Exception:
                     continue
 
-                status = data.get("status", "")
-                tasks = data.get("tasks", [])
-                image_urls = []
-                for t in tasks:
-                    if not isinstance(t, dict):
-                        continue
-                    img_url = _batch_task_image_url(t, base)
-                    task_status = t.get("status")
-                    if img_url and (_batch_success_status(task_status) or _batch_success_status(status) or not task_status):
-                        image_urls.append(img_url)
-                if image_urls:
-                    return {
-                        "task_id": batch_id,
-                        "status": "completed",
-                        "image_urls": image_urls,
-                    }
-
-                if _batch_success_status(status) and tasks:
-                    return {
-                        "task_id": batch_id,
-                        "status": "failed",
-                        "image_urls": [],
-                        "error": "任务成功但无图片 URL",
-                    }
-
-                if _batch_failure_status(status):
-                    err = ""
-                    for t in tasks:
-                        if isinstance(t, dict):
-                            err = _batch_task_error(t)
-                            if err:
-                                break
-                    return {
-                        "task_id": batch_id,
-                        "status": "failed",
-                        "image_urls": [],
-                        "error": err or f"任务{status or 'failed'}",
-                    }
-
-                if status == "retrying" and tasks:
-                    # 检查是否超过最大重试次数
-                    t = tasks[0]
-                    if isinstance(t, dict) and t.get("attempts", 0) >= t.get("maxAttempts", 6):
-                        err = _batch_task_error(t)
-                        return {
-                            "task_id": batch_id,
-                            "status": "failed",
-                            "image_urls": [],
-                            "error": f"超过最大重试次数: {_short_text(err)}",
-                        }
-                    # 继续轮询
+                state = batch_result(data, batch_id, base, expected_count)
+                if state["status"] in {"completed", "failed"}:
+                    return state
+                if state["status"] == "unknown":
+                    return {**state, "status": "failed", "result_unknown": True}
 
         # 超时
         return {
             "task_id": batch_id,
             "status": "failed",
-            "image_urls": [],
+            "image_urls": state["image_urls"],
             "error": "生成超时（10分钟）",
+            "result_unknown": True,
         }
 
     async def cancel_task(self, task_id: str) -> None:
         """GPT Image 2 兼容接口不支持取消"""
         pass
 
-    async def get_task_status(self, task_id: str) -> dict:
+    async def get_task_status(self, task_id: str, expected_count: int | None = None) -> dict:
         """查询旧 batch 任务状态；直连接口是同步生成，不需要轮询"""
         _, env_url = _read_backend_env_overrides()
         api_url = (env_url or settings.gpt_image2_api_url).strip() or "https://api.openai.com/v1/images/generations"
@@ -662,50 +621,16 @@ class GPTImage2Adapter(AIModelAdapter):
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 resp = await _request_with_retries(client, "GET", f"{batch_base_url}/api/batches/{task_id}")
+                if resp.status_code >= 400:
+                    return {"task_id": task_id, "status": "unknown", "image_urls": [],
+                            "error": f"查询失败 HTTP {resp.status_code}"}
                 data = resp.json()
             except Exception:
                 return {
                     "task_id": task_id,
-                    "status": "failed",
+                    "status": "unknown",
                     "image_urls": [],
                     "error": "查询失败",
                 }
 
-        status = data.get("status", "")
-        tasks = data.get("tasks", [])
-
-        image_urls = []
-        for t in tasks:
-            if not isinstance(t, dict):
-                continue
-            img_url = _batch_task_image_url(t, batch_base_url)
-            task_status = t.get("status")
-            if img_url and (_batch_success_status(task_status) or _batch_success_status(status) or not task_status):
-                image_urls.append(img_url)
-        if image_urls:
-            return {
-                "task_id": task_id,
-                "status": "completed",
-                "image_urls": image_urls,
-            }
-
-        if _batch_failure_status(status):
-            err = ""
-            for t in tasks:
-                if isinstance(t, dict):
-                    err = _batch_task_error(t)
-                    if err:
-                        break
-            return {
-                "task_id": task_id,
-                "status": "failed",
-                "image_urls": [],
-                "error": err or f"任务{status or 'failed'}",
-            }
-
-        # running, retrying, queued 等
-        return {
-            "task_id": task_id,
-            "status": "generating",
-            "image_urls": [],
-        }
+        return batch_result(data, task_id, batch_base_url, expected_count)

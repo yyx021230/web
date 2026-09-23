@@ -1,11 +1,12 @@
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 from core import validate_copy
-from vehicle_knowledge import knowledge_for_case, parse_variants
+from vehicle_knowledge import editorial_knowledge, knowledge_for_case, parse_variants
 
 
 def snapshot(segments):
@@ -86,3 +87,65 @@ def test_imported_live_snapshot_has_a05_gap_not_historical_substitution():
     assert len(rows)==51
     assert not any(r['model']=='零跑A05' for r in rows)
     assert any(r['model']=='零跑A10' for r in rows)
+
+
+def test_related_facts_after_18_and_acc_are_not_lost(tmp_path):
+    facts = [f'- 辅助功能{i}:标配' for i in range(20)] + ['- 泊车辅助(APA):标配', '- 全速自适应巡航(ACC):标配']
+    data = snapshot(['品牌:零跑汽车|车型:零跑A10|版本:2026款505激光雷达版\n'+'\n'.join(facts)])
+    path = tmp_path/'facts.json'
+    path.write_text(json.dumps(data))
+    result = knowledge_for_case({'vehicle_model':'零跑A10', 'policy_text':'2026款',
+        'quote_rows':[{'configuration':'505激光雷达版'}]}, {'content':'新手智驾'}, path)
+    assert len(result['variants'][0]['facts']) == 22
+    assert len(result['common_facts']) == 22
+    compacted = editorial_knowledge(result)
+    assert compacted['variants'][0]['facts'] == facts
+    assert compacted['variants'][0]['policy_configuration'] == '505激光雷达版'
+
+
+def test_actual_a10_high_trim_apa_is_retrieved():
+    cases = json.loads((Path(__file__).parents[1]/'config/cases.json').read_text())
+    knowledge = knowledge_for_case(cases['a10-current'], {'content':'新手智驾泊车'})
+    if knowledge['status'] == 'refresh_required':
+        return  # Synthetic coverage above is independent of snapshot expiry.
+    high = next(row for row in knowledge['variants'] if row.get('policy_configuration') == '505激光雷达版')
+    assert any(f['key'] == '泊车辅助(APA)' and f['value']=='标配' for f in high['facts'])
+    assert any('ACC' in f['key'] for f in high['facts'])
+
+
+def test_price_only_mother_still_has_scoped_vehicle_identity(tmp_path):
+    data = snapshot(['品牌:零跑汽车|车型:零跑A10|版本:2026款403舒享版\n'
+                     '- 能源类型:纯电\n- 车身结构:5门5座\n- 电池:39.8kWh\n'
+                     '品牌:零跑汽车|车型:零跑C10|版本:2026款290智享版\n- 车身结构:5门5座'])
+    path = tmp_path/'identity.json'
+    path.write_text(json.dumps(data))
+    result = knowledge_for_case({'vehicle_model':'零跑A10','policy_text':'2026款',
+                                 'quote_rows':[{'configuration':'403舒享版'}]},
+                                {'content':'本月全系报价'}, path)
+    assert len(result['variants']) == 1
+    assert {fact['key'] for fact in result['variants'][0]['facts']} == {'能源类型', '车身结构'}
+    assert {fact['key'] for fact in result['common_facts']} == {'能源类型', '车身结构'}
+
+
+def test_ratio_in_fact_name_is_not_the_key_value_delimiter():
+    data = snapshot(['品牌:零跑汽车|车型:零跑B10|版本:2027款540舒享版\n'
+                     '- 第二排座椅4:6分体放倒: 标配\n'
+                     '- 第二排座椅4：6分体放倒：选配\n'
+                     '- 第三排座椅5:5分体放倒:标配\n'
+                     '- 压缩比:13:1\n- 参数1:23'])
+    facts = parse_variants(data)[0]['facts']
+    assert [(fact['key'], fact['value']) for fact in facts] == [
+        ('第二排座椅4:6分体放倒', '标配'), ('第二排座椅4：6分体放倒', '选配'),
+        ('第三排座椅5:5分体放倒', '标配'),
+        ('压缩比', '13:1'), ('参数1', '23'),
+    ]
+    assert facts[0]['source_excerpt'] == '- 第二排座椅4:6分体放倒: 标配'
+
+
+def test_imported_snapshot_keeps_all_seat_ratio_fields_intact():
+    data = json.loads((Path(__file__).parents[1]/'config/vehicle_knowledge.json').read_text())
+    facts = [(fact, re.search(r'\d+[:：]\d+分体放倒', fact['source_excerpt']))
+             for row in parse_variants(data) for fact in row['facts']
+             if re.search(r'\d+[:：]\d+分体放倒', fact['source_excerpt'])]
+    assert facts
+    assert all(match.group() in fact['key'] and fact['value'] in ('标配', '选配', '无') for fact, match in facts)

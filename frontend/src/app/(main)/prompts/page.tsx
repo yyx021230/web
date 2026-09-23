@@ -5,6 +5,7 @@ import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Dialog from '@radix-ui/react-dialog';
 import styles from './prompts.module.css';
+import { StablePromptGrid, coverRatio } from './StablePromptGrid';
 import { cn } from '@/lib/utils';
 import {
   Copy, Check, Loader2, Upload,
@@ -256,6 +257,10 @@ export default function PromptsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [hasMoreFromServer, setHasMoreFromServer] = useState<boolean | undefined>();
+  const nextCursorRef = useRef<number | null>(null);
+  const deletedIdsRef = useRef(new Set<number>());
+  const deletingIdsRef = useRef(new Set<number>());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
@@ -305,12 +310,15 @@ export default function PromptsPage() {
 
   const fetchData = useCallback(async (p = 1, append = false) => {
     if (append && loadingMoreRef.current) return;
-    const requestId = append ? requestIdRef.current : ++requestIdRef.current;
+    const requestId = ++requestIdRef.current;
     if (append) {
       loadingMoreRef.current = true;
       setLoadingMore(true);
       setLoadMoreError(null);
     } else {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+      nextCursorRef.current = null;
       setLoading(true);
       setLoadError(null);
       setLoadMoreError(null);
@@ -320,11 +328,16 @@ export default function PromptsPage() {
         discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
       }
       const sourceKind = activeSource === 'all' ? undefined : activeSource;
-      const res = await promptsApi.getPrompts('', undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind);
+      const args = ['', undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind] as const;
+      const res = append && nextCursorRef.current != null
+        ? await promptsApi.getPrompts(...args, nextCursorRef.current)
+        : await promptsApi.getPrompts(...args);
       if (requestId !== requestIdRef.current) return;
-      setPrompts(current => mergeUniquePrompts(append ? current : [], res.data.items));
+      setPrompts(current => mergeUniquePrompts(append ? current : [], res.data.items.filter(item => !deletedIdsRef.current.has(item.id))));
       setTotal(res.data.total);
       setPage(res.data.page);
+      nextCursorRef.current = res.data.next_cursor ?? null;
+      setHasMoreFromServer(res.data.has_more);
       if (!append) galleryRef.current?.scrollTo?.({ top: 0 });
     } catch (e) {
       if (requestId !== requestIdRef.current) return;
@@ -332,7 +345,7 @@ export default function PromptsPage() {
       if (append) setLoadMoreError(message);
       else setLoadError(message);
     } finally {
-      if (append) {
+      if (append && requestId === requestIdRef.current) {
         loadingMoreRef.current = false;
         setLoadingMore(false);
       } else if (requestId === requestIdRef.current) {
@@ -375,15 +388,16 @@ export default function PromptsPage() {
     promptsApi.getPrompts('', previewPrompt.category, 1, RELATED_POOL_SIZE, false, undefined, sourceKind)
       .then(res => {
         if (requestId !== relatedRequestRef.current) return;
-        relatedCacheRef.current.set(cacheKey, res.data.items);
-        setRelatedPrompts(rankRelatedPrompts(previewPrompt, res.data.items));
+        const items = res.data.items.filter(item => !deletedIdsRef.current.has(item.id));
+        relatedCacheRef.current.set(cacheKey, items);
+        setRelatedPrompts(rankRelatedPrompts(previewPrompt, items));
       })
       .catch(() => {
         // Keep the locally ranked fallback when the wider candidate pool is unavailable.
       });
   }, [activeSource, previewPrompt]);
 
-  const hasMore = page * PAGE_SIZE < total;
+  const hasMore = hasMoreFromServer ?? page * PAGE_SIZE < total;
 
   useEffect(() => {
     const root = galleryRef.current;
@@ -430,14 +444,22 @@ export default function PromptsPage() {
   };
 
   const handleDelete = async (id: number) => {
+    if (deletingIdsRef.current.has(id) || deletedIdsRef.current.has(id)) return;
     if (!confirm('确定要删除此提示词吗？')) return;
+    deletingIdsRef.current.add(id);
     try {
       await promptsApi.deletePrompt(id);
+      deletedIdsRef.current.add(id);
       setPrompts(prev => prev.filter(p => p.id !== id));
-      setTotal(t => t - 1);
+      setTotal(t => Math.max(0, t - 1));
+      setRelatedPrompts(prev => prev.filter(p => p.id !== id));
+      relatedCacheRef.current.clear();
+      setPreviewPrompt(current => current?.id === id ? null : current);
       toast.success('已删除');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '删除失败');
+    } finally {
+      deletingIdsRef.current.delete(id);
     }
   };
 
@@ -612,7 +634,7 @@ export default function PromptsPage() {
         {loading ? (
           <div aria-busy="true" aria-label="正在加载提示词">
             <span role="status" className="sr-only">正在加载提示词</span>
-            <div className={styles.gallery} aria-hidden="true">
+            <div className={styles.skeletonGrid} aria-hidden="true">
               {Array.from({ length: 15 }, (_, i) => <div key={i} className={styles.skeleton} />)}
             </div>
           </div>
@@ -628,12 +650,12 @@ export default function PromptsPage() {
             <button onClick={() => { if (requireLogin('/prompts', '登录后添加你的提示词')) setShowAdd(true); }}>添加提示词</button>
           </div>
         ) : (
-          <div className={styles.gallery}>
-            {prompts.map(prompt => (
-              <article key={prompt.id} className={styles.card}>
-                <button className={styles.coverButton} onClick={() => { setPreviewPrompt(prompt); setPromptExpanded(false); }}
+          <StablePromptGrid items={prompts}>
+            {prompt => (
+              <article key={prompt.id} className={styles.card} data-prompt-id={prompt.id}>
+                <button className={styles.coverButton} style={{ aspectRatio: String(coverRatio(prompt)) }} onClick={() => { setPreviewPrompt(prompt); setPromptExpanded(false); }}
                   aria-label={`查看提示词：${prompt.title || prompt.name || '未命名提示词'}`}>
-                  <PromptCover prompt={prompt} />
+                  <PromptCover key={prompt.image_url} prompt={prompt} />
                 </button>
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger className={styles.cardMenu} aria-label={`更多操作：${prompt.title || prompt.name || '未命名提示词'}`}>
@@ -670,8 +692,8 @@ export default function PromptsPage() {
                   </div>
                 </div>
               </article>
-            ))}
-          </div>
+            )}
+          </StablePromptGrid>
         )}
         {!loading && !loadError && prompts.length > 0 && <footer className={styles.feedStatus}>
           <span>已展示 {prompts.length.toLocaleString()} 个不重复灵感</span>
@@ -922,8 +944,9 @@ export default function PromptsPage() {
 }
 
 function PromptCover({ prompt }: { prompt: PromptItem }) {
+  const preview = getImagePreviewUrl(prompt.image_url);
+  const [source, setSource] = useState(preview);
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [prompt.image_url]);
   if (!prompt.image_url || failed) return (
     <div className={styles.missingCover}>
       <ImageIcon size={28} /><strong>{prompt.title || prompt.name || '未命名提示词'}</strong>
@@ -931,7 +954,12 @@ function PromptCover({ prompt }: { prompt: PromptItem }) {
     </div>
   );
   return <span className={styles.coverFrame}>
-    <img src={getImagePreviewUrl(prompt.image_url)} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+    <img src={source} alt={prompt.title || prompt.name || '提示词效果图'} loading="lazy" decoding="async"
+      width={prompt.image_width} height={prompt.image_height}
+      onError={() => {
+        if (source !== prompt.image_url) setSource(prompt.image_url);
+        else setFailed(true);
+      }} />
   </span>;
 }
 

@@ -38,6 +38,8 @@ beforeEach(() => {
   vi.mocked(promptsApi.getPrompts).mockReset().mockResolvedValue(result());
   vi.mocked(promptsApi.getCategories).mockResolvedValue(response({ categories: [{ name: '摄影', count: 24 }] }));
   vi.mocked(useOptionalAuthSession).mockReturnValue(null);
+  vi.mocked(promptsApi.deletePrompt).mockReset().mockResolvedValue(response({}));
+  vi.stubGlobal('confirm', vi.fn(() => true));
   vi.stubGlobal('IntersectionObserver', class {
     constructor(callback: IntersectionObserverCallback) { intersectionCallback = callback; }
     observe() { /* test controls intersection explicitly */ }
@@ -168,6 +170,66 @@ describe('image-first prompt gallery', () => {
     expect(host.querySelector('[aria-label="查看提示词：汽车光影"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="查看提示词：第二批灵感"]')).not.toBeNull();
     expect(host.querySelectorAll('article')).toHaveLength(2);
+  });
+
+  it('falls back from a failed thumbnail to the original without changing card dimensions', async () => {
+    const cover = { ...entry, image_url: '/uploads/test.png', image_width: 1200, image_height: 800 };
+    vi.mocked(promptsApi.getPrompts).mockResolvedValue(result([cover]));
+    await mount();
+    const image = host.querySelector('article img')!;
+    const frame = image.closest('button')!;
+    const reservedRatio = frame.style.aspectRatio;
+    expect(reservedRatio).toBe('1.5');
+    expect(image.getAttribute('src')).toContain('/_next/image?');
+    await act(async () => image.dispatchEvent(new Event('error')));
+    expect(image.getAttribute('src')).toBe(cover.image_url);
+    expect(frame.style.aspectRatio).toBe(reservedRatio);
+    expect(host.textContent).not.toContain('图片暂不可用');
+    await act(async () => image.dispatchEvent(new Event('load')));
+    expect(frame.style.aspectRatio).toBe(reservedRatio);
+    await act(async () => image.dispatchEvent(new Event('error')));
+    expect(host.textContent).toContain('图片暂不可用');
+    expect(frame.style.aspectRatio).toBe(reservedRatio);
+  });
+
+  it('removes only the chosen card and continues from the server cursor after deletion', async () => {
+    const other = { ...entry, id: 8, title: '不要删除', image_url: '/other.png' };
+    const next = { ...entry, id: 9, title: '下一张', image_url: '/next.png' };
+    vi.mocked(promptsApi.getPrompts)
+      .mockResolvedValueOnce(response({ ...result([entry, other], 3).data, has_more: true, next_cursor: 8 }))
+      .mockResolvedValueOnce(response({ ...result([next], 2, 2).data, has_more: false, next_cursor: null }));
+    await mount();
+    const otherCard = host.querySelector('[data-prompt-id="8"]');
+    const trigger = host.querySelector('[aria-label="更多操作：汽车光影"]')!;
+    await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    const remove = Array.from(document.querySelectorAll('[role="menuitem"]')).find(item => item.textContent === '删除') as HTMLElement;
+    expect(remove).toBeTruthy();
+    await act(async () => remove.click());
+    expect(promptsApi.deletePrompt).toHaveBeenCalledTimes(1);
+    expect(promptsApi.deletePrompt).toHaveBeenCalledWith(7);
+    expect(host.querySelector('[data-prompt-id="7"]')).toBeNull();
+    expect(host.querySelector('[data-prompt-id="8"]')).toBe(otherCard);
+    expect(host.querySelectorAll('article')).toHaveLength(1);
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
+    expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 2, 30, false, expect.any(Number), undefined, 8);
+    expect(host.querySelectorAll('article')).toHaveLength(2);
+    expect(host.querySelector('[data-prompt-id="8"]')).toBe(otherCard);
+  });
+
+  it('ignores a slow previous-source response after switching tabs', async () => {
+    let finishOldPage!: (value: ReturnType<typeof result>) => void;
+    const external = { ...entry, id: 20, title: '外部新列表', image_url: '/external.png' };
+    vi.mocked(promptsApi.getPrompts)
+      .mockResolvedValueOnce(result([entry], 90))
+      .mockImplementationOnce(() => new Promise(resolve => { finishOldPage = resolve; }))
+      .mockResolvedValueOnce(result([external], 1));
+    await mount();
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
+    await act(async () => button('外部素材').click());
+    await act(async () => finishOldPage(result([{ ...entry, id: 9, image_url: '/old.png' }], 90, 2)));
+    expect(host.querySelectorAll('article')).toHaveLength(1);
+    expect(host.querySelector('[data-prompt-id="20"]')).not.toBeNull();
+    expect(host.querySelector('[data-prompt-id="9"]')).toBeNull();
   });
 
   it('does not repeat the same visual when later pages contain another database row for it', async () => {

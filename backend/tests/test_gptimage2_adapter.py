@@ -397,14 +397,15 @@ async def test_poll_batch_success_failure_retry_limit_and_timeout(monkeypatch):
     success = await adapter._poll_batch("one", "https://host")
     no_url = await adapter._poll_batch("two", "https://host")
     failed = await adapter._poll_batch("three", "https://host")
-    retry_limit = await adapter._poll_batch("four", "https://host")
     monkeypatch.setattr("app.adapters.ai_model.gptimage2._BATCH_MAX_POLLS", 1)
+    retry_limit = await adapter._poll_batch("four", "https://host")
     timeout = await adapter._poll_batch("five", "https://host")
 
     assert success["image_urls"] == ["https://host/a.png"]
-    assert no_url["error"] == "任务成功但无图片 URL"
+    assert no_url["error"] == "上游任务已完成但没有返回图片"
+    assert no_url["result_unknown"] is True
     assert failed["error"] == "quota"
-    assert "最大重试次数" in retry_limit["error"]
+    assert retry_limit["result_unknown"] is True
     assert "超时" in timeout["error"]
 
 

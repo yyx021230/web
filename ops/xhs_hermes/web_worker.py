@@ -216,6 +216,8 @@ def retryable_image_keys(delivery: dict[str, Any]) -> list[str]:
     for post in delivery.get("posts") or []:
         if not isinstance(post, dict):
             continue
+        if post.get("image_status") == "review_required":
+            continue
         key = str(post.get("key") or "").strip()
         has_copy = bool(str(post.get("title") or "").strip() and str(post.get("content") or "").strip())
         has_image = bool(str(post.get("image_url") or "").strip())

@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     xhs_content_tagging_api_base_url: str = ""
     xhs_content_tagging_api_key: str = ""
     xhs_content_tagging_model: str = "gpt-5.4-mini"
+    ai_prompt_assistant_api_base_url: str = ""
+    ai_prompt_assistant_api_key: str = ""
+    ai_prompt_assistant_model: str = ""
+    ai_prompt_assistant_timeout_seconds: int = 120
     car_model_ocr_baidu_api_key: str = ""
     car_model_ocr_baidu_secret_key: str = ""
     car_model_oss_access_key_id: str = ""
@@ -81,6 +85,7 @@ class Settings(BaseSettings):
     ai_postprocess_membership_key: str = "ai:image:postprocess:membership"
     ai_postprocess_worker_concurrency: int = 12
     ai_provider_circuit_breaker_seconds: int = 300
+    ai_provider_wait_timeout_seconds: int = 300
     ai_image_shadow_enabled: bool = False
     ai_image_reconciliation_enabled: bool = False
     ai_image_reconciliation_interval_seconds: int = 60

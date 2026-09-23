@@ -1,3 +1,7 @@
+import base64
+import binascii
+import re
+
 from pydantic import BaseModel, Field, field_validator
 from typing import Literal, Optional
 from urllib.parse import urlparse
@@ -81,6 +85,12 @@ class GenerateImageRequest(BaseModel):
         return value
 
 
+class ImageTaskProgress(BaseModel):
+    phase: str
+    message: str
+    wait_seconds: int = 0
+
+
 class ImageTaskResponse(BaseModel):
     task_id: str
     status: str
@@ -90,6 +100,7 @@ class ImageTaskResponse(BaseModel):
     created_at: Optional[str] = None
     finished_at: Optional[str] = None
     elapsed_seconds: Optional[float] = None
+    progress: Optional[ImageTaskProgress] = None
 
 
 class AIImageRuntimeConfig(BaseModel):
@@ -120,3 +131,55 @@ class ModelInfo(BaseModel):
     description: str
     max_resolution: dict[str, int]
     styles: list[str] = []
+
+
+class PromptPolishRequest(BaseModel):
+    input: str = Field(..., min_length=1, max_length=8000, description="需要润色的生图提示词")
+
+    @field_validator("input")
+    @classmethod
+    def normalize_input(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("提示词不能为空")
+        return normalized
+
+
+class PromptModifyRequest(BaseModel):
+    input: str = Field(..., min_length=1, max_length=8000, description="当前生图提示词")
+    instruction: str = Field(..., min_length=1, max_length=1000, description="局部修改要求")
+
+    @field_validator("input", "instruction")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("提示词和修改要求不能为空")
+        return normalized
+
+
+class PromptReverseRequest(BaseModel):
+    image_data: str = Field(
+        ...,
+        min_length=32,
+        max_length=16_000_000,
+        description="待反推图片，支持 JPEG、PNG、WebP 的 data URI",
+    )
+
+    @field_validator("image_data")
+    @classmethod
+    def validate_image_data(cls, value: str) -> str:
+        match = re.fullmatch(r"data:([^;]+);base64,(.*)", value, flags=re.DOTALL)
+        if not match or match.group(1) not in {"image/jpeg", "image/png", "image/webp"}:
+            raise ValueError("图片仅支持 JPEG、PNG 或 WebP 格式")
+        try:
+            raw = base64.b64decode(match.group(2), validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("图片数据无效，请重新选择图片") from exc
+        if len(raw) > 10 * 1024 * 1024:
+            raise ValueError("图片不能超过 10MB")
+        return value
+
+
+class PromptAssistResponse(BaseModel):
+    prompt: str

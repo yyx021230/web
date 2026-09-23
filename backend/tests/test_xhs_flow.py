@@ -5127,6 +5127,101 @@ async def test_sync_account_notes_first_sync_defers_until_creator_center_import(
 
 
 @pytest.mark.asyncio
+async def test_homepage_create_mode_adds_provisional_note_and_creator_import_merges_it(client, monkeypatch):
+    async with async_session() as db:
+        db.add_all([
+            XHSEnvironment(id=720, shop_id="shop_publish_720", account_name="发布账号应急新增", status="active", profile_url="https://example.com/profile"),
+            XHSEnvironment(id=721, shop_id="shop_runner_721", account_name="测试应急", status="active", is_sync_runner=True),
+        ])
+        await db.commit()
+
+    async def fake_fetch_profile_account_notes(
+        self: XHSService,
+        profile_url: str,
+        api_base: str,
+        limit: int = 60,
+        **kwargs,
+    ):
+        return {
+            "profile_nickname": "发布账号应急新增",
+            "red_id": "red_homepage_create",
+            "feeds": [{
+                "feed_id": "feed_homepage_create",
+                "xsec_token": "H" * 46,
+                "title": "主页应急建档帖子",
+                "published_at": datetime(2026, 8, 14, 2, 30),
+                "cover_image_url": "https://example.com/homepage-create.jpg",
+                "liked_count": 3,
+                "comment_count": 1,
+                "collected_count": 2,
+                "share_count": 0,
+                "sort_index": 0,
+            }],
+        }
+
+    async def fake_sleep_sync_profile_prep(self: XHSService, persona=None):
+        return None
+
+    async def fake_apply_pending_cover_localizations(self: XHSService, pending_cover_localizations):
+        return None
+
+    monkeypatch.setattr(XHSService, "_fetch_profile_account_notes", fake_fetch_profile_account_notes)
+    monkeypatch.setattr(XHSService, "_sleep_sync_profile_prep", fake_sleep_sync_profile_prep)
+    monkeypatch.setattr(XHSService, "_apply_pending_account_note_cover_localizations", fake_apply_pending_cover_localizations)
+
+    async with async_session() as db:
+        service = XHSService(db)
+        publish_env = await db.get(XHSEnvironment, 720)
+        runner_env = await db.get(XHSEnvironment, 721)
+        assert publish_env is not None and runner_env is not None
+        result = await service._sync_account_notes_with_api(
+            publish_env,
+            api_base="http://localhost:18061",
+            runner_envs=[runner_env],
+            assigned_runner_env=runner_env,
+            homepage_sync_mode="create_missing",
+        )
+
+        assert result["created_notes"] == 1
+        assert result["updated_notes"] == 0
+        assert result["deferred_homepage_notes"] == 0
+
+        notes = list((await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 720)
+        )).scalars().all())
+        assert len(notes) == 1
+        assert notes[0].feed_id == "feed_homepage_create"
+        assert notes[0].identity_status == "homepage_only"
+        assert notes[0].identity_match_method == "homepage_new"
+        assert notes[0].assigned_runner_environment_id == 721
+        assert notes[0].liked_count == 3
+
+        creator_result = await service._import_creator_note_stats_rows(publish_env, [{
+            "source_row_index": 2,
+            "title": "主页应急建档帖子",
+            "published_at": datetime(2026, 8, 14, 10, 30),
+            "published_at_raw": "2026-08-14 10:30",
+            "like_count": 30,
+            "comment_count": 8,
+            "collect_count": 6,
+            "share_count": 2,
+            "view_count": 500,
+            "exposure_count": 800,
+        }])
+        await db.commit()
+
+        assert creator_result["created_notes"] == 0
+        assert creator_result["updated_notes"] == 1
+        merged_notes = list((await db.execute(
+            select(XHSAccountNote).where(XHSAccountNote.environment_id == 720)
+        )).scalars().all())
+        assert len(merged_notes) == 1
+        assert merged_notes[0].identity_status == "resolved"
+        assert merged_notes[0].creator_synced_at is not None
+        assert merged_notes[0].liked_count == 30
+
+
+@pytest.mark.asyncio
 async def test_extract_account_note_detail_data_reads_top_level_notecard_fields():
     async with async_session() as db:
         service = XHSService(db)

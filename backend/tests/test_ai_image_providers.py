@@ -261,7 +261,8 @@ def test_gptimage2_size_constraints_accept_official_4k_portrait():
 
 
 @pytest.mark.asyncio
-async def test_request_with_retries_retries_gateway_status(monkeypatch):
+@pytest.mark.parametrize("method,expected_status,calls", [("GET", 200, 2), ("POST", 502, 1)])
+async def test_request_with_retries_only_retries_safe_gateway_request(monkeypatch, method, expected_status, calls):
     class FakeClient:
         def __init__(self):
             self.calls = 0
@@ -283,15 +284,15 @@ async def test_request_with_retries_retries_gateway_status(monkeypatch):
     client = FakeClient()
     resp = await _request_with_retries(
         client,  # type: ignore[arg-type]
-        "POST",
+        method,
         "https://api.duckcoding.ai/v1/images/generations",
         retries=3,
         retry_delay=0,
         retry_on_statuses={502, 503, 504},
     )
 
-    assert resp.status_code == 200
-    assert client.calls == 2
+    assert resp.status_code == expected_status
+    assert client.calls == calls
 
 
 @pytest.mark.asyncio
@@ -362,7 +363,7 @@ async def test_mentalout_batch_retries_retryable_upstream_error(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_openai_images_retries_gateway_error(monkeypatch):
+async def test_openai_images_does_not_repeat_billable_request_after_gateway_error(monkeypatch):
     provider = AIImageProvider(
         id=1,
         name="DuckCoding GPT Image 2",
@@ -426,15 +427,11 @@ async def test_openai_images_retries_gateway_error(monkeypatch):
     monkeypatch.setattr("app.services.ai_image_provider_service.asyncio.sleep", fake_sleep)
     monkeypatch.setattr(AIImageProviderService, "_extract_image_urls", fake_extract_image_urls)
 
-    result = await service._call_openai_images(
-        provider,
-        "retry prompt",
-        {"width": 2160, "height": 3840, "quality": "high"},
-    )
-
-    assert result["status"] == "completed"
-    assert result["task_id"] == "123"
-    assert result["image_urls"] == ["/uploads/ai-images/final.png"]
+    with pytest.raises(ValueError, match="bad gateway"):
+        await service._call_openai_images(
+            provider, "retry prompt", {"width": 2160, "height": 3840, "quality": "high"},
+        )
+    assert len(requests) == 1
     assert requests[0]["json"]["size"] == "2160x3840"
     assert requests[0]["json"]["quality"] == "high"
 
@@ -506,7 +503,7 @@ async def test_provider_diagnostic_can_force_image_edit_when_routing_is_disabled
 
 
 @pytest.mark.asyncio
-async def test_openai_images_retries_pending_openai_error(monkeypatch):
+async def test_openai_images_does_not_repeat_accepted_pending_request(monkeypatch):
     provider = AIImageProvider(
         id=3,
         name="DuckCoding GPT Image 2",
@@ -580,12 +577,10 @@ async def test_openai_images_retries_pending_openai_error(monkeypatch):
     monkeypatch.setattr("app.services.ai_image_provider_service.asyncio.sleep", fake_sleep)
     monkeypatch.setattr(AIImageProviderService, "_extract_image_urls", fake_extract_image_urls)
 
-    result = await service._call_openai_images(provider, "pending prompt", {"width": 1536, "height": 2048})
-
-    assert result["status"] == "completed"
-    assert result["task_id"] == "789"
-    assert result["image_urls"] == ["/uploads/ai-images/pending-final.png"]
-    assert len(requests) == 2
+    with pytest.raises(ValueError, match="已停止重复提交") as error:
+        await service._call_openai_images(provider, "pending prompt", {"width": 1536, "height": 2048})
+    assert error.value.result_unknown is True
+    assert len(requests) == 1
 
 
 @pytest.mark.asyncio

@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 from app.adapters.ai_model.base import AIModelAdapter
+from app.adapters.ai_model.image_results import requested_image_count, validate_image_count
 from app.config import settings
 
 # Seedream 模型 endpoint ID
@@ -122,6 +123,41 @@ class SeedreamAdapter(AIModelAdapter):
         return "字节跳动 Seedream 5.0 图像生成模型"
 
     async def generate_image(
+        self, prompt: str, negative_prompt: str | None = None,
+        width: int = 2048, height: int = 2048, style: str | None = None,
+        image_data: str | None = None, image_url: str | None = None,
+        images_data: list[str] | None = None, count: int = 1, **kwargs,
+    ) -> dict:
+        # Independent single-image requests guarantee the selected count; a
+        # sequential group max_images setting is only an upper bound.
+        expected = requested_image_count({"count": count})
+        urls: list[str] = []
+        task_id = ""
+        for _ in range(expected):
+            try:
+                result = await self._generate_single(
+                    prompt=prompt, negative_prompt=negative_prompt, width=width, height=height,
+                    style=style, image_data=image_data, image_url=image_url, images_data=images_data, **kwargs,
+                )
+            except Exception as exc:
+                if not urls and not isinstance(exc, httpx.RequestError):
+                    raise
+                error = str(exc).strip() or type(exc).__name__
+                return {"task_id": task_id, "status": "failed", "image_urls": urls,
+                        "error": f"请求 {expected} 张，已生成 {len(urls)} 张，后续生成中断：{error}；未自动重试",
+                        "result_unknown": isinstance(exc, httpx.RequestError)
+                        and not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout))}
+            task_id = task_id or result.get("task_id", "")
+            urls.extend(result.get("image_urls") or [])
+            if result.get("status") != "completed":
+                return {**result, "task_id": task_id, "image_urls": urls,
+                        "error": (f"请求 {expected} 张，已生成 {len(urls)} 张：{result.get('error') or '生成失败'}"
+                                  if expected > 1 else result.get("error"))}
+        return validate_image_count(
+            {"task_id": task_id, "status": "completed", "image_urls": urls}, expected,
+        )
+
+    async def _generate_single(
         self,
         prompt: str,
         negative_prompt: str | None = None,
@@ -153,6 +189,7 @@ class SeedreamAdapter(AIModelAdapter):
             "size": size,
             "response_format": "url",
             "watermark": False,
+            "sequential_image_generation": "disabled",
         }
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt

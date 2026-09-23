@@ -19,7 +19,7 @@ def test_profile_contracts_are_versioned_and_unknown_values_are_safe():
     assert normalize_adaptation_level('unknown') == 'replica'
     contracts = [adaptation_contract(level) for level in ('replica', 'light', 'interpretive')]
     assert [item['label'] for item in contracts] == ['精准复刻', '轻度微改', '灵感改编']
-    assert {item['version'] for item in contracts} == {'hermes-adaptation-v7'}
+    assert {item['version'] for item in contracts} == {'hermes-adaptation-v10'}
     assert all('不因档位放宽' in item['hard_guard'] for item in contracts)
 
 

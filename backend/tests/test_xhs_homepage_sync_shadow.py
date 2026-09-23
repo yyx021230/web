@@ -651,6 +651,7 @@ async def test_legacy_executor_runs_once_and_shadow_matches_final_result(
         history_run_id = int(history.id)
 
     calls = 0
+    observed_homepage_sync_modes: list[str] = []
 
     async def fake_sync_account_notes(
         self: XHSService,
@@ -660,6 +661,7 @@ async def test_legacy_executor_runs_once_and_shadow_matches_final_result(
     ) -> dict[str, int]:
         nonlocal calls
         calls += 1
+        observed_homepage_sync_modes.append(str(kwargs.get("homepage_sync_mode")))
         await progress_callback(
             {
                 "phase": "opening_runner",
@@ -719,10 +721,12 @@ async def test_legacy_executor_runs_once_and_shadow_matches_final_result(
         sync_account_limit=1,
         runner_account_assignments='{"runner": [101]}',
         details=False,
+        homepage_sync_mode="create_missing",
         history_run_id=history_run_id,
     )
 
     assert calls == 1
+    assert observed_homepage_sync_modes == ["create_missing"]
     assert job["status"] == "succeeded"
     assert job["result"]["synced_accounts"] == 1
     assert mirrored_phases == [

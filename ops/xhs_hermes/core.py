@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 from policy_constraints import policy_constraint_errors
+from copy_length import copy_length_check
 
 
 EXACT_BANNED_TERMS = (
@@ -179,6 +180,24 @@ NO_TEXT_TEMPLATE_RE = re.compile(r"无文字|不显示文字|纯摄影|仅车辆
 UNKNOWN_FACT_PLACEHOLDER_RE = re.compile(
     r"以(?:官方(?:发布|信息)?|实际(?:情况)?|最终(?:发布|信息)?|具体版本)为准|"
     r"暂未公布|待公布|后续公布|敬请期待"
+)
+# Match standalone production directives, not consumer advice or descriptions
+# such as "报价单不展示地方补贴金额时，应核对适用条件".
+INTERNAL_COPY_INSTRUCTION_RE = re.compile(
+    r"(?:^|[。！？!?；;，,：:\n])\s*"
+    r"(?:(?:公开文案|文案|正文|线上报价)(?:中)?\s*)?"
+    r"(?:不要|不得|不可|禁止|不能|不)"
+    r"(?:"
+    r"(?:在(?:公开文案|文案|正文|线上报价|线上)(?:中)?)?"
+    r"(?:展示|列出|写出)(?:地方|本地|当地)补贴金额"
+    r"|(?:把|将)(?:地方|本地|当地)补贴金额"
+    r"(?:写进|写入|放进|放入)(?:公开文案|文案|正文|线上报价)"
+    r")\s*(?=$|[。！？!?；;，,：:\n])"
+    r"|(?:这篇|本篇)(?:文案|稿子|笔记)?(?:不用|不要|不必|不应|需要|应该|只需|只要)(?:硬聊|写成|改成|改写|保留母文)"
+    r"|政策(?:期|时间|截止时间)(?:只|统一)?写(?:到|成|为)|(?:按|按照)(?:母文|母版|提示词)(?:改写|创作|要求)"
+    r"|不是[^\n。！？]{0,20}(?:那种|这种|这类)叙事"
+    r"|(?:别|不要|不能)拿[^\n。！？]{0,32}(?:叙事|故事)[^\n。！？]{0,16}(?:硬套|套用)"
+    r"|(?:线上|文案里|成稿里)(?:别|不要|不能)(?:把|展示|写)"
 )
 
 
@@ -714,7 +733,7 @@ def validate_copy(
     nonblank = [line.strip() for line in content.splitlines() if line.strip()]
     if not nonblank or not TOPIC_RE.search(nonblank[-1]):
         hard.append("最后一个非空行缺少话题标签")
-    if mother and has_lead_structure(mother) and not CTA_RE.search(content):
+    if mother and adaptation_level != "interpretive" and has_lead_structure(mother) and not CTA_RE.search(content):
         hard.append("母文中的留资入口没有被保留")
 
     banned = sorted({term for term in EXACT_BANNED_TERMS if term in full})
@@ -723,6 +742,10 @@ def validate_copy(
         hard.append("出现明确禁用词：" + "、".join(sorted(set(banned))))
     hard.extend(policy_constraint_errors(full, case))
     hard.extend(conversion_logic_errors(content))
+    internal_instruction = INTERNAL_COPY_INSTRUCTION_RE.search(full)
+    if adaptation_level == "interpretive" and internal_instruction:
+        hard.append("公开文案泄漏内部写作执行要求：" + internal_instruction.group(0).strip()
+                    + "。删除编辑指令，保留面向读者的真实事实与适用条件。")
 
     competitors = sorted(set(COMPETITOR_RE.findall(full)))
     if competitors:
@@ -778,22 +801,22 @@ def validate_copy(
         hard.append("当前政策没有完整分配置价格，不能承诺多配置报价")
 
     fidelity: dict[str, Any] = {"level": adaptation_level}
+    if adaptation_level == "interpretive":
+        brevity = copy_length_check(content, mother, case)
+        hard.extend(brevity["hard_errors"])
+        fidelity["brevity"] = {key: value for key, value in brevity.items() if key != "hard_errors"}
     if mother:
         source_lines = [line for line in str(mother.get("content") or "").splitlines() if line.strip()]
         output_lines = [line for line in content.splitlines() if line.strip()]
         ratio = len(output_lines) / max(1, len(source_lines))
-        thresholds = {
-            "replica": (0.5, 1.7, 0.75, 1.3),
-            "light": (0.4, 2.0, 0.65, 1.55),
-            "interpretive": (0.25, 2.5, 0.5, 2.0),
-        }
-        hard_min, hard_max, warning_min, warning_max = thresholds.get(adaptation_level, thresholds["replica"])
         fidelity.update({
             "mother_lines": len(source_lines),
             "output_lines": len(output_lines),
             "line_ratio": round(ratio, 3),
         })
         if adaptation_level == "interpretive":
+            # Keep legacy style metrics for audit, never as acceptance gates.
+            fidelity["style_advisory"] = True
             signature_phrases = (
                 "藏不住", "还好发现了", "直接让人破防", "甩城市+车型",
                 "少套路多真诚", "别被套路当冤大头",
@@ -802,7 +825,7 @@ def validate_copy(
             carried = [phrase for phrase in signature_phrases if phrase in mother_full and phrase in full]
             fidelity["carried_signature_phrases"] = carried
             if len(carried) >= 2:
-                hard.append("灵感改编仍沿用多处母文套话：" + "、".join(carried))
+                warnings.append("灵感改编仍沿用多处母文套话：" + "、".join(carried))
             content_length = len(content.strip())
             paragraph_count = len([
                 line for line in output_lines
@@ -812,18 +835,14 @@ def validate_copy(
                 "content_length": content_length,
                 "paragraph_count": paragraph_count,
             })
-            if content_length < 260 or content_length > 480:
-                hard.append(f"灵感改编正文应控制在260至480字：当前{content_length}字")
-            if paragraph_count < 5 or paragraph_count > 8:
-                hard.append(f"灵感改编应使用5至8个短段落：当前{paragraph_count}段")
             if re.search(r"(?:^|\n)\s*(?:\d+[、.．)]|[一二三四五六七八九十]+[、.．])", content):
-                hard.append("灵感改编不应使用编号清单")
+                warnings.append("灵感改编采用编号清单，可结合母文选题判断是否适合")
             generic_openings = ("最近准备", "可以先把", "这篇先帮你", "你到店前可以直接问")
             body_lines = [line for line in output_lines if not TOPIC_RE.search(line)]
             opening = "".join(body_lines[:2])
             carried_openings = [phrase for phrase in generic_openings if phrase in opening]
             if carried_openings:
-                hard.append("灵感改编开头过于模板化：" + "、".join(carried_openings))
+                warnings.append("灵感改编开头可能模板化：" + "、".join(carried_openings))
             emoji_count = len(EMOJI_RE.findall(content))
             reader_dialogue = bool(re.search(r"你|你的|你家", "\n".join(body_lines)))
             opening_hook = bool(XHS_OPENING_HOOK_RE.search(opening))
@@ -847,27 +866,23 @@ def validate_copy(
                 "short_paragraphs": short_paragraphs,
                 "xiaohongshu_voice_score": voice_score,
             })
-            if emoji_count < 2:
-                hard.append("灵感改编缺少小红书式视觉节奏：正文至少自然使用2个Emoji")
-            elif emoji_count > 6:
-                hard.append(f"灵感改编Emoji过密：当前{emoji_count}个，最多6个")
-            if not reader_dialogue:
-                hard.append("灵感改编缺少直接面向读者的口语表达")
-            if not opening_hook:
-                hard.append("灵感改编前两段缺少具体纠结、场景或疑问钩子")
             if voice_score < 4:
-                hard.append(f"灵感改编小红书语感不足：当前{voice_score}/6")
+                warnings.append(f"灵感改编小红书语感参考分：当前{voice_score}/6，不作为验收门槛")
             unique_configs = {
                 compact_text(value) for value in precise_config_mentions(content)
                 if compact_text(value)
             }
             fidelity["configuration_examples"] = len(unique_configs)
-            if len(unique_configs) > 2:
-                hard.append(f"灵感改编最多举2个配置版本：当前{len(unique_configs)}个")
-        if ratio < hard_min or ratio > hard_max:
-            hard.append(f"正文结构与母文严重偏离：母文{len(source_lines)}行，输出{len(output_lines)}行")
-        elif ratio < warning_min or ratio > warning_max:
-            warnings.append(f"正文行数与母文有差异：母文{len(source_lines)}行，输出{len(output_lines)}行")
+        else:
+            thresholds = {
+                "replica": (0.5, 1.7, 0.75, 1.3),
+                "light": (0.4, 2.0, 0.65, 1.55),
+            }
+            hard_min, hard_max, warning_min, warning_max = thresholds.get(adaptation_level, thresholds["replica"])
+            if ratio < hard_min or ratio > hard_max:
+                hard.append(f"正文结构与母文严重偏离：母文{len(source_lines)}行，输出{len(output_lines)}行")
+            elif ratio < warning_min or ratio > warning_max:
+                warnings.append(f"正文行数与母文有差异：母文{len(source_lines)}行，输出{len(output_lines)}行")
 
     return {
         "pass": not hard,

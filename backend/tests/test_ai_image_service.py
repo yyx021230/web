@@ -143,6 +143,7 @@ async def test_generate_does_not_fallback_when_configured_provider_fails(client,
             model_name="gptimage2",
             on_provider_selected=None,
             on_upstream_accepted=None,
+            on_routing_wait=None,
         ):
             return {
                 "task_id": "",
@@ -688,7 +689,8 @@ async def test_recover_incomplete_tasks_resets_processing_and_requeues_missing(c
     async with async_session() as db:
         db.add(User(id=4, username="recover_user", email="recover@example.com", hashed_password="x"))
         db.add_all([
-            AITask(id=201, user_id=4, model_name="gptimage2", prompt="processing", status="processing"),
+            AITask(id=201, user_id=4, model_name="gptimage2", prompt="processing", status="processing",
+                   params={"_routing": {"phase": "waiting_provider"}}),
             AITask(id=202, user_id=4, model_name="gptimage2", prompt="queued", status="queued"),
             AITask(id=203, user_id=4, model_name="gptimage2", prompt="done", status="completed"),
         ])

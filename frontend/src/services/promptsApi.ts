@@ -41,9 +41,9 @@ export interface PromptImportResult {
 }
 
 export const promptsApi = {
-  getPrompts: (keyword?: string, category?: string, page = 1, limit = 100, owner = false, randomSeed?: number, sourceKind?: 'internal' | 'external' | 'performance') =>
-    api.get<{ items: PromptItem[]; total: number; page: number; limit: number }>('/prompts', {
-      params: { keyword, category, page, limit, owner, random_seed: randomSeed, source_kind: sourceKind },
+  getPrompts: (keyword?: string, category?: string, page = 1, limit = 100, owner = false, randomSeed?: number, sourceKind?: 'internal' | 'external' | 'performance', afterId?: number) =>
+    api.get<{ items: PromptItem[]; total: number; page: number; limit: number; has_more?: boolean; next_cursor?: number | null }>('/prompts', {
+      params: { keyword, category, page, limit, owner, random_seed: randomSeed, source_kind: sourceKind, after_id: afterId },
     }),
 
   getCategories: () =>

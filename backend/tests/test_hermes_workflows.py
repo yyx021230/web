@@ -131,7 +131,7 @@ async def test_adaptation_level_is_versioned_and_defaults_to_replica(client):
     assert default_run.status_code == 200, default_run.text
     default_params = default_run.json()['data']['parameters']
     assert default_params['adaptation_level'] == 'replica'
-    assert default_params['adaptation_contract']['version'] == 'hermes-adaptation-v7'
+    assert default_params['adaptation_contract']['version'] == 'hermes-adaptation-v10'
     assert default_params['adaptation_contract']['source_rule'].startswith('每篇只使用')
 
     light_run = await client.post('/api/v1/hermes-workflows/runs', headers=headers, json={**base, 'adaptation_level': 'light'})
@@ -354,6 +354,8 @@ async def test_manual_run_is_distributed_to_owner_review_and_worker_flow(client,
                     "mother_copy_id": 519,
                     "account_history": {"account_id": environment_id, "history_limit": 15, "history_posts": 15, "history_missing_body": 3},
                     "account_repetition": {"status": "allowed", "score": 0.55, "blocking": False},
+                    "editorial_plan": {"source_topic": "车色观察", "mother_id": 519},
+                    "editorial_review": {"ok": True, "duplicate_of": [], "summary": "与母文选题一致"},
                 }],
             }
         },
@@ -364,6 +366,8 @@ async def test_manual_run_is_distributed_to_owner_review_and_worker_flow(client,
     assert post['source_detail']['account_history']['account_id'] == environment_id
     assert post['source_detail']['account_history']['history_posts'] == 15
     assert post['source_detail']['account_repetition']['blocking'] is False
+    assert post['source_detail']['editorial_plan']['source_topic'] == '车色观察'
+    assert post['source_detail']['editorial_review']['ok'] is True
 
     reviewed = await client.post(
         f"/api/v1/hermes-workflows/posts/{post['id']}/review",

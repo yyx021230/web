@@ -484,7 +484,7 @@ class CoreTest(unittest.TestCase):
         self.assertEqual("light", light["fidelity"]["level"])
         self.assertEqual(0.4, light["fidelity"]["line_ratio"])
 
-    def test_interpretive_copy_rejects_mother_signature_phrase_carryover(self) -> None:
+    def test_interpretive_copy_warns_on_mother_signature_phrase_carryover(self) -> None:
         mother = {
             "title": "藏不住，新政来了",
             "content": "还好发现了好时机\n甩城市+车型\n少套路多真诚\n#汽车[话题]#",
@@ -496,9 +496,11 @@ class CoreTest(unittest.TestCase):
             case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
             adaptation_level="interpretive",
         )
-        self.assertTrue(any("母文套话" in value for value in result["hard_errors"]), result)
+        self.assertTrue(result["pass"], result)
+        self.assertTrue(any("母文套话" in value for value in result["warnings"]), result)
+        self.assertEqual(3, len(result["fidelity"]["carried_signature_phrases"]))
 
-    def test_interpretive_copy_rejects_manual_style_output(self) -> None:
+    def test_interpretive_copy_advises_on_manual_style_output(self) -> None:
         mother = {
             "title": "车型政策更新",
             "content": "车型信息\n价格信息\n版本信息\n权益信息\n留【城市】\n#汽车[话题]#",
@@ -520,10 +522,12 @@ class CoreTest(unittest.TestCase):
             case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
             adaptation_level="interpretive",
         )
-        self.assertTrue(any("编号清单" in value for value in result["hard_errors"]), result)
-        self.assertTrue(any("开头过于模板化" in value for value in result["hard_errors"]), result)
+        self.assertTrue(result["pass"], result)
+        self.assertEqual([], result["hard_errors"])
+        self.assertTrue(any("编号清单" in value for value in result["warnings"]), result)
+        self.assertTrue(any("开头可能模板化" in value for value in result["warnings"]), result)
 
-    def test_interpretive_copy_rejects_editorial_copy_without_xhs_voice(self) -> None:
+    def test_interpretive_copy_accepts_editorial_copy_without_xhs_voice(self) -> None:
         mother = {
             "title": "车型政策更新",
             "content": "车型信息\n价格信息\n版本信息\n权益信息\n#汽车[话题]#",
@@ -544,8 +548,12 @@ class CoreTest(unittest.TestCase):
             case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
             adaptation_level="interpretive",
         )
-        self.assertTrue(any("视觉节奏" in value for value in result["hard_errors"]), result)
-        self.assertTrue(any("面向读者" in value for value in result["hard_errors"]), result)
+        self.assertTrue(result["pass"], result)
+        self.assertEqual([], result["hard_errors"])
+        self.assertTrue(result["fidelity"]["style_advisory"])
+        self.assertEqual(0, result["fidelity"]["emoji_count"])
+        self.assertFalse(result["fidelity"]["reader_dialogue"])
+        self.assertTrue(any("不作为验收门槛" in value for value in result["warnings"]), result)
 
     def test_interpretive_copy_accepts_xhs_voice_with_original_structure(self) -> None:
         mother = {
@@ -554,11 +562,11 @@ class CoreTest(unittest.TestCase):
         }
         content = (
             "每天通勤不到40公里，零跑A05到底要不要上长续航？🤔\n"
-            "如果你也卡在这里，先别急着只看续航数字，真实的充电条件比纸面参数更重要。\n"
+            "先看看你平时在哪充电。\n"
             "家里能稳定补能、平时主要城区代步，基础续航其实更容易把预算留在真正需要的地方。\n"
             "但每周都有跨城行程，或者临时出门比较多，我更建议把续航余量放在前面考虑。🚗\n"
             "这点真的要注意：政策和权益都有适用条件，先核对当地流程，再判断哪个版本更省心。\n"
-            "买车不是数字越大越好，适合自己的使用半径，才是每天开起来不后悔的选择。✨\n"
+            "按日常行程考虑就好。✨\n"
             "#零跑A05[话题]#"
         )
         result = validate_copy(
@@ -568,12 +576,200 @@ class CoreTest(unittest.TestCase):
             case={"vehicle_model": "零跑A05", "policy_text": "零跑A05", "allowed_months": []},
             adaptation_level="interpretive",
         )
-        voice_errors = [
-            value for value in result["hard_errors"]
-            if "小红书" in value or "Emoji" in value or "面向读者" in value or "钩子" in value
-        ]
-        self.assertEqual([], voice_errors, result)
+        self.assertTrue(result["pass"], result)
+        self.assertEqual([], result["hard_errors"], result)
         self.assertGreaterEqual(result["fidelity"]["xiaohongshu_voice_score"], 4)
+
+
+class InterpretiveCopyTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.case = {
+            "vehicle_model": "零跑A05",
+            "policy_text": "零跑A05；405舒享版63900元；405悦享版67900元；510悦享版75900元",
+            "allowed_months": [9],
+            "allow_multi_config_quote": True,
+        }
+        self.mother = {"title": "车型观察", "content": "外观记录\n留【城市】\n#汽车[话题]#"}
+        self.suffix = "\n留【城市】\n#零跑A05[话题]#"
+
+    def _validate(self, content: str, **overrides) -> dict:
+        return validate_copy(**{
+            "title": "零跑A05外观记录",
+            "content": content,
+            "mother": self.mother,
+            "case": self.case,
+            "adaptation_level": "interpretive",
+            **overrides,
+        })
+
+    def test_short_copy_has_no_minimum_and_long_copy_is_blocked(self) -> None:
+        for length in (40, 100, 180, 259, 260, 480, 481, 999, 1000):
+            with self.subTest(length=length):
+                content = "外" * (length - len(self.suffix)) + self.suffix
+                result = self._validate(content)
+                budget = result["fidelity"]["brevity"]
+                self.assertEqual(budget["body_chars"] <= budget["max_body_chars"], result["pass"], result)
+                self.assertEqual(length, result["fidelity"]["content_length"])
+
+    def test_paragraph_and_emoji_counts_are_diagnostic_only(self) -> None:
+        for paragraph_count in (1, 4, 5, 8, 9, 20):
+            for emoji_count in (0, 1, 2, 6, 7, 12):
+                with self.subTest(paragraphs=paragraph_count, emojis=emoji_count):
+                    body = ["外观记录。"] * (paragraph_count - 1) + ["留【城市】" + "🚗" * emoji_count]
+                    result = self._validate("\n".join([*body, "#零跑A05[话题]#"]))
+                    self.assertTrue(result["pass"], result)
+                    self.assertEqual(paragraph_count, result["fidelity"]["paragraph_count"])
+                    self.assertEqual(emoji_count, result["fidelity"]["emoji_count"])
+
+    def test_choice_question_and_reader_dialogue_are_not_required(self) -> None:
+        result = self._validate("外观记录。" + self.suffix)
+        self.assertTrue(result["pass"], result)
+        for metric in ("reader_dialogue", "opening_hook", "conversational", "expressive_punctuation"):
+            self.assertFalse(result["fidelity"][metric], result)
+        self.assertEqual(0, result["fidelity"]["configuration_examples"])
+        self.assertEqual("hard_errors_only", result["blocking_rule"])
+
+    def test_three_supported_configurations_are_allowed(self) -> None:
+        result = self._validate(
+            "405舒享版63900元、405悦享版67900元、510悦享版75900元。" + self.suffix
+        )
+        self.assertTrue(result["pass"], result)
+        self.assertEqual(3, result["fidelity"]["configuration_examples"])
+
+    def test_line_ratio_is_diagnostic_only_for_interpretive(self) -> None:
+        for mother_count, output_count in ((30, 3), (1, 12)):
+            mother = {"content": "\n".join(["外观记录。"] * mother_count)}
+            content = "\n".join(["外观记录。"] * (output_count - 1) + ["#零跑A05[话题]#"])
+            for level in ("replica", "light", "interpretive"):
+                with self.subTest(mother_lines=mother_count, output_lines=output_count, level=level):
+                    result = self._validate(content, mother=mother, adaptation_level=level)
+                    self.assertEqual(level == "interpretive", result["pass"], result)
+                    self.assertEqual(round(output_count / mother_count, 3), result["fidelity"]["line_ratio"])
+                    if level == "interpretive":
+                        self.assertFalse(any("母文" in value for value in result["warnings"]), result)
+                    else:
+                        self.assertTrue(any("结构与母文严重偏离" in value for value in result["hard_errors"]), result)
+
+    def test_global_title_and_body_limits_remain_hard(self) -> None:
+        body = "外观记录。" + self.suffix
+        title = "外" * 20
+        self.assertTrue(self._validate(body, title=title)["pass"])
+        for overrides, expected in (
+            ({"title": title + "观"}, "标题超过20字"),
+            ({"title": " "}, "标题为空"),
+            ({"content": "外" * 1001 + self.suffix}, "正文超过1000字"),
+            ({"content": " "}, "正文为空"),
+        ):
+            with self.subTest(expected=expected):
+                result = self._validate(overrides.get("content", body), title=overrides.get("title", title))
+                self.assertFalse(result["pass"], result)
+                self.assertTrue(any(expected in error for error in result["hard_errors"]), result)
+
+    def test_factual_safety_and_cta_checks_remain_hard(self) -> None:
+        cases = (
+            ("金额参考99999元。", "政策未提供的金额"),
+            ("610旗舰版。", "政策未提供的配置名"),
+            ("私信了解。", "出现明确禁用词"),
+            ("比亚迪车型。", "残留竞品品牌"),
+            ("海豹车型。", "残留旧车型"),
+            ("零跑C11车型。", "残留其他零跑车型"),
+            ("2026年9月20日政策。", "具体到日"),
+            ("8月政策。", "当前政策没有的月份"),
+            ("续航以官方发布为准，动力以官方信息为准。", "占位语"),
+            ("想知道你所在城市的国补后价格？", "城市不能作为查询国补后价格"),
+            ("评论留城市核对流程。", "互动引导"),
+            (
+                "405舒享版63900元、405悦享版67900元、510悦享版75900元，可提供完整报价单。",
+                "再次承诺提供同一份报价详情",
+            ),
+        )
+        for body, expected in cases:
+            with self.subTest(body=body):
+                result = self._validate(body + self.suffix)
+                self.assertFalse(result["pass"], result)
+                self.assertTrue(any(expected in error for error in result["hard_errors"]), result)
+        for content, expected in (
+            ("外观记录。\n留【城市】", "缺少话题标签"),
+        ):
+            with self.subTest(expected=expected):
+                result = self._validate(content)
+                self.assertFalse(result["pass"], result)
+                self.assertIn(expected, "、".join(result["hard_errors"]))
+        result = self._validate("外观记录。", title="外观记录", mother=None)
+        self.assertIn("目标车型未出现在标题或正文", result["hard_errors"])
+
+    def test_case_specific_policy_restrictions_remain_hard(self) -> None:
+        cases = (
+            ("地方补贴63900元。", {"publication_constraints": {"hide_local_subsidy_amounts": True}}, "不允许在线上展示地方补贴金额"),
+            ("内测专属。", {"policy_banned_terms": ["内测专属"]}, "出现明确禁用词"),
+            ("有现车可提。", {"vehicle_stage": "new"}, "新车型不能宣传现车可提"),
+            ("各配置价格表。", {"allow_multi_config_quote": False}, "不能承诺多配置报价"),
+        )
+        for body, overrides, expected in cases:
+            with self.subTest(body=body):
+                result = self._validate(body + self.suffix, case={**self.case, **overrides})
+                self.assertFalse(result["pass"], result)
+                self.assertTrue(any(expected in error for error in result["hard_errors"]), result)
+
+    def test_internal_production_instructions_are_blocked_without_needing_mother(self) -> None:
+        directives = (
+            "不展示地方补贴金额",
+            "不把地方补贴金额写进线上报价",
+            "正文不要展示地方补贴金额。",
+            "不要在公开文案中列出当地补贴金额。",
+            "不要将本地补贴金额写入正文。",
+            "外观记录。\n不展示地方补贴金额，留【城市】核对流程。",
+            "外观记录；不把地方补贴金额写进线上报价。",
+            "外观记录，不展示地方补贴金额。",
+            "外观记录，不把地方补贴金额写进线上报价。",
+            "制作要求：不展示地方补贴金额。",
+        )
+        for directive in directives:
+            for mother in (self.mother, None):
+                with self.subTest(directive=directive, has_mother=bool(mother)):
+                    result = self._validate(directive + self.suffix, mother=mother)
+                    self.assertFalse(result["pass"], result)
+                    self.assertEqual(1, len(result["hard_errors"]), result)
+                    self.assertIn("内部写作执行要求", result["hard_errors"][0])
+
+    def test_internal_instruction_in_title_is_also_blocked(self) -> None:
+        result = self._validate("外观记录。" + self.suffix, title="不展示地方补贴金额")
+        self.assertFalse(result["pass"], result)
+        self.assertTrue(any("内部写作执行要求" in error for error in result["hard_errors"]), result)
+
+    def test_consumer_policy_guidance_is_not_a_production_instruction(self) -> None:
+        guidance = (
+            "地方补贴需核对当地流程与适用条件。",
+            "省补能否申请，先核对资格和材料。",
+            "不要把地方补贴金额当作已经到账的收入。",
+            "不要把地方补贴金额直接从预算里扣掉。",
+            "不展示地方补贴金额的报价单，需要核对适用条件。",
+            "不展示地方补贴金额时，先核对适用条件。",
+            "门店不展示地方补贴金额时，应核对适用条件。",
+            "线上报价不包含地方补贴金额，实际能否申请需核对条件。",
+            "地方补贴不要重复计算。",
+            "地方补贴可了解；指导价63900元。",
+            "留【城市】，核对当地政策流程与适用条件。",
+        )
+        for body in guidance:
+            with self.subTest(body=body):
+                result = self._validate(body + self.suffix, case={
+                    **self.case,
+                    "publication_constraints": {"hide_local_subsidy_amounts": True},
+                })
+                self.assertTrue(result["pass"], result)
+                self.assertEqual([], result["hard_errors"])
+
+    def test_replica_and_light_do_not_gain_style_or_leakage_checks(self) -> None:
+        for level in ("replica", "light"):
+            for body in ("不展示地方补贴金额", "不把地方补贴金额写进线上报价", "1、外观记录。🚗🚗🚗🚗🚗🚗🚗"):
+                with self.subTest(level=level, body=body):
+                    result = self._validate(body + self.suffix, adaptation_level=level)
+                    self.assertTrue(result["pass"], result)
+                    self.assertEqual([], result["warnings"])
+                    self.assertEqual({
+                        "level": level, "mother_lines": 3, "output_lines": 3, "line_ratio": 1.0,
+                    }, result["fidelity"])
 
 
 if __name__ == "__main__":

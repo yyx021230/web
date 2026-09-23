@@ -16,8 +16,17 @@ from app.schemas.ai_image import (
     GenerateImageRequest,
     ImageTaskResponse,
     ModelInfo,
+    PromptAssistResponse,
+    PromptModifyRequest,
+    PromptPolishRequest,
+    PromptReverseRequest,
 )
 from app.services.ai_image_service import AIImageService
+from app.services.ai_prompt_assistant_service import (
+    AIPromptAssistantService,
+    PromptAssistantConfigurationError,
+    PromptAssistantError,
+)
 from app.services.request_queue import image_generation_queue
 from app.services.ai_task_queue import ai_image_task_queue
 from app.models.user import User
@@ -25,6 +34,54 @@ from app.core.deps import get_current_user, require_admin
 from app.core.roles import has_role
 
 router = APIRouter()
+
+
+def _prompt_assistant_http_error(exc: PromptAssistantError) -> HTTPException:
+    if isinstance(exc, PromptAssistantConfigurationError):
+        return HTTPException(status_code=503, detail=str(exc))
+    return HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/prompt-tools/reverse", response_model=ApiResponse[PromptAssistResponse])
+async def reverse_image_prompt(
+    req: PromptReverseRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """将图片反推为可复用的结构化生图提示词。"""
+    del current_user
+    try:
+        prompt = await AIPromptAssistantService().reverse_image(req.image_data)
+        return ApiResponse(data=PromptAssistResponse(prompt=prompt))
+    except PromptAssistantError as exc:
+        raise _prompt_assistant_http_error(exc) from exc
+
+
+@router.post("/prompt-tools/modify", response_model=ApiResponse[PromptAssistResponse])
+async def modify_image_prompt(
+    req: PromptModifyRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """按用户指令局部修改提示词，并保留未涉及的内容。"""
+    del current_user
+    try:
+        prompt = await AIPromptAssistantService().modify_prompt(req.input, req.instruction)
+        return ApiResponse(data=PromptAssistResponse(prompt=prompt))
+    except PromptAssistantError as exc:
+        raise _prompt_assistant_http_error(exc) from exc
+
+
+@router.post("/prompt-tools/polish", response_model=ApiResponse[PromptAssistResponse])
+async def polish_image_prompt(
+    req: PromptPolishRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """将简短描述扩写为五段式专业生图提示词。"""
+    del current_user
+    try:
+        prompt = await AIPromptAssistantService().polish_prompt(req.input)
+        return ApiResponse(data=PromptAssistResponse(prompt=prompt))
+    except PromptAssistantError as exc:
+        raise _prompt_assistant_http_error(exc) from exc
 
 
 def _history_timestamp(value: datetime | None) -> str | None:
@@ -226,6 +283,7 @@ async def get_history(
                 "prompt": t.prompt,
                 "params": _history_params(t.params),
                 "status": t.status,
+                "progress": service._task_response(t)["progress"],
                 "result_urls": t.result_urls or [],
                 "error": t.error,
                 "elapsed_seconds": t.elapsed_seconds,

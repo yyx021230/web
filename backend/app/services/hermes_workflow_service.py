@@ -912,6 +912,7 @@ class HermesWorkflowService:
             "image_text_blocks", "slot_mappings", "adapted_prompt", "scene_change",
             "vehicle_image", "image_task_id", "ocr_lines", "ocr_config_comparison", "copy_validation",
             "account_history", "account_repetition", "stage_timings", "adaptation_level", "adaptation_contract",
+            "editorial_plan", "editorial_review",
         ) if item.get(key) is not None}
         if errors:
             source_detail['error'] = '；'.join(errors)

@@ -14,18 +14,27 @@ paragraph and line order, emojis, punctuation, lead position and final topic lin
 `light` preserves paragraph roles, information order and conversion path while it
 must rewrite the title hook and at least three body sentences through phrasing,
 rhythm, emojis or punctuation. `interpretive`
-preserves the mother copy's core idea, selling-point order and conversion path
-while it must choose one angle from decision advice, pitfall prevention, reader
-scenario, or version choice and create a new title, opening, paragraph rhythm, and
-ending. Keep the body between 260 and 480 characters, use 5-8 short paragraphs
-excluding the final topic line, vary sentence lengths, include one turn and one
-direct reader interaction. Use no numbered list, at most four supported facts,
-and at most two configuration examples. Start with the concrete tension instead
-of generic phrases such as “最近准备……的朋友” or “可以先把……放进清单”. Do not
-turn it into an announcement, parameter report, exhaustive policy list, or buyer
-manual. It must not carry over the mother's
-signature phrases such as “藏不住”, “还好发现了”, “直接让人破防”,
-“甩城市+车型”, “少套路多真诚”, or “别被套路当冤大头”.
+preserves the mother's actual subject, factual priorities and reader benefit.
+Use the verified editorial plan, not a predetermined decision-making skeleton.
+An appearance note must not become a range/version comparison; a quote-list
+mother should still help the reader understand prices. Rewrite the expression
+and pacing while grounding every automotive claim in the target's supplied
+policy or knowledge. Let the subject determine length, paragraphs, emojis and
+whether a list is useful. There is no fixed paragraph/emoji quota or compulsory
+two-version comparison. Keep the approachable XHS voice without inventing
+first-person experiences. Never publish internal editing/policy-screening
+instructions as consumer copy; retain actual policy eligibility conditions.
+For interpretive copy, obey the tool's source-aware `copy_budget` and
+`brevity_instruction`. There is no minimum length. Remove tangents and repeated
+summaries, not necessary conditions. A quote table retains its necessary rows
+without a recommendation below each row. Do not force the mother's lead CTA.
+Learn this mother's emotional starting point and conversational rhythm, not only
+its subject. Replace abstract report-like phrasing within the existing budget;
+do not add a layer of chat around an unchanged specification sheet. Names such
+as "宝子", emojis and exclamation marks are not evidence of a preserved voice.
+An accurate, plain price table is allowed. Never invent firsthand experience or
+restore prohibited meanings just to sound lively. The independent critic also
+checks voice preservation and returns concrete passages to revise.
 Regardless of level, never choose another mother or merge content from another
 copy, and replace any stale or unsupported automotive facts.
 
@@ -40,7 +49,8 @@ lines instead of leaving a list of empty factual shells.
 Call `xhs_sanitize_copy` once after drafting, then validate the returned complete
 title and body with `xhs_validate_copy`, passing the requested adaptation level. Only `hard_errors`
 block delivery. Warnings are informational and must not trigger a rewrite.
-Repair only the failing line. The final answer must be one JSON object with the
+Repair the failing claim; a length error needs concise rewriting, never blind
+truncation or removal of factual qualifications. The final answer must be one JSON object with the
 assigned mother ID, complete title, complete body, and validation result.
 
 The conversion entry must lead to information that the body has not already

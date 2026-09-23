@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { startTransition, useState, useRef, useEffect, useCallback, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  Download, Share2, Maximize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
-  ImagePlus, Images, Trash2, Image as ImageIcon, Save, Zap, ScanLine, RotateCcw, SlidersHorizontal, ArrowUp,
+  Download, Share2, Maximize2, Minimize2, Loader2, X, ChevronDown, CheckCircle2, AlertCircle,
+  ImagePlus, Images, Upload, Trash2, Image as ImageIcon, Save, Zap, ScanLine, RotateCcw, SlidersHorizontal, ArrowUp,
+  Wand2, PenLine, Plus, BookOpen,
 } from 'lucide-react';
 import {
   aiApi,
@@ -15,15 +16,17 @@ import {
   type QueueStatus,
 } from '@/services/aiApi';
 import { materialApi } from '@/services/materialApi';
-import { promptsApi } from '@/services/promptsApi';
+import { promptsApi, type PromptItem } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
 import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
+import PromptLibraryPicker from '@/components/ai/PromptLibraryPicker';
 import studio from './studio.module.css';
+import { useResizablePrompt } from './useResizablePrompt';
 
 interface RefImageItem {
   data: string; // base64 or URL
   name: string;
-  source: 'local' | 'gallery';
+  source: 'local' | 'gallery' | 'prompt-library';
 }
 
 interface ChatMessage {
@@ -476,12 +479,26 @@ function createClientRequestId(): string {
   return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`.slice(0, 64);
 }
 
-function getWaitingContent(status?: string, recovering = false): string {
+function getWaitingContent(status?: string, recovering = false, progress?: ImageTaskResponse['progress']): string {
   if (recovering) return '任务仍在后台处理，正在重新确认状态...';
+  if (progress?.message) {
+    const waiting = progress.phase === 'waiting_provider' && progress.wait_seconds > 0;
+    return waiting ? `${progress.message}（已等待 ${progress.wait_seconds} 秒）` : progress.message;
+  }
   if (status === 'queued') return '任务已提交，正在排队...';
   if (status === 'processing') return '正在生成图片，请稍候...';
   if (status === 'postprocessing') return '图片已生成，正在完成去水印处理...';
   return '正在生成图片，请稍候...';
+}
+
+function getFailureContent(error?: string | null, progress?: ImageTaskResponse['progress']): string {
+  return progress?.phase === 'review_required' || progress?.phase === 'postprocess_failed'
+    ? `${progress.message}\n${error || ''}`.trim()
+    : `生成失败: ${error || '未知错误'}`;
+}
+
+function isSettledResultContent(content: string): boolean {
+  return ['生成失败', '已取消', '上游结果待核验', '图片已生成，去水印处理失败'].some(prefix => content.startsWith(prefix));
 }
 
 function getHttpErrorStatus(error: unknown): number | undefined {
@@ -494,6 +511,46 @@ function getHttpErrorStatus(error: unknown): number | undefined {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function readImageFileAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('图片读取失败，请重新选择'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+}
+
+async function prepareReversePromptImage(file: File): Promise<string> {
+  if (typeof createImageBitmap !== 'function') return readImageFileAsDataUrl(file);
+  const bitmap = await createImageBitmap(file);
+  try {
+    const maxEdge = 2048;
+    if (file.size <= 2 * 1024 * 1024 && Math.max(bitmap.width, bitmap.height) <= maxEdge) {
+      return readImageFileAsDataUrl(file);
+    }
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return readImageFileAsDataUrl(file);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let compressed: Blob | null = null;
+    for (const quality of [0.9, 0.82, 0.72]) {
+      compressed = await canvasToBlob(canvas, quality);
+      if (compressed && compressed.size <= 2 * 1024 * 1024) break;
+    }
+    return readImageFileAsDataUrl(compressed || file);
+  } finally {
+    bitmap.close();
+  }
 }
 
 function getUserScopedFolders(): string[] {
@@ -573,10 +630,10 @@ function historyItemToMessages(item: AIImageHistoryItem): ChatMessage[] {
     liked: false,
   }));
   let content = '';
-  if (item.status === 'failed') content = `生成失败: ${item.error || '未知错误'}`;
+  if (item.status === 'failed') content = getFailureContent(item.error, item.progress);
   else if (item.status === 'cancelled') content = '已取消';
   else if (item.status === 'completed' && images.length === 0) content = '生成失败: 历史成图文件缺失';
-  else if (isActive) content = getWaitingContent(item.status);
+  else if (isActive) content = getWaitingContent(item.status, false, item.progress);
 
   return [
     {
@@ -614,6 +671,9 @@ export default function AIPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [prompt, setPrompt] = useState('');
+  const [promptToolLoading, setPromptToolLoading] = useState<'reverse' | 'modify' | 'polish' | null>(null);
+  const [promptModifyOpen, setPromptModifyOpen] = useState(false);
+  const [promptModifyInstruction, setPromptModifyInstruction] = useState('');
   const [reconcilingPending, setReconcilingPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
@@ -632,10 +692,14 @@ export default function AIPage() {
   const [previewReferenceImage, setPreviewReferenceImage] = useState<RefImageItem | null>(null);
   const [refImages, setRefImages] = useState<RefImageItem[]>([]); // 参考图片列表
   const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
+  const [enhanceMenuOpen, setEnhanceMenuOpen] = useState(false);
   const [restoredParameters, setRestoredParameters] = useState(false);
   const [composerCompact, setComposerCompact] = useState(false);
+  const { containerRef, expanded: promptExpanded, style: composerStyle, toggleExpanded: togglePromptExpanded } = useResizablePrompt();
   const pendingTaskCount = messages.filter(m =>
     m.type === 'result' && (Boolean(m.taskId) || Boolean(m.clientRequestId) || m.content === '正在生成图片，请稍候...')
   ).length;
@@ -652,8 +716,12 @@ export default function AIPage() {
   const composerExpandedByUserRef = useRef(false);
   const lastScrollTopRef = useRef(0);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const localImageInputRef = useRef<HTMLInputElement>(null);
+  const reversePromptInputRef = useRef<HTMLInputElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const sourceMenuRef = useRef<HTMLDivElement>(null);
+  const enhanceMenuRef = useRef<HTMLDivElement>(null);
   const [scopedKeys, setScopedKeys] = useState<{ storageKey: string; pendingKey: string; preferencesScope: string } | null>(null);
   const pollTimersRef = useRef<Record<string, number>>({});
   const runtimeConfigRef = useRef<AIImageRuntimeConfig | null>(null);
@@ -670,6 +738,8 @@ export default function AIPage() {
   const SelectedModelIcon = selectedModelInfo.icon;
   const generateLabel = submitting
     ? '正在提交任务'
+    : promptToolLoading
+      ? '正在处理提示词'
     : !canStartMoreTasks
       ? '任务已满 ' + effectiveActiveTaskCount + '/' + maxActiveTasks
       : '开始生成';
@@ -685,15 +755,19 @@ export default function AIPage() {
   };
 
   useEffect(() => {
-    if (!modelMenuOpen && !settingsMenuOpen) return;
+    if (!modelMenuOpen && !settingsMenuOpen && !sourceMenuOpen && !enhanceMenuOpen) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (!modelMenuRef.current?.contains(event.target as Node)) setModelMenuOpen(false);
       if (!settingsMenuRef.current?.contains(event.target as Node)) setSettingsMenuOpen(false);
+      if (!sourceMenuRef.current?.contains(event.target as Node)) setSourceMenuOpen(false);
+      if (!enhanceMenuRef.current?.contains(event.target as Node)) setEnhanceMenuOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setModelMenuOpen(false);
         setSettingsMenuOpen(false);
+        setSourceMenuOpen(false);
+        setEnhanceMenuOpen(false);
       }
     };
     document.addEventListener('pointerdown', closeOnOutsideClick);
@@ -702,7 +776,7 @@ export default function AIPage() {
       document.removeEventListener('pointerdown', closeOnOutsideClick);
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [modelMenuOpen, settingsMenuOpen]);
+  }, [enhanceMenuOpen, modelMenuOpen, settingsMenuOpen, sourceMenuOpen]);
 
   useEffect(() => {
     if (!previewReferenceImage) return;
@@ -725,7 +799,7 @@ export default function AIPage() {
     if (reference) {
       setRefImages(current => current.some(item => item.data === reference)
         ? current
-        : [{ data: reference, name: '提示词宝库参考图', source: 'gallery' as const }, ...current].slice(0, 10));
+        : [{ data: reference, name: '提示词宝库参考图', source: 'prompt-library' as const }, ...current].slice(0, 10));
     }
   }, []);
 
@@ -878,7 +952,7 @@ export default function AIPage() {
     const { storageKey } = getActiveKeys();
     try {
       const filtered = source.filter(
-        m => m.type === 'prompt' || (m.type === 'result' && (m.images.length > 0 || Boolean(m.taskId) || Boolean(m.clientRequestId) || m.content.startsWith('生成失败') || m.content.startsWith('已取消')))
+        m => m.type === 'prompt' || (m.type === 'result' && (m.images.length > 0 || Boolean(m.taskId) || Boolean(m.clientRequestId) || isSettledResultContent(m.content)))
       );
       const toSave = clampHistoryByPairs(filtered);
       localStorage.setItem(storageKey, JSON.stringify(toSave));
@@ -960,33 +1034,43 @@ export default function AIPage() {
     if (nextSize !== selectedSize) setSelectedSize(nextSize);
   }, [selectedModel, selectedRatio, selectedResolutionTier, selectedSize]);
 
-  /** 将剪贴板图片转换为参考图，沿用原有的数量和大小限制。 */
-  const addPastedReferenceImages = (files: File[]) => {
+  /** 本地上传与粘贴共用参考图读取及数量、大小校验。 */
+  const addLocalReferenceImages = (files: File[]) => {
     if (files.length === 0) return;
     const remainingSlots = 10 - refImages.length;
     if (remainingSlots <= 0) {
       toast.error('最多添加 10 张参考图');
       return;
     }
-    const toProcess = files.slice(0, remainingSlots);
+    const validFiles = files.filter(file => {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`“${file.name}”不是图片，请选择图片文件`);
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`图片“${file.name || '本地图片'}”大小不能超过 10MB`);
+        return false;
+      }
+      return true;
+    });
+    const toProcess = validFiles.slice(0, remainingSlots);
 
-    if (files.length > remainingSlots) {
-      toast.warning(`最多添加 10 张参考图，本次已添加前 ${remainingSlots} 张`);
+    if (validFiles.length > remainingSlots) {
+      toast.warning(`最多添加 10 张参考图，本次仅读取前 ${remainingSlots} 张`);
     }
 
     const promises = toProcess.map(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`图片“${file.name || '粘贴图片'}”大小不能超过 10MB`);
-        return Promise.resolve(null);
-      }
       return new Promise<RefImageItem | null>(resolve => {
         const reader = new FileReader();
         reader.onload = () => resolve({
           data: reader.result as string,
-          name: file.name || `粘贴图片-${Date.now()}`,
+          name: file.name || `本地图片-${Date.now()}`,
           source: 'local' as const,
         });
-        reader.onerror = () => resolve(null);
+        reader.onerror = () => {
+          toast.error(`无法读取图片“${file.name}”，请重新选择`);
+          resolve(null);
+        };
         reader.readAsDataURL(file);
       });
     });
@@ -995,6 +1079,69 @@ export default function AIPage() {
       const newImages = results.filter(Boolean) as RefImageItem[];
       if (newImages.length > 0) setRefImages(prev => [...prev, ...newImages].slice(0, 10));
     });
+  };
+
+  const applyAssistedPrompt = useCallback((nextPrompt: string, successMessage: string) => {
+    const normalized = nextPrompt.trim();
+    if (!normalized) throw new Error('模型未返回有效提示词');
+    startTransition(() => setPrompt(normalized));
+    setComposerCompact(false);
+    composerExpandedByUserRef.current = true;
+    requestAnimationFrame(() => promptInputRef.current?.focus({ preventScroll: true }));
+    toast.success(successMessage);
+  }, []);
+
+  const handleReversePromptFile = async (file: File | undefined) => {
+    if (!file || promptToolLoading) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('图片转提示词仅支持 JPEG、PNG 或 WebP');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('图片不能超过 10MB');
+      return;
+    }
+    setPromptToolLoading('reverse');
+    try {
+      const imageData = await prepareReversePromptImage(file);
+      const response = await aiApi.reversePrompt(imageData);
+      applyAssistedPrompt(response.data.prompt, '已提取高保真提示词');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '图片转提示词失败，请稍后重试'));
+    } finally {
+      setPromptToolLoading(null);
+    }
+  };
+
+  const handlePolishPrompt = async () => {
+    const current = prompt.trim();
+    if (!current || promptToolLoading) return;
+    setPromptToolLoading('polish');
+    try {
+      const response = await aiApi.polishPrompt(current);
+      applyAssistedPrompt(response.data.prompt, '提示词已润色');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '提示词润色失败，请稍后重试'));
+    } finally {
+      setPromptToolLoading(null);
+    }
+  };
+
+  const handleModifyPrompt = async () => {
+    const current = prompt.trim();
+    const instruction = promptModifyInstruction.trim();
+    if (!current || !instruction || promptToolLoading) return;
+    setPromptToolLoading('modify');
+    try {
+      const response = await aiApi.modifyPrompt(current, instruction);
+      applyAssistedPrompt(response.data.prompt, '已按要求修改提示词');
+      setPromptModifyInstruction('');
+      setPromptModifyOpen(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'AI 帮改失败，请稍后重试'));
+    } finally {
+      setPromptToolLoading(null);
+    }
   };
 
   const handlePromptPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -1008,7 +1155,7 @@ export default function AIPage() {
 
     if (imageFiles.length === 0) return;
     event.preventDefault();
-    addPastedReferenceImages(imageFiles);
+    addLocalReferenceImages(imageFiles);
   };
 
   useEffect(() => {
@@ -1063,11 +1210,13 @@ export default function AIPage() {
       clearPollTimer(taskId);
       if (clientRequestId) clearPollTimer(`request:${clientRequestId}`);
       void refreshActiveTasks();
+      const images = await buildImageResults(data.image_urls || [], taskId, width, height);
       setMessages(prev => prev.map(msg =>
         msg.id === resultMsgId
           ? {
               ...msg,
-              content: data.status === 'cancelled' ? '已取消' : `生成失败: ${data.error || '未知错误'}`,
+              images,
+              content: data.status === 'cancelled' ? '已取消' : getFailureContent(data.error, data.progress),
               historyTaskId: taskId,
               taskId: undefined,
               clientRequestId: undefined,
@@ -1080,7 +1229,7 @@ export default function AIPage() {
 
     setMessages(prev => prev.map(msg =>
       msg.id === resultMsgId
-        ? { ...msg, historyTaskId: taskId, taskId, clientRequestId, content: getWaitingContent(data.status) }
+        ? { ...msg, historyTaskId: taskId, taskId, clientRequestId, content: getWaitingContent(data.status, false, data.progress) }
         : msg
     ));
     return false;
@@ -1435,7 +1584,7 @@ export default function AIPage() {
         if (allImages.length === 1) {
           // 单图：用兼容字段保持向后兼容
           const img = request.refImages[0];
-          refParams[img.source === 'gallery' ? 'image_url' : 'image_data'] = img.data;
+          refParams[img.source === 'local' ? 'image_data' : 'image_url'] = img.data;
         } else {
           // 多图：发 images_data 数组（后端 images_data 支持 base64 和 URL 混合）
           refParams.images_data = allImages;
@@ -1467,9 +1616,10 @@ export default function AIPage() {
         ));
         removePendingState({ resultMsgId, clientRequestId });
       } else if (data.status === 'failed') {
+        const images = await buildImageResults(data.image_urls || [], data.task_id, width, height);
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
-            ? { ...msg, content: `生成失败: ${data.error || '未知错误'}`, images: [], historyTaskId: data.task_id, taskId: undefined, clientRequestId: undefined }
+            ? { ...msg, content: getFailureContent(data.error, data.progress), images, historyTaskId: data.task_id, taskId: undefined, clientRequestId: undefined }
             : msg
         ));
         removePendingState({ resultMsgId, clientRequestId });
@@ -1484,7 +1634,7 @@ export default function AIPage() {
         // 异步模型，更新 taskId 并开始轮询
         setMessages(prev => prev.map(msg =>
           msg.id === resultMsgId
-            ? { ...msg, historyTaskId: data.task_id, taskId: data.task_id, clientRequestId, content: getWaitingContent(data.status) }
+            ? { ...msg, historyTaskId: data.task_id, taskId: data.task_id, clientRequestId, content: getWaitingContent(data.status, false, data.progress) }
             : msg
         ));
         upsertPendingState({
@@ -1747,6 +1897,20 @@ export default function AIPage() {
     setGalleryPickerOpen(false);
   };
 
+  const handlePromptLibrarySelect = (item: PromptItem, includeImage: boolean) => {
+    const text = (item.chinese || item.english || '').trim();
+    if (text) setPrompt(text.slice(0, PROMPT_MAX_LEN));
+    if (includeImage && item.image_url) {
+      setRefImages(current => current.some(image => image.data === item.image_url)
+        ? current
+        : [...current, { data: item.image_url, name: item.title || item.name || '提示词库素材', source: 'prompt-library' as const }].slice(0, 10));
+    }
+    setPromptLibraryOpen(false);
+    composerExpandedByUserRef.current = true;
+    setComposerCompact(false);
+    requestAnimationFrame(() => promptInputRef.current?.focus({ preventScroll: true }));
+  };
+
   /** 清除参考图 */
 //  const _clearRefImage = () => {
 //    setRefImages([]);
@@ -1923,7 +2087,11 @@ export default function AIPage() {
   }, [clearAllPollTimers]);
 
   return (
-    <div className={cn(studio.studio, 'relative h-full overflow-hidden')}>
+    <div
+      ref={containerRef}
+      style={{ ...composerStyle, '--reference-offset': refImages.length ? '62px' : '0px' } as CSSProperties}
+      className={cn(studio.studio, 'relative h-full overflow-hidden')}
+    >
       <div aria-hidden="true" className={studio.atmosphere} />
 
       <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
@@ -2024,14 +2192,12 @@ export default function AIPage() {
                           <div className={studio.resultHeading}>
                             {msg.taskId || msg.clientRequestId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : msg.images.length > 0 ? (
-                              <CheckCircle2 className="h-4 w-4" />
-                            ) : msg.content.startsWith('生成失败') || msg.content.startsWith('已取消') ? (
+                            ) : isSettledResultContent(msg.content) ? (
                               <AlertCircle className="h-4 w-4" />
                             ) : (
                               <CheckCircle2 className="h-4 w-4" />
                             )}
-                            <span>{msg.taskId || msg.clientRequestId ? '正在生成' : msg.images.length ? '已完成' : '未完成'}</span>
+                            <span>{msg.taskId || msg.clientRequestId ? '正在生成' : isSettledResultContent(msg.content) ? (msg.images.length ? '部分完成' : '未完成') : msg.images.length ? '已完成' : '未完成'}</span>
                             <span className={studio.resultType}>{group[0].params?.model || 'AI IMAGE'}</span>
                           </div>
                           <div className="min-w-0 flex-1">
@@ -2039,7 +2205,7 @@ export default function AIPage() {
                               {msg.content && (
                                 <div className={cn(
                                   studio.taskState,
-                                  msg.content.startsWith('生成失败') || msg.content.startsWith('已取消')
+                                  isSettledResultContent(msg.content)
                                     ? studio.taskFailed : studio.taskWaiting
                                 )}>
                                   <p className="max-w-full break-words text-[13px] leading-6">{msg.content}</p>
@@ -2141,8 +2307,195 @@ export default function AIPage() {
             className={studio.composer}
             onClick={() => { if (composerCompact) expandComposer(); }}
           >
+          {!composerCompact && promptModifyOpen && (
+            <div className={studio.promptModifyPanel} role="dialog" aria-label="AI 帮改提示词">
+              <div className={studio.promptModifyHeader}>
+                <span><Wand2 />AI 帮改</span>
+                <button type="button" aria-label="关闭 AI 帮改" onClick={() => setPromptModifyOpen(false)}><X /></button>
+              </div>
+              <textarea
+                autoFocus
+                value={promptModifyInstruction}
+                maxLength={1000}
+                onChange={event => setPromptModifyInstruction(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Escape') setPromptModifyOpen(false);
+                  if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    handleModifyPrompt();
+                  }
+                }}
+                placeholder="输入修改要求，例如：把背景改为雨夜，其他内容保持不变"
+                aria-label="提示词修改要求"
+              />
+              <div className={studio.promptModifyFooter}>
+                <span>{promptModifyInstruction.length} / 1000 · Enter 应用</span>
+                <button
+                  type="button"
+                  disabled={!prompt.trim() || !promptModifyInstruction.trim() || Boolean(promptToolLoading)}
+                  onClick={handleModifyPrompt}
+                >
+                  {promptToolLoading === 'modify' && <Loader2 className="animate-spin" />}
+                  应用修改
+                </button>
+              </div>
+            </div>
+          )}
           <div className={studio.composerSurface}>
             <div className={studio.composerTop} aria-hidden={composerCompact}>
+              <input
+                ref={localImageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                aria-label="选择本地参考图"
+                onChange={event => {
+                  const files = Array.from(event.currentTarget.files || []);
+                  event.currentTarget.value = '';
+                  addLocalReferenceImages(files);
+                }}
+              />
+              <input
+                ref={reversePromptInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                aria-label="选择需要反推提示词的图片"
+                onChange={event => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = '';
+                  handleReversePromptFile(file);
+                }}
+              />
+
+              <div ref={sourceMenuRef} className={studio.toolbarControl}>
+                <button
+                  type="button"
+                  aria-label="添加素材"
+                  aria-haspopup="menu"
+                  aria-expanded={sourceMenuOpen}
+                  className={cn(studio.toolbarIconButton, sourceMenuOpen && studio.toolbarButtonActive)}
+                  onClick={() => {
+                    setSourceMenuOpen(open => !open);
+                    setEnhanceMenuOpen(false);
+                    setModelMenuOpen(false);
+                    setSettingsMenuOpen(false);
+                  }}
+                >
+                  <Plus />
+                </button>
+                {sourceMenuOpen && (
+                  <div role="menu" aria-label="添加素材" className={studio.toolbarMenu}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-label="本地上传参考图"
+                      disabled={refImages.length >= 10}
+                      onClick={() => {
+                        setSourceMenuOpen(false);
+                        localImageInputRef.current?.click();
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}><Upload /></span>
+                      <span><strong>本地图片</strong><small>上传参考图，最多 10 张</small></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-label="从我的图库选择图片"
+                      disabled={refImages.length >= 10}
+                      onClick={() => {
+                        setSourceMenuOpen(false);
+                        setGalleryPickerOpen(true);
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}><Images /></span>
+                      <span><strong>我的图库</strong><small>选择已保存的创作素材</small></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-label="从提示词库选择素材"
+                      onClick={() => {
+                        setSourceMenuOpen(false);
+                        setPromptLibraryOpen(true);
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}><BookOpen /></span>
+                      <span><strong>提示词库</strong><small>内部 · 外部 · 优质帖子</small></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={Boolean(promptToolLoading)}
+                      onClick={() => {
+                        setSourceMenuOpen(false);
+                        reversePromptInputRef.current?.click();
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}>{promptToolLoading === 'reverse' ? <Loader2 className="animate-spin" /> : <ImageIcon />}</span>
+                      <span><strong>图片转提示词</strong><small>从画面反推结构化描述</small></span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div ref={enhanceMenuRef} className={studio.toolbarControl}>
+                <button
+                  type="button"
+                  aria-label="优化提示词"
+                  aria-haspopup="menu"
+                  aria-expanded={enhanceMenuOpen}
+                  className={cn(studio.enhanceTrigger, enhanceMenuOpen && studio.toolbarButtonActive)}
+                  onClick={() => {
+                    setEnhanceMenuOpen(open => !open);
+                    setSourceMenuOpen(false);
+                    setModelMenuOpen(false);
+                    setSettingsMenuOpen(false);
+                  }}
+                  disabled={Boolean(promptToolLoading)}
+                >
+                  {promptToolLoading ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                  <span>优化</span>
+                  <ChevronDown className={cn(enhanceMenuOpen && studio.chevronOpen)} />
+                </button>
+                {enhanceMenuOpen && (
+                  <div role="menu" aria-label="优化提示词" className={studio.toolbarMenu}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setEnhanceMenuOpen(false);
+                        if (!prompt.trim()) {
+                          toast.warning('请先输入需要修改的提示词');
+                          promptInputRef.current?.focus();
+                          return;
+                        }
+                        setPromptModifyOpen(true);
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}><Wand2 /></span>
+                      <span><strong>AI 帮改</strong><small>按你的要求局部调整</small></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!prompt.trim() || Boolean(promptToolLoading)}
+                      onClick={() => {
+                        setEnhanceMenuOpen(false);
+                        handlePolishPrompt();
+                      }}
+                    >
+                      <span className={studio.toolbarMenuIcon}><PenLine /></span>
+                      <span><strong>智能润色</strong><small>补全专业的画面细节</small></span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <span className={studio.toolbarDivider} aria-hidden="true" />
+
               <div ref={modelMenuRef} className="relative z-30 shrink-0">
                 <button
                   type="button"
@@ -2151,6 +2504,8 @@ export default function AIPage() {
                   onClick={() => {
                     setModelMenuOpen(open => !open);
                     setSettingsMenuOpen(false);
+                    setSourceMenuOpen(false);
+                    setEnhanceMenuOpen(false);
                   }}
                   className={studio.modelTrigger}
                 >
@@ -2217,28 +2572,6 @@ export default function AIPage() {
                 )}
               </div>
 
-              {selectedModel === 'gptimage25' && (
-                <div className={studio.modeSwitch}>
-                  {generationModes.map(mode => {
-                    const Icon = mode.icon;
-                    const selected = selectedGenerationMode === mode.id;
-                    return (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        aria-pressed={selected}
-                        title={mode.desc}
-                        onClick={() => setSelectedGenerationMode(mode.id)}
-                        className={cn(studio.modeOption, selected && studio.modeOptionSelected)}
-                      >
-                        <Icon />
-                        <span>{mode.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
               <div ref={settingsMenuRef} className={studio.settingsControl}>
                 <button
                   type="button"
@@ -2248,11 +2581,16 @@ export default function AIPage() {
                   onClick={() => {
                     setSettingsMenuOpen(open => !open);
                     setModelMenuOpen(false);
+                    setSourceMenuOpen(false);
+                    setEnhanceMenuOpen(false);
                   }}
                   className={studio.settingsTrigger}
                 >
                   <SlidersHorizontal />
                   <span>{selectedRatio}</span>
+                  {selectedModel === 'gptimage25' && (
+                    <span className={studio.settingsTriggerMeta}>· {selectedGenerationMode === 'precision' ? '精细' : '快速'}</span>
+                  )}
                   <span className={studio.settingsTriggerMeta}>· {activeResolutionOption.label} · {imageCount}张</span>
                   <ChevronDown className={cn(settingsMenuOpen && studio.chevronOpen)} />
                 </button>
@@ -2271,6 +2609,29 @@ export default function AIPage() {
                       </div>
                       <button type="button" aria-label="关闭生成参数" onClick={() => setSettingsMenuOpen(false)}><X /></button>
                     </div>
+
+                    {selectedModel === 'gptimage25' && (
+                      <section className={studio.settingsSection}>
+                        <p className={studio.settingsLabel}>生成模式</p>
+                        <div role="group" aria-label="生成模式" className={studio.generationModeOptions}>
+                          {generationModes.map(mode => {
+                            const Icon = mode.icon;
+                            const selected = selectedGenerationMode === mode.id;
+                            return (
+                              <button
+                                key={mode.id}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() => setSelectedGenerationMode(mode.id)}
+                              >
+                                <Icon />
+                                <span><strong>{mode.label}</strong><small>{mode.desc}</small></span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    )}
 
                     <section className={studio.settingsSection}>
                       <p className={studio.settingsLabel}>画面比例</p>
@@ -2346,25 +2707,12 @@ export default function AIPage() {
                 )}
               </div>
 
-              <div className={studio.referenceActions} role="group" aria-label="添加参考图">
-                <button
-                  type="button"
-                  onClick={() => setGalleryPickerOpen(true)}
-                  disabled={refImages.length >= 10}
-                  className={cn(studio.sourceAction, studio.gallerySourceAction)}
-                  title="从我的图库选择图片"
-                >
-                  <Images className="h-3.5 w-3.5" />
-                  <span>我的图库</span>
-                </button>
-              </div>
-
               <button
                 type="button"
                 aria-label={generateLabel}
                 title={generateLabel}
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || prompt.length > PROMPT_MAX_LEN}
+                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || Boolean(promptToolLoading) || prompt.length > PROMPT_MAX_LEN}
                 className={studio.generate}
               >
                 {submitting ? <Loader2 className="animate-spin" /> : <ArrowUp />}
@@ -2388,7 +2736,7 @@ export default function AIPage() {
                   {refImages.map((img, idx) => <div
                     key={idx}
                     className={studio.composerReferenceThumbnail}
-                    title={`${img.source === 'local' ? '粘贴图片' : '我的图库'} · ${img.name}`}
+                    title={`${img.source === 'local' ? '本地图片' : img.source === 'gallery' ? '我的图库' : '提示词库'} · ${img.name}`}
                   >
                     <button
                       type="button"
@@ -2406,7 +2754,7 @@ export default function AIPage() {
                       studio.referenceSourceBadge,
                       img.source === 'local' ? studio.localSourceBadge : studio.gallerySourceBadge,
                     )}>
-                      {img.source === 'local' ? '粘贴' : '图库'}
+                      {img.source === 'local' ? '本地' : img.source === 'gallery' ? '图库' : '素材'}
                     </span>
                     <button onClick={() => removeRefImage(idx)} aria-label={'移除参考图 ' + (idx + 1)} className="absolute right-0 top-0 z-10 rounded-full bg-slate-900/70 p-0.5 text-white hover:bg-red-500"><X className="h-3 w-3" /></button>
                   </div>)}
@@ -2428,6 +2776,22 @@ export default function AIPage() {
                   className={cn(studio.promptInput, 'border-0 bg-transparent pt-0.5 text-[15px] leading-[1.7] tracking-[0.005em] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0')}
                 />
               </div>
+              {!composerCompact && <button
+                type="button"
+                aria-label={promptExpanded ? '收起输入框' : '展开输入框'}
+                aria-controls="ai-creation-prompt"
+                aria-expanded={promptExpanded}
+                title={promptExpanded ? '恢复默认输入高度' : '展开输入区域'}
+                className={studio.promptExpandToggle}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  composerExpandedByUserRef.current = true;
+                  togglePromptExpanded();
+                  requestAnimationFrame(() => promptInputRef.current?.focus({ preventScroll: true }));
+                }}
+              >
+                {promptExpanded ? <Minimize2 /> : <Maximize2 />}
+              </button>}
               <button
                 type="button"
                 aria-label={generateLabel}
@@ -2436,7 +2800,7 @@ export default function AIPage() {
                   event.stopPropagation();
                   handleGenerate();
                 }}
-                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || prompt.length > PROMPT_MAX_LEN}
+                disabled={!prompt.trim() || !canStartMoreTasks || !loaded || Boolean(promptToolLoading) || prompt.length > PROMPT_MAX_LEN}
                 className={studio.compactGenerate}
               >
                 {submitting ? <Loader2 className="animate-spin" /> : <ArrowUp />}
@@ -2690,6 +3054,12 @@ export default function AIPage() {
         multiSelect
         onMultiSelect={handleGalleryMultiSelect}
         existingIds={refImages.map((img) => img.data)}
+      />
+      <PromptLibraryPicker
+        open={promptLibraryOpen}
+        onClose={() => setPromptLibraryOpen(false)}
+        onSelect={handlePromptLibrarySelect}
+        referenceCount={refImages.length}
       />
     </div>
   );

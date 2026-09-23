@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_admin
 from app.db.session import async_session, get_db
 from app.models.user import User
+from app.models.ai_task import AITask
 from app.schemas.common import ApiResponse
 from app.schemas.ai_image_provider import (
     AIImageProviderCreate,
@@ -25,7 +27,7 @@ async def _run_provider_test_task(task_id: int) -> None:
         await AIImageProviderService(db).execute_provider_test_task(task_id)
 
 
-def _serialize_provider(provider) -> AIImageProviderInfo:
+def _serialize_provider(provider, running: int | None = None) -> AIImageProviderInfo:
     runtime = AIImageProviderService.provider_runtime(provider)
     return AIImageProviderInfo(
         id=provider.id,
@@ -49,7 +51,7 @@ def _serialize_provider(provider) -> AIImageProviderInfo:
         success_count=provider.success_count or 0,
         failure_count=provider.failure_count or 0,
         avg_latency_ms=provider.avg_latency_ms,
-        current_running=runtime["current_running"],
+        current_running=runtime["current_running"] if running is None else running,
         max_concurrent=runtime["max_concurrent"],
         created_by=provider.created_by,
         created_at=provider.created_at.isoformat() if provider.created_at else None,
@@ -67,7 +69,15 @@ async def admin_list_ai_image_providers(
     if model_name == "gptimage2":
         await service.ensure_default_providers(created_by=current_user.id)
     providers = await service.list_providers(model_name)
-    return ApiResponse(data=[_serialize_provider(p).model_dump() for p in providers])
+    # The API and generation worker are separate processes. API-local slot
+    # counters cannot describe worker activity; read the durable assignments.
+    provider_id = AITask.params["provider"]["id"].as_integer()
+    running = dict((await db.execute(
+        select(provider_id, func.count(AITask.id))
+        .where(AITask.status == "processing", provider_id.in_([p.id for p in providers]))
+        .group_by(provider_id)
+    )).all())
+    return ApiResponse(data=[_serialize_provider(p, running.get(p.id, 0)).model_dump() for p in providers])
 
 
 @router.post("/providers")

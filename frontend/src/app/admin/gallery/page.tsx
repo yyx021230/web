@@ -771,13 +771,15 @@ export default function GalleryAdminPage() {
               <div className="rounded-xl border border-stone-200 bg-[#fcfaf5] px-3 py-3 text-xs text-slate-600 space-y-2">
                 <div className="font-medium text-slate-700">文件夹格式说明</div>
                 <div>1. 直接选择一个车型文件夹，里面放图片文件即可，不需要再传压缩包。</div>
-                <div>2. 推荐文件名按这 5 个角度命名：</div>
+                <div>2. 外观图片推荐按这 5 个角度命名：</div>
                 <div className="rounded-lg bg-white px-3 py-2 font-mono text-[11px] text-slate-800">正前.jpg / 斜前.jpg / 侧面.jpg / 斜后.jpg / 正后.jpg</div>
-                <div>3. 兼容别名：正前方、斜前方、斜后方、正后方、前45、45前、后45、45后、车头、车尾、front、rear、side。</div>
-                <div>4. 当前不识别示例：`正面.jpg.webp`。</div>
-                <div>5. 支持格式：jpg、jpeg、png、webp、bmp。</div>
-                <div>6. 同一角度只能有 1 张图；重复角度会直接报错。</div>
-                <div>7. 缺少角度允许导入，但结果里会提示缺失项。</div>
+                <div>3. 内饰图片推荐按这 5 类命名：</div>
+                <div className="rounded-lg bg-white px-3 py-2 font-mono text-[11px] text-slate-800">内饰全景.jpg / 中控台.jpg / 前排空间.jpg / 后排空间.jpg / 后排座椅.jpg</div>
+                <div>4. 外观兼容别名：正前方、斜前方、斜后方、正后方、前45、45前、后45、45后、车头、车尾、front、rear、side。</div>
+                <div>5. 当前不识别示例：`正面.jpg.webp`。</div>
+                <div>6. 支持格式：jpg、jpeg、png、webp、bmp。</div>
+                <div>7. 同一角度或类别只能有 1 张图；重复时会直接报错。</div>
+                <div>8. 缺少图片类别允许导入，但结果里会提示缺失项。</div>
               </div>
 
               {importWarnings.length > 0 && (

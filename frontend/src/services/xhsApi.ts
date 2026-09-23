@@ -302,6 +302,7 @@ export interface XHSAccountNoteSyncJob {
   scrape_environment_id?: number | null;
   scrape_environment_ids?: string | null;
   sync_account_limit?: number | null;
+  homepage_sync_mode?: 'supplement_only' | 'create_missing' | null;
   sync_mode?: 'all' | 'unpublished_only' | null;
   sync_limit?: number | null;
   sync_limit_per_runner?: number | null;
@@ -341,6 +342,10 @@ export interface XHSAccountSyncHistoryRun {
   message?: string | null;
   error?: string | null;
   parent_run_id?: number | null;
+  request_config?: {
+    homepage_sync_mode?: 'supplement_only' | 'create_missing';
+    [key: string]: unknown;
+  };
   created_at?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
@@ -801,6 +806,7 @@ export async function syncXhsAccountNotes(
     scrape_environment_ids?: string;
     sync_account_limit?: number;
     runner_account_assignments?: string;
+    homepage_sync_mode?: 'supplement_only' | 'create_missing';
     concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {

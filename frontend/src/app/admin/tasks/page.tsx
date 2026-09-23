@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DurableJobDetail } from '@/components/admin/DurableJobDetail';
+import { getAiProviderLabel } from '@/lib/ai/provider-label';
 
 const DURABLE_STATUS_LABELS: Record<string, string> = {
   queued: '等待领取',
@@ -36,23 +37,6 @@ const DURABLE_JOB_LABELS: Record<string, string> = {
   dify_workflow: '工作流执行',
   report_refresh: '报表刷新',
 };
-
-function getAiProviderLabel(item: {
-  provider_name?: string | null;
-  provider_kind?: string | null;
-  model_name?: string;
-}) {
-  if (item.provider_name) {
-    return item.provider_name;
-  }
-  if (item.model_name === 'gptimage2') {
-    return 'GPT Image 2 直连适配器';
-  }
-  if (item.model_name === 'gptimage25') {
-    return 'GPT Image 2.5 直连适配器';
-  }
-  return '-';
-}
 
 export default function GlobalTasksPage() {
   const [activeTab, setActiveTab] = useState<'durable' | 'workflow' | 'ai'>('durable');
@@ -418,7 +402,7 @@ export default function GlobalTasksPage() {
                           {getAiProviderLabel(item)}
                         </div>
                         <div className="text-[10px] text-gray-400">
-                          {item.provider_kind || (['gptimage2', 'gptimage25'].includes(item.model_name || '') ? 'adapter_direct' : '-')}
+                          {item.provider_kind || '-'}
                         </div>
                       </td>
                     )}
@@ -576,7 +560,7 @@ export default function GlobalTasksPage() {
                         ) : (
                           <>
                             <div className="px-4 py-3 border-y text-xs text-gray-500">生图入口</div>
-                            <div className="px-4 py-3 text-sm text-gray-900">{selectedTask.provider_name || selectedTask.provider_kind || '-'}</div>
+                            <div className="px-4 py-3 text-sm text-gray-900">{getAiProviderLabel(selectedTask)}</div>
                           </>
                         )}
                       </div>

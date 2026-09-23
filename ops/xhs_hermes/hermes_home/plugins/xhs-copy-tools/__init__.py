@@ -14,6 +14,7 @@ if str(OPERATOR_ROOT) not in sys.path:
     sys.path.insert(0, str(OPERATOR_ROOT))
 
 from core import sanitize_copy, validate_copy  # noqa: E402
+from copy_length import brevity_instruction, copy_budget  # noqa: E402
 from vehicle_knowledge import knowledge_for_case  # noqa: E402
 
 
@@ -60,12 +61,17 @@ def _handle_get_case(params: dict[str, Any], **_: Any) -> str:
         if not isinstance(mother, dict):
             raise KeyError(f"mother_id is not assigned to this run: {mother_id}")
         production_case = {key: value for key, value in case.items() if key != "display_quote_rows"}
+        brevity = {}
+        if os.environ.get("XHS_ADAPTATION_LEVEL") == "interpretive":
+            budget = copy_budget(mother, case)
+            brevity = {"copy_budget": budget, "brevity_instruction": brevity_instruction(budget)}
         return _json({
             "success": True,
             "case_id": case_id,
             **production_case,
             "assigned_mother": mother,
             "product_knowledge": knowledge_for_case(case, mother),
+            **brevity,
         })
     except Exception as exc:
         return _json({"success": False, "error": f"{type(exc).__name__}: {exc}"})

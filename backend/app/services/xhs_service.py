@@ -82,6 +82,12 @@ from app.utils.timezone import (
 logger = logging.getLogger(__name__)
 
 _AD_AGGREGATE_STREAM_BATCH_SIZE = 500
+HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY = "supplement_only"
+HOMEPAGE_SYNC_MODE_CREATE_MISSING = "create_missing"
+HOMEPAGE_SYNC_MODES = {
+    HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
+    HOMEPAGE_SYNC_MODE_CREATE_MISSING,
+}
 
 
 class SmsCodeWaitFailure(RuntimeError):
@@ -978,6 +984,7 @@ class XHSService:
         scrape_environment_ids: str | None = None,
         sync_account_limit: int | None = None,
         runner_account_assignments: str | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
     ) -> dict:
         params: dict[str, str | int] = {}
         if env_id:
@@ -990,6 +997,7 @@ class XHSService:
             params["sync_account_limit"] = sync_account_limit
         if runner_account_assignments:
             params["runner_account_assignments"] = runner_account_assignments
+        params["homepage_sync_mode"] = homepage_sync_mode
         payload = await cls._call_worker_api(
             "POST",
             "/api/v1/xhs/internal/account-notes/sync",
@@ -1053,6 +1061,7 @@ class XHSService:
         envs: list[XHSEnvironment],
         runner_ids: list[int],
         runner_assignments: dict[int, list[int]],
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
         concurrency: int = 5,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
@@ -1094,6 +1103,7 @@ class XHSService:
                 scrape_environment_ids=str(runner_id),
                 sync_account_limit=len(environment_ids),
                 runner_account_assignments=json.dumps({runner_id: environment_ids}, ensure_ascii=False),
+                homepage_sync_mode=homepage_sync_mode,
             )
             return runner_id, environment_ids, result
 
@@ -4568,11 +4578,15 @@ class XHSService:
         scrape_environment_ids: str | list[int] | tuple[int, ...] | None = None,
         sync_account_limit: int | None = None,
         runner_account_assignments: str | dict[int | str, list[int] | tuple[int, ...] | set[int] | list[str] | tuple[str, ...]] | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
         concurrency: int | None = None,
         limit_per_env: int = 60,
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
+        normalized_homepage_sync_mode = str(homepage_sync_mode or "").strip()
+        if normalized_homepage_sync_mode not in HOMEPAGE_SYNC_MODES:
+            raise ValueError("主页帖子同步模式无效")
         normalized_limit = max(1, min(limit_per_env, 60))
         normalized_runner_ids = self._normalize_account_note_sync_runner_ids(scrape_environment_ids)
         normalized_account_limit = self._normalize_account_note_sync_account_limit(sync_account_limit)
@@ -4673,6 +4687,7 @@ class XHSService:
                     envs=envs,
                     runner_ids=normalized_runner_ids,
                     runner_assignments=normalized_runner_assignments,
+                    homepage_sync_mode=normalized_homepage_sync_mode,
                     concurrency=normalized_concurrency,
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
@@ -4685,6 +4700,7 @@ class XHSService:
                     ",".join(str(item) for item in normalized_runner_ids) or None,
                     normalized_account_limit,
                     json.dumps(normalized_runner_assignments, ensure_ascii=False) if normalized_runner_assignments else None,
+                    normalized_homepage_sync_mode,
                 )
                 return with_skipped_accounts(result)
 
@@ -4705,6 +4721,7 @@ class XHSService:
                     ",".join(str(item) for item in normalized_runner_ids) or None,
                     1,
                     json.dumps({next(iter(normalized_runner_ids), 0): [int(env.id)]}, ensure_ascii=False) if normalized_runner_assignments else None,
+                    normalized_homepage_sync_mode,
                 )
                 synced_accounts += int(result.get("synced_accounts") or 0)
                 created_notes += int(result.get("created_notes") or 0)
@@ -4763,6 +4780,7 @@ class XHSService:
                         aggregate_created_notes=0,
                         aggregate_updated_notes=0,
                         runner_envs=scrape_envs,
+                        homepage_sync_mode=normalized_homepage_sync_mode,
                     )
                 synced_accounts += 1
                 created_notes += int(result.get("created_notes") or 0)
@@ -4807,6 +4825,7 @@ class XHSService:
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
                     runner_buckets=runner_buckets,
+                    homepage_sync_mode=normalized_homepage_sync_mode,
                     concurrency=normalized_concurrency,
                 )
             elif len(scrape_envs) == 1:
@@ -4825,6 +4844,7 @@ class XHSService:
                         base_synced_accounts=0,
                         base_created_notes=0,
                         base_updated_notes=0,
+                        homepage_sync_mode=normalized_homepage_sync_mode,
                     )
             else:
                 batch_result = await self._sync_account_notes_with_strategy(
@@ -4834,6 +4854,7 @@ class XHSService:
                     persona=persona,
                     progress_callback=progress_callback,
                     cancel_check=cancel_check,
+                    homepage_sync_mode=normalized_homepage_sync_mode,
                     concurrency=normalized_concurrency,
                 )
             synced_accounts += int(batch_result.get("synced_accounts") or 0)
@@ -4875,6 +4896,7 @@ class XHSService:
         aggregate_created_notes: int = 0,
         aggregate_updated_notes: int = 0,
         runner_envs: list[XHSEnvironment] | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
     ) -> dict:
         target_scrape_environment_id = scrape_environment_id
         if target_scrape_environment_id is None:
@@ -4897,6 +4919,7 @@ class XHSService:
                 aggregate_created_notes=aggregate_created_notes,
                 aggregate_updated_notes=aggregate_updated_notes,
                 runner_envs=runner_envs,
+                homepage_sync_mode=homepage_sync_mode,
             )
 
     @yundeng_sync_guard("scrape_env", "homepage_posts")
@@ -4915,6 +4938,7 @@ class XHSService:
         base_synced_accounts: int = 0,
         base_created_notes: int = 0,
         base_updated_notes: int = 0,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
     ) -> dict:
         mcp_pid = None
         use_external_mcp = bool(XHS_MCP_EXTERNAL_API)
@@ -4988,6 +5012,7 @@ class XHSService:
                         runner_name=scrape_env.account_name,
                         runner_envs=runner_envs,
                         assigned_runner_env=scrape_env,
+                        homepage_sync_mode=homepage_sync_mode,
                     )
                     synced_accounts += 1
                     created_notes += int(result.get("created_notes") or 0)
@@ -5046,6 +5071,7 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
         runner_buckets: list[tuple[XHSEnvironment, list[XHSEnvironment]]] | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
         concurrency: int = 1,
     ) -> dict:
         if not envs:
@@ -5126,6 +5152,7 @@ class XHSService:
                         base_synced_accounts=0,
                         base_created_notes=0,
                         base_updated_notes=0,
+                        homepage_sync_mode=homepage_sync_mode,
                     )
 
         raw_results = await asyncio.gather(
@@ -5192,6 +5219,7 @@ class XHSService:
         aggregate_created_notes: int = 0,
         aggregate_updated_notes: int = 0,
         runner_envs: list[XHSEnvironment] | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
     ) -> dict:
         if not (env.profile_url or "").strip():
             raise RuntimeError(f"环境 {env.account_name} 未配置个人主页链接")
@@ -5245,6 +5273,7 @@ class XHSService:
                 runner_name=scrape_env.account_name,
                 runner_envs=runner_envs,
                 assigned_runner_env=scrape_env,
+                homepage_sync_mode=homepage_sync_mode,
             )
         finally:
             self._active_mcp_api = previous_mcp_api
@@ -5303,6 +5332,7 @@ class XHSService:
         runner_name: str | None = None,
         runner_envs: list[XHSEnvironment] | None = None,
         assigned_runner_env: XHSEnvironment | None = None,
+        homepage_sync_mode: str = HOMEPAGE_SYNC_MODE_SUPPLEMENT_ONLY,
     ) -> dict:
         if not (env.profile_url or "").strip():
             raise RuntimeError(f"环境 {env.account_name} 未配置个人主页链接")
@@ -5454,41 +5484,68 @@ class XHSService:
                 applied_feed_id_set.add(feed_id)
 
             note, match_method, match_confidence = self._match_homepage_item_to_note(item, existing_notes)
+            was_created = False
             if note is None:
-                published_at = item.get("published_at")
-                deferred_homepage_items.append({
-                    "environment_id": int(env.id),
-                    "account_name": env.account_name or "",
-                    "feed_id": feed_id,
-                    "title": str(item.get("title") or ""),
-                    "published_at": published_at.isoformat() if isinstance(published_at, datetime) else None,
-                    "reason": "creator_primary_note_missing",
-                })
-                await self._emit_progress(
-                    progress_callback,
-                    {
-                        "phase": "processing_account_posts",
-                        "detail": f"{env.account_name} 的主页帖子尚未出现在创作者中心，已暂缓入库 {item_index}/{total_notes}",
-                        "runner_id": runner_id,
-                        "runner_name": runner_name,
-                        "account_name": env.account_name,
-                        "account_index": current_account_index,
-                        "account_total": total_accounts,
-                        "current": item_index,
-                        "total": total_notes,
-                        "percent": int((item_index / total_notes) * 100) if total_notes > 0 else 100,
-                        "created_notes": aggregate_created_notes + created_notes,
-                        "updated_notes": aggregate_updated_notes + updated_notes,
-                        "deferred_homepage_notes": len(deferred_homepage_items),
-                    },
-                )
-                continue
+                if homepage_sync_mode == HOMEPAGE_SYNC_MODE_CREATE_MISSING:
+                    note = XHSAccountNote(
+                        environment_id=env.id,
+                        account_name=env.account_name or "",
+                        profile_nickname=payload.get("profile_nickname") or env.account_name or "",
+                        red_id=payload.get("red_id"),
+                        feed_id=feed_id,
+                        title=str(item.get("title") or ""),
+                        ai_origin_type="",
+                        status="active",
+                        identity_status="homepage_only",
+                        identity_match_method="homepage_new",
+                        identity_match_confidence=1.0,
+                        sort_index=int(item.get("sort_index") or 0),
+                        first_synced_at=now,
+                        homepage_synced_at=now,
+                        last_seen_at=now,
+                    )
+                    self.db.add(note)
+                    existing_notes.append(note)
+                    created_notes += 1
+                    was_created = True
+                    match_method = "homepage_new"
+                    match_confidence = 1.0
+                else:
+                    published_at = item.get("published_at")
+                    deferred_homepage_items.append({
+                        "environment_id": int(env.id),
+                        "account_name": env.account_name or "",
+                        "feed_id": feed_id,
+                        "title": str(item.get("title") or ""),
+                        "published_at": published_at.isoformat() if isinstance(published_at, datetime) else None,
+                        "reason": "creator_primary_note_missing",
+                    })
+                    await self._emit_progress(
+                        progress_callback,
+                        {
+                            "phase": "processing_account_posts",
+                            "detail": f"{env.account_name} 的主页帖子尚未出现在创作者中心，已暂缓入库 {item_index}/{total_notes}",
+                            "runner_id": runner_id,
+                            "runner_name": runner_name,
+                            "account_name": env.account_name,
+                            "account_index": current_account_index,
+                            "account_total": total_accounts,
+                            "current": item_index,
+                            "total": total_notes,
+                            "percent": int((item_index / total_notes) * 100) if total_notes > 0 else 100,
+                            "created_notes": aggregate_created_notes + created_notes,
+                            "updated_notes": aggregate_updated_notes + updated_notes,
+                            "deferred_homepage_notes": len(deferred_homepage_items),
+                        },
+                    )
+                    continue
 
-            updated_notes += 1
+            if not was_created:
+                updated_notes += 1
 
             has_creator_metrics = note.creator_synced_at is not None
             note.feed_id = feed_id
-            note.identity_status = "resolved"
+            note.identity_status = "homepage_only" if was_created else "resolved"
             note.identity_match_method = match_method or note.identity_match_method or "feed_id"
             note.identity_match_confidence = (
                 match_confidence if match_confidence is not None else note.identity_match_confidence
@@ -5525,6 +5582,7 @@ class XHSService:
             if not has_creator_metrics and item.get("share_count") is not None:
                 note.share_count = self._merge_metric_count(note.share_count, item.get("share_count"))
             note.sort_index = int(item.get("sort_index") or 0)
+            note.first_synced_at = note.first_synced_at or now
             note.last_seen_at = now
             source_post = source_posts_by_feed.get(feed_id)
             if source_post is not None:

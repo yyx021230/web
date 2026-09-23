@@ -17,6 +17,12 @@ export interface GenerateImageParams {
   image_urls?: string[]; // 多张参考图片 URL（图库多图模式）
 }
 
+export interface ImageTaskProgress {
+  phase: string;
+  message: string;
+  wait_seconds: number;
+}
+
 export interface ImageTaskResponse {
   task_id: string;
   status: string;
@@ -26,6 +32,7 @@ export interface ImageTaskResponse {
   created_at?: string | null;
   finished_at?: string | null;
   elapsed_seconds?: number | null;
+  progress?: ImageTaskProgress | null;
 }
 
 export interface QueueStatus {
@@ -68,8 +75,13 @@ export interface AIImageRuntimeConfig {
   poll_interval_seconds: number;
 }
 
+export interface PromptAssistResponse {
+  prompt: string;
+}
+
 export interface AIImageHistoryItem {
   id: number;
+  progress?: ImageTaskProgress | null;
   client_request_id?: string | null;
   model_name: string;
   prompt: string;
@@ -232,4 +244,13 @@ export const aiApi = {
 
   getRuntimeConfig: () =>
     api.get<AIImageRuntimeConfig>('/ai-image/runtime-config'),
+
+  reversePrompt: (imageData: string) =>
+    api.post<PromptAssistResponse>('/ai-image/prompt-tools/reverse', { image_data: imageData }),
+
+  modifyPrompt: (input: string, instruction: string) =>
+    api.post<PromptAssistResponse>('/ai-image/prompt-tools/modify', { input, instruction }),
+
+  polishPrompt: (input: string) =>
+    api.post<PromptAssistResponse>('/ai-image/prompt-tools/polish', { input }),
 };
