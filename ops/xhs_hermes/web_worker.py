@@ -177,6 +177,18 @@ def find_delivery(output_root: Path) -> Path | None:
     return candidates[0] if candidates else None
 
 
+def existing_policy_arguments(run: dict[str, Any]) -> list[str]:
+    authorization = (run.get("parameters") or {}).get("existing_policy_authorization")
+    if authorization is None:
+        return []
+    if (not isinstance(authorization, dict) or run.get("source") != "admin_manual"
+            or type(authorization.get("authorized_by")) is not int
+            or authorization["authorized_by"] != run.get("requested_by")
+            or not authorization.get("authorized_at")):
+        raise RuntimeError("Invalid existing-policy authorization")
+    return ["--no-policy-sync", "--allow-expired-policy"]
+
+
 def send_progress(base_url: str, token: str, run_id: int, worker_id: str,
                   run_output: Path, last_digest: str | None) -> str | None:
     snapshots = sorted(run_output.rglob('progress.json'), key=lambda path: path.stat().st_mtime, reverse=True)
@@ -292,6 +304,7 @@ def run_once(base_url: str, token: str, worker_id: str, output_root: Path) -> bo
                     "--config", str(config_path),
                     "--batch-date", batch_date,
                     "--output-root", str(run_output),
+                    *existing_policy_arguments(run),
                 ]
 
                 def execute(extra_args: list[str]) -> int:

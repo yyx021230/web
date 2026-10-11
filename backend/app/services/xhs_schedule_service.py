@@ -340,6 +340,7 @@ async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, An
         .where(
             and_(
                 XHSEnvironment.status == "active",
+                ~XHSEnvironment.is_phone_cloud,
                 or_(XHSEnvironment.is_sync_runner.is_(False), XHSEnvironment.is_sync_runner.is_(None)),
             )
         )

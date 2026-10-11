@@ -29,7 +29,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import NO_VALUE
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.xhs_environment import XHSEnvironment
+from app.models.xhs_environment import PHONE_CLOUD_ACCOUNT_PREFIX, XHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
 from app.models.xhs_account_note_browse_event import XHSAccountNoteBrowseEvent
@@ -4136,7 +4136,7 @@ class XHSService:
     async def list_sync_runner_environments(self) -> list[XHSEnvironment]:
         explicit_stmt = (
             select(XHSEnvironment)
-            .where(and_(XHSEnvironment.status == "active", XHSEnvironment.is_sync_runner.is_(True)))
+            .where(and_(XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud, XHSEnvironment.is_sync_runner.is_(True)))
             .order_by(XHSEnvironment.account_name.asc(), XHSEnvironment.id.asc())
         )
         explicit_envs = list((await self.db.execute(explicit_stmt)).scalars().all())
@@ -4145,6 +4145,7 @@ class XHSService:
             .where(
                 and_(
                     XHSEnvironment.status == "active",
+                    ~XHSEnvironment.is_phone_cloud,
                     or_(
                         XHSEnvironment.account_name.like("%测试2%"),
                         XHSEnvironment.account_name.like("%测试3%"),
@@ -4603,7 +4604,7 @@ class XHSService:
         else:
             stmt = (
                 select(XHSEnvironment)
-                .where(XHSEnvironment.status == "active")
+                .where(XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud)
                 .order_by(XHSEnvironment.account_name.asc())
             )
             if environment_id is not None:
@@ -7190,7 +7191,7 @@ class XHSService:
                 return env
         result = await self.db.execute(
             select(XHSEnvironment).where(
-                and_(XHSEnvironment.status == "active", XHSEnvironment.is_sync_runner.is_(True))
+                and_(XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud, XHSEnvironment.is_sync_runner.is_(True))
             ).order_by(XHSEnvironment.account_name.asc(), XHSEnvironment.id.asc())
         )
         env = result.scalars().first()
@@ -7198,7 +7199,7 @@ class XHSService:
             return env
         result = await self.db.execute(
             select(XHSEnvironment).where(
-                and_(XHSEnvironment.status == "active", XHSEnvironment.account_name == "测试2")
+                and_(XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud, XHSEnvironment.account_name == "测试2")
             )
         )
         env = result.scalars().first()
@@ -10610,7 +10611,9 @@ class XHSService:
                 }
                 if remote_shop_ids:
                     stale_result = await self.db.execute(
-                        select(XHSEnvironment).where(XHSEnvironment.status == "active")
+                        select(XHSEnvironment).where(
+                            XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud
+                        )
                     )
                     stale_envs = list(stale_result.scalars().all())
                     for stale_env in stale_envs:
@@ -10670,7 +10673,10 @@ class XHSService:
 
     async def list_environments(self, user: User, include_inactive: bool = False) -> list[XHSEnvironment]:
         """获取用户可用的环境列表"""
-        status_condition = True if include_inactive else XHSEnvironment.status == "active"
+        status_condition = and_(
+            ~XHSEnvironment.is_phone_cloud,
+            True if include_inactive else XHSEnvironment.status == "active",
+        )
         if has_role(user, ROLE_ADMIN):
             result = await self.db.execute(
                 select(XHSEnvironment)
@@ -11275,6 +11281,8 @@ class XHSService:
         debugging WebSocket. The caller should let YunDeng/MCP handle startup
         instead of blocking on a separate online-status probe.
         """
+        if env.is_phone_cloud:
+            raise ValueError("云手机账号没有云登浏览器，请使用云手机发布")
         self._require_local_browser_ops("启动云登浏览器并获取连接")
         await self._apply_sync_cloud_fingerprint_update(env)
         body = {"account_id": env.shop_id, "headless": "0"}
@@ -11341,6 +11349,8 @@ class XHSService:
         refresh: bool = True,
         include_ws: bool = False,
     ) -> dict[str, Any]:
+        if env.is_phone_cloud:
+            raise ValueError("云手机账号没有云登浏览器状态")
         cached = self._get_cached_browser_status(int(env.id))
         if cached and not refresh:
             if not include_ws:
@@ -11379,7 +11389,7 @@ class XHSService:
     async def list_browser_environment_statuses(self, *, refresh: bool = False) -> list[dict[str, Any]]:
         result = await self.db.execute(
             select(XHSEnvironment)
-            .where(XHSEnvironment.status == "active")
+            .where(XHSEnvironment.status == "active", ~XHSEnvironment.is_phone_cloud)
             .order_by(XHSEnvironment.is_sync_runner.desc(), XHSEnvironment.account_name.asc())
         )
         envs = list(result.scalars().all())
@@ -11545,6 +11555,8 @@ class XHSService:
 
     async def _stop_browser(self, shop_id: str):
         """停止云登浏览器"""
+        if str(shop_id).startswith(PHONE_CLOUD_ACCOUNT_PREFIX):
+            raise ValueError("云手机账号没有云登浏览器，请使用云手机发布")
         self._require_local_browser_ops("停止云登浏览器")
         try:
             async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:

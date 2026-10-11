@@ -1,5 +1,9 @@
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, func, Text
 from app.db.base import Base
+from sqlalchemy.ext.hybrid import hybrid_property
+
+
+PHONE_CLOUD_ACCOUNT_PREFIX = "phone-cloud:"
 
 
 class XHSEnvironment(Base):
@@ -32,3 +36,12 @@ class XHSEnvironment(Base):
     status = Column(String(20), nullable=False, default="active", comment="active/inactive")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    @hybrid_property
+    def is_phone_cloud(self):
+        """Cloud-phone identities never represent YunDeng browser environments."""
+        return str(self.shop_id or "").startswith(PHONE_CLOUD_ACCOUNT_PREFIX)
+
+    @is_phone_cloud.expression
+    def is_phone_cloud(cls):
+        return cls.shop_id.startswith(PHONE_CLOUD_ACCOUNT_PREFIX)

@@ -6,6 +6,16 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 No additional changes have been scheduled beyond the frozen candidate below.
 
+## [0.4.1] - 2026-10-11
+
+Frozen compatibility patch, not a production deployment receipt. Cloud-phone
+dispatch and browser sessions remain disabled pending separate activation.
+
+### Fixed
+
+- Register verified cloud-phone-only accounts for the Hermes workbench without inventing YunDeng browser IDs; browser synchronization preserves those identities and browser collectors exclude them.
+- Allow an explicitly authorized administrator run to use existing vehicle policies without changing their original dates; the normal freshness checks remain enabled for other runs.
+
 ## [0.4.0] - 2026-10-11
 
 Frozen release candidate, not a production deployment receipt. See

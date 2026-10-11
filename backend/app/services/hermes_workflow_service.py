@@ -326,8 +326,21 @@ class HermesWorkflowService:
         copy_type: str | None = None,
         image_type: str | None = None,
         adaptation_level: str | None = None,
+        use_existing_policy: bool = False,
         commit: bool = True,
     ) -> HermesWorkflowRun:
+        policy_authorization = None
+        if use_existing_policy:
+            from app.core.roles import has_role
+            from app.models.user import User
+            operator = await self.db.get(User, requested_by) if requested_by else None
+            if operator is not None:
+                await self.db.refresh(operator, attribute_names=["is_active", "role", "role_assignments"])
+            if source != "admin_manual" or not operator or not operator.is_active or not has_role(operator, "admin"):
+                raise HTTPException(403, "只有管理员手动任务可确认沿用存量政策")
+            policy_authorization = {"authorized_by": operator.id, "authorized_at": _iso(cst_now_naive())}
+            instruction = ((instruction or "").strip() + "\n沿用存量政策，仅作原有效期内的历史政策参考。"
+                           "涉及价格或权益必须标明原有效期，不得说成当前或本月有效，不虚构新政策。")
         from app.services.hermes_adaptation import adaptation_contract, normalize_adaptation_level
         account_plans: list[dict[str, Any]] = []
         from app.services.hermes_reference_types import validate_type, type_requires_quote_data, COPY_TYPES, IMAGE_TYPES, LEGACY_IMAGE_TYPES, TAXONOMY_VERSION
@@ -420,6 +433,7 @@ class HermesWorkflowService:
                 "policy_snapshot": snapshots,
                 "policy_snapshot_at": _iso(cst_now_naive()),
                 "policy_fingerprint": hashlib.sha256(json.dumps(snapshots, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+                **({"existing_policy_authorization": policy_authorization} if policy_authorization else {}),
             },
             total_posts=total_posts,
         )

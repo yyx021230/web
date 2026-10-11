@@ -355,3 +355,61 @@
 - 最终源码专项：`tests/test_hermes_upload.py tests/test_cloud_phone_publish.py tests/test_hermes_workflows.py` **143 passed / 23.13 秒**，包含 20 项上传测试；前端 `npm run test:coverage` **148 passed / 15 文件**，`npm run type-check` 通过。最终生产构建在 `/tmp/ztqc-upload-build-20261010.GCo1kQ` 副本完成 **34 页面**，未覆盖运行中的 `.next`；Ruff、`git diff --check`、密钥扫描及 development 版本检查通过。
 - 不宣称最终后端全量通过：最后一次全量在 `test_two_coordinators_run_one_child_and_take_over_after_shutdown` 等待接管超时，随后释放租约/fixture 清理出现 SQLite 锁冲突；为避免继续产生连带失败，停止该测试进程，结果 **611 passed、1 failed、7 errors、interrupted**。该文件未在本轮修改；此前相同代码全量曾 981 项通过、总分支口径 70.42%，只能作为中间快照的结果，不能代替最终源码全量绿灯。偶发原因和 PostgreSQL 对应行为仍待专门调查，不能仅凭 SQLite 认定线上存在同类故障。
 - 证据：`/tmp/ztqc-upload-final-targeted.log`（最终专项）、`/tmp/ztqc-upload-final-full.log`（全量失败/中断）、`/tmp/ztqc-upload-full-recheck.log`（中间全量通过）、`/tmp/ztqc-upload-build-final.log`（最终构建）。全量启动为空环境、`Settings(_env_file=None)`、独立 PID 数据库，存储/参考快照为测试值且外网连接禁止；不是生产 DB 或真实手机验收。本次验收结论仅为功能候选可本地体验，**尚不能提交为已通过全量回归的上线版本**。
+
+### 2026-10-11 生产发布配置接入准备
+
+状态：**待专用发布身份确认，未应用线上配置**。用户要求接入发布配置；沿用已经部署的 0.4.0 / `6ad44254ccc0` 镜像，不重新打包脏工作区。此前 10 月 10 日的局部验收失败记录保留；10 月 11 日正式冻结候选的全量测试、PG 演练与代码部署结果见 `RELEASE_PREPARATION_20261010.md`，本节不把历史失败或历史通过混作本轮配置验收。
+
+- 范围与边界：仅 Windows Web 的 Hermes API 配置及独立 `phone-cloud-publish-worker`；全局 `PHONE_CLOUD_PUBLISH_ENABLED=false`，浏览器新会话也保持关闭。只准备 102 / app1 对应稳定账号的 Web 白名单，不放开其他账号；不动 Phone Cloud 服务、Agent、ADB、媒体、FRP、其他容器或定时任务，不迁移、恢复或覆盖数据库。共同流程仍为 2026-09-30 / `0a06c335eb36a017fc84bfdd4b067dedee27041e88ad746963f02f1f9a532e2b`。
+- 本轮只读连接：既有专用普通账号 `web-publish-102-test` 可以登录、读取设备和原任务；102 唯一解析到原 app1，available=true / busy=false，已有远端任务3条，新增0条。检查只允许鉴权 POST、设备 GET、任务列表 GET，不允许创建、取消或控制设备。它此前用于本地验收，已询问用户线上沿用还是另建专用账号；**尚未把真实发布密码复制到线上**，没有复用短信管理员身份。
+- 已完成基础准备：Windows 新建 `D:\ztqc-private\web\phone-cloud-publish` 及空 `snapshots`，关闭 ACL 继承，仅当前 Windows 用户、SYSTEM、Administrators 访问；目录在公开 uploads 之外。私有目录保存未应用的 Compose 候选和占位连接参数；运行脚本在 `C:\projects\web\runtime\maintenance\ztqc-configure-phone-publish.ps1`，不含实际凭据。私有 `publisher.env` 包含现有运行配置，不能公开、提交 Git 或复制到公开素材目录。
+- 候选结构：API 对私有快照读写，新发布 Worker 只读同一快照及现有 uploads；Worker 使用当前 core backend 不可变镜像，512MiB / 0.5CPU / 64PID、有界容器日志、DB 租约健康检查，不暴露宿主端口。API/Worker 使用独立最小配置，不将整个本地测试 env（含其他模型密钥）复制到生产。实际应用只重建 Hermes API 并启动新 Worker，不重建数据库或生成 Worker。
+- 本轮实际验证：PowerShell 语法通过；Docker Compose 5.1.1 合并校验通过，逐项确认除 Hermes API 和新增 Worker 外所有服务配置不变、API 原有环境字段不变。14:46 北京时间的反例验证确认配置指纹漂移与占位密码均拒绝执行，线上 override SHA256、所有运行容器 ID/镜像/启动时间均未改变；私有快照0文件、应用回执不存在、新增发布0次。占位密码 Apply 的退出失败是预期防护结果，不算成功接入。
+- 当前生产事实：API 的发布地址/凭据仍未配置，实际下发 false、发布单0条；线上没有与 102 名称或已核验稳定账号 ID 匹配的创作账号，不能照搬隔离库的假环境 ID。11 个车型案例政策均截止 2026-09-30，未修改期限或虚构10月价格。连接接入后还需完成正确账号登记/管理员归属，以及真实资料或明确的无销售政策内容配置，才可执行用户要求的真实生产、审核和发布。
+- 应用/回退准备：脚本持有部署锁，核对现有配置指纹、固定镜像和无活动 Hermes/发布任务；应用前保留原 override，验证 API/Worker 健康、只读连通和其他容器不变后才写 `receipt.json`。失败仅停止新增 Worker、恢复 API 配置，保留数据库与快照；若出现新发布记录则停止自动回退，不能删除或重放任务。**这些实际应用、Worker 心跳及回退运行验证尚未执行**，不宣称已接通或已完成真机发布。
+- 接续注意：新发布 Worker 尚未纳入正式组件版本回执/后续升级协调与私有目录备份流程，接入应用后必须记录其镜像、配置指纹和私有回执路径；后续正式升级不能遗漏该组件，不能用全库恢复或镜像回退抹去新增发布记录。没有新增每日备份。
+
+本轮仓内仅追加本节；既有 release 准备文档修改、删除和未跟踪资料全部保留，没有业务源码变更、提交、推送或改标签。临时脚本仅为本次有界配置运维材料，不代表仓内正式发布工具已增加此能力。
+
+#### 后续授权与实际应用回执（15:05~15:13 北京时间）
+
+用户随后明确要求继续推进；按此前推荐的最小方案沿用 `web-publish-102-test` 普通专用身份，只接入已核验的 102，不另建账号、不扩大白名单。本节更新前一节“未应用”的阶段状态：**连接配置已应用且验证通过，实际发布下发仍关闭**，不是完整生产、审核、发帖验收。
+
+- 实际切换：15:05:07 重建 Hermes API，15:05:14 启动独立发布 Worker，15:05:26 写入应用回执。两者均沿用已冻结的 0.4.0 镜像，没有业务代码热补丁、数据库迁移或本地数据库复制。此前其他9个容器的 ID、镜像与启动时间逐项检查不变；核心生图与生成 Worker、数据库、Redis、MinIO、前端、旁路前端均未重启。
+- 配置：仅从本地私有文件选择4个发布连接字段，经过 SSH 写到 Windows ACL 保护的私有目录；未复制整个测试环境、未使用短信管理员、未输出密码。API/新 Worker 的实际运行配置均为发布凭据已配置、精确 HTTP 来源已配置、白名单仅一个稳定账号、`PHONE_CLOUD_PUBLISH_ENABLED=false`、`AUTH_BROWSER_SESSIONS_ENABLED=false`。本机传输用的临时凭据 JSON 已删除，不删除原专用账号配置。
+- 连通与租约：API 与发布 Worker 分别真实鉴权并读取设备/原任务，均唯一解析到 102 / app1；远端任务仍3条，线上发布单与尝试仍0条。租约属于新增 Worker，心跳持续刷新；3次相隔12秒的容器健康采样均 healthy、重启0、OOM=false。短窗口不是长时间负载或真机发帖稳定性验收。
+- 私有卷：API 写入一个无业务内容的唯一探针，Worker 读取校验相同 SHA256；Worker 写入以只读文件系统错误被拒绝。API 随后只删除本轮探针，快照目录恢复0文件。两组件实际快照路径均为 `/private-publish-snapshots`，在公开 uploads 之外。没有冻结、修改或发布用户配图。
+- 接口与版本：正式 `Assert-ReleaseState.ps1` 通过，core/Hermes 应用身份仍为原 0.4.0。5项顺序只读冒烟通过：前端同源管理员 bootstrap、普通及管理发布记录均 HTTP200、下发false/总数0，core `/version` 与 `/health/ready` HTTP200；公网发布页 HTTP200。角色接口使用仅5分钟且不输出的临时令牌，不冒充新一轮真实密码登录。没有调用生成、审核、排期、取消、创建远端任务或设备控制。
+- 首次追加验证的脚本失败如实保留：PowerShell 5 将 `@(ConvertFrom-Json)` 的多容器结果包成嵌套数组，导致两个 false 的 OOM 数组被当作 true；Docker 原生逐容器输出证实两者 healthy / restarts0 / OOMfalse。只修正临时验收脚本为直接解析并断言恰好2个独立容器对象，随后重跑全部卷、连通、版本和3次健康检查通过，没有为通过验证修改应用或健康门槛。
+- 配置指纹：原 override SHA256 `cc1777089bf4235ab98350158ff20abdd77c7c472d16231d93d1487cefacd544`，应用后 `cf5b908a796d7530d663f87a409f33fe49ee4eadc289931677c01339b18f0010`；API 镜像ID `sha256:f22849c9aabd1437d7048713127e1631377222da042843aca557dfb34bae4b87`，发布 Worker 镜像ID `sha256:752179d5c94e4caa26654412c7391c0d12278a15419aede2e50231a186d4cd50`。没有修改历史标签或 core/Hermes 原组件回执。
+- 材料：私有应用回执 `D:\ztqc-private\web\phone-cloud-publish\receipt.json`，原 override 同目录 `override.before.yml`；新增独立组件索引 `C:\projects\web\.release\phone-cloud-publish\current.json` 明确记录 `formalUpgradeAutomationIncludesPublisher=false`。验证记录 `C:\projects\web\runtime\maintenance\phone-publish-connection-verification-20261011.json`，本机脱敏副本 `/tmp/ztqc-publish-applied-{receipt,verification}.json`。后续升级必须协调发布 Worker，不能假设现有 core/Hermes 发布脚本已自动覆盖它。未新增每日备份、未实际演练配置回退。
+
+**真实发布尚余阻断**：扩大只读账号搜索后，102、零跑情报员及已核验稳定账号 ID 均无线上记录；admin 的正式 bootstrap 仍返回0个创作账号。当前工作流通过 `XHSEnvironment` / `UserXHSEnvironment` 获取账号，来源仍是云登，不能仅因 Phone Cloud 可找到102就宣称已经分配给管理员，也不能用隔离库的假环境ID替代。需要完善云手机独立账号登记/绑定，保留真实云登身份；否则伪造 shop_id 还会在下一次云登同步时被停用。另11个车型销售案例仍过期，须有有效资料或明确配置普通选车内容，不虚构新政策。这两项未解决前不启用下发、不自动生产或发布，原远端3条任务不重发。
+
+本轮仓内仍仅追加文档，已有改动全部保留；未提交、推送或改标签。本节只证明生产连接层和私有卷运行正常，不代表完整工作台真实发帖链路已完成。
+
+### 2026-10-11 102 登记与沿用政策候选
+
+- 用户明确要求登记102给管理员并直接沿用现有政策。实施基线为 `/Users/yyx/ztqc/web` / `codex/v0.3.29-workbench-fix` / `f0de5af1caeb5cbcd910d51d96b91342e790885e`；生产仍为冻结的0.4.0。共同流程重新读取，2026-09-30 / SHA256 `0a06c335eb36a017fc84bfdd4b067dedee27041e88ad746963f02f1f9a532e2b`。本地R2兼容修改，生产登记/部署属R3；已提出将本组冻结为0.4.1提交部署的确认，未获确认前不更改生产业务代码。
+- 允许范围：`xhs_environment.py`、`xhs_service.py`、`xhs_schedule_service.py`、新 `phone_cloud_account_registry.py` 和显式登记CLI，Hermes管理创建请求/路由/服务、生成Worker及两个新测试文件；架构、CHANGELOG与本任务记录同步。没有数据库DDL迁移，没有修改Phone Cloud/Agent/ADB/媒体或原政策文件；其余既有删除和未跟踪资料保留，不一并暂存。
+- 身份设计：`phone-cloud:<稳定小红书ID>`保留真实来源，工作台复用原账号归属表；已存在真实云登账号则复用，重复身份、停用记录或他人归属均拒绝自动处理。只允许活跃管理员操作、活跃接收用户，多角色判断显式异步加载。登记CLI先验证白名单和唯一在线设备/槽位，不调用发布创建接口。云登同步不误停用云手机账号，浏览器列表/采集调度排除该来源，直接启动/停止浏览器拒绝。
+- 政策设计：仅管理员手动任务的显式 `use_existing_policy` 生成审计标记，Worker校验来源/操作者后增加 `--no-policy-sync --allow-expired-policy`；没有全局放宽、没有改政策期限。追加历史有效期指令，不把9月政策冒充10月权益；生成后仍需人工审核，不保证模型一定遵循。普通用户、定时任务、未确认的手动任务仍走原检查；重新生成不是自动继承此一次授权。
+- 初轮发现并修复：新建User的角色集合未加载导致同步权限判断触发MissingGreenlet；改为显式异步refresh再判断，并增加多角色管理员/停用用户反例，不以旧单角色字段绕过权限。
+- 实际验证：定向初轮修复后32项通过；新增CLI/多角色测试后专项21项通过。独立Python3.12、隔离PID SQLite、无真实环境文件/外网连接的第一次全量 **1037 passed / 3 skipped / 31 warnings，覆盖70.26%，163.76秒**；此后增加停止浏览器保护与策略权限refresh，最终源码全量正在重跑，前述不能替代最终结果。生成器全量 **787 passed / 0.86秒**，Ruff、diff-check、development版本门禁与发布契约通过；生产release门禁尚未运行，候选仍dirty/未打标签。
+- PostgreSQL16临时库独立演练：本机127.0.0.1:56441、独立数据目录与测试库；两次并发登记+重复登记最终1个账号/1条归属，SQL来源过滤正确，多角色管理员可操作。没有连接生产库或Phone Cloud，临时实例随后正常停止；不把SQLite测试等同于生产PG验收。
+- 待部署顺序：冻结明确白名单提交/新标签，通过正式发布门禁后协调core、Hermes API/生成Worker和独立发布Worker版本；保留私有连接、白名单和快照挂载，初始下发仍false。当前独立发布Worker尚未纳入正式自动升级，须单独核验镜像与私有env版本身份，不能只升级API。部署验证兼容保护后，方可用显式CLI登记102给admin并重复执行核对幂等；本地数据库不复制上去，远端原3条任务不重发。
+- 回滚边界：未登记前可回到原应用/配置；登记后若回旧版，必须先阻止旧云登同步误停用云手机身份，不删除账号或整库恢复。若已经新增生产/发布记录，保留原任务和内容；未知结果查询原任务，不自动重试。当前未提交、推送、部署、登记或生成/发布新任务，不宣称已完成用户要求的真实闭环。
+
+最终本地源码验证：全量后端 **1038 passed / 3 skipped / 31 warnings，分支合并口径覆盖71.10%，156.24秒**，通过70%门槛；包含CLI白名单拒绝、唯一设备验证、重复登记、未知用户无写入及来源隔离测试。Hermes生成器 **787 passed**，前端 `npm run type-check` 通过。临时PG演练、静态检查及版本/发布契约结果仍如上；没有执行发布门禁、Git提交/标签、生产登记或付费生成。最终日志 `/tmp/ztqc-041-final-full.log` 和 `/tmp/ztqc-041-hermes.log`；PG脚本 `/tmp/ztqc-041-registry-pg.py` 仅用假用户和隔离数据库。
+
+完整变更文件Ruff补查：除 `xhs_service.py` 外全部通过；该旧文件有2条基线问题（未用csv导入F401、既有变量名l触发E741），用 `git show HEAD:... | ruff check --stdin-filename ... -` 确认原HEAD同样失败。本轮未顺带修整旧代码或降低项目规则；仅单独排除这两个已证实的基线项复查后通过。秘密扫描、最终diff-check通过。不能把完整文件原始Ruff结果描述为全绿。
+
+#### 用户确认后冻结0.4.1（2026-10-11）
+
+用户回复“继续吧”，确认本组0.4.1提交与Windows部署、102登记给admin；不推送远端，不扩大账号/发布次数。版本五处统一至0.4.1，沿用原分支，不创建新业务分支、不移动历史标签。本轮自审核对权限、来源过滤、同步误停用、角色异步加载、政策单任务授权与CLI不创建发布任务的调用链；非独立双人审查。
+
+冻结前重新运行全量：后端 **1038 passed / 3 skipped / 31 warnings，71.08%，157.09秒**；前端 **189 passed / 19文件**，指定范围语句/行93.86%、分支83.66%、函数75.92%；版本管理 **16 passed**。Alembic单头仍 `e61010a0b001`，发布契约与秘密扫描通过。原代码范围未增加新业务修改，仅版本默认值更新。
+
+生产预检确认core/Hermes仍0.4.0，独立发布Worker健康，无运行中Hermes任务/发布记录；override指纹仍 `cf5b908a796d7530d663f87a409f33fe49ee4eadc289931677c01339b18f0010`。当前私有配置/回执/容器与挂载基线已保存在ACL保护的 `D:\ztqc-private\web\phone-cloud-publish\release-041-before`，无凭据外传。C可用约13.55GiB，低于数据库大小+8GiB门槛约14.04GiB；未绕过门禁，已单独申请清理无引用临时包/构建缓存，获准前不删除。当前尚未部署或登记。
+
+协调发布准备：core走正式入口，Hermes走现有组件脚本；新的独立发布Worker临时受控升级脚本先验证两份正式回执、来源镜像、0发布记录与关闭开关，只改它的固定镜像及私有env三项版本身份，配置差异校验禁止影响其他服务。脚本Windows PowerShell语法检查通过，计划/应用/健康/回退尚未执行。升级记录追加独立组件索引，不能冒充正式自动升级已覆盖该组件。没有每日备份或本地DB上传。

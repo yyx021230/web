@@ -63,6 +63,7 @@ class HermesAdminRunCreate(BaseModel):
     posts_per_account: int = Field(default=5, ge=1, le=5)
     instruction: str | None = Field(None, max_length=1000)
     adaptation_level: HermesAdaptationLevel = "replica"
+    use_existing_policy: bool = Field(default=False, description="管理员确认本次沿用存量政策，保留原有效期")
 
 
 class HermesReviewRequest(BaseModel):
