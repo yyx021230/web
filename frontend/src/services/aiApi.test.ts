@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import api from './api';
 import { aiApi } from './aiApi';
 
 describe('aiApi.generateImage', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   const success = { status: 200, json: async () => ({ code: 0, data: { task_id: 'task-1' } }) };
 
@@ -82,25 +86,24 @@ describe('aiApi.generateImage', () => {
     }));
   });
 
-  it('preserves HTTP status and server messages for auth and upstream failures', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
-        status: 401,
-        json: async () => ({ detail: '登录已失效' }),
-      })
-      .mockResolvedValueOnce({
-        status: 524,
-        json: async () => ({ message: '上游生成超时' }),
-      });
+  it.each([{ status: 401, message: '登录已失效' }, { status: 524, message: '上游生成超时' }])(
+    'preserves HTTP status and server messages for $status', async ({ status, message }) => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ status, json: async () => ({ detail: message }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(aiApi.generateImage({ prompt: 'one', model: 'gptimage2' })).rejects.toMatchObject({
-      message: '登录已失效',
-      status: 401,
+      message,
+      status,
     });
-    await expect(aiApi.generateImage({ prompt: 'two', model: 'gptimage2' })).rejects.toMatchObject({
-      message: '上游生成超时',
-      status: 524,
+  });
+
+  it('encodes client request IDs before recovering queued tasks', async () => {
+    const get = vi.spyOn(api, 'get').mockResolvedValue({
+      data: { task_id: 'task-1', status: 'queued', image_urls: [] },
     });
+
+    await aiApi.getTaskByClientRequestId('retry/one?x=1');
+
+    expect(get).toHaveBeenCalledWith('/ai-image/requests/retry%2Fone%3Fx%3D1');
   });
 });

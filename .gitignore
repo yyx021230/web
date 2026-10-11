@@ -67,6 +67,12 @@ backend/content_tag_*.csv
 backend/app/data/*.bak-*
 backend/app/data/*.bak-local-*
 
+# Review/export data is local, not application source. Never force-add it.
+/exports/
+/local-reviews/
+.release/
+private_publish_snapshots/
+
 # Local design experiments kept outside the production source tree
 automation_tts_ppt/
 frontend-meigen-refactor/

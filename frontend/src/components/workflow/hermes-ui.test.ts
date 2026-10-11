@@ -68,6 +68,33 @@ async function fill(label: string, value: string) {
 }
 
 describe('Hermes creation frontend interactions', () => {
+  it('reviews every uploaded picture in order without showing AI provenance', async () => {
+    await render(React.createElement(HermesPostInspector, {
+      post: { ...post, source_kind: 'user_upload', image_urls: ['/cover.png', '/detail.png'] },
+      onClose: vi.fn(), onSaved: vi.fn().mockResolvedValue(undefined),
+    }));
+    expect(Array.from(host.querySelectorAll('img')).map(image => image.getAttribute('src'))).toEqual(['/cover.png', '/detail.png']);
+    expect(button('生图依据')).toBeNull();
+    expect(button('文案对照')).toBeNull();
+    expect(host.textContent).toContain('未调用AI生成或机器内容审核');
+    await click(button('上传图片'));
+    expect(host.querySelectorAll('img')).toHaveLength(2);
+    await click(button('完整图文')); await click(button('审核通过'));
+    expect(hermesWorkflowApi.reviewPost).toHaveBeenCalledWith(post.id, 'approve', undefined, post.version, false);
+  });
+
+  it('does not offer AI regeneration for an uploaded draft', async () => {
+    await render(React.createElement(HermesPostInspector, {
+      post: { ...post, source_kind: 'user_upload', image_urls: ['/cover.png'] },
+      onClose: vi.fn(), onSaved: vi.fn().mockResolvedValue(undefined),
+    }));
+    await click(button('不通过'));
+    expect(host.textContent).not.toContain('重新生成这一篇图文');
+    await fill('不通过原因', '需要修改文案'); await click(button('确认不通过'));
+    expect(hermesWorkflowApi.reviewPost).toHaveBeenCalledWith(post.id, 'reject', '需要修改文案', post.version, false);
+    expect(hermesWorkflowApi.createRun).not.toHaveBeenCalled();
+  });
+
   it('lets the owner delete a finished failed task after confirmation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const failed = { ...run, status: 'failed', assigned_status: 'failed', can_delete: true, error: '生产失败' };

@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from urllib.parse import unquote, urlparse
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.3.31"
+    app_version: str = "0.4.0"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
+    auth_browser_sessions_enabled: bool = False
+    auth_session_access_minutes: int = Field(default=30, ge=1, le=60)
+    auth_session_idle_days: int = Field(default=3, ge=1, le=30)
+    auth_session_absolute_days: int = Field(default=30, ge=1, le=90)
+    auth_session_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # File Storage
     storage_type: str = "local"  # local | s3 | minio
@@ -150,6 +156,19 @@ class Settings(BaseSettings):
     dify_task_shadow_enabled: bool = False
     scheduler_leader_enabled: bool = True
     hermes_scheduler_enabled: bool = True
+    phone_cloud_publish_enabled: bool = False
+    phone_cloud_publish_base_url: str = ""
+    # Explicit operator opt-in for deployments without TLS; never a TLS fallback.
+    phone_cloud_publish_http_origins: str = ""
+    phone_cloud_publish_username: str = ""
+    phone_cloud_publish_password: str = ""
+    # Only identities explicitly checked on the real App may be dispatched.
+    phone_cloud_publish_verified_xhs_ids: str = ""
+    phone_cloud_publish_image_origins: str = ""
+    phone_cloud_publish_snapshot_path: str = "./private_publish_snapshots"
+    phone_cloud_publish_max_images: int = 5
+    phone_cloud_publish_max_lateness_seconds: int = 1800
+    phone_cloud_publish_max_observe_seconds: int = 1800
     scheduler_leader_lease_seconds: int = 30
     scheduler_leader_heartbeat_seconds: int = 10
     xhs_enable_scheduled_publish_loop: bool = True

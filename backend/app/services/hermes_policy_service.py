@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -71,3 +72,13 @@ def policy_summaries() -> list[dict[str, Any]]:
             "policy_text": str(case.get("policy_text") or ""),
         })
     return sorted(rows, key=lambda row: str(row["vehicle_model"]))
+
+
+def available_production_models(policies: list[dict[str, Any]]) -> list[str]:
+    """Match the standalone Worker's model normalization and uniqueness rule."""
+    def key(model: str) -> str:
+        return model.replace("零跑", "").replace(" ", "").casefold()
+
+    models = [str(row.get("vehicle_model") or "").strip() for row in policies]
+    counts = Counter(key(model) for model in models if model)
+    return sorted(model for model in models if model and counts[key(model)] == 1)

@@ -34,7 +34,7 @@
 .category[aria-pressed='true'] { background: #ececea; color: #20212a; font-weight: 600; }
 .category:disabled { cursor: default; opacity: .58; }
 .category:disabled:hover { color: #666972; background: transparent; }
-.tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-left: auto; }
 .manageButton { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 10px; color: #656772; transition: border-color 150ms, background 150ms, transform 150ms; }
 .manageButton:hover { transform: translateY(-1px); border-color: #e4e5ea; }
 .manageButton:hover, .manageButton[data-state='open'] { background: #eeedea; }

@@ -16,12 +16,14 @@ import fcntl
 import hashlib
 import html
 import importlib.util
+import ipaddress
 import json
 import os
 import random
 import re
 import secrets
 import shutil
+import socket
 import statistics
 import subprocess
 import sys
@@ -120,6 +122,24 @@ class HttpFailure(RuntimeError):
         self.status = status
         self.detail = detail
         self.url = url
+
+
+class ImageSubmissionRejected(RuntimeError):
+    """The backend explicitly refused this request; retrying cannot accept it."""
+
+    def __init__(self, status: int):
+        super().__init__(f"生图请求被明确拒绝（HTTP {status}），请检查参数、权限和参考图；未自动重试")
+        self.status = status
+
+
+class ImageReferenceUnavailable(RuntimeError):
+    def __init__(self):
+        super().__init__("车型参考图地址无效或无法读取；未调用生成接口，请修复车型图库")
+
+
+class NoImageRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ImageReferenceUnavailable()
 
 
 class BatchAlreadyRunning(RuntimeError):
@@ -478,13 +498,53 @@ class OnlineData:
         data = response.get("data") or {}
         rows = data.get("images") or []
         result = {
-            str(row.get("label") or "").strip(): self.absolute_url(str(row.get("url") or ""))
+            str(row.get("label") or "").strip(): self.reference_url(str(row.get("url") or ""))
             for row in rows
             if isinstance(row, dict) and row.get("label") and row.get("url")
         }
         if not result:
             raise RuntimeError(f"car image library has no images for {brand} / {model}")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            list(executor.map(self.check_reference_image, sorted(set(result.values()))))
         return result
+
+    def reference_url(self, value: str) -> str:
+        value = value.strip()
+        parsed = urllib.parse.urlsplit(value)
+        root = urllib.parse.urlsplit(self.public_root)
+        if parsed.scheme in {"http", "https"} and parsed.netloc == root.netloc and parsed.scheme == root.scheme:
+            if parsed.path.startswith("/uploads/"):
+                value = urllib.parse.urlunsplit(("", "", parsed.path, parsed.query, ""))
+        if value.startswith("/uploads/"):
+            if ".." in urllib.parse.unquote(value).split("/"):
+                raise ImageReferenceUnavailable()
+            return value
+        if parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password:
+            return value
+        raise ImageReferenceUnavailable()
+
+    def check_reference_image(self, value: str) -> None:
+        """Read a bounded image header before any model calls, without redirects."""
+        try:
+            local_upload = value.startswith("/uploads/")
+            url = self.absolute_url(value)
+            parsed = urllib.parse.urlsplit(url)
+            if not local_upload:
+                if parsed.port not in {None, 80, 443}:
+                    raise ImageReferenceUnavailable()
+                addresses = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+                if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global for item in addresses):
+                    raise ImageReferenceUnavailable()
+            url = urllib.parse.quote(url, safe=":/?=&%+@")
+            request = urllib.request.Request(url, headers={"Range": "bytes=0-31", "Accept": "image/*"})
+            with urllib.request.build_opener(NoImageRedirect()).open(request, timeout=15) as response:
+                header = response.read(32)
+            valid = (header.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a"))
+                     or (header.startswith(b"RIFF") and header[8:12] == b"WEBP"))
+            if not valid:
+                raise ImageReferenceUnavailable()
+        except (OSError, ValueError) as exc:
+            raise ImageReferenceUnavailable() from exc
 
     def absolute_url(self, value: str) -> str:
         value = value.strip()
@@ -2206,8 +2266,10 @@ class ProductionRun:
                 break
             except Exception as exc:
                 last_submit_error = exc
-                if isinstance(exc, HttpFailure) and exc.status == 400 and "最多同时提交" not in str(exc):
-                    raise
+                capacity = isinstance(exc, HttpFailure) and exc.status == 400 and "最多同时提交" in exc.detail
+                if (isinstance(exc, HttpFailure) and 400 <= exc.status < 500
+                        and exc.status not in TRANSIENT_HTTP and not capacity):
+                    raise ImageSubmissionRejected(exc.status) from exc
                 # Capacity pressure and uncertain network failures retry the
                 # exact same client_request_id, so an accepted task can never
                 # be duplicated by reconnect logic.
@@ -2249,7 +2311,7 @@ class ProductionRun:
     def image_job(self, row: dict[str, Any], ocr_binary: Path) -> tuple[str, dict[str, Any]]:
         max_attempts = int(self.config.get("image_attempts") or 2)
         previous = row.get("image") or {}
-        if previous.get("status") == "review_required":
+        if previous.get("status") in {"review_required", "rejected"}:
             return row["key"], previous
         correction = ""
         failures: list[dict[str, Any]] = []
@@ -2310,6 +2372,11 @@ class ProductionRun:
                     "ocr_config_comparison": configuration_audit,
                     "ocr_hard_errors": [],
                     "previous_failures": failures,
+                }
+            except ImageSubmissionRejected as exc:
+                return row["key"], {
+                    "ok": False, "status": "rejected", "attempt": attempt,
+                    "http_status": exc.status, "error": str(exc),
                 }
             except ImageSubmissionUncertain as exc:
                 return row["key"], {
@@ -2441,6 +2508,25 @@ class ProductionRun:
         if failures:
             raise RuntimeError(f"production pipeline has {len(failures)} incomplete posts: {failures}")
 
+    @staticmethod
+    def image_failure_code(image: dict[str, Any]) -> str | None:
+        """Export bounded failure codes, not upstream payloads or credentials."""
+        if image.get("ok"):
+            return None
+        phase = (image.get("progress") or {}).get("phase")
+        if phase == "postprocess_failed":
+            return "postprocess_failed"
+        if image.get("status") == "review_required":
+            error = str(image.get("error") or "").lower()
+            return "rate_limited_unknown" if "rate limit" in error else "result_unknown"
+        if image.get("status") == "submitted":
+            return "image_pending"
+        if image.get("status") == "rejected":
+            return "submission_rejected"
+        if image.get("status") == "failed":
+            return "image_failed"
+        return None
+
     def delivery_manifest(self) -> dict[str, Any]:
         posts: list[dict[str, Any]] = []
         for row in sorted(self.state["posts"].values(), key=lambda value: (value["account_id"], value["slot"])):
@@ -2473,6 +2559,7 @@ class ProductionRun:
                 "copy_ok": bool(copy.get("ok")),
                 "image_plan_ok": bool(plan.get("ok")),
                 "image_status": image.get("status"),
+                "image_failure_code": self.image_failure_code(image),
                 "stage_timings": row.get("timings") or {},
                 'account_repetition': copy.get('account_repetition'),
                 'account_history': {key: (row.get('avoidance_brief') or {}).get(key) for key in (

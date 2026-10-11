@@ -1,6 +1,7 @@
 """导入所有模型，供 Alembic 自动发现"""
 
 from app.models.user import User, UserRole
+from app.models.auth_session import AuthSession as AuthSession
 from app.models.template import Template
 from app.models.material import Material
 from app.models.project import Project
@@ -52,3 +53,4 @@ from app.models.hermes_workflow import (
     HermesWorkflowRun,
     HermesWorkflowSchedule,
 )
+from app.models.hermes_publish import HermesPublishJob, HermesPublishAttempt

@@ -171,6 +171,7 @@ async def seed_owner() -> tuple[int, int]:
             account_name="Hermes测试账号",
             status="active",
             department="xhs",
+            xhs_account_id="stable-test-account",
         )
         db.add(environment)
         await db.flush()
@@ -463,7 +464,12 @@ async def test_batch_allows_different_counts_and_auto_name(client):
 
 
 @pytest.mark.asyncio
-async def test_approved_post_can_be_added_to_publish_plan(client):
+async def test_approved_post_can_be_added_to_publish_plan(client, monkeypatch):
+    from app.adapters.phone_cloud_publish import PublishAssets
+    from app.utils.timezone import cst_now_naive
+    async def freeze(_self, _urls):
+        return [{"sha256": "a" * 64, "mime": "image/png", "bytes": 100}]
+    monkeypatch.setattr(PublishAssets, 'freeze', freeze)
     user_id, environment_id = await seed_owner()
     headers = make_auth_headers(user_id)
     created = await client.post(
@@ -481,6 +487,8 @@ async def test_approved_post_can_be_added_to_publish_plan(client):
         post.title = "待排期内容"
         post.content = "完整正文\n#零跑A05[话题]#"
         post.image_url = "https://example.test/image.png"
+        post.reviewed_by = user_id
+        post.reviewed_at = cst_now_naive()
         await db.commit()
 
     candidates = await client.get("/api/v1/hermes-workflows/publish-candidates", headers=headers)
@@ -494,6 +502,7 @@ async def test_approved_post_can_be_added_to_publish_plan(client):
             "post_id": post_id,
             "environment_id": environment_id,
             "scheduled_at": "2030-09-05T09:30",
+            "expected_version": candidates.json()["data"]["items"][0]["version"],
         }]},
     )
     assert planned.status_code == 200, planned.text
@@ -526,14 +535,20 @@ async def prepared_posts(client, headers, environment_id, count=1):
 
 
 @pytest.mark.asyncio
-async def test_edit_review_version_and_schedule_invalidation(client):
+async def test_edit_review_version_and_schedule_invalidation(client, monkeypatch):
+    from app.adapters.phone_cloud_publish import PublishAssets
+    async def freeze(_self, _urls):
+        return [{"sha256": "a" * 64, "mime": "image/png", "bytes": 100}]
+    monkeypatch.setattr(PublishAssets, 'freeze', freeze)
     user_id, env_id = await seed_owner()
     headers = make_auth_headers(user_id)
     run = await prepared_posts(client, headers, env_id)
     post = run['posts'][0]
     approved = await client.post(f"/api/v1/hermes-workflows/posts/{post['id']}/review", headers=headers, json={'action': 'approve', 'expected_version': post['version']})
     assert approved.status_code == 200
-    await client.post('/api/v1/hermes-workflows/publish-plan', headers=headers, json={'items': [{'post_id': post['id'], 'environment_id': env_id, 'scheduled_at': '2030-09-05T09:30:00+08:00'}]})
+    reviewed = (await client.get(f"/api/v1/hermes-workflows/runs/{run['id']}", headers=headers)).json()['data']['posts'][0]
+    planned = await client.post('/api/v1/hermes-workflows/publish-plan', headers=headers, json={'items': [{'post_id': post['id'], 'environment_id': env_id, 'scheduled_at': '2030-09-05T09:30:00+08:00', 'expected_version': reviewed['version']}]})
+    assert planned.status_code == 200, planned.text
     current = (await client.get(f"/api/v1/hermes-workflows/runs/{run['id']}", headers=headers)).json()['data']['posts'][0]
     payload = {'title': '新的标题', 'content': '调整后的完整正文💌\n#零跑A05[话题]#', 'comment': '替换车型描述', 'expected_version': current['version']}
     edited = await client.patch(f"/api/v1/hermes-workflows/posts/{post['id']}", headers=headers, json=payload)
@@ -564,13 +579,20 @@ async def test_edit_review_version_and_schedule_invalidation(client):
 
 
 @pytest.mark.asyncio
-async def test_reject_without_regeneration_keeps_original_and_removes_plan(client):
+async def test_reject_without_regeneration_keeps_original_and_removes_plan(client, monkeypatch):
+    from app.adapters.phone_cloud_publish import PublishAssets
+    async def freeze(_self, _urls):
+        return [{"sha256": "a" * 64, "mime": "image/png", "bytes": 100}]
+    monkeypatch.setattr(PublishAssets, 'freeze', freeze)
     user_id, env_id = await seed_owner()
     headers = make_auth_headers(user_id)
     run = await prepared_posts(client, headers, env_id)
     post = run['posts'][0]
-    await client.post(f"/api/v1/hermes-workflows/posts/{post['id']}/review", headers=headers, json={'action': 'approve'})
-    await client.post('/api/v1/hermes-workflows/publish-plan', headers=headers, json={'items': [{'post_id': post['id'], 'environment_id': env_id, 'scheduled_at': '2030-09-05T09:30:00+08:00'}]})
+    approved = await client.post(f"/api/v1/hermes-workflows/posts/{post['id']}/review", headers=headers, json={'action': 'approve'})
+    assert approved.status_code == 200
+    reviewed = (await client.get(f"/api/v1/hermes-workflows/runs/{run['id']}", headers=headers)).json()['data']['posts'][0]
+    planned = await client.post('/api/v1/hermes-workflows/publish-plan', headers=headers, json={'items': [{'post_id': post['id'], 'environment_id': env_id, 'scheduled_at': '2030-09-05T09:30:00+08:00', 'expected_version': reviewed['version']}]})
+    assert planned.status_code == 200, planned.text
     current = (await client.get(f"/api/v1/hermes-workflows/runs/{run['id']}", headers=headers)).json()['data']['posts'][0]
     result = await client.post(f"/api/v1/hermes-workflows/posts/{post['id']}/review", headers=headers, json={'action': 'reject', 'comment': '图片条件标注不全', 'expected_version': current['version'], 'regenerate': False})
     assert result.status_code == 200, result.text
@@ -752,7 +774,11 @@ async def test_history_pagination_search_sources_and_failed_counts(client):
 
 
 @pytest.mark.asyncio
-async def test_publish_time_conflicts_timezone_and_stale_version(client):
+async def test_publish_time_conflicts_timezone_and_stale_version(client, monkeypatch):
+    from app.adapters.phone_cloud_publish import PublishAssets
+    async def freeze(_self, _urls):
+        return [{"sha256": "a" * 64, "mime": "image/png", "bytes": 100}]
+    monkeypatch.setattr(PublishAssets, 'freeze', freeze)
     user_id, env_id = await seed_owner()
     headers = make_auth_headers(user_id)
     run = await prepared_posts(client, headers, env_id, 2)
@@ -791,6 +817,45 @@ async def test_worker_cannot_silently_change_vehicle_or_accept_empty_delivery(cl
     assert row['generated_posts'] == 0
     assert row['failed_posts'] == 2
     assert all(p['vehicle_model'] == '零跑A05' and not p['hard_pass'] for p in row['posts'])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('code, status, expected', [
+    ('rate_limited_unknown', 'review_required', '生图上游限流'),
+    ('result_unknown', 'review_required', '结果待核验'),
+    ('postprocess_failed', 'review_required', '图片后处理失败'),
+    ('image_pending', 'submitted', '配图尚未交付'),
+    ('image_failed', 'failed', '图片检查失败'),
+    ('submission_rejected', 'rejected', '生图请求被明确拒绝'),
+    (None, 'review_required', '结果待核验'),
+    ('Authorization: secret-example', 'failed', '交付缺少可访问配图'),
+])
+async def test_image_failure_survives_worker_completion_and_user_reload(client, monkeypatch, code, status, expected):
+    run_id, headers, worker_headers, items = await streaming_run(client, monkeypatch, count=1)
+    item = {**items[0], 'image_url': None, 'hard_pass': False,
+            'image_status': status, 'image_failure_code': code,
+            'image_error': 'Authorization: secret-example'}
+    body = {'worker_id': 'stream-worker', 'delivery': {
+        'production_ready': False, 'error': 'Hermes exited with code 1', 'posts': [item]}}
+    base = f'/api/v1/hermes-workflows/worker/runs/{run_id}'
+    progress = await client.post(base + '/progress', headers=worker_headers, json=body)
+    assert progress.status_code == 400
+    complete = await client.post(base + '/complete', headers=worker_headers, json=body)
+    assert complete.status_code == 200, complete.text
+    reloaded = await client.get(f'/api/v1/hermes-workflows/runs/{run_id}', headers=headers)
+    run = reloaded.json()['data']
+    post = run['posts'][0]
+    assert run['status'] == 'failed' and expected in run['error']
+    assert post['status'] == 'generation_failed' and not post['hard_pass']
+    assert post['title'] == items[0]['title'] and post['content'] == items[0]['content']
+    assert post['image_url'] is None and post['source_detail']['image_task_id'] == 'task-1'
+    assert expected in post['source_detail']['error']
+    assert '缺少标题' not in post['source_detail']['error'] and '缺少正文' not in post['source_detail']['error']
+    assert 'image_error' not in post['source_detail']
+    assert 'secret-example' not in reloaded.text
+    repeated = await client.post(base + '/complete', headers=worker_headers, json=body)
+    assert repeated.status_code == 200
+    assert repeated.json()['data']['posts'][0]['source_detail']['error'] == post['source_detail']['error']
 
 
 @pytest.mark.asyncio

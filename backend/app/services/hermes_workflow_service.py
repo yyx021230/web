@@ -5,7 +5,6 @@ import hashlib
 import json
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -25,19 +24,36 @@ from app.models.user import User
 from app.models.user_xhs_env import UserXHSEnvironment
 from app.models.xhs_environment import XHSEnvironment
 from app.utils.timezone import cst_now_naive
-from app.services.hermes_policy_service import policy_summaries
+from app.services.hermes_policy_service import available_production_models, policy_summaries
 
 
 ACTIVE_GENERATION_STATUSES = {"queued", "claimed", "running", "generating"}
 REVIEWABLE_STATUSES = {"review_pending", "approved", "rejected", "publish_ready"}
 GENERATED_STATUSES = REVIEWABLE_STATUSES | {"published"}
+IMAGE_FAILURE_MESSAGES = {
+    'rate_limited_unknown': '生图上游限流，未返回配图；原生图任务结果待核验，未自动重新生成',
+    'result_unknown': '原生图任务结果待核验，未自动重新生成；切换入口不会重跑旧任务',
+    'postprocess_failed': '图片后处理失败，尚无可交付配图；保留原生图任务，不重复生成',
+    'image_pending': '配图尚未交付，原生图任务仍需查询确认，未重复生成',
+    'image_failed': '配图生成或图片检查失败，未取得合格配图',
+    'submission_rejected': '生图请求被明确拒绝，请检查参数、权限和参考图；未自动重试',
+}
 
 
 def post_version(post: HermesWorkflowPost) -> str:
     payload = [post.title, post.content, post.image_url, post.status, post.review_comment,
                _iso(post.reviewed_at), post.publish_status, _iso(post.scheduled_publish_at),
                post.publish_target_environment_id, (post.source_detail or {}).get('revision', 1)]
+    if (post.source_detail or {}).get('source_kind') == 'user_upload':
+        payload.append(post_image_urls(post))
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()[:24]
+
+
+def post_image_urls(post: HermesWorkflowPost) -> list[str]:
+    detail = post.source_detail or {}
+    if detail.get('source_kind') == 'user_upload':
+        return list(detail.get('image_urls') or [])
+    return [post.image_url] if post.image_url else []
 
 
 def post_counts(posts: list[HermesWorkflowPost]) -> dict[str, int]:
@@ -133,6 +149,8 @@ def serialize_post(post: HermesWorkflowPost) -> dict[str, Any]:
         "title": post.title,
         "content": post.content,
         "image_url": browser_image_url(post.image_url),
+        "image_urls": [browser_image_url(url) for url in post_image_urls(post)],
+        "source_kind": source_detail.get('source_kind', 'ai_generated'),
         "hard_pass": bool(post.hard_pass),
         "version": post_version(post),
         "revision": int((post.source_detail or {}).get('revision', 1)),
@@ -341,7 +359,23 @@ class HermesWorkflowService:
         if total_posts > 40:
             raise HTTPException(status_code=400, detail="单次任务最多生成40篇")
         model_names = {model for account in account_plans for model in account['vehicle_models']}
-        snapshots = [p for p in policy_summaries() if p['vehicle_model'] in model_names]
+        policies = policy_summaries()
+        available_models = set(available_production_models(policies))
+        unavailable_models = sorted(model_names - available_models)
+        if unavailable_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{'、'.join(unavailable_models)}缺少唯一可用的生产案例，请刷新车型选项或补充生产配置",
+            )
+        snapshots = [p for p in policies if p['vehicle_model'] in model_names]
+        for account in account_plans:
+            case_id = str(account.get("case_id") or "").strip()
+            if case_id and not any(
+                p.get("case_id") == case_id
+                and set(account["vehicle_models"]) == {p["vehicle_model"]}
+                for p in snapshots
+            ):
+                raise HTTPException(status_code=400, detail="指定生产案例与所选车型不匹配，请刷新生产配置")
         if type_requires_quote_data(image_type) and any(
             not any(p['vehicle_model'] == model and p.get('allow_multi_config_quote') and p.get('quote_rows') for p in snapshots)
             for model in model_names
@@ -413,7 +447,9 @@ class HermesWorkflowService:
         self, user_id: int | None, *, page: int = 1, limit: int = 40,
         search: str | None = None, environment_id: int | None = None, planned: bool | None = None,
     ) -> tuple[list[HermesWorkflowPost], int]:
-        filters = [HermesWorkflowPost.status.in_(["approved", "publish_ready"])]
+        filters = [or_(HermesWorkflowPost.status.in_(["approved", "publish_ready"]),
+                       (HermesWorkflowPost.source_detail['source_kind'].as_string() == 'user_upload') &
+                       HermesWorkflowPost.status.in_(['review_pending', 'rejected']))]
         if user_id is not None:
             filters.append(HermesWorkflowPost.owner_user_id == user_id)
         if environment_id is not None:
@@ -440,65 +476,8 @@ class HermesWorkflowService:
         items: list[dict[str, Any]],
         is_admin: bool = False,
     ) -> list[HermesWorkflowPost]:
-        post_ids = [int(item["post_id"]) for item in items]
-        if len(post_ids) != len(set(post_ids)):
-            raise HTTPException(status_code=400, detail="同一篇内容不能重复排期")
-        posts = list((await self.db.execute(
-            select(HermesWorkflowPost).where(HermesWorkflowPost.id.in_(post_ids)).order_by(HermesWorkflowPost.id).with_for_update()
-        )).scalars().all())
-        post_map = {post.id: post for post in posts}
-        if set(post_map) != set(post_ids):
-            raise HTTPException(status_code=404, detail="部分待发布内容不存在")
-        if not is_admin and any(post.owner_user_id != user.id for post in posts):
-            raise HTTPException(status_code=403, detail="只能安排自己负责账号的内容")
-        if any(post.status not in {"approved", "publish_ready"} for post in posts):
-            raise HTTPException(status_code=409, detail="只有审核通过的内容可以进入发布计划")
-
-        if any(not p.hard_pass or not p.title or not p.content or not p.image_url for p in posts):
-            raise HTTPException(status_code=409, detail='内容或配图不完整，不能排期')
-        environments = {row.id: row for row in (
-            list((await self.db.execute(select(XHSEnvironment).where(XHSEnvironment.status == 'active'))).scalars().all())
-            if is_admin else await self.assigned_environments(user.id)
-        )}
-        target_ids = {int(item["environment_id"]) for item in items}
-        if not target_ids.issubset(environments):
-            raise HTTPException(status_code=403, detail="发布账号必须是自己负责的账号")
-        # Serialize schedules per target account, including different posts.
-        await self.db.execute(select(XHSEnvironment.id).where(XHSEnvironment.id.in_(target_ids)).order_by(XHSEnvironment.id).with_for_update())
-
-        affected_run_ids: set[int] = set()
-        for item in items:
-            post = post_map[int(item["post_id"])]
-            await self.reserve_post(post, item.get('expected_version'))
-            environment = environments[int(item["environment_id"])]
-            try:
-                scheduled_at = datetime.fromisoformat(str(item["scheduled_at"]).replace("Z", "+00:00"))
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="发布时间格式无效") from exc
-            if scheduled_at.tzinfo is not None:
-                scheduled_at = scheduled_at.astimezone(ZoneInfo('Asia/Shanghai')).replace(tzinfo=None)
-            if scheduled_at <= cst_now_naive():
-                raise HTTPException(status_code=400, detail='发布时间必须晚于当前时间（北京时间）')
-            conflict = await self.db.scalar(select(HermesWorkflowPost.id).where(
-                HermesWorkflowPost.publish_target_environment_id == environment.id,
-                HermesWorkflowPost.scheduled_publish_at == scheduled_at,
-                HermesWorkflowPost.publish_status == 'scheduled',
-                HermesWorkflowPost.id.not_in(post_ids),
-            ).limit(1))
-            if conflict or any(other.get('_time') == scheduled_at and other['environment_id'] == environment.id for other in items if other is not item):
-                raise HTTPException(status_code=409, detail='同一账号在该时间已有排期，请调整时间')
-            item['_time'] = scheduled_at
-            self.append_event(post, 'schedule', user.id, '保存发布计划（未执行发布）')
-            post.publish_target_environment_id = environment.id
-            post.scheduled_publish_at = scheduled_at
-            post.status = "approved"
-            post.publish_status = "scheduled"
-            affected_run_ids.add(post.run_id)
-
-        for run_id in affected_run_ids:
-            await self.recalculate(await self.get_run(run_id))
-        await self.db.commit()
-        return [post_map[post_id] for post_id in post_ids]
+        from app.services.hermes_publish_service import HermesPublishService
+        return await HermesPublishService(self.db).schedule(user=user, items=items, is_admin=is_admin)
 
     @staticmethod
     def history_modes():
@@ -544,7 +523,7 @@ class HermesWorkflowService:
         date_from: date | None = None,
         date_to: date | None = None,
     ) -> tuple[list[HermesWorkflowRun], int]:
-        conditions = []
+        conditions = [HermesWorkflowRun.source != 'user_upload'] if source != 'user_upload' else []
         modes = self.history_modes()
         mode = func.coalesce(modes.c.mode, 'batch')
         if workflow_mode:
@@ -621,6 +600,13 @@ class HermesWorkflowService:
             raise HTTPException(status_code=404, detail="任务不存在")
         if not is_admin and run.requested_by != user.id:
             raise HTTPException(status_code=403, detail="只能删除自己创建的任务")
+        # Serialize deletion with scheduling, which locks the same post rows.
+        await self.db.execute(select(HermesWorkflowPost.id).where(
+            HermesWorkflowPost.run_id == run.id).order_by(HermesWorkflowPost.id).with_for_update())
+        from app.models.hermes_publish import HermesPublishJob
+        if await self.db.scalar(select(HermesPublishJob.id).where(
+            HermesPublishJob.post_id.in_([post.id for post in run.posts])).limit(1)):
+            raise HTTPException(409, "任务已有发布记录，须保留用于对账，不能删除")
         if run.status in ACTIVE_GENERATION_STATUSES or any(
             post.status in ACTIVE_GENERATION_STATUSES for post in run.posts
         ):
@@ -648,6 +634,10 @@ class HermesWorkflowService:
             raise HTTPException(status_code=409, detail="帖子尚未生成完成，当前不能审核")
         if action not in {'approve', 'reject'} or (regenerate and (action != 'reject' or not expected_version)):
             raise HTTPException(status_code=400, detail='重新生成仅用于不通过操作，且必须提供当前版本')
+        if regenerate and (post.source_detail or {}).get('source_kind') == 'user_upload':
+            raise HTTPException(400, '自主上传图文不触发AI重新生成，请人工修改')
+        from app.services.hermes_publish_service import HermesPublishService
+        await HermesPublishService(self.db).guard_content_change(post.id)
         await self.reserve_post(post, expected_version)
         if action == 'approve' and (not post.hard_pass or not post.title or not post.content or not post.image_url):
             raise HTTPException(status_code=409, detail='图文不完整或存在硬错误，不能通过审核')
@@ -659,8 +649,7 @@ class HermesWorkflowService:
             if previous and previous.status in ACTIVE_GENERATION_STATUSES:
                 raise HTTPException(status_code=409, detail=f'这一篇已有重生任务 #{previous.id} 正在排队或生产，请勿重复提交')
         self.append_event(post, action, reviewer.id, comment, actor_name=reviewer.display_name or reviewer.username)
-        if action == 'reject':
-            self.clear_publish_plan(post)
+        self.clear_publish_plan(post)
         post.status = "approved" if action == "approve" else "rejected"
         post.review_comment = (comment or "").strip() or None
         post.reviewed_by = reviewer.id
@@ -764,6 +753,8 @@ class HermesWorkflowService:
             raise HTTPException(status_code=403, detail='只能修改自己负责账号的帖子')
         if post.status not in REVIEWABLE_STATUSES:
             raise HTTPException(status_code=409, detail='只能编辑已生成且未发布的内容')
+        from app.services.hermes_publish_service import HermesPublishService
+        await HermesPublishService(self.db).guard_content_change(post.id)
         self.check_version(post, expected_version)
         changes = {field: text_change(getattr(post, field), value) for field, value in [('title', title), ('content', content)] if getattr(post, field) != value}
         if not changes:
@@ -901,8 +892,16 @@ class HermesWorkflowService:
         errors = []
         if delivered_model != post.vehicle_model:
             errors.append(f'交付车型 {delivered_model} 与任务车型 {post.vehicle_model} 不一致')
-        if not title or not content or not image_url or not image_url.startswith(('http://', 'https://', '/api/', '/uploads/')):
-            errors.append('交付缺少标题、正文或可访问配图')
+        if not title:
+            errors.append('交付缺少标题')
+        if not content:
+            errors.append('交付缺少正文')
+        if not image_url or not image_url.startswith(('http://', 'https://', '/api/', '/uploads/')):
+            failure_code = item.get('image_failure_code')
+            image_error = IMAGE_FAILURE_MESSAGES.get(failure_code) if isinstance(failure_code, str) else None
+            if not image_error and item.get('image_status') == 'review_required':
+                image_error = IMAGE_FAILURE_MESSAGES['result_unknown']
+            errors.append(image_error or '交付缺少可访问配图')
         hard_pass = item.get("hard_pass") is True and not errors
         if require_ready and not hard_pass:
             raise HTTPException(status_code=400, detail='；'.join(errors) or '逐篇交付必须通过完整图文检查')
@@ -913,7 +912,11 @@ class HermesWorkflowService:
             "vehicle_image", "image_task_id", "ocr_lines", "ocr_config_comparison", "copy_validation",
             "account_history", "account_repetition", "stage_timings", "adaptation_level", "adaptation_contract",
             "editorial_plan", "editorial_review",
+            "image_status",
         ) if item.get(key) is not None}
+        failure_code = item.get('image_failure_code')
+        if isinstance(failure_code, str) and failure_code in IMAGE_FAILURE_MESSAGES:
+            source_detail['image_failure_code'] = failure_code
         if errors:
             source_detail['error'] = '；'.join(errors)
         if (run.parameters or {}).get('regeneration'):
@@ -1000,7 +1003,11 @@ class HermesWorkflowService:
         run.error = None if delivery.get("production_ready") else str(delivery.get("error") or "部分内容未通过硬校验")
         await self.recalculate(run)
         if any(p.status == 'generation_failed' for p in run.posts):
-            run.error = run.error or '部分内容交付不完整或车型不一致'
+            failures = list(dict.fromkeys(
+                p.source_detail['error'] for p in run.posts
+                if p.status == 'generation_failed' and (p.source_detail or {}).get('error')
+            ))
+            run.error = '；'.join(failures[:3]) or run.error or '部分内容交付不完整或车型不一致'
         await self.db.commit()
         return await self.get_run(run.id)
 

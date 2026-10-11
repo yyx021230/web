@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "c47f2a6d9b10"
+CURRENT_REVISION = "e61010a0b001"
 
 
 def _run_alembic(path: Path, *args: str) -> None:
@@ -98,6 +98,9 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
             "hermes_workflow_runs",
             "hermes_workflow_posts",
             "hermes_worker_states",
+            "hermes_publish_jobs",
+            "hermes_publish_attempts",
+            "auth_sessions",
         }.issubset(tables)
 
         account_note_columns = _columns(connection, "xhs_account_notes")
@@ -156,6 +159,9 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
         }
         assert material_info["url"][3] == 0
 
+        assert connection.execute("SELECT COUNT(*) FROM hermes_publish_jobs").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM hermes_publish_attempts").fetchone()[0] == 0
+
     _run_alembic(database_path, "downgrade", "base")
     with sqlite3.connect(database_path) as connection:
         remaining_tables = {
@@ -171,3 +177,27 @@ def test_empty_database_full_upgrade_downgrade_and_reupgrade(tmp_path):
     with sqlite3.connect(database_path) as connection:
         assert _revision(connection) == CURRENT_REVISION
         assert "ix_dify_tasks_workflow_id" in _indexes(connection, "dify_tasks")
+
+
+def test_current_database_additive_publish_upgrade_and_rollback(tmp_path):
+    path = tmp_path / "publish-upgrade.db"
+    _run_alembic(path, "upgrade", "c47f2a6d9b10")
+    with sqlite3.connect(path) as connection:
+        before = {
+            table.name: connection.execute(f'SELECT COUNT(*) FROM "{table.name}"').fetchone()[0]
+            for table in Base.metadata.tables.values()
+            if not table.name.startswith("hermes_publish_") and table.name != "auth_sessions"
+        }
+    _run_alembic(path, "upgrade", "head")
+    with sqlite3.connect(path) as connection:
+        assert _revision(connection) == CURRENT_REVISION
+        _assert_migrated_schema_covers_orm_metadata(connection)
+        for name, count in before.items():
+            assert connection.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0] == count
+        assert connection.execute("SELECT COUNT(*) FROM hermes_publish_jobs").fetchone()[0] == 0
+    # Only the new empty tables are downgraded in this isolated database.
+    _run_alembic(path, "downgrade", "c47f2a6d9b10")
+    with sqlite3.connect(path) as connection:
+        assert _revision(connection) == "c47f2a6d9b10"
+        for name, count in before.items():
+            assert connection.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0] == count

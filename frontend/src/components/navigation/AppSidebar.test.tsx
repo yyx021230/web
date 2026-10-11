@@ -3,6 +3,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppSidebar from './AppSidebar';
 import { AUTH_REQUIRED_EVENT, type AuthRequiredDetail } from '@/lib/auth-events';
+import { promptsApi } from '@/services/promptsApi';
+import { setPromptLibraryFilter } from '@/lib/prompt-library-filter';
+
+vi.mock('@/services/promptsApi', () => ({
+  promptsApi: { getCategories: vi.fn() },
+}));
 
 let host: HTMLDivElement;
 let root: Root;
@@ -13,6 +19,10 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   localStorage.clear();
+  window.history.replaceState(null, '', '/prompts');
+  vi.mocked(promptsApi.getCategories).mockReset().mockResolvedValue({
+    data: { categories: [{ name: '汽车海报', count: 12 }] },
+  } as Awaited<ReturnType<typeof promptsApi.getCategories>>);
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
@@ -22,7 +32,7 @@ describe('workspace sidebar', () => {
     expect(host.querySelectorAll('nav a')).toHaveLength(8);
     expect(host.querySelector('nav a')?.getAttribute('href')).toBe('/prompts');
     expect(host.querySelector('a[href="/editor"], a[href="/library"], a[href="/templates"]')).toBeNull();
-    expect(Array.from(host.querySelectorAll('nav [role="group"]')).map(el => el.getAttribute('aria-label'))).toEqual(['创作', '资源', '运营']);
+    expect(Array.from(host.querySelectorAll('nav [role="group"]')).map(el => el.getAttribute('aria-label'))).toEqual(['创作', '运营']);
     expect(host.querySelector('[aria-current="page"]')?.getAttribute('href')).toBe('/ai');
     expect(host.querySelector('header')).toBeNull();
     expect(host.querySelector('a[aria-label="AI Creative Studio"]')?.getAttribute('href')).toBe('/prompts');
@@ -56,6 +66,29 @@ describe('workspace sidebar', () => {
     expect(host.querySelector('button[aria-label="展开侧边栏"]')?.getAttribute('aria-expanded')).toBe('false');
     await act(async () => root.render(<AppSidebar pathname="/gallery" />));
     expect(host.querySelector('button[aria-label="展开侧边栏"]')).not.toBeNull();
+  });
+
+  it('shows only tags and refreshes them when the top source filter changes', async () => {
+    await act(async () => root.render(<AppSidebar pathname="/prompts" />));
+    const filters = host.querySelector('[aria-label="标签筛选"]')!;
+    const operations = host.querySelector('[role="group"][aria-label="运营"]')!;
+    expect(filters.textContent).not.toContain('分类');
+    expect(filters.textContent).toContain('标签');
+    expect(filters.textContent).toContain('汽车海报');
+    expect(filters.textContent).not.toContain('12');
+    expect(host.querySelector('[role="group"][aria-label="资源"]')).toBeNull();
+    expect(host.querySelector('[role="group"][aria-label="创作"]')?.textContent).toContain('文案');
+    expect(host.querySelector('[role="group"][aria-label="创作"]')?.textContent).toContain('图库');
+    expect(filters.compareDocumentPosition(operations) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(promptsApi.getCategories).toHaveBeenCalledWith(undefined);
+
+    await act(async () => setPromptLibraryFilter({ source: 'internal', category: '' }));
+    expect(promptsApi.getCategories).toHaveBeenLastCalledWith('internal');
+
+    const tag = Array.from(host.querySelectorAll('button')).find(item => item.textContent?.includes('汽车海报'))!;
+    await act(async () => tag.click());
+    expect(window.location.search).toContain('source=internal');
+    expect(window.location.search).toContain('category=');
   });
 
   it.each([['admin', true], ['viewer', false]])('shows account actions with correct %s access', async (role, admin) => {

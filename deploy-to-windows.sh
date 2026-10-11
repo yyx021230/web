@@ -12,9 +12,12 @@ WIN_PATH="${WIN_PATH:-C:/projects/web}"
 WIN_PS_PATH="${WIN_PATH//\//\\}"
 WIN_PASS="${WIN_PASS:-}"
 EXISTING_BACKUP_DIR="${EXISTING_BACKUP_DIR:-}"
+PRESERVE_ADDITIVE_SCHEMA="${PRESERVE_ADDITIVE_SCHEMA:-false}"
 GO_TOOLCHAIN="${GO_TOOLCHAIN:-go1.24.6}"
 
 cd "$PROJECT"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+"$PYTHON_BIN" scripts/check_version_control.py --release
 PACKAGE_VERSION="$(node -p "require('./frontend/package.json').version")"
 VERSION="${APP_VERSION:-$PACKAGE_VERSION}"
 COMMIT="$(git rev-parse --short=12 HEAD)"
@@ -58,11 +61,12 @@ if ! git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"; then
   exit 1
 fi
 
-SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15)
-SCP=(scp -o BatchMode=yes -o ConnectTimeout=15)
+SSH=(ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15)
+SCP=(scp -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15)
 if [[ -n "$WIN_PASS" ]]; then
-  SSH=(sshpass -p "$WIN_PASS" ssh -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
-  SCP=(sshpass -p "$WIN_PASS" scp -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
+  export SSHPASS="$WIN_PASS"
+  SSH=(sshpass -e ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
+  SCP=(sshpass -e scp -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1)
 fi
 TARGET="${WIN_USER}@${WIN_IP}"
 
@@ -75,7 +79,7 @@ echo "[2/6] Create release package ${PACKAGE_NAME}"
 cd "$PROJECT"
 rm -f "$TARBALL"
 git archive --format=tar.gz --output="$SOURCE_ARCHIVE" HEAD \
-  backend frontend scripts docker-compose.yml docker-compose.dev.yml README.md
+  backend frontend scripts docker-compose.yml docker-compose.dev.yml README.md CHANGELOG.md
 tar xzf "$SOURCE_ARCHIVE" -C "$RELEASE_STAGE"
 mkdir -p "$RELEASE_STAGE/backend/bin"
 cp "$MCP_BIN_TARGET" "$RELEASE_STAGE/backend/bin/xiaohongshu-mcp"
@@ -93,6 +97,12 @@ echo "[5/6] Deploy with backup, migration, health check, and automatic rollback"
 BACKUP_ARG=""
 if [[ -n "$EXISTING_BACKUP_DIR" ]]; then
   BACKUP_ARG=" -ExistingBackupDir '${EXISTING_BACKUP_DIR}'"
+fi
+if [[ "$PRESERVE_ADDITIVE_SCHEMA" == "true" ]]; then
+  BACKUP_ARG+=" -PreserveAdditiveSchema"
+elif [[ "$PRESERVE_ADDITIVE_SCHEMA" != "false" ]]; then
+  echo "PRESERVE_ADDITIVE_SCHEMA must be true or false." >&2
+  exit 1
 fi
 "${SSH[@]}" "$TARGET" \
   "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '${REMOTE_PS_DEPLOY_SCRIPT}' -PackagePath '${REMOTE_PS_PACKAGE}' -Version '${VERSION}' -Commit '${COMMIT}' -McpSourceSha256 '${MCP_SOURCE_SHA256}' -McpBinarySha256 '${MCP_BINARY_SHA256}' -BuildTime '${BUILD_TIME}' -ProjectRoot '${WIN_PS_PATH}'${BACKUP_ARG}; if (-not \$?) { exit 1 }\""

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import AppSidebar from '@/components/navigation/AppSidebar';
 import { AuthRouteGate, AuthSessionProvider } from '@/components/auth/AuthSession';
 import shell from '@/components/navigation/workspace-shell.module.css';
+import { authApi } from '@/services/authApi';
 
 function MainLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -30,19 +31,13 @@ function DevAutoLogin() {
       && username
       && password
       && !localStorage.getItem('token')
+      && !localStorage.getItem('creative_auth_mode')
     ) {
-      fetch('/api/backend/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.code === 0 && data.data?.access_token) {
-            localStorage.setItem('token', data.data.access_token);
-            localStorage.setItem('app_current_user', JSON.stringify({ username: 'dev' }));
-            window.location.reload();
-          }
+      authApi.login({ username, password })
+        .then(() => authApi.getMe())
+        .then(result => {
+          localStorage.setItem('app_current_user', JSON.stringify(result.data));
+          window.location.reload();
         })
         .catch(() => { /* Will fail gracefully — user can login manually */ });
     }

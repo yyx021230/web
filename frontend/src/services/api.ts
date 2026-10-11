@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import { toast } from '@/lib/toast';
 import { requestAuthentication } from '@/lib/auth-events';
+import { authenticationRequired, getAccessToken, isBrowserSession } from './browserSession';
 
 let lastAuthNoticeAt = 0;
 
@@ -51,8 +52,9 @@ const api: AxiosInstance = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
+  async (config) => {
+    const token = config.url === '/auth/login'
+      ? null : await getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -79,12 +81,30 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
       return Promise.reject(error);
     }
-    const isAuthEndpoint = error.config?.url?.includes('/auth/');
+    const isAuthEndpoint = error.config?.url === '/auth/login';
+    if (error.response?.status === 401 && isBrowserSession() && !isAuthEndpoint) {
+      const config = error.config as typeof error.config & { sessionRetried?: boolean };
+      if (!config?.sessionRetried) {
+        try {
+          await getAccessToken(true);
+          // A rejected read is safe to repeat. Never replay a write implicitly.
+          if (config && ['get', 'head'].includes((config.method || 'get').toLowerCase())) {
+            config.sessionRetried = true;
+            return api.request(config);
+          }
+        } catch (refreshError) {
+          return Promise.reject(refreshError);
+        }
+      } else authenticationRequired();
+    }
     if (error.response?.status === 401 && !isAuthEndpoint) {
+      if (isBrowserSession()) {
+        return Promise.reject(Object.assign(new Error('本次操作未提交，请确认后重新操作'), { status: 401 }));
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('app_current_user');
       const now = Date.now();
@@ -107,7 +127,7 @@ api.interceptors.response.use(
       status?: number;
       response?: { status?: number; data?: unknown };
     };
-    normalized.status = error.response?.status;
+    normalized.status = error.response?.status ?? error.status;
     normalized.response = {
       status: error.response?.status,
       data: error.response?.data,

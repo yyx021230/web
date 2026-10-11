@@ -1,4 +1,5 @@
 import api from './api';
+import { authenticationEpoch, loginBrowserSession, logoutBrowserSession, setLegacyAuthentication } from './browserSession';
 
 export interface User {
   id: number;
@@ -25,8 +26,14 @@ export interface RegisterPayload {
 }
 
 export const authApi = {
-  login: (data: LoginPayload) =>
-    api.post<{ access_token: string; token_type: string }>('/auth/login', data),
+  login: async (data: LoginPayload) => {
+    const session = await loginBrowserSession(data);
+    if (session) return { data: session };
+    const started = authenticationEpoch();
+    const result = await api.post<{ access_token: string; token_type: string }>('/auth/login', data);
+    setLegacyAuthentication(result.data.access_token, started);
+    return result;
+  },
 
   register: (data: RegisterPayload) =>
     api.post<{ access_token: string; token_type: string }>('/auth/register', data),
@@ -34,8 +41,5 @@ export const authApi = {
   getMe: () =>
     api.get<User>('/auth/me'),
 
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('app_current_user');
-  },
+  logout: logoutBrowserSession,
 };

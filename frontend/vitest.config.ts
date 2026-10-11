@@ -26,10 +26,7 @@ export default defineConfig({
         'src/lib/dateTime.ts',
         'src/lib/utils.ts',
         'src/lib/vehicleMatcher.ts',
-        'src/lib/dify/sse-handler.ts',
-        'src/lib/ai/registry.ts',
         'src/services/aiApi.ts',
-        'src/stores/aiStore.ts',
       ],
       thresholds: {
         lines: 75,

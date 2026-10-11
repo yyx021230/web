@@ -9,6 +9,7 @@ param(
     [string]$BackupRoot = "D:\ztqc-backups\web",
     [string]$ExistingBackupDir = "",
     [string]$ComposeProjectName = "",
+    [switch]$PreserveAdditiveSchema,
     [switch]$InstallDailyBackup
 )
 
@@ -313,6 +314,9 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not $preMigrationRevision) {
         throw "Unable to resolve the production Alembic revision"
     }
+    if ($PreserveAdditiveSchema -and $preMigrationRevision -ne 'c47f2a6d9b10') {
+        throw 'PreserveAdditiveSchema is restricted to the audited c47f2a6d9b10 publish/session upgrade'
+    }
     $redisId = $currentRedisId
 
     # Build and compile-check candidate images while the current release keeps
@@ -503,6 +507,9 @@ try {
     $migrationAttempted = $observedMigrationRevision -ne $preMigrationRevision
     if ($migrationExitCode -ne 0) { throw "Database migration failed" }
     $postMigrationRevision = $observedMigrationRevision
+    if ($PreserveAdditiveSchema -and $postMigrationRevision -ne 'e61010a0b001') {
+        throw 'Audited additive migration target does not match e61010a0b001'
+    }
     docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-deps backend ai-worker ai-postprocess-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
 
@@ -613,12 +620,15 @@ catch {
         $env:RELEASE_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "RELEASE_SOURCE_SHA256" "unknown"
         $env:MCP_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_SOURCE_SHA256" "unknown"
         $env:MCP_BINARY_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_BINARY_SHA256" "unknown"
-        if ($backupDir -and $migrationAttempted) {
+        if ($backupDir -and $migrationAttempted -and -not $PreserveAdditiveSchema) {
             try {
                 & $rollbackRestoreScript -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
             } catch {
                 $rollbackErrors.Add("database: $($_.Exception.Message)")
             }
+        }
+        if ($migrationAttempted -and $PreserveAdditiveSchema) {
+            Write-Warning 'Keeping additive publish/session tables; rolling back application images only. No database dump will be replayed.'
         }
         try {
             if ($applicationServicesStopped) {

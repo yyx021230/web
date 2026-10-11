@@ -46,8 +46,10 @@ export const promptsApi = {
       params: { keyword, category, page, limit, owner, random_seed: randomSeed, source_kind: sourceKind, after_id: afterId },
     }),
 
-  getCategories: () =>
-    api.get<{ categories: { name: string; count: number }[] }>('/prompts/categories'),
+  getCategories: (sourceKind?: 'internal' | 'external' | 'performance') =>
+    api.get<{ categories: { name: string; count: number }[] }>('/prompts/categories', {
+      params: { source_kind: sourceKind },
+    }),
 
   createPrompt: (data: { title?: string; name?: string; chinese: string; english?: string; category?: string; image_url?: string; param_type?: string }) =>
     api.post('/prompts', data),

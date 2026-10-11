@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiApi } from '@/services/aiApi';
 import { promptsApi } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
+import { notifyAuthStateChanged } from '@/lib/auth-events';
 import AIPage from './page';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -63,6 +64,27 @@ const uploadFiles = async (files: File[]) => {
 };
 
 describe('restore generation parameters', () => {
+  it('keeps task identity after login expiry and resumes reads without another generation', async () => {
+    localStorage.removeItem(`ai_image_messages:uid:${currentUserId}`);
+    const history = { data: { items: [{ id: 891, model_name: 'gptimage2', prompt: '登录中断任务',
+      client_request_id: 'original-request', params: { width: 768, height: 1024 },
+      status: 'processing', result_urls: [] }], total: 1 } };
+    vi.mocked(aiApi.getHistory).mockResolvedValue(history as never);
+    vi.mocked(aiApi.getTaskStatus).mockRejectedValueOnce(Object.assign(new Error('expired'), { status: 401 }))
+      .mockResolvedValue({ data: { task_id: '891', status: 'processing', image_urls: [] } } as never);
+    await act(async () => root.render(<AIPage />));
+    expect(host.textContent).toContain('重新登录后继续查询原任务');
+    const stored = JSON.parse(localStorage.getItem(`ai_image_messages:uid:${currentUserId}`) || '[]');
+    expect(stored.find((entry: { taskId?: string }) => entry.taskId === '891')).toMatchObject({
+      clientRequestId: 'original-request', historyTaskId: '891',
+    });
+    const before = vi.mocked(aiApi.getTaskStatus).mock.calls.length;
+    await act(async () => notifyAuthStateChanged());
+    expect(vi.mocked(aiApi.getTaskStatus).mock.calls.length).toBeGreaterThan(before);
+    expect(aiApi.getTaskStatus).toHaveBeenLastCalledWith('891', 'gptimage2');
+    expect(aiApi.generateImage).not.toHaveBeenCalled();
+  });
+
   it('retains images returned with a failed polling response', async () => {
     localStorage.removeItem(`ai_image_messages:uid:${currentUserId}`);
     const imageSrc = vi.spyOn(HTMLImageElement.prototype, 'src', 'set').mockImplementation(function (this: HTMLImageElement, value: string) {
@@ -384,16 +406,21 @@ describe('restore generation parameters', () => {
   });
 
   it('expands and collapses the prompt with a button without losing the draft', async () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
     await act(async () => root.render(<AIPage />));
     await act(async () => restore().click());
+    await act(async () => vi.advanceTimersToNextFrame());
     const toggle = host.querySelector('[aria-label="展开输入框"]') as HTMLButtonElement;
     const composer = host.querySelector('[aria-label="创作控制台"]') as HTMLElement;
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(composer.closest('[style]')?.getAttribute('style')).toContain('--prompt-height: 112px');
     await act(async () => toggle.click());
+    await act(async () => vi.advanceTimersToNextFrame());
     expect(host.querySelector('[aria-label="收起输入框"]')?.getAttribute('aria-expanded')).toBe('true');
     expect(composer.closest('[style]')?.getAttribute('style')).toContain('--prompt-height: 360px');
     await act(async () => (host.querySelector('[aria-label="收起输入框"]') as HTMLButtonElement).click());
+    // Complete the button's deferred focus before simulating the user's scroll.
+    await act(async () => vi.advanceTimersToNextFrame());
     expect(host.querySelector('[aria-label="展开输入框"]')?.getAttribute('aria-expanded')).toBe('false');
     const scroller = host.querySelector('[data-testid="creation-results-scroller"]') as HTMLDivElement;
     Object.defineProperties(scroller, {

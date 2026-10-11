@@ -16,6 +16,13 @@ import { promptsApi, type PromptItem, type PromptImportResult } from '@/services
 import { getImagePreviewUrl } from '@/lib/imagePreview';
 import { toast } from '@/lib/toast';
 import { useOptionalAuthSession } from '@/components/auth/AuthSession';
+import {
+  PROMPT_LIBRARY_FILTER_EVENT,
+  readPromptLibraryFilter,
+  setPromptLibraryFilter,
+  type PromptLibraryFilter,
+  type PromptSourceFilter,
+} from '@/lib/prompt-library-filter';
 
 type PromptForm = {
   title: string;
@@ -35,15 +42,12 @@ const emptyForm: PromptForm = {
   param_type: '通用',
 };
 
-type SourceFilter = 'all' | 'external' | 'internal' | 'performance';
-
-const sourceTabs: Array<{ value: SourceFilter; label: string }> = [
+const sourceTabs: Array<{ value: PromptSourceFilter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'external', label: '外部素材' },
   { value: 'internal', label: '内部素材' },
   { value: 'performance', label: '优质帖子' },
 ];
-
 
 const RELATED_POOL_SIZE = 600;
 const RELATED_RESULT_SIZE = 6;
@@ -252,7 +256,9 @@ function mergeUniquePrompts(current: PromptItem[], incoming: PromptItem[]) {
 export default function PromptsPage() {
   const authSession = useOptionalAuthSession();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
-  const [activeSource, setActiveSource] = useState<SourceFilter>('all');
+  const [activeSource, setActiveSource] = useState<PromptSourceFilter>('all');
+  const [activeCategory, setActiveCategory] = useState('');
+  const [filterReady, setFilterReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -328,7 +334,7 @@ export default function PromptsPage() {
         discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
       }
       const sourceKind = activeSource === 'all' ? undefined : activeSource;
-      const args = ['', undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind] as const;
+      const args = ['', activeCategory || undefined, p, PAGE_SIZE, false, discoverySeedRef.current, sourceKind] as const;
       const res = append && nextCursorRef.current != null
         ? await promptsApi.getPrompts(...args, nextCursorRef.current)
         : await promptsApi.getPrompts(...args);
@@ -352,12 +358,32 @@ export default function PromptsPage() {
         setLoading(false);
       }
     }
-  }, [activeSource]);
+  }, [activeCategory, activeSource]);
 
   useEffect(() => {
+    const applyFilter = (filter: PromptLibraryFilter) => {
+      discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
+      setActiveSource(filter.source);
+      setActiveCategory(filter.category);
+      setPreviewPrompt(null);
+      setFilterReady(true);
+    };
+    const handleFilterChange = (event: Event) => applyFilter((event as CustomEvent<PromptLibraryFilter>).detail);
+    const handlePopState = () => applyFilter(readPromptLibraryFilter(window.location.search));
+    applyFilter(readPromptLibraryFilter(window.location.search));
+    window.addEventListener(PROMPT_LIBRARY_FILTER_EVENT, handleFilterChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener(PROMPT_LIBRARY_FILTER_EVENT, handleFilterChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!filterReady) return;
     fetchData(1);
     return () => { requestIdRef.current += 1; };
-  }, [fetchData]);
+  }, [fetchData, filterReady]);
 
   useEffect(() => {
     promptsRef.current = prompts;
@@ -603,8 +629,7 @@ export default function PromptsPage() {
                 onClick={() => {
                   if (tab.value === activeSource) return;
                   if (tab.value === 'performance' && !requireLogin('/prompts', '登录后查看优质帖子封面')) return;
-                  discoverySeedRef.current = Math.floor(Math.random() * 2_147_483_646) + 1;
-                  setActiveSource(tab.value);
+                  setPromptLibraryFilter({ source: tab.value, category: '' });
                 }}
               >
                 {tab.label}

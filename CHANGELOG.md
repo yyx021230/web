@@ -2,6 +2,60 @@
 
 All notable changes are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+No additional changes have been scheduled beyond the frozen candidate below.
+
+## [0.4.0] - 2026-10-11
+
+Frozen release candidate, not a production deployment receipt. See
+[release preparation](docs/RELEASE_PREPARATION_20261010.md) for staged activation and outstanding gates.
+Browser sessions and cloud-phone dispatch remain disabled in the initial rollout.
+
+### Added
+
+- Durable Hermes review-to-cloud-phone publishing, private image snapshots, scheduled dispatch, cancellation and task-status reconciliation.
+- User-authored image/text drafts in the publication planner, with ordered multi-image uploads, persistent review, idempotent draft creation and the existing cloud-phone schedule lifecycle.
+- Read-only version-management gates, annotated-tag checks, tracked-runtime-data protection and isolated Git regression tests.
+- Opt-in browser sessions with 30-minute access tokens, three-day human-activity idle expiry, a 30-day absolute lifetime, refresh rotation and server-side revocation; legacy API authentication remains compatible.
+
+### Changed
+
+- Prompt category/source filters, gallery details and creative navigation.
+- Frontend/backend version metadata now shares the last released baseline; release preparation must advance all version locations together.
+- CI includes application coverage gates; release source archives come only from a clean, tagged Git HEAD.
+
+### Fixed
+
+- Reject missing/ambiguous production cases before enqueueing; fail fast on definite image submission rejection and report sanitized workflow failures.
+- Use cloud-phone terminal status directly without making optional local proof fields a success prerequisite; unknown submissions are not automatically resent.
+- Preserve mounted same-user creation drafts and original AI task recovery across reauthentication; transient authentication-service failures do not clear identity and write requests are never automatically replayed.
+- Ignore delayed identity/login-verification responses after a cross-tab logout, and keep legacy credential expiry separate from browser-session logout handling.
+- Explicitly allow application-only rollback for the audited additive publish/session migration chain, without restoring the whole production database.
+
+## [0.3.43] - 2026-09-23
+
+### Changed
+
+- AI studio input/result layout, prompt tools and stable prompt-grid updates; generation count integrity and provider routing regressions.
+- Hermes editorial copy, creative profiles and reference-selection updates.
+- Windows Creator Center synchronization diagnostics and standalone export tooling.
+
+Historical source: tag `v0.3.43` / commit `a9aaaceec458`; core and Hermes deployment identity was read-only verified on 2026-10-10. This entry does not retroactively amend that tag.
+
+## [0.3.42] - 2026-09-20
+
+### Fixed
+
+- Handle an absent image-postprocessing worker during Windows release preflight.
+
+## [0.3.41] - 2026-09-20
+
+### Changed
+
+- Separate image postprocessing into a durable worker/queue and retain image task history visibility.
+- Update Hermes throughput, creative profile selection and pinned-image release checks.
+
 ## [0.3.40] - 2026-09-15
 
 ### Fixed

@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,15 +24,32 @@ from app.schemas.hermes_workflow import (
     HermesWorkerComplete,
     HermesWorkerFail,
     HermesPostEdit,
+    HermesUploadPostCreate,
 )
 from app.services.hermes_workflow_service import HermesWorkflowService, aggregate_status, post_counts, serialize_post, serialize_run
-from app.services.hermes_policy_service import policy_summaries
-from app.services.vehicle_catalog_service import VehicleCatalogService
+from app.services.hermes_policy_service import available_production_models, policy_summaries
 from app.services.hermes_reference_service import reference_catalog
+from app.services.hermes_publish_service import HermesPublishService
 from app.utils.timezone import cst_now_naive
 
 
 router = APIRouter()
+
+
+@router.post('/upload-post')
+async def upload_post(
+    metadata: str = Form(..., max_length=10000),
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user),
+):
+    """Persist a user-authored draft, without generation, approval or publication."""
+    from app.services.hermes_upload_service import create_upload_post
+    try:
+        request = HermesUploadPostCreate.model_validate_json(metadata)
+    except ValidationError:
+        raise HTTPException(422, '上传参数无效，请核对账号、标题、正文及上传标识') from None
+    post = await create_upload_post(db, current_user, request, files, is_admin=has_role(current_user, 'admin'))
+    return ApiResponse(data=serialize_post(post), message='图文草稿已保存，确认通过后可排期')
 
 
 @router.get('/reference-types')
@@ -81,15 +99,8 @@ async def bootstrap(
     """Return the current user's assigned accounts and available Leapmotor models."""
     service = HermesWorkflowService(db)
     environments = await service.assigned_environments(current_user.id)
-    vehicle_rows = await VehicleCatalogService(db).rows()
     policies = policy_summaries()
-    leapmotor_models = sorted({
-        str(row["model"])
-        for row in vehicle_rows
-        if "零跑" in str(row.get("brand") or "") or "零跑" in str(row.get("model") or "")
-    } | {str(row["vehicle_model"]) for row in policies})
-    if not leapmotor_models:
-        leapmotor_models = ["零跑A05", "零跑A10", "零跑B01", "零跑B10", "零跑C10", "零跑C11", "零跑C16"]
+    leapmotor_models = available_production_models(policies)
     return ApiResponse(data={
         "accounts": [
             {"id": row.id, "name": row.account_name, "group": row.group_name, "labels": row.labels}
@@ -97,7 +108,7 @@ async def bootstrap(
         ],
         "vehicle_models": leapmotor_models,
         "policies": policies,
-        "limits": {"max_posts_per_run": 5},
+        "limits": {"max_posts_per_run": 5, "max_publish_images": min(9, max(1, settings.phone_cloud_publish_max_images))},
     })
 
 
@@ -287,8 +298,22 @@ async def save_publish_plan(
     )
     return ApiResponse(
         data={"items": [serialize_post(post) for post in rows]},
-        message="发布计划已保存；发布接口尚未接入，不会实际发布",
+        message="发布计划已保存；实际执行由独立发布Worker和管理员开关控制",
     )
+
+
+@router.get("/publish-jobs")
+async def publish_jobs(page: int = Query(1, ge=1), limit: int = Query(40, ge=1, le=100),
+                       db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """List only this user's persistent publication records."""
+    return ApiResponse(data=await HermesPublishService(db).list_jobs(current_user, page=page, limit=limit))
+
+
+@router.post("/publish-jobs/{job_id}/cancel")
+async def cancel_publish_job(job_id: int, db: AsyncSession = Depends(get_db),
+                             current_user: User = Depends(get_current_user)):
+    """Cancel a local schedule or request remote cancellation, not withdrawal."""
+    return ApiResponse(data=await HermesPublishService(db).cancel(job_id, current_user))
 
 
 @router.post("/worker/heartbeat", dependencies=[Depends(_require_worker_token)])

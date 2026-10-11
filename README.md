@@ -1,22 +1,22 @@
-# AI Creative Studio v0.3.0
+# AI Creative Studio
 
-AI 创意工作台，集成 AI 生图、内容资源库、小红书运营与投流看板和 Dify 工作流。
+AI 创意工作台，集成异步生图、内容资源库、工作流、小红书运营与投流看板。
 
 独立模板库和在线编辑器已下线；图库、提示词库、AI 图片保存不受影响。历史数据保留，详见 [模块下线说明](docs/EDITOR_TEMPLATE_RETIREMENT.md)。
 
 ## 功能特性
 
-- 🤖 **AI 生图** — 支持 Seedream 等多种 AI 图像生成模型
-- 🔄 **Dify 工作流** — 可添加和管理 Dify 工作流，支持阻塞和流式运行
-- 📁 **素材管理** — 上传图片素材，支持分类和搜索
+- **AI 生图**：Seedream、GPT Image 2/2.5 等模型，异步任务与图片后处理。
+- **内容工作台**：Dify 与 Hermes 工作流。
+- **资源与数据**：提示词、文案、图库、车型库，以及小红书运营和投流看板。
 
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
-| 前端 | Next.js 15 + TypeScript + Tailwind CSS + shadcn/ui + Zustand |
+| 前端 | Next.js 15 + React 18 + TypeScript + Tailwind CSS + CSS Modules |
 | 后端 | FastAPI + Python 3.11+ + SQLAlchemy 2.0 + Pydantic v2 |
-| 数据库 | PostgreSQL + Redis |
+| 数据与队列 | PostgreSQL + Redis |
 | 存储 | MinIO / S3 / 本地存储 |
 
 ## 快速开始
@@ -82,9 +82,8 @@ web/
 │   ├── src/
 │   │   ├── app/       # 页面路由
 │   │   ├── components/  # UI 组件
-│   │   ├── stores/    # Zustand 状态管理
 │   │   ├── services/  # API 服务
-│   │   ├── lib/       # 工具库 (dify, ai)
+│   │   ├── lib/       # 通用工具
 │   │   └── types/     # TypeScript 类型
 │   └── CLAUDE.md      # AI 编码规则
 ├── backend/           # FastAPI 后端
@@ -97,7 +96,8 @@ web/
 │   │   └── core/      # 核心工具
 │   └── CLAUDE.md      # AI 编码规则
 └── docs/              # 项目文档
-    ├── DESIGN_SYSTEM.md # 设计规范
+    ├── ARCHITECTURE.md  # 当前架构
+    ├── DESIGN_SYSTEM.md # 当前界面约定
     └── DATA_ISOLATION.md # 数据隔离与共享设计规范
 ```
 
@@ -126,7 +126,9 @@ cd /Users/yyx/ztqc/web
 ./deploy-to-windows.sh
 ```
 
-完整准备、灰度、备份和回滚流程见 [v0.3.0 发布手册](docs/V0.3_RELEASE_RUNBOOK.md)。生产密钥只能放在 Windows 的 `.env` 文件或 CI Secret 中。
+完整准备、灰度、备份和回滚流程见 [发布手册](docs/V0.3_RELEASE_RUNBOOK.md)。生产密钥只能放在 Windows 的 `.env` 文件或 CI Secret 中。
+
+日常分支、提交、版本标签和自动门禁统一按 [版本管理与发布规范](docs/RELEASE_VERSION_STANDARD.md) 执行。提交保存代码、打版本标签、生产部署是三个独立步骤；数据库和运行素材不随代码覆盖。
 
 ## Dify 集成
 
@@ -138,19 +140,6 @@ cd /Users/yyx/ztqc/web
 - `POST /v1/workflows/tasks/{id}/stop` — 停止任务
 - `GET /v1/workflows/logs` — 运行日志
 
-## AI 生图模型扩展
+## 开发参考
 
-新增 AI 模型只需:
-1. 继承 `AIModelAdapter` 基类
-2. 实现 `generate_image`, `cancel_task`, `get_task_status` 方法
-3. 注册到 `model_registry`
-
-```python
-from app.adapters.ai_model.base import AIModelAdapter
-from app.adapters.ai_model.registry import model_registry
-
-class MyModelAdapter(AIModelAdapter):
-    # 实现...
-
-model_registry.register(MyModelAdapter())
-```
+当前模块关系、生图任务链路及模型扩展方式见 [系统架构](docs/ARCHITECTURE.md)；页面布局和色彩约定见 [界面设计约定](docs/DESIGN_SYSTEM.md)。

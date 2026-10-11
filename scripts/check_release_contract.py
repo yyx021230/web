@@ -123,6 +123,17 @@ require(
     "canonical production deployment must not allow an untagged-release bypass",
 )
 require(
+    "scripts/check_version_control.py --release" in entrypoint,
+    "canonical deployment must run version-control gates before building or contacting production",
+)
+source_package = (ROOT / "scripts/build_release_package.sh").read_text(encoding="utf-8")
+require(
+    "check_version_control.py" in source_package
+    and "git -C" in source_package and " archive " in source_package
+    and 'tar -czf "$output"' not in source_package,
+    "legacy packaging must export only validated Git HEAD, never the working directory",
+)
+require(
     '[[ "$VERSION" != "$PACKAGE_VERSION" ]]' in entrypoint,
     "canonical deployment must bind APP_VERSION to frontend/package.json",
 )

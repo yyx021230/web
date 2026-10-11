@@ -5,6 +5,7 @@ import { AxiosHeaders, type AxiosResponse } from 'axios';
 import PromptsPage from './page';
 import { promptsApi, type PromptItem } from '@/services/promptsApi';
 import { useOptionalAuthSession } from '@/components/auth/AuthSession';
+import { setPromptLibraryFilter } from '@/lib/prompt-library-filter';
 
 vi.mock('@/services/promptsApi', () => ({
   promptsApi: {
@@ -54,6 +55,7 @@ beforeEach(() => {
     set src(_value: string) { queueMicrotask(() => this.onload?.()); }
   });
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  window.history.replaceState(null, '', '/prompts');
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -95,6 +97,8 @@ describe('image-first prompt gallery', () => {
       loginOpen: false,
       requestLogin,
       logout: vi.fn(),
+      verificationError: '',
+      retryVerification: vi.fn(),
     });
     await mount();
     const useLink = Array.from(host.querySelectorAll('a')).find(link => link.textContent?.trim() === '使用创意')!;
@@ -106,18 +110,35 @@ describe('image-first prompt gallery', () => {
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), undefined);
   });
 
-  it('uses product-facing names and loads each inspiration source', async () => {
+  it('keeps source classification in the top toolbar and loads each source', async () => {
     await mount();
     expect(button('全部').getAttribute('aria-pressed')).toBe('true');
-    expect(button('外部素材').disabled).toBe(false);
-    expect(button('内部素材').disabled).toBe(false);
-    expect(button('优质帖子').disabled).toBe(false);
     await act(async () => button('外部素材').click());
     expect(button('外部素材').getAttribute('aria-pressed')).toBe('true');
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), 'external');
     await act(async () => button('优质帖子').click());
-    expect(button('优质帖子').getAttribute('aria-pressed')).toBe('true');
     expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', undefined, 1, 30, false, expect.any(Number), 'performance');
+  });
+
+  it('combines the selected source and its dynamic tag', async () => {
+    await mount();
+    await act(async () => setPromptLibraryFilter({ source: 'internal', category: '摄影' }));
+    expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', '摄影', 1, 30, false, expect.any(Number), 'internal');
+    expect(window.location.search).toBe('?source=internal&category=%E6%91%84%E5%BD%B1');
+  });
+
+  it('uses the same seeded cursor feed when a tag is selected', async () => {
+    const nextEntry = { ...entry, id: 8, title: '标签第二批', image_url: '/tag-second.png' };
+    vi.mocked(promptsApi.getPrompts)
+      .mockResolvedValueOnce(result([entry]))
+      .mockResolvedValueOnce(response({ ...result([entry], 2).data, has_more: true, next_cursor: entry.id }))
+      .mockResolvedValueOnce(response({ ...result([nextEntry], 2, 2).data, has_more: false, next_cursor: null }));
+    await mount();
+    await act(async () => setPromptLibraryFilter({ source: 'external', category: '摄影' }));
+    const taggedSeed = vi.mocked(promptsApi.getPrompts).mock.calls.at(-1)?.[5];
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
+    expect(promptsApi.getPrompts).toHaveBeenLastCalledWith('', '摄影', 2, 30, false, taggedSeed, 'external', entry.id);
+    expect(host.querySelector('[aria-label="查看提示词：标签第二批"]')).not.toBeNull();
   });
 
   it('presents performance covers as account data instead of editable prompts', async () => {
@@ -135,7 +156,7 @@ describe('image-first prompt gallery', () => {
     };
     vi.mocked(promptsApi.getPrompts).mockResolvedValue(result([performanceEntry]));
     await mount();
-    await act(async () => button('优质帖子').click());
+    await act(async () => setPromptLibraryFilter({ source: 'performance', category: '' }));
     await act(async () => (host.querySelector('[aria-label="查看提示词：真实高表现帖子"]') as HTMLButtonElement).click());
 
     const dialog = document.querySelector('[role="dialog"]')!;
@@ -225,7 +246,7 @@ describe('image-first prompt gallery', () => {
       .mockResolvedValueOnce(result([external], 1));
     await mount();
     await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
-    await act(async () => button('外部素材').click());
+    await act(async () => setPromptLibraryFilter({ source: 'external', category: '' }));
     await act(async () => finishOldPage(result([{ ...entry, id: 9, image_url: '/old.png' }], 90, 2)));
     expect(host.querySelectorAll('article')).toHaveLength(1);
     expect(host.querySelector('[data-prompt-id="20"]')).not.toBeNull();

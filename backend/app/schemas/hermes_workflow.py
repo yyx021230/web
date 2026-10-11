@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -100,6 +101,20 @@ class HermesPublishPlanItem(BaseModel):
 
 class HermesPublishPlanRequest(BaseModel):
     items: list[HermesPublishPlanItem] = Field(..., min_length=1, max_length=40)
+
+
+class HermesUploadPostCreate(BaseModel):
+    request_id: UUID = Field(..., description="上传草稿幂等标识，重试必须复用")
+    environment_id: int = Field(..., gt=0, description="当前授权的小红书账号")
+    title: str = Field(..., min_length=1, max_length=80, description="用户填写的标题")
+    content: str = Field(..., min_length=1, max_length=1000, description="用户填写的正文")
+
+    @field_validator('title', 'content')
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        if not value.strip() or '\x00' in value:
+            raise ValueError('图文内容不能为空或包含空字符')
+        return value.strip()
 
 
 class HermesScheduleUpdate(BaseModel):

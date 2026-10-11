@@ -1,16 +1,25 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Sparkles, GalleryHorizontalEnd, Workflow, LogIn, LogOut,
   FileText, BookOpen, Shield, Send, BarChart3, Target,
   PanelLeftClose, PanelLeftOpen, ChevronsUpDown, ArrowUpRight,
+  Hash, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOptionalAuthSession } from '@/components/auth/AuthSession';
 import { AUTH_STATE_CHANGED_EVENT, requestAuthentication } from '@/lib/auth-events';
+import { promptsApi } from '@/services/promptsApi';
+import {
+  PROMPT_LIBRARY_FILTER_EVENT,
+  readPromptLibraryFilter,
+  setPromptLibraryFilter,
+  type PromptLibraryFilter,
+  type PromptSourceFilter,
+} from '@/lib/prompt-library-filter';
 import shell from './workspace-shell.module.css';
 
 const groups = [
@@ -18,8 +27,6 @@ const groups = [
     { icon: BookOpen, label: '首页', href: '/prompts' },
     { icon: Sparkles, label: '生图', href: '/ai' },
     { icon: Workflow, label: '工作台', href: '/workflows' },
-  ] },
-  { label: '资源', items: [
     { icon: FileText, label: '文案', href: '/copywriting' },
     { icon: GalleryHorizontalEnd, label: '图库', href: '/gallery' },
   ] },
@@ -29,6 +36,13 @@ const groups = [
     { icon: Target, label: '投流', href: '/ad-insights' },
   ] },
 ];
+
+const promptSourceLabels: Record<PromptSourceFilter, string> = {
+  all: '全部素材',
+  external: '外部素材',
+  internal: '内部素材',
+  performance: '优质帖子',
+};
 
 type CurrentUser = { username: string; display_name?: string | null; role?: string; roles?: string[] };
 
@@ -40,6 +54,10 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
   const navigationRef = useRef<HTMLElement>(null);
   const navItemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const [indicator, setIndicator] = useState({ top: 0, height: 32, visible: false });
+  const [promptFilter, setPromptFilter] = useState<PromptLibraryFilter>({ source: 'all', category: '' });
+  const [promptCategories, setPromptCategories] = useState<Array<{ name: string; count: number }>>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(true);
 
   useEffect(() => {
     try {
@@ -49,6 +67,38 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
   }, []);
 
   useEffect(() => setPendingHref(null), [pathname]);
+
+  useEffect(() => {
+    if (!pathname.startsWith('/prompts')) return;
+    const syncFilter = (filter: PromptLibraryFilter) => setPromptFilter(filter);
+    const handleFilterChange = (event: Event) => syncFilter((event as CustomEvent<PromptLibraryFilter>).detail);
+    const handlePopState = () => syncFilter(readPromptLibraryFilter(window.location.search));
+    syncFilter(readPromptLibraryFilter(window.location.search));
+    window.addEventListener(PROMPT_LIBRARY_FILTER_EVENT, handleFilterChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener(PROMPT_LIBRARY_FILTER_EVENT, handleFilterChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!pathname.startsWith('/prompts') || collapsed) return;
+    let cancelled = false;
+    setCategoriesLoading(true);
+    const sourceKind = promptFilter.source === 'all' ? undefined : promptFilter.source;
+    promptsApi.getCategories(sourceKind)
+      .then(response => {
+        if (!cancelled) setPromptCategories(response.data.categories);
+      })
+      .catch(() => {
+        if (!cancelled) setPromptCategories([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [collapsed, pathname, promptFilter.source]);
 
   useEffect(() => {
     const syncStoredUser = () => {
@@ -80,6 +130,9 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
   const beginNavigation = (event: React.MouseEvent<HTMLAnchorElement>, href: string, label: string) => {
     protectNavigation(event, href, label);
     if (!event.defaultPrevented && pathname !== href) setPendingHref(href);
+  };
+  const choosePromptCategory = (category: string) => {
+    setPromptLibraryFilter({ source: promptFilter.source, category });
   };
   const visualPathname = pendingHref || pathname;
   const activeHref = groups.flatMap(group => group.items).find(item => {
@@ -136,24 +189,68 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
           style={{ height: indicator.height, opacity: indicator.visible ? 1 : 0, transform: `translate3d(0, ${indicator.top}px, 0)` }}
         />
         {groups.map(group => (
-          <div key={group.label} role="group" aria-label={group.label} className={shell.group}>
-            <p className={cn(shell.groupLabel, labelClass)}>{group.label}</p>
-            <div className="space-y-1">
-              {group.items.map(item => {
-                const paths = [item.href, ...('aliases' in item ? item.aliases || [] : [])];
-                const active = paths.some(path => visualPathname === path || visualPathname.startsWith(path + '/'));
-                return (
-                  <Link key={item.href} href={item.href} prefetch title={item.label} aria-label={item.label} aria-current={active ? 'page' : undefined}
-                    ref={node => { navItemRefs.current[item.href] = node; }}
-                    onClick={event => beginNavigation(event, item.href, item.label)}
-                    className={cn(shell.navItem, pendingHref === item.href && shell.navPending, collapsed ? 'justify-center' : 'justify-center md:justify-start')}>
-                    <item.icon />
-                    <span className={labelClass}>{item.label}</span>
-                  </Link>
-                );
-              })}
+          <Fragment key={group.label}>
+            {group.label === '运营' && pathname.startsWith('/prompts') && !collapsed && (
+              <section className={shell.promptFilters} aria-label="标签筛选">
+                <button
+                  type="button"
+                  className={shell.filterHeadingButton}
+                  aria-expanded={tagsOpen}
+                  onClick={() => setTagsOpen(value => !value)}
+                >
+                  <span>标签</span>
+                  <ChevronDown aria-hidden="true" className={cn(shell.filterChevron, tagsOpen && shell.filterChevronOpen)} />
+                </button>
+                {tagsOpen && (
+                  <div className={shell.tagList} aria-label={`${promptSourceLabels[promptFilter.source]}标签`}>
+                    <button
+                      type="button"
+                      className={shell.tagItem}
+                      aria-pressed={!promptFilter.category}
+                      onClick={() => choosePromptCategory('')}
+                    >
+                      <Hash aria-hidden="true" />
+                      <span>全部标签</span>
+                    </button>
+                    {categoriesLoading && promptCategories.length === 0 ? (
+                      <span className={shell.filterStatus}>正在整理标签...</span>
+                    ) : promptCategories.length > 0 ? promptCategories.map(category => (
+                      <button
+                        key={category.name}
+                        type="button"
+                        className={shell.tagItem}
+                        aria-pressed={promptFilter.category === category.name}
+                        title={category.name}
+                        onClick={() => choosePromptCategory(category.name)}
+                      >
+                        <span className={shell.tagName}>{category.name}</span>
+                      </button>
+                    )) : (
+                      <span className={shell.filterStatus}>当前素材暂无标签</span>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+            <div role="group" aria-label={group.label} className={shell.group}>
+              <p className={cn(shell.groupLabel, labelClass)}>{group.label}</p>
+              <div className="space-y-1">
+                {group.items.map(item => {
+                  const paths = [item.href, ...('aliases' in item ? item.aliases || [] : [])];
+                  const active = paths.some(path => visualPathname === path || visualPathname.startsWith(path + '/'));
+                  return (
+                    <Link key={item.href} href={item.href} prefetch title={item.label} aria-label={item.label} aria-current={active ? 'page' : undefined}
+                      ref={node => { navItemRefs.current[item.href] = node; }}
+                      onClick={event => beginNavigation(event, item.href, item.label)}
+                      className={cn(shell.navItem, pendingHref === item.href && shell.navPending, collapsed ? 'justify-center' : 'justify-center md:justify-start')}>
+                      <item.icon />
+                      <span className={labelClass}>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </Fragment>
         ))}
       </nav>
 

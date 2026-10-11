@@ -18,6 +18,7 @@ import {
 import { materialApi } from '@/services/materialApi';
 import { promptsApi, type PromptItem } from '@/services/promptsApi';
 import { toast } from '@/lib/toast';
+import { AUTH_STATE_CHANGED_EVENT } from '@/lib/auth-events';
 import GalleryPicker, { type GalleryPickerImage } from '@/components/ai/GalleryPicker';
 import PromptLibraryPicker from '@/components/ai/PromptLibraryPicker';
 import studio from './studio.module.css';
@@ -724,6 +725,7 @@ export default function AIPage() {
   const enhanceMenuRef = useRef<HTMLDivElement>(null);
   const [scopedKeys, setScopedKeys] = useState<{ storageKey: string; pendingKey: string; preferencesScope: string } | null>(null);
   const pollTimersRef = useRef<Record<string, number>>({});
+  const authPausedRef = useRef(false);
   const runtimeConfigRef = useRef<AIImageRuntimeConfig | null>(null);
   const deletedPendingRef = useRef<{ promptMsgId?: string; resultMsgId?: string } | null>(null);
   const pendingCancelRef = useRef<PendingGenerationState | null>(null);
@@ -1247,15 +1249,24 @@ export default function AIPage() {
     const status = getHttpErrorStatus(error);
     if (status !== 401 && status !== 403 && status !== 404) return false;
 
+    if (status === 401) {
+      // Authentication is not a generation result. Keep the original IDs and
+      // resume lookup on login, without polling an expired session forever.
+      authPausedRef.current = true;
+      if (taskId) clearPollTimer(taskId);
+      if (clientRequestId) clearPollTimer(`request:${clientRequestId}`);
+      setMessages(prev => prev.map(msg => msg.id === resultMsgId
+        ? { ...msg, content: '登录已失效，重新登录后继续查询原任务' } : msg));
+      return true;
+    }
+
     if (taskId) clearPollTimer(taskId);
     if (clientRequestId) clearPollTimer(`request:${clientRequestId}`);
     void refreshActiveTasks();
 
     const content = status === 404
       ? '生成失败: 后台未找到该任务，请重新提交'
-      : status === 401
-        ? '生成失败: 登录已失效，请重新登录后再提交'
-        : '生成失败: 无权读取该任务，请重新提交';
+      : '无权读取该任务，请检查当前登录账户';
     setMessages(prev => prev.map(msg =>
       msg.id === resultMsgId
         ? { ...msg, content, images: [], taskId: undefined, clientRequestId: undefined }
@@ -1353,6 +1364,23 @@ export default function AIPage() {
       logDebug('loadServerHistoryFailed', { error: error instanceof Error ? error.message : String(error) });
     }
   }, [logDebug, startPoll]);
+
+  useEffect(() => {
+    const resumeAfterLogin = () => {
+      if (!authPausedRef.current || !localStorage.getItem('app_current_user') || !scopedKeys
+        || getUserScopedKey(STORAGE_KEY_BASE) !== scopedKeys.storageKey) return;
+      authPausedRef.current = false;
+      void restoreServerHistory();
+      readPendingStates().forEach(pending => {
+        const [width, height] = pending.size.split('×').map(Number);
+        if (pending.taskId) startPoll(pending.taskId, pending.model, pending.resultMsgId,
+          width || 1024, height || 1024, pending.clientRequestId);
+        else if (pending.clientRequestId) startRequestRecovery(pending, width || 1024, height || 1024);
+      });
+    };
+    window.addEventListener(AUTH_STATE_CHANGED_EVENT, resumeAfterLogin);
+    return () => window.removeEventListener(AUTH_STATE_CHANGED_EVENT, resumeAfterLogin);
+  }, [readPendingStates, restoreServerHistory, scopedKeys, startPoll, startRequestRecovery]);
 
   // 本地缓存负责秒开和未提交状态，服务端任务历史负责跨浏览器持久恢复。
   useEffect(() => {

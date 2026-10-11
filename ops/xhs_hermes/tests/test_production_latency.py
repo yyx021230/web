@@ -360,6 +360,40 @@ def test_confirmed_ocr_rejection_still_allows_bounded_regeneration(monkeypatch, 
     assert result['ok'] is True and result['task_id'] == 'task-2'
 
 
+@pytest.mark.parametrize('image, code', [
+    ({'status': 'review_required', 'error': 'Rate limit error. secret-example'}, 'rate_limited_unknown'),
+    ({'status': 'review_required', 'error': 'Authorization: secret-example'}, 'result_unknown'),
+    ({'status': 'review_required', 'progress': {'phase': 'postprocess_failed'}}, 'postprocess_failed'),
+    ({'status': 'submitted'}, 'image_pending'),
+    ({'status': 'failed'}, 'image_failed'),
+    ({'status': 'completed', 'ok': True}, None),
+])
+def test_delivery_exports_safe_image_failure_code(monkeypatch, tmp_path, image, code):
+    run = make_run(tmp_path, ['p'], monkeypatch)
+    run.state['posts']['p']['image'] = {**image, 'task_id': '310'}
+    post = run.delivery_manifest()['posts'][0]
+    assert post['image_failure_code'] == code
+    assert post['image_task_id'] == '310'
+    assert 'secret-example' not in json.dumps(post)
+
+
+def test_resume_unknown_image_retains_failure_without_new_submission(monkeypatch, tmp_path):
+    run = make_run(tmp_path, ['p'], monkeypatch)
+    row = run.state['posts']['p']
+    row['copy'] = {'ok': True, 'title': '已生成标题', 'content': '已生成正文'}
+    row['image_plan'] = {'ok': True}
+    row['image'] = {'ok': False, 'status': 'review_required', 'task_id': '310',
+                    'error': 'Rate limit error. This request would exceed accounts rate limit.'}
+    original = copy.deepcopy(row)
+    run.submit_image = lambda *args: pytest.fail('unknown result must not create another paid task')
+    _, result = run.image_job(row, tmp_path / 'ocr')
+    assert row == original and result == original['image']
+    delivery = run.delivery_manifest()
+    assert not delivery['production_ready']
+    assert delivery['posts'][0]['image_failure_code'] == 'rate_limited_unknown'
+    assert web_worker.retryable_image_keys(delivery) == []
+
+
 def test_pipeline_does_not_double_shared_gpt_concurrency(monkeypatch, tmp_path):
     run = make_run(tmp_path, [f'p{i}' for i in range(40)], monkeypatch)
     run.config = {'copy_workers': 8, 'image_plan_workers': 8, 'image_workers': 5}

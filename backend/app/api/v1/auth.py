@@ -13,9 +13,8 @@ from app.core.roles import get_user_roles, set_user_roles
 router = APIRouter()
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """用户登录"""
+async def authenticate(req: LoginRequest, db: AsyncSession) -> User:
+    """Shared credential validation; browser and machine lifetimes stay separate."""
     login_value = (req.username or "").strip()
     if not login_value:
         raise HTTPException(status_code=400, detail="用户名或邮箱不能为空")
@@ -36,8 +35,14 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="账户已禁用")
 
-    token = create_access_token(subject=str(user.id))
-    return TokenResponse(access_token=token)
+    return user
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """用户登录（保留脚本/外部API兼容契约）"""
+    user = await authenticate(req, db)
+    return TokenResponse(access_token=create_access_token(subject=str(user.id)))
 
 
 @router.post("/register", response_model=TokenResponse)
@@ -92,3 +97,8 @@ async def get_current_user_info(
         roles=roles,
         created_at=current_user.created_at,
     )
+
+
+from app.api.v1.browser_sessions import router as browser_session_router  # noqa: E402
+
+router.include_router(browser_session_router)

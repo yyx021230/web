@@ -818,7 +818,7 @@ export default function GalleryPage() {
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
       <input ref={templateFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleTemplateUpload} />
 
-      <header className={styles.header}>
+      <header className={cn(styles.header, styles.galleryHeader)}>
         <nav className={styles.tabs} aria-label="图库文件夹">
           {FOLDERS.map(f => (
             <button key={f.key} className={styles.tab} aria-pressed={activeFolder === f.key} onClick={() => { setActiveFolder(f.key); setSelectedImages(new Set()); }}>
@@ -851,7 +851,7 @@ export default function GalleryPage() {
       </header>
 
       {activeFolder === 'templates' && (
-        <div className={styles.filters}>
+        <div className={cn(styles.filters, styles.galleryFilters)}>
           <span className={styles.filterLabel}><Tag />文件夹</span>
           <div className={styles.chips} aria-label="素材分类">
             <button className={styles.chip} aria-pressed={!templateSubFolder} onClick={() => setTemplateSubFolder('')}>全部<small>{getSubCount('')}</small></button>
@@ -893,7 +893,7 @@ export default function GalleryPage() {
       <div className={styles.content}>
         {/* ===== 车型库筛选栏 ===== */}
         {activeFolder === 'car-models' && (
-          <div className={cn(styles.filters, "relative z-20 flex-wrap")}>
+          <div className={cn(styles.filters, styles.galleryFilters, "relative z-20 flex-wrap")}>
             <div className={styles.filterGroup}>
             <span className="text-xs text-muted-foreground whitespace-nowrap">品牌:</span>
             <SearchableSelect
@@ -936,7 +936,7 @@ export default function GalleryPage() {
         )}
 
         {/* ===== 图片列表区域 ===== */}
-        <div className={styles.scrollArea}>
+        <div className={cn(styles.scrollArea, styles.galleryScrollArea)}>
           {selectedImages.size > 0 && activeFolder === 'drafts' && (
             <div className="sticky top-0 z-20 mb-3 flex justify-center">
               <div className="flex items-center gap-2 rounded-xl border border-black/5 bg-white/95 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-xl">
@@ -988,14 +988,14 @@ export default function GalleryPage() {
                     className={styles.imageStage}
                   >
                     {img.isDesign && img.url ? (
-                      <img src={img.url} alt={img.name} className={cn(styles.galleryImage, styles.containImage)} />
+                      <img src={img.url} alt={img.name} loading="lazy" decoding="async" className={cn(styles.galleryImage, styles.containImage)} />
                     ) : img.isDesign ? (
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Palette className="h-8 w-8 mb-1 opacity-30" />
                         <span className="text-[10px] opacity-50">{img.name}</span>
                       </div>
                     ) : (
-                      <img src={img.url} alt={img.name} className={styles.galleryImage} />
+                      <img src={img.url} alt={img.name} loading="lazy" decoding="async" className={styles.galleryImage} />
                     )}
                   </div>
                   {/* 设计稿标识 */}
@@ -1144,29 +1144,32 @@ export default function GalleryPage() {
 
       {/* ===== 图片预览弹窗 ===== */}
       {previewImg && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImg(null)}>
-          <button aria-label="关闭图片预览" onClick={() => setPreviewImg(null)} className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-          {previewIdx > 0 && (
-            <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-          {previewIdx < currentImages.length - 1 && (
-            <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          )}
-          <div onClick={(e) => e.stopPropagation()} className="flex flex-col max-w-4xl max-h-[90vh] w-full mx-4">
-            <div className="flex-1 flex items-center justify-center rounded-t-2xl overflow-hidden bg-muted" style={{ minHeight: 300 }}>
-              <img src={previewImg.url} alt={previewImg.name} className="max-w-full max-h-[60vh] object-contain" />
+        <div className={styles.previewBackdrop} onClick={() => setPreviewImg(null)}>
+          <div className={styles.previewTopbar}>
+            <span>{previewIdx + 1} / {currentImages.length}</span>
+            <button aria-label="关闭图片预览" onClick={() => setPreviewImg(null)}><span>ESC</span><X /></button>
+          </div>
+          <div onClick={(e) => e.stopPropagation()} className={styles.previewShell}>
+            <div className={styles.previewVisual}>
+              {previewIdx > 0 && (
+                <button aria-label="上一张" onClick={goPrev} className={cn(styles.previewArrow, styles.previewArrowLeft)}>
+                  <ChevronLeft />
+                </button>
+              )}
+              <img src={previewImg.url} alt={previewImg.name} decoding="async" />
+              {previewIdx < currentImages.length - 1 && (
+                <button aria-label="下一张" onClick={goNext} className={cn(styles.previewArrow, styles.previewArrowRight)}>
+                  <ChevronRight />
+                </button>
+              )}
             </div>
-            <div className="bg-card rounded-b-2xl border border-t-0 p-4">
-              <div className="flex items-start justify-between mb-3">
+            <aside className={styles.previewPanel}>
+              <div className={styles.previewPanelBody}>
+              <div className={styles.previewHeading}>
                 <div>
-                  <h3 className="text-sm font-semibold">{previewImg.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className={styles.previewEyebrow}>{activeFolder === 'car-models' ? '车型图库' : activeFolder === 'templates' ? '素材作品' : '创作草稿'}</p>
+                  <h3>{previewImg.name}</h3>
+                  <p>
                     {previewImg.brand && `${previewImg.brand} · `}
                     {previewImg.angle && `${previewImg.angle} · `}
                     {previewImg.width}×{previewImg.height}
@@ -1176,25 +1179,25 @@ export default function GalleryPage() {
                   const draftId = previewImg.id;
                   const liked = previewImg.liked;
                   return (
-                    <button onClick={() => toggleLike(draftId)} className={cn('flex h-8 w-8 items-center justify-center rounded-full transition-colors', liked ? 'bg-red-50 text-red-500' : 'bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-500')}>
+                    <button aria-label={liked ? '取消收藏' : '收藏'} onClick={() => toggleLike(draftId)} className={cn(styles.previewIconButton, liked && styles.previewIconButtonActive)}>
                       <Heart className={cn('h-4 w-4', liked && 'fill-current')} />
                     </button>
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <div className={styles.previewActions}>
                 <button onClick={() => {
                   const a = document.createElement('a');
                   a.href = previewImg.url;
                   a.download = previewImg.name + '.jpg';
                   a.click();
-                }} className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-xs font-medium text-white hover:bg-primary/90 transition-colors">
+                }} className={styles.previewPrimaryAction}>
                   <Download className="h-3.5 w-3.5" />下载原图
                 </button>
                 {activeFolder === 'drafts' && typeof previewImg.id === 'number' && (() => {
                   const draftId = previewImg.id;
                   return (
-                    <button onClick={() => deleteDraft(draftId)} className="flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                    <button onClick={() => deleteDraft(draftId)} className={styles.previewDangerAction}>
                       <Trash2 className="h-3.5 w-3.5" />删除
                     </button>
                   );
@@ -1205,18 +1208,16 @@ export default function GalleryPage() {
                   const isDownloading = downloadingId === tid;
                   return (
                     <>
-                      <button onClick={() => openEditTemplate(previewImg)}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors">
+                      <button onClick={() => openEditTemplate(previewImg)} className={styles.previewSecondaryAction}>
                         <Edit3 className="h-3.5 w-3.5" />编辑
                       </button>
                       {isRemote && (
-                        <button onClick={() => handleReDownload(previewImg)} disabled={isDownloading}
-                          className="flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50">
+                        <button onClick={() => handleReDownload(previewImg)} disabled={isDownloading} className={styles.previewSecondaryAction}>
                           {isDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudDownload className="h-3.5 w-3.5" />}
                           重新下载
                         </button>
                       )}
-                      <button onClick={() => deleteTemplate(tid)} className="flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                      <button onClick={() => deleteTemplate(tid)} className={styles.previewDangerAction}>
                         <Trash2 className="h-3.5 w-3.5" />删除
                       </button>
                     </>
@@ -1225,26 +1226,26 @@ export default function GalleryPage() {
               </div>
               {/* AI 元数据展示 */}
               {(activeFolder === 'templates' || activeFolder === 'drafts') && previewImg.aiMeta && (
-                <div className="mt-3 pt-3 border-t space-y-2.5">
+                <div className={styles.previewMeta}>
                   {/* 提示词 */}
                   <div>
-                    <div className="text-[10px] font-medium text-muted-foreground mb-1">提示词</div>
-                    <div className="text-xs bg-muted/50 rounded-lg px-3 py-2 leading-relaxed break-words">
+                    <div className={styles.previewMetaLabel}>提示词</div>
+                    <div className={styles.previewPrompt}>
                       {previewImg.aiMeta.prompt || '无'}
                     </div>
                   </div>
                   {/* 参考图 */}
                   {previewImg.aiMeta.ref_images && previewImg.aiMeta.ref_images.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-medium text-muted-foreground mb-1">参考图</div>
-                      <div className="flex gap-2">
+                      <div className={styles.previewMetaLabel}>参考图</div>
+                      <div className={styles.previewReferences}>
                         {previewImg.aiMeta.ref_images.slice(0, 4).map((refUrl, idx) => (
-                          <div key={idx} className="w-12 h-12 rounded-md overflow-hidden border bg-muted flex-shrink-0">
+                          <div key={idx}>
                             <img src={refUrl} alt={`参考图${idx + 1}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
                         {previewImg.aiMeta.ref_images.length > 4 && (
-                          <div className="w-12 h-12 rounded-md border bg-muted flex items-center justify-center flex-shrink-0">
+                          <div className={styles.previewReferenceMore}>
                             <span className="text-[10px] text-muted-foreground">+{previewImg.aiMeta.ref_images.length - 4}</span>
                           </div>
                         )}
@@ -1252,7 +1253,7 @@ export default function GalleryPage() {
                     </div>
                   )}
                   {/* 参数标签 */}
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className={styles.previewParams}>
                     {previewImg.aiMeta.model && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{previewImg.aiMeta.model}</span>
                     )}
@@ -1272,11 +1273,12 @@ export default function GalleryPage() {
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t text-[10px] text-muted-foreground">
+              </div>
+              <div className={styles.previewShortcuts}>
                 <span><kbd className="font-mono bg-muted px-1 rounded">←</kbd> <kbd className="font-mono bg-muted px-1 rounded">→</kbd> 切换</span>
                 <span><kbd className="font-mono bg-muted px-1 rounded">Esc</kbd> 关闭</span>
               </div>
-            </div>
+            </aside>
           </div>
         </div>, document.body
       )}

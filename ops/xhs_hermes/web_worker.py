@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import signal
 import socket
 import subprocess
@@ -22,6 +23,7 @@ from typing import Any
 from worker_runtime import apply_worker_limits, load_dotenv, runner_command
 from ocr_backend import backend_name
 from creative_profiles import adaptation_contract, normalize_adaptation_level
+from selection_types import catalog
 
 
 ROOT = Path(__file__).resolve().parent
@@ -216,7 +218,8 @@ def retryable_image_keys(delivery: dict[str, Any]) -> list[str]:
     for post in delivery.get("posts") or []:
         if not isinstance(post, dict):
             continue
-        if post.get("image_status") == "review_required":
+        if (post.get("image_status") in {"review_required", "rejected"}
+                or post.get("image_failure_code") == "submission_rejected"):
             continue
         key = str(post.get("key") or "").strip()
         has_copy = bool(str(post.get("title") or "").strip() and str(post.get("content") or "").strip())
@@ -236,6 +239,32 @@ def image_recovery_arguments(delivery: dict[str, Any]) -> list[str]:
     # Ready plans, submitted tasks and completed siblings retain their state.
     # Plan failures already carry their own bounded same/new-template strategy.
     return ["--retry-image-keys", *failed_images] if failed_images else []
+
+
+def missing_delivery_error(log_path: Path, return_code: int) -> str:
+    """Expose known source shortages, never arbitrary tracebacks or credentials."""
+    fallback = f"Hermes exited {return_code} without a delivery manifest"
+    if return_code == 0:
+        return fallback
+    labels = {row['id']: row['name'] for row in catalog.COPY_TYPES}
+    labels['None'] = '自动选择'
+    try:
+        with log_path.open('rb') as handle:
+            handle.seek(0, os.SEEK_END)
+            handle.seek(max(0, handle.tell() - 16_384))
+            lines = handle.read().decode('utf-8', errors='replace').splitlines()
+    except OSError:
+        return fallback
+    line = next((line.strip() for line in reversed(lines) if line.strip()), '')
+    if line == 'ImageReferenceUnavailable: 车型参考图地址无效或无法读取；未调用生成接口，请修复车型图库':
+        return line.removeprefix('ImageReferenceUnavailable: ')
+    match = re.fullmatch(
+        r'RuntimeError: 文案类型「([a-z_]+|None)」可用母文不足：(\d{1,8})条；'
+        r'未调用生成接口，请调整类型或补充文案库', line)
+    if match and match[1] in labels:
+        return (f'文案类型「{labels[match[1]]}」可用母文不足：{int(match[2])}条；'
+                '未调用生成接口，请调整类型或补充文案库')
+    return fallback
 
 
 def run_once(base_url: str, token: str, worker_id: str, output_root: Path) -> bool:
@@ -340,7 +369,7 @@ def run_once(base_url: str, token: str, worker_id: str, output_root: Path) -> bo
                     return_code = execute(recovery_args)
         delivery_path = find_delivery(run_output)
         if delivery_path is None:
-            raise RuntimeError(f"Hermes exited {return_code} without a delivery manifest")
+            raise RuntimeError(missing_delivery_error(log_path, return_code))
         delivery = json.loads(delivery_path.read_text(encoding="utf-8"))
         if return_code != 0:
             delivery.setdefault("error", f"Hermes exited with code {return_code}")

@@ -284,6 +284,9 @@ async def update_user_active(
         raise HTTPException(status_code=400, detail="不能禁用自己")
 
     user.is_active = data.get("is_active", True)
+    if not user.is_active:
+        from app.services.auth_session_service import revoke_disabled_user
+        await revoke_disabled_user(db, user.id)
     await db.commit()
     return ApiResponse(data={"id": user.id, "is_active": user.is_active})
 

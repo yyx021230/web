@@ -65,6 +65,17 @@ async def test_prompt_community_crud_visibility_and_permissions(client):
     assert admin_list.json()["data"]["total"] == 2
     categories = await client.get("/api/v1/prompts/categories", headers=other)
     assert categories.json()["data"]["categories"] == [{"name": "汽车", "count": 1}]
+    internal_categories = await client.get(
+        "/api/v1/prompts/categories", headers=other, params={"source_kind": "internal"}
+    )
+    assert internal_categories.json()["data"]["categories"] == [{"name": "汽车", "count": 1}]
+    external_categories = await client.get(
+        "/api/v1/prompts/categories", headers=other, params={"source_kind": "external"}
+    )
+    assert external_categories.json()["data"]["categories"] == []
+    assert (
+        await client.get("/api/v1/prompts/categories", params={"source_kind": "unknown"})
+    ).status_code == 422
     guest_list = await client.get("/api/v1/prompts")
     assert guest_list.status_code == 200
     assert [item["id"] for item in guest_list.json()["data"]["items"]] == [prompt_id]
@@ -133,6 +144,51 @@ async def test_prompt_discovery_seed_is_randomized_but_stable_across_pages(clien
     assert seed_one_first != await listed(2, 1)
     assert len(await listed(2_147_483_646, 1)) == 6
 
+    filtered_first = await client.get(
+        "/api/v1/prompts",
+        params={"category": "发现测试", "random_seed": 1, "page": 1, "limit": 6},
+    )
+    assert filtered_first.status_code == 200
+    first_data = filtered_first.json()["data"]
+    assert first_data["has_more"] is True
+    assert first_data["next_cursor"] == first_data["items"][-1]["id"]
+
+    filtered_second = await client.get(
+        "/api/v1/prompts",
+        params={
+            "category": "发现测试",
+            "random_seed": 1,
+            "page": 2,
+            "limit": 6,
+            "after_id": first_data["next_cursor"],
+        },
+    )
+    assert filtered_second.status_code == 200
+    second_data = filtered_second.json()["data"]
+    assert not {item["id"] for item in first_data["items"]}.intersection(
+        item["id"] for item in second_data["items"]
+    )
+    assert len(first_data["items"] + second_data["items"]) == 12
+
+
+@pytest.mark.asyncio
+async def test_prompt_categories_merge_legacy_names_without_rewriting_records(client):
+    await _seed_prompt_users()
+    owner = make_auth_headers(2)
+    for name in ("AI生图分享", "汽车视觉", "汽车海报"):
+        created = await client.post(
+            "/api/v1/prompts",
+            headers=owner,
+            json={"name": name, "chinese": f"{name}提示词", "category": name},
+        )
+        assert created.status_code == 200
+
+    categories = await client.get("/api/v1/prompts/categories")
+    assert categories.json()["data"]["categories"] == [{"name": "汽车", "count": 3}]
+    filtered = await client.get("/api/v1/prompts", params={"category": "汽车"})
+    assert filtered.status_code == 200
+    assert filtered.json()["data"]["total"] == 3
+
 
 @pytest.mark.asyncio
 async def test_prompt_performance_source_uses_visible_account_notes_and_ranks_real_metrics(client):
@@ -148,7 +204,7 @@ async def test_prompt_performance_source_uses_visible_account_notes_and_ranks_re
                 id=101, environment_id=10, feed_id="top-note", account_name="高表现账号",
                 title="高阅读封面", content="高阅读帖子正文", cover_image_url="https://cdn.example.com/top.webp",
                 view_count=12000, liked_count=800, collected_count=300, comment_count=90, share_count=40,
-                status="active",
+                status="active", primary_content_tag="汽车", secondary_content_tag="报价内容",
             ),
             XHSAccountNote(
                 id=105, environment_id=10, feed_id="stale-cover", account_name="高表现账号",
@@ -186,6 +242,16 @@ async def test_prompt_performance_source_uses_visible_account_notes_and_ranks_re
     assert data["items"][0]["source_name"] == "高表现账号"
     assert data["items"][0]["view_count"] == 12000
     assert data["items"][0]["interaction_count"] == 1230
+    categories = await client.get(
+        "/api/v1/prompts/categories",
+        headers=make_auth_headers(2),
+        params={"source_kind": "performance"},
+    )
+    assert categories.status_code == 200
+    assert categories.json()["data"]["categories"] == [
+        {"name": "报价内容", "count": 1},
+        {"name": "汽车", "count": 1},
+    ]
 
 
 @pytest.mark.asyncio

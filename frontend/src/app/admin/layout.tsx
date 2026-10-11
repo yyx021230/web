@@ -9,7 +9,7 @@ import {
   Activity, MessageSquare, Loader2, Send,
   Bot, Target, Clock3,
 } from 'lucide-react';
-import { authApi } from '@/services/authApi';
+import { AuthSessionProvider, useAuthSession } from '@/components/auth/AuthSession';
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
 const GIT_COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT || 'unknown';
@@ -31,49 +31,22 @@ const navItems = [
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const { user, checking, loginOpen, requestLogin, verificationError, retryVerification } = useAuthSession();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('请先登录');
-      router.replace('/prompts?login=1&next=%2Fadmin');
-      return;
+    if (checking || verificationError || loginOpen) return;
+    if (!user) requestLogin({ next: window.location.pathname });
+    else if (user.role !== 'admin' && !user.roles?.includes('admin')) {
+      toast.error('无权访问管理后台');
+      router.replace('/prompts');
     }
+  }, [checking, loginOpen, requestLogin, router, user, verificationError]);
 
-    // Check admin role
-    const raw = localStorage.getItem('app_current_user');
-    try {
-      const user = JSON.parse(raw || '{}');
-      const isDev = process.env.NODE_ENV === 'development';
-      if (isDev || user.role === 'admin' || user.roles?.includes('admin') || user.username === 'dev') {
-        setChecking(false);
-        return;
-      }
-    } catch { /* ignore */ }
-
-    // Not admin — verify with server
-    authApi.getMe()
-      .then(res => {
-        const user = res.data;
-        localStorage.setItem('app_current_user', JSON.stringify(user));
-        if (user.role === 'admin' || user.roles?.includes('admin')) {
-          setChecking(false);
-        } else {
-          toast.error('无权访问管理后台');
-          router.replace('/prompts');
-        }
-      })
-      .catch(() => {
-        toast.error('无权访问管理后台');
-        router.replace('/prompts?login=1&next=%2Fadmin');
-      });
-  }, [router]);
-
-  if (checking) {
+  if (checking || !user || (user.role !== 'admin' && !user.roles?.includes('admin'))) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        {verificationError ? <div role="alert">{verificationError}<button onClick={retryVerification}>重试</button></div>
+          : <Loader2 className="h-6 w-6 animate-spin text-gray-400" />}
       </div>
     );
   }
@@ -81,8 +54,9 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { logout } = useAuthSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const activeNav = (() => {
@@ -101,8 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   })();
 
   const handleLogout = () => {
-    authApi.logout();
-    window.location.href = '/prompts';
+    logout();
   };
 
   return (
@@ -189,4 +162,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <AuthSessionProvider><AdminLayoutInner>{children}</AdminLayoutInner></AuthSessionProvider>;
 }

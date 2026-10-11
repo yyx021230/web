@@ -1,4 +1,5 @@
 import api from './api';
+import { authenticationRequired, getAccessToken, isBrowserSession } from './browserSession';
 
 export interface GenerateImageParams {
   prompt: string;
@@ -190,7 +191,7 @@ export const aiApi = {
     const prepared = await prepareGenerationParams(params);
     // Use direct API route for generate (avoids Next.js rewrite 1MB body limit)
     // Other calls go through the proxy which is fine (they don't have large bodies)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = await getAccessToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const res = await fetch('/api/ai-image/generate', {
@@ -198,6 +199,10 @@ export const aiApi = {
       headers,
       body: JSON.stringify(prepared),
     });
+    if (res.status === 401) {
+      if (isBrowserSession()) await getAccessToken(true);
+      else authenticationRequired();
+    }
     const data = await res.json();
     // Unwrap the { code, message, data } envelope to match axios api behavior
     if (data?.code === 0) {

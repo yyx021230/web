@@ -47,6 +47,8 @@ export interface HermesPost {
   title?: string | null;
   content?: string | null;
   image_url?: string | null;
+  image_urls?: string[];
+  source_kind?: 'ai_generated' | 'user_upload';
   hard_pass: boolean;
   version?: string;
   revision?: number;
@@ -132,6 +134,15 @@ export type HermesReviewResult = HermesRun & { regenerated_run_id?: number };
 
 export type HermesPublishItem = { post_id: number; environment_id: number; scheduled_at: string; expected_version?: string };
 
+export interface HermesPublishJob {
+  id: number; post_id: number; environment_id: number; status: string;
+  scheduled_at: string; title?: string; revision?: number;
+  remote_job_id?: string | null; error_code?: string | null; message?: string | null;
+  can_cancel: boolean; updated_at?: string | null;
+  events: Array<{ status: string; code?: string | null; at: string }>;
+}
+export interface HermesPublishJobs { items: HermesPublishJob[]; total: number; dispatch_enabled: boolean; }
+
 export interface HermesSchedule {
   id: number;
   name: string;
@@ -167,8 +178,14 @@ async function read<T>(url: string, config: { params?: unknown; timeout?: number
 }
 
 export const hermesWorkflowApi = {
+  uploadPost: (metadata: { request_id: string; environment_id: number; title: string; content: string }, files: File[]) => {
+    const body = new FormData();
+    body.append('metadata', JSON.stringify(metadata));
+    files.forEach(file => body.append('files', file));
+    return api.post<HermesPost>('/hermes-workflows/upload-post', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 });
+  },
   referenceTypes: () => read<HermesReferenceCatalog>('/hermes-workflows/reference-types'),
-  bootstrap: () => read<{ accounts: HermesAccount[]; vehicle_models: string[]; policies: HermesPolicy[]; limits: { max_posts_per_run: number } }>('/hermes-workflows/bootstrap'),
+  bootstrap: () => read<{ accounts: HermesAccount[]; vehicle_models: string[]; policies: HermesPolicy[]; limits: { max_posts_per_run: number; max_publish_images?: number } }>('/hermes-workflows/bootstrap'),
   createRun: (payload: { name?: string; account_id: number; vehicle_model: string; case_id?: string; post_count: number; copy_type?: string; image_type?: string; instruction?: string; adaptation_level?: HermesAdaptationLevel }) =>
     api.post<HermesRun>('/hermes-workflows/runs', payload),
   createBatchRun: (payload: {
@@ -189,8 +206,11 @@ export const hermesWorkflowApi = {
   listPublishCandidates: (query?: HermesPublishQuery) => read<{ items: HermesPost[]; total: number }>('/hermes-workflows/publish-candidates', { params: query }),
   savePublishPlan: (items: HermesPublishItem[]) =>
     api.post<{ items: HermesPost[] }>('/hermes-workflows/publish-plan', { items }),
+  listPublishJobs: (page = 1) => read<HermesPublishJobs>('/hermes-workflows/publish-jobs', { params: { page, limit: 40 } }),
+  cancelPublishJob: (id: number) => api.post<HermesPublishJob>(`/hermes-workflows/publish-jobs/${id}/cancel`),
 
   adminBootstrap: () => read<{
+    limits?: { max_publish_images?: number };
     schedule: HermesSchedule;
     policies: HermesPolicy[];
     accounts: HermesAccount[];
@@ -219,5 +239,7 @@ export const hermesWorkflowApi = {
     api.post<HermesReviewResult>(`/admin/hermes-workflows/posts/${postId}/review`, { action, comment, expected_version, ...(regenerate ? { regenerate: true } : {}) }),
   adminPublishCandidates: (query?: HermesPublishQuery) => read<{ items: HermesPost[]; total: number }>('/admin/hermes-workflows/publish-candidates', { params: query }),
   adminSavePublishPlan: (items: HermesPublishItem[]) => api.post('/admin/hermes-workflows/publish-plan', { items }),
+  adminPublishJobs: (page = 1) => read<HermesPublishJobs>('/admin/hermes-workflows/publish-jobs', { params: { page, limit: 40 } }),
+  adminCancelPublishJob: (id: number) => api.post<HermesPublishJob>(`/admin/hermes-workflows/publish-jobs/${id}/cancel`),
   preparePublish: (runId: number) => api.post(`/admin/hermes-workflows/runs/${runId}/publish`),
 };

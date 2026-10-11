@@ -38,6 +38,31 @@ REPORT_REASONS = {
     "其他",
 }
 
+# Keep legacy category values intact while presenting a smaller, clearer
+# taxonomy in the discovery UI. Unknown categories remain visible as-is.
+PROMPT_CATEGORY_GROUPS: dict[str, tuple[str, ...]] = {
+    "汽车": ("AI生图分享", "汽车视觉", "汽车创意", "汽车海报"),
+    "摄影": ("摄影",),
+    "插画 / 3D": ("插画与 3D", "3D & 插画"),
+    "品牌 / 产品": ("产品与品牌", "产品视觉", "品牌视觉"),
+    "海报": ("海报设计", "海报营销"),
+    "版式参考": ("历史任务精选 · 版式参考",),
+    "美食": ("美食与饮品",),
+    "角色 / 分镜": ("短剧 / 漫画", "AI 短剧 / 漫剧", "AI短剧与漫剧", "短剧 / 漫剧"),
+    "视觉设计": ("UI 与视觉设计", "UI 设计"),
+    "自然风景": ("自然与风景", "自然"),
+}
+PROMPT_CATEGORY_ALIASES = {
+    raw_name: display_name
+    for display_name, raw_names in PROMPT_CATEGORY_GROUPS.items()
+    for raw_name in raw_names
+}
+PROMPT_CATEGORY_ALIASES.update({name: name for name in PROMPT_CATEGORY_GROUPS})
+
+
+def _prompt_category_values(category: str) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((*PROMPT_CATEGORY_GROUPS.get(category, ()), category)))
+
 
 def _is_admin(user: User | None) -> bool:
     return has_role(user, "admin")
@@ -98,7 +123,9 @@ async def get_prompts(
     current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取社区提示词列表"""
-    use_discovery_cursor = random_seed is not None and not keyword and not category and not owner and source_kind != "performance"
+    # Category selection only narrows the discovery pool. It must keep the
+    # same seeded order and cursor pagination used by the unfiltered feed.
+    use_discovery_cursor = random_seed is not None and not keyword and not owner and source_kind != "performance"
     if after_id is not None and not use_discovery_cursor:
         raise HTTPException(status_code=400, detail="续页游标仅支持带随机种子的发现页")
     if source_kind == "performance":
@@ -229,7 +256,7 @@ async def get_prompts(
         conditions.append(PromptExample.is_public.is_(True))
 
     if category:
-        conditions.append(PromptCategory.name == category)
+        conditions.append(PromptCategory.name.in_(_prompt_category_values(category)))
 
     if source_kind:
         conditions.append(PromptExample.source_kind == source_kind)
@@ -346,16 +373,57 @@ async def get_prompts(
 
 @router.get("/categories")
 async def get_categories(
+    source_kind: str | None = Query(None, pattern="^(internal|external|performance)$", description="按当前素材来源统计标签"),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
     """获取提示词分类统计"""
+    if source_kind == "performance":
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="登录后查看优质帖子标签")
+
+        environments = await XHSService(db).list_environments(current_user, include_inactive=True)
+        allowed_environment_ids = [int(item.id) for item in environments]
+        if not allowed_environment_ids:
+            return ApiResponse(data={"categories": []})
+
+        note_conditions = [
+            XHSAccountNote.environment_id.in_(allowed_environment_ids),
+            XHSAccountNote.status == "active",
+            XHSAccountNote.cover_image_url.is_not(None),
+            func.length(func.trim(XHSAccountNote.cover_image_url)) > 0,
+            or_(XHSAccountNote.view_count >= 4000, XHSAccountNote.comment_count >= 30),
+        ]
+        counts: dict[str, int] = {}
+        for tag_column in (XHSAccountNote.primary_content_tag, XHSAccountNote.secondary_content_tag):
+            result = await db.execute(
+                select(tag_column, func.count(XHSAccountNote.id))
+                .where(
+                    *note_conditions,
+                    tag_column.is_not(None),
+                    func.length(func.trim(tag_column)) > 0,
+                )
+                .group_by(tag_column)
+            )
+            for raw_name, count in result.all():
+                name = str(raw_name or "").strip()
+                if name:
+                    counts[name] = counts.get(name, 0) + int(count or 0)
+
+        categories = [
+            {"name": name, "count": count}
+            for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        ]
+        return ApiResponse(data={"categories": categories})
+
     conditions = [
         PromptCategory.deleted_at.is_(None),
         PromptExample.deleted_at.is_(None),
     ]
     if not _is_admin(current_user):
         conditions.append(PromptExample.is_public.is_(True))
+    if source_kind:
+        conditions.append(PromptExample.source_kind == source_kind)
 
     result = await db.execute(
         select(PromptCategory.name, func.count(PromptExample.id))
@@ -364,7 +432,18 @@ async def get_categories(
         .group_by(PromptCategory.id, PromptCategory.name)
         .order_by(func.count(PromptExample.id).desc(), PromptCategory.id.asc())
     )
-    categories = [{"name": name, "count": count} for name, count in result.all()]
+    grouped_counts: dict[str, int] = {}
+    for raw_name, count in result.all():
+        display_name = PROMPT_CATEGORY_ALIASES.get(raw_name, raw_name)
+        grouped_counts[display_name] = grouped_counts.get(display_name, 0) + int(count or 0)
+    preferred_order = {name: index for index, name in enumerate(PROMPT_CATEGORY_GROUPS)}
+    categories = [
+        {"name": name, "count": count}
+        for name, count in sorted(
+            grouped_counts.items(),
+            key=lambda item: (preferred_order.get(item[0], len(preferred_order)), -item[1], item[0]),
+        )
+    ]
     return ApiResponse(data={"categories": categories})
 
 

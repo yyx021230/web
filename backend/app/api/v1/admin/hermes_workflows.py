@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_admin
+from app.config import settings
 from app.db.session import get_db
 from app.models.hermes_workflow import HermesWorkerState, HermesWorkflowRun
 from app.models.user import User
@@ -28,6 +29,7 @@ from app.services.hermes_workflow_service import (
 )
 from app.utils.timezone import cst_now_naive
 from app.services.hermes_policy_service import policy_summaries
+from app.services.hermes_publish_service import HermesPublishService
 
 
 router = APIRouter()
@@ -57,6 +59,7 @@ async def bootstrap(
         select(HermesWorkflowRun.status, func.count(HermesWorkflowRun.id)).group_by(HermesWorkflowRun.status)
     )
     return ApiResponse(data={
+        "limits": {"max_publish_images": min(9, max(1, settings.phone_cloud_publish_max_images))},
         "schedule": serialize_schedule(schedule),
         "policies": policy_summaries(),
         "accounts": [
@@ -235,7 +238,20 @@ async def publish_candidates(
 @router.post('/publish-plan')
 async def save_publish_plan(request: HermesPublishPlanRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
     rows = await HermesWorkflowService(db).save_publish_plan(user=current_user, items=[p.model_dump() for p in request.items], is_admin=True)
-    return ApiResponse(data={'items': [serialize_post(p) for p in rows]}, message='排期已保存，未执行发布')
+    return ApiResponse(data={'items': [serialize_post(p) for p in rows]}, message='排期已保存，后台发布由管理员开关控制')
+
+
+@router.get('/publish-jobs')
+async def publish_jobs(page: int = Query(1, ge=1), limit: int = Query(40, ge=1, le=100),
+                       db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Admin-only view of all publication records."""
+    return ApiResponse(data=await HermesPublishService(db).list_jobs(current_user, is_admin=True, page=page, limit=limit))
+
+
+@router.post('/publish-jobs/{job_id}/cancel')
+async def cancel_publish_job(job_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Request cancellation without claiming that a submitted note is withdrawn."""
+    return ApiResponse(data=await HermesPublishService(db).cancel(job_id, current_user, is_admin=True))
 
 
 @router.post("/runs/{run_id}/publish")
