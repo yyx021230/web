@@ -251,3 +251,37 @@ frontend/src/lib/prompt-library-filter.ts
 - 发布前数据库备份已生成 `D:\ztqc-backups\web\20261011_121635`，沿用正式备份脚本 `-RetentionDays 0 -SkipUploads`：没有开启每日备份、删除旧备份或复制图库。该备份不含图片副本，不得宣称全量 uploads 恢复已验证。备份副本恢复/迁移及 Windows 构建、启动、业务核验仍在执行，尚未记录发布成功。
 
 本次测试日志在本机 `/tmp/ztqc-release-040-backend.log`、`/tmp/ztqc-release-040-frontend.log`；后续实际提交/镜像/回执和验证结果以执行后追加记录为准。
+
+### 0.4.0 代码阶段实际发布回执（2026-10-11）
+
+状态：**core / Hermes 代码已部署，开关分阶段保持关闭，非完整自动发布验收**。用户明确接受此范围。正式源提交 `6ad44254ccc06396e9f6ad1bdac88810ad2bb32d`、附注标签 `v0.4.0`；复用原开发分支，未推送远端、未移动历史标签。正式包由干净独立检出 `/tmp/ztqc-release-040-6ad44254` 的 HEAD 生成；原工作区其他删除、审计资料、素材导入及修复脚本保持原样，没有纳入部署或执行。
+
+**恢复与迁移演练**：发布前备份 `D:\ztqc-backups\web\20261011_121635` 在 Windows 独立 PostgreSQL 容器恢复，网络为 `none`，独立 D 盘数据目录，限制 CPU 1 / 内存 768MiB，没有连接生产数据卷或启动业务 Worker。2026-10-11 12:30:59~12:40:34（北京时间）完成恢复、`c47f2a6d9b10 -> d5a8c2e7f901 -> e61010a0b001` 升级和旧生产应用 ORM 读库。升级前后用户50、环境179、笔记29,854、广告账户202、Hermes帖子630，全部数量一致；三张新增表合计0行。临时数据库容器及其数据目录已移除，保留 `D:\ztqc-release-rehearsal\20261011-123059\verification.json`。这是数据库备份恢复/应用兼容演练，不包含 uploads 恢复、发布 Worker 故障演练或完整业务指标对账；未单独采集 DDL 锁时长。
+
+| 组件/材料 | 本轮实际身份 |
+|---|---|
+| core 正式入口 | `deploy-to-windows.sh`，`PRESERVE_ADDITIVE_SCHEMA=true`，使用上述已恢复验证的备份；未开启每日备份 |
+| core 成功时间 | 2026-10-11 12:52:02，北京时间 |
+| core 包 SHA256 | `714b267a9e2f5310f0a877c05fce9daccec490b29463e3e0f2f962264df99eba` |
+| core 镜像标签 | `0.4.0-6ad44254ccc0-714b267a9e2f`，backend / AI Worker / 后处理 Worker 镜像ID一致 |
+| backend 镜像ID | `sha256:752179d5c94e4caa26654412c7391c0d12278a15419aede2e50231a186d4cd50` |
+| frontend 镜像ID | `sha256:db178ccf03f1b55005eb1629f0d99ce45907e805f09f06148f01cf7de0f17519` |
+| MCP | 源码/二进制指纹与此前0.3.43完全一致，未额外引入抓取组件变更 |
+| Hermes 正式入口 | `scripts/windows/Deploy-HermesWorkerRelease.ps1`，由同一HEAD的ZIP生成，配套更新期间主前端短暂关闭，核验后重新开放 |
+| Hermes 成功时间 | 2026-10-11 12:53:20，北京时间；API / 生成Worker均为0.4.0 / `6ad44254ccc0` |
+| Hermes ZIP SHA256 | `a0e8c30826c1d85abce7f829397c0d38dfdbd27339eeedce9ed81479a1b81a71` |
+| Hermes API 镜像ID | `sha256:f22849c9aabd1437d7048713127e1631377222da042843aca557dfb34bae4b87` |
+| Hermes 生成Worker 镜像ID | `sha256:f68a9d174e00e2f1e137c4f1532dd7573e8acb540be14525fc4fd271daee6c11`，10个新鲜工作槽位，内部提示词目录748条 |
+| 生产迁移头 | `e61010a0b001`；上述业务表数量仍一致；发布任务、发布尝试、浏览器会话各0行，无历史排期重放 |
+
+**线上核验**：两份组件回执、`/version`、`/health/ready`、`Assert-ReleaseState.ps1` 均通过。PostgreSQL / Redis / MinIO / 旧旁路前端的容器ID、镜像和启动时间不变，全部原挂载保留。Hermes API 的 uploads 源路径从 Docker 返回的 Windows 写法变成 `/run/desktop/mnt/host/c/projects/web/uploads`，按明确的 Docker Desktop host-drive 映射核对为同一 `C:\projects\web\uploads`，其 junction 仍指向 `D:\projects\web\uploads`；另抽查3张现有图片，主前端代理与 Hermes API 的文件前16KiB均与核心容器实际文件一致，没有创建或改写图片。
+
+57项有界、顺序 GET 冒烟通过：8个页面入口、匿名鉴权、6类现有角色（管理员/小红书负责人/品牌负责人/投手/运营/普通用户）的身份、新工作流初始化/发布记录、模型/历史查询、非管理员后台拒绝、三类提示词筛选、车型品牌、账号、任务中心/定时日志，以及管理员/小红书负责人/投手的昨日看板查询；另有上述6次图片读取。角色检查在容器内签发10分钟令牌，仅访问本机同源代理，不输出令牌，不等同于真实密码登录或浏览器全角色交互验收。看板查询可能正常写缓存，没有创建生成、同步、排期或发布任务。公网 `http://47.98.127.132:18080/ai` 跟随正常登录跳转后HTTP200。
+
+首次验收脚本未跟随首页307跳转、漏写小红书路由自身`/xhs`前缀，以及直接字符串比较 Docker 两种挂载写法，均产生测试工具失败；核对当前源码/实际挂载后只修正临时验收脚本并全量重跑通过，没有为通过验收修改生产业务逻辑或放宽角色权限。首次失败不计作通过。
+
+切换后首轮约8分钟观察，6个已更新应用容器无HTTP500、Traceback、ERROR行、OOM或重启；ready持续正常。C可用13.57GiB、D可用22.79GiB，较清理后减少主要包括当次不可变包/源码回退快照及一次备份，保留本版/上版产物。该短观察不是30分钟高峰长测、并发生成或真实发布稳定性保证。
+
+**保留开关及接续**：主API和Hermes实测 `AUTH_BROWSER_SESSIONS_ENABLED=false`、`PHONE_CLOUD_PUBLISH_ENABLED=false`。尚未部署实际云手机发布Worker或共享私有快照卷，不能宣称到点自动发布可用；未操作 Phone Cloud / ADB / FRP，也未真实发帖。新浏览器3天闲置会话须待HTTPS、精确Origin和跨组件认证验收后开启。11个车型案例的旧政策期限仍为9月底，未猜测或修改10月政策；Hermes正式生产前还需补真实资料。旧独立AI生图保留，本轮只查其模型/历史，没有付费调用验收。
+
+core回执 `C:\projects\web\.release\current.json`；Hermes回执 `.release\hermes\current.json`；完整核验/脚本/脱敏冒烟在 `C:\projects\web\runtime\maintenance\release-040-verification.json`、`release-040-smoke.log`、`ztqc-040-*.ps1` / `.py`。原配置/回执/容器基线在同目录 `release-040-baseline`；core源码回退快照为 `.release\predeploy-source-0.4.0-6ad44254ccc0-714b267a9e2f.tar.gz`，Hermes回退配置在 `D:\ztqc-hermes-release\0.4.0\private\service-before-20261011_125250`。回退仍应保留新增表/审计数据，不能直接调用通用整库恢复覆盖新写入。本机详细执行日志为 `/tmp/ztqc-release-040-{deploy,hermes,verification,smoke,observation}.log`。本节为部署后追加记录，不改已冻结v0.4.0标签，也未自动推送。
