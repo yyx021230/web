@@ -6,6 +6,16 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 No additional changes have been scheduled beyond the frozen candidate below.
 
+## [0.4.2] - 2026-10-19
+
+Frozen minimal image-transport hotfix, not a production deployment receipt.
+
+### Fixed
+
+- Opt-in Sub2API asynchronous image generation and editing, with durable dispatch/acceptance evidence and same-origin task polling instead of a long synchronous request.
+- Preserve partial multi-image results and per-task counts across reconciliation rounds; never retry an uncertain paid submission or silently fall back to another protocol.
+- Retain accepted task IDs across cancellation, reject further submissions for cancelled jobs, and keep unsupported or unconfirmed results pending review.
+
 ## [0.4.1] - 2026-10-11
 
 Frozen compatibility patch, not a production deployment receipt. Cloud-phone

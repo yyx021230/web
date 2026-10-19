@@ -144,6 +144,7 @@ class AIImageReconciliationService:
             raise AIImageReconciliationConflict("任务当前不处于待核对状态")
 
         summary = copy.deepcopy(job.result_summary or {})
+        pending_submission = task is not None and (task.params or {}).get("_async_submission_pending")
         reconciliation = summary.get("reconciliation")
         if (
             isinstance(reconciliation, dict)
@@ -178,15 +179,21 @@ class AIImageReconciliationService:
         for attempt in attempts:
             if attempt.get("status") in {"completed", "failed"}:
                 continue
-            upstream_result = await self._status_fetcher({**copy.deepcopy(attempt), "expected_count": expected_count})
+            attempt_count = (
+                requested_image_count({"count": attempt.get("expected_count")})
+                if attempt.get("query_capability") == "openai_images_async" else expected_count
+            )
+            upstream_result = await self._status_fetcher({**copy.deepcopy(attempt), "expected_count": attempt_count})
             query_results[_attempt_identity(attempt)] = validate_image_count(
-                _safe_status_result(upstream_result), expected_count,
+                _safe_status_result(upstream_result), attempt_count,
             )
 
         completed_urls: list[str] = []
         for attempt in attempts:
             query_result = query_results.get(_attempt_identity(attempt))
             if query_result is None:
+                if attempt.get("query_capability") == "openai_images_async":
+                    completed_urls.extend(unique_image_urls(attempt.get("image_urls")))
                 continue
             attempt["status"] = query_result["status"]
             attempt["raw_status"] = query_result.get("raw_status")
@@ -194,6 +201,8 @@ class AIImageReconciliationService:
             attempt["error"] = query_result.get("error")
             attempt["image_count"] = len(query_result.get("image_urls") or [])
             if query_result["status"] in {"completed", "failed"}:
+                if attempt.get("query_capability") == "openai_images_async":
+                    attempt["image_urls"] = unique_image_urls(query_result.get("image_urls"))
                 completed_urls.extend(
                     str(url) for url in query_result.get("image_urls") or [] if url
                 )
@@ -260,6 +269,13 @@ class AIImageReconciliationService:
             summary["duplicate_charge_risk"] = len(attempts) > 1
             job.result_summary = copy.deepcopy(summary)
             await self.db.flush()
+            return {**self.serialize_job(job, task), "changed": False}
+
+        if pending_submission:
+            await self._record_manual_required(
+                job, summary, reason="async_submission_without_confirmed_receipt",
+                actor_type=actor_type, actor_id=actor_id,
+            )
             return {**self.serialize_job(job, task), "changed": False}
 
         summary["result_certainty"] = "known"
@@ -469,6 +485,11 @@ class AIImageReconciliationService:
         capability = str(attempt.get("query_capability") or "")
         task_id = str(attempt.get("upstream_task_id") or "")
         provider_id = attempt.get("provider_id")
+        if capability == "openai_images_async" and provider_id is not None:
+            return await AIImageProviderService(self.db).get_upstream_task_status(
+                int(provider_id), task_id, expected_count=attempt.get("expected_count"),
+                query_capability=capability,
+            )
         if capability == "mentalout_batch" and provider_id is not None:
             return await AIImageProviderService(self.db).get_upstream_task_status(
                 int(provider_id),
@@ -605,6 +626,8 @@ def _normalized_attempts(value: Any) -> list[dict[str, Any]]:
                 "checked_at",
                 "error",
                 "image_count",
+                "expected_count",
+                "image_urls",
             )
             if item.get(key) is not None
         }

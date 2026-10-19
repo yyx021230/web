@@ -424,6 +424,8 @@ def _merge_upstream_attempts(
                 "checked_at",
                 "error",
                 "image_count",
+                "expected_count",
+                "image_urls",
             )
             if value.get(key) is not None
         }

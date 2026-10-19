@@ -76,11 +76,18 @@ async def _complete_critical_write_before_cancellation(coro):
     """Finish evidence persistence before propagating a worker timeout."""
 
     task = asyncio.create_task(coro)
-    try:
-        return await asyncio.shield(task)
-    except asyncio.CancelledError:
-        await task
-        raise
+    cancelled = False
+    while True:
+        try:
+            result = await asyncio.shield(task)
+            break
+        except asyncio.CancelledError:
+            if task.cancelled():
+                raise
+            cancelled = True
+    if cancelled:
+        raise asyncio.CancelledError
+    return result
 
 
 _CONTENT_TYPE_EXT: dict[str, str] = {
@@ -396,12 +403,24 @@ class AIImageService:
         details: dict,
     ) -> bool:
         upstream_task_id = str(details.get("upstream_task_id") or "").strip()
-        if not upstream_task_id:
+        is_async = details.get("query_capability") == "openai_images_async"
+        if not upstream_task_id and not (is_async and "submission_pending" in details):
             return False
-        result = await session.execute(select(AITask).where(AITask.id == int(task_id)))
+        result = await session.execute(select(AITask).where(AITask.id == int(task_id))
+                                       .with_for_update().execution_options(populate_existing=True))
         task = result.scalar_one_or_none()
         if task is None:
+            if is_async:
+                raise RuntimeError("本地图片任务不存在，不能保存提交记录")
             return False
+
+        if is_async and "submission_pending" in details:
+            pending = bool(details["submission_pending"])
+            if pending and task.status not in ("queued", "processing"):
+                raise RuntimeError("任务已取消，未提交下一张图片")
+            task.params = {**(task.params or {}), "_async_submission_pending": pending}
+            await session.commit()
+            return True
 
         attempt = {
             "upstream_task_id": upstream_task_id[:160],
@@ -411,7 +430,11 @@ class AIImageService:
             "query_capability": str(details.get("query_capability") or "")[:50] or None,
             "accepted_at": self._now_naive_utc().isoformat(),
         }
+        if details.get("query_capability") == "openai_images_async":
+            attempt["expected_count"] = requested_image_count({"count": details.get("expected_count")})
         params = dict(task.params or {})
+        if is_async:
+            params["_async_submission_pending"] = False
         attempts = [
             dict(item)
             for item in (params.get("_upstream_attempts") or [])
@@ -947,6 +970,13 @@ class AIImageService:
                             int(task_id),
                             details,
                         )
+                        if details.get("query_capability") == "openai_images_async" and "submission_pending" not in details:
+                            saved = await session.get(AITask, int(task_id))
+                            if saved is None or not any(
+                                item.get("upstream_task_id") == details.get("upstream_task_id")
+                                for item in (saved.params or {}).get("_upstream_attempts", [])
+                            ):
+                                raise RuntimeError("上游受理记录未保存")
 
                 await _complete_critical_write_before_cancellation(persist())
             except Exception as exc:
@@ -955,6 +985,8 @@ class AIImageService:
                     task_id,
                     exc,
                 )
+                if details.get("query_capability") == "openai_images_async":
+                    raise
 
         if self.db and self.adapter.name in {"gptimage2", "gptimage25"}:
             provider_service = AIImageProviderService(self.db)
@@ -981,7 +1013,7 @@ class AIImageService:
 
                 provider_result = await provider_service.generate(
                     prompt=prompt,
-                    params=params,
+                    params={**params, "_provider_request_id": f"web-ai-{task_id}"} if task_id else params,
                     user_id=user_id,
                     model_name=provider_model_name,
                     on_provider_selected=mark_selected_provider if task_id else None,

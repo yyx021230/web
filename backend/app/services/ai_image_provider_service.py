@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.storage import get_storage
 from app.adapters.ai_model.image_results import batch_result, requested_image_count, validate_image_count
+from app.adapters.ai_model.openai_image_tasks import generate_async_images, get_async_image_task_status
 from app.config import settings
 from app.models.ai_task import AITask
 from app.models.ai_image_provider import AIImageProvider
@@ -1026,6 +1027,7 @@ class AIImageProviderService:
         provider_id: int,
         upstream_task_id: str,
         expected_count: int | None = None,
+        query_capability: str | None = None,
     ) -> dict[str, Any]:
         """Query a previously accepted batch without submitting new work."""
 
@@ -1045,7 +1047,15 @@ class AIImageProviderService:
                 "image_urls": [],
                 "error": "缺少上游任务 ID",
             }
-        if (provider.provider_kind or "").strip().lower() != "mentalout_batch":
+        kind = (provider.provider_kind or "").strip().lower()
+        if kind == "openai_images" and (
+            (provider.config or {}).get("api_mode") == "sub2api_async"
+            or query_capability == "openai_images_async"
+        ):
+            async def extract(data: dict, seed: str) -> list[str]:
+                return await self._extract_image_urls(provider, data, seed)
+            return await get_async_image_task_status(provider, task_id, expected_count or 1, extract)
+        if kind != "mentalout_batch":
             return {
                 "task_id": task_id,
                 "status": "unsupported",
@@ -1083,7 +1093,10 @@ class AIImageProviderService:
 
         return batch_result(data, task_id, api_base, expected_count)
 
-    async def test_provider(self, provider_id: int, prompt: str, params: dict) -> dict:
+    async def test_provider(
+        self, provider_id: int, prompt: str, params: dict, *,
+        on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> dict:
         """后台真实调用指定入口生成测试图片。"""
         provider = await self.get_provider(provider_id)
         if not provider:
@@ -1109,11 +1122,21 @@ class AIImageProviderService:
                     "elapsed_seconds": 0.0, "provider": provider_meta}
         start = time.time()
         try:
-            result = await self._call_provider(provider, prompt, params)
+            if (provider.config or {}).get("api_mode") == "sub2api_async":
+                if on_upstream_accepted is None:
+                    raise ValueError("异步入口测试必须通过持久化测试任务提交")
+                result = await self._call_provider(provider, prompt, params, on_upstream_accepted=on_upstream_accepted)
+            else:
+                result = await self._call_provider(provider, prompt, params)
             elapsed = time.time() - start
-            await self._mark_success(provider, elapsed * 1000.0)
+            if result.get("status") == "completed":
+                await self._mark_success(provider, elapsed * 1000.0)
+            else:
+                await self._mark_failure(provider, result.get("error") or "测试未完成", elapsed * 1000.0)
             return {
                 "id": provider.id,
+                "upstream_task_id": result.get("task_id"),
+                "result_unknown": bool(result.get("result_unknown")),
                 "status": result.get("status") or "completed",
                 "image_urls": result.get("image_urls") or [],
                 "error": result.get("error"),
@@ -1128,6 +1151,7 @@ class AIImageProviderService:
             return {
                 "id": provider.id,
                 "status": "failed",
+                "result_unknown": bool(getattr(exc, "result_unknown", False)),
                 "image_urls": [],
                 "error": error,
                 "upstream_debug": upstream_debug,
@@ -1221,16 +1245,36 @@ class AIImageProviderService:
         task.elapsed_seconds = None
         await self.db.commit()
 
-        result = await self.test_provider(provider_id, task.prompt, run_params)
+        provider = await self.get_provider(provider_id)
+        if provider and (provider.config or {}).get("api_mode") == "sub2api_async":
+            from app.services.ai_image_service import AIImageService, _complete_critical_write_before_cancellation
+
+            async def accepted(details: dict) -> None:
+                await _complete_critical_write_before_cancellation(
+                    AIImageService(db=self.db)._mark_task_upstream_accepted(self.db, task_id, details)
+                )
+
+            result = await self.test_provider(provider_id, task.prompt, run_params, on_upstream_accepted=accepted)
+        else:
+            result = await self.test_provider(provider_id, task.prompt, run_params)
+        await self.db.refresh(task)
         task.status = "completed" if result.get("status") == "completed" and result.get("image_urls") else "failed"
         task.result_urls = result.get("image_urls") or []
         task.error = result.get("error")
+        if result.get("result_unknown"):
+            task.params = {**(task.params or {}), "_upstream_result_unknown": True}
         if result.get("upstream_debug"):
             task.params = {**(task.params or {}), "upstream_debug": result.get("upstream_debug")}
         task.elapsed_seconds = result.get("elapsed_seconds")
         task.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         task.params = compact_terminal_task_params(task.params)
         await self.db.commit()
+        if provider and (provider.config or {}).get("api_mode") == "sub2api_async":
+            from app.services.ai_image_shadow import mirror_ai_image_shadow_safely
+            await mirror_ai_image_shadow_safely(
+                task_id, phase="result_unknown" if result.get("result_unknown") else task.status,
+                result_unknown=bool(result.get("result_unknown")),
+            )
         return await self.get_provider_test_status(task_id)
 
     async def _mark_success(self, provider: AIImageProvider, elapsed_ms: float) -> None:
@@ -1270,6 +1314,14 @@ class AIImageProviderService:
     ) -> dict:
         kind = (provider.provider_kind or "openai_images").lower()
         if kind == "openai_images":
+            if (provider.config or {}).get("api_mode") == "sub2api_async":
+                async def extract(data: dict, seed: str) -> list[str]:
+                    return await self._extract_image_urls(provider, data, seed)
+                return await generate_async_images(
+                    provider, prompt, params, request_model=_resolve_provider_request_model(provider, params),
+                    ref_sources=_collect_reference_sources(params), reference_loader=_download_reference_file,
+                    image_extractor=extract, on_upstream_accepted=on_upstream_accepted,
+                )
             return await self._call_openai_images(provider, prompt, params)
         if kind == "mentalout_batch":
             return await self._call_mentalout_batch(
