@@ -8,7 +8,7 @@ def definitely_not_dispatched(params: dict | None) -> bool:
     return (
         (params.get("_routing") or {}).get("phase") in {"preparing", "waiting_provider"}
         and not params.get("_upstream_dispatch_started_at")
-        and not params.get("_upstream_attempts")
+        and (not params.get("_upstream_attempts") or params.get("_routing_last_attempt_safe") is True)
         and not params.get("provider")
     )
 
@@ -31,8 +31,11 @@ def image_task_progress(status: str, params: dict | None) -> dict:
         if phase == "preparing":
             message = "正在准备生成任务"
         elif phase == "waiting_provider":
-            message = ("可用入口暂时异常，正在等待恢复" if routing.get("reason") == "cooldown"
-                       else "可用入口并发已满，正在等待名额")
+            message = {
+                "cooldown": "可用入口暂时异常，正在等待恢复",
+                "routing_unavailable": "入口调度暂不可用，正在等待恢复",
+                "retry": "当前入口请求失败，正在重新尝试",
+            }.get(routing.get("reason"), "优先入口并发已满，正在等待名额")
         elif phase == "submitting":
             message = "已分配入口，正在等待上游生成结果"
     if status == "failed" and params.get("_upstream_result_unknown"):

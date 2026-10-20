@@ -905,7 +905,16 @@ class AIImageProviderService:
         on_provider_selected: Callable[[dict], Awaitable[bool | None]] | None = None,
         on_upstream_accepted: Callable[[dict], Awaitable[None]] | None = None,
         on_routing_wait: Callable[[dict], Awaitable[bool | None]] | None = None,
+        on_attempt_finished: Callable[[dict], Awaitable[None]] | None = None,
     ) -> dict:
+        if settings.ai_provider_primary_routing_enabled:
+            from app.services.ai_provider_routing import generate_primary_first
+
+            return await generate_primary_first(
+                self, prompt=prompt, params=params, model_name=model_name,
+                on_provider_selected=on_provider_selected, on_upstream_accepted=on_upstream_accepted,
+                on_routing_wait=on_routing_wait, on_attempt_finished=on_attempt_finished,
+            )
         providers = await self.list_providers(model_name)
         await self.release_routing_read_transaction()
         has_reference = bool(params.get("image_data") or params.get("image_url") or params.get("images_data"))
@@ -1680,7 +1689,11 @@ class AIImageProviderService:
                             if retry_delay > 0:
                                 await asyncio.sleep(retry_delay)
                             break
-                        raise ValueError(err or f"任务{status or 'failed'}")
+                        raise UpstreamProviderError(
+                            err or f"任务{status or 'failed'}",
+                            {"terminal_failure": all_rejected},
+                            result_unknown=not all_rejected,
+                        )
                 else:
                     return {**batch_state, "status": "failed", "result_unknown": True,
                             "error": f"批次仍未完整结束：请求 {payload['count']} 张，已返回 {len(batch_state['image_urls'])} 张；请查询原任务，未重新生成"}

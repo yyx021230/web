@@ -23,9 +23,10 @@ _ACTIVE = {"queued", "pending", "processing", "running", "generating"}
 
 
 class AsyncImageTaskError(RuntimeError):
-    def __init__(self, message: str, *, result_unknown: bool):
+    def __init__(self, message: str, *, result_unknown: bool, status_code: int | None = None):
         super().__init__(message)
         self.result_unknown = result_unknown
+        self.debug = {"status_code": status_code} if status_code is not None else None
 
 
 def _base_url(endpoint: str) -> str:
@@ -269,6 +270,7 @@ async def generate_async_images(
                     raise AsyncImageTaskError(
                         f"异步图片提交返回 HTTP {response.status_code}；未回退同步或重复提交",
                         result_unknown=unknown,
+                        status_code=response.status_code,
                     )
                 if response.is_redirect:
                     raise AsyncImageTaskError(

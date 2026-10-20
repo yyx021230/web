@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.4.2"
+    app_version: str = "0.5.0"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     ai_postprocess_worker_concurrency: int = 12
     ai_provider_circuit_breaker_seconds: int = 300
     ai_provider_wait_timeout_seconds: int = 300
+    ai_provider_primary_routing_enabled: bool = False
+    ai_provider_recovery_probe_seconds: int = 60
+    ai_provider_routing_namespace: str = "ai:image:provider-routing:v1"
     ai_image_shadow_enabled: bool = False
     ai_image_reconciliation_enabled: bool = False
     ai_image_reconciliation_interval_seconds: int = 60

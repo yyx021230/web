@@ -4,7 +4,26 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ## [Unreleased]
 
-No additional changes have been scheduled beyond the frozen candidate below.
+No additional changes are included beyond the scoped candidate below.
+
+## [0.5.0] - 2026-10-20
+
+Frozen local combined candidate; not deployed. Includes the unpublished
+0.4.2 transport fix. No database migration, dependency or permission change.
+
+### Added
+
+- Opt-in shared primary/standby image routing: two consecutive provider failures,
+  single-task recovery probes, and bounded durable waiting when routes are unavailable.
+- Keep a healthy busy primary preferred instead of spilling into paid backups;
+  share capacity and recovery decisions through Redis.
+
+### Fixed
+
+- Preserve asynchronous rejection status and distinguish local submission intent
+  from upstream acceptance when applying safe failover.
+- Never automatically resubmit ambiguous or partially completed image requests.
+  Existing disabled providers and unrelated feature flags remain unchanged.
 
 ## [0.4.2] - 2026-10-19
 

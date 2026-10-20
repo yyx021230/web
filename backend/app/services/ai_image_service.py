@@ -366,6 +366,7 @@ class AIImageService:
             **({"provider": provider} if provider else {}),
             "_routing": {"phase": "submitting", "since": now},
             "_upstream_dispatch_started_at": now,
+            "_routing_last_attempt_safe": False,
         }
         await session.commit()
         await mirror_ai_image_shadow_safely(
@@ -393,8 +394,35 @@ class AIImageService:
                 "phase": "waiting_provider", "reason": details.get("reason"),
                 "since": since or self._now_naive_utc().isoformat(),
             }}
+            if details.get("deadline") is not None:
+                task.params = {**task.params, "_provider_routing_deadline": details["deadline"]}
             await session.commit()
             return True
+
+    async def _mark_provider_attempt_finished(self, task_id: int, details: dict) -> None:
+        async with async_session() as session:
+            task = (await session.execute(
+                select(AITask).where(AITask.id == task_id)
+                .with_for_update().execution_options(populate_existing=True)
+            )).scalar_one_or_none()
+            if task is None:
+                raise ValueError("生图任务记录不存在")
+            params = dict(task.params or {})
+            attempts = list(params.get("_provider_routing_attempts") or [])
+            attempts.append({**details, "finished_at": self._now_naive_utc().isoformat()})
+            params["_provider_routing_attempts"] = attempts[-20:]
+            if details.get("safe_to_retry") and not details.get("result_unknown"):
+                # Keep historical accepted IDs, but explicitly close this attempt.
+                # Restart recovery may resume only while no later dispatch exists.
+                params.pop("_upstream_dispatch_started_at", None)
+                params.pop("provider", None)
+                params["_routing_last_attempt_safe"] = True
+                params["_routing"] = {"phase": "waiting_provider", "reason": "retry",
+                                      "since": self._now_naive_utc().isoformat()}
+            if details.get("deadline") is not None:
+                params["_provider_routing_deadline"] = details["deadline"]
+            task.params = params
+            await session.commit()
 
     async def _mark_task_upstream_accepted(
         self,
@@ -1011,6 +1039,11 @@ class AIImageService:
                     last_wait_reason = details.get("reason")
                     return active
 
+                async def mark_attempt_finished(details: dict) -> None:
+                    nonlocal last_wait_reason
+                    await self._mark_provider_attempt_finished(int(task_id), details)
+                    last_wait_reason = None
+
                 provider_result = await provider_service.generate(
                     prompt=prompt,
                     params={**params, "_provider_request_id": f"web-ai-{task_id}"} if task_id else params,
@@ -1019,6 +1052,8 @@ class AIImageService:
                     on_provider_selected=mark_selected_provider if task_id else None,
                     on_upstream_accepted=mark_upstream_accepted if task_id else None,
                     on_routing_wait=mark_routing_wait if task_id else None,
+                    **({"on_attempt_finished": mark_attempt_finished}
+                       if task_id and settings.ai_provider_primary_routing_enabled else {}),
                 )
                 if not self._should_fallback_to_adapter(provider_result):
                     return provider_result
