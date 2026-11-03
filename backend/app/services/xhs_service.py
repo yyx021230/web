@@ -2330,11 +2330,16 @@ class XHSService:
             logger.warning("投流看板缓存清理失败: %s", exc)
         return result
 
-    async def refresh_report_token_statuses(self, *, concurrency: int = 8) -> dict[str, Any]:
+    async def refresh_report_token_statuses(
+        self, *, concurrency: int = 8, exclude_account_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        tokens_stmt = select(XHSReportToken)
+        if exclude_account_ids:
+            tokens_stmt = tokens_stmt.where(XHSReportToken.account_id.not_in(exclude_account_ids))
         token_rows = list(
             (
                 await self.db.execute(
-                    select(XHSReportToken).order_by(XHSReportToken.account_name.asc())
+                    tokens_stmt.order_by(XHSReportToken.account_name.asc())
                 )
             ).scalars().all()
         )
@@ -2398,6 +2403,7 @@ class XHSService:
         successful_tokens_only: bool = False,
         use_cached_tokens: bool = False,
         defer_post_processing: bool = False,
+        exclude_account_ids: list[str] | None = None,
     ) -> dict:
         api_path = REPORT_API_PATHS.get(report_type)
         if not api_path:
@@ -2408,6 +2414,8 @@ class XHSService:
             days=days,
         )
         tokens_stmt = select(XHSReportToken)
+        if exclude_account_ids:
+            tokens_stmt = tokens_stmt.where(XHSReportToken.account_id.not_in(exclude_account_ids))
         if account_id:
             tokens_stmt = tokens_stmt.where(XHSReportToken.account_id == account_id)
         elif account_name:

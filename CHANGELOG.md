@@ -6,6 +6,18 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 No additional changes are included beyond the scoped candidate below.
 
+## [0.5.1] - 2026-11-03
+
+Minimal scheduled advertising refresh candidate; not a deployment receipt.
+No database migration, dependency, permission or image-generation changes.
+
+### Fixed
+
+- Honor configured advertising-account exclusions before scheduled token retrieval
+  and all five report refreshes, without deleting accounts or historical data.
+- Preserve exclusions when older admin clients save schedule settings; keep manual
+  backfills available and report exclusions separately from token failures.
+
 ## [0.5.0] - 2026-10-20
 
 Frozen local combined candidate; not deployed. Includes the unpublished

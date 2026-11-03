@@ -102,6 +102,7 @@ def _default_task_definition(task_key: str) -> dict[str, Any]:
                 "start_date": "",
                 "end_date": "",
                 "report_types": list(AD_REPORT_TYPES),
+                "excluded_account_ids": [],
             },
         }
     if task_key == AD_REPORT_PUBLISH_TASK:
@@ -183,6 +184,15 @@ def _normalize_task_config(task_key: str, config: dict[str, Any] | None) -> dict
         raw_report_types = merged.get("report_types") or list(AD_REPORT_TYPES)
         normalized_report_types = [str(item).strip() for item in raw_report_types if str(item).strip() in AD_REPORT_TYPES]
         merged["report_types"] = normalized_report_types or list(AD_REPORT_TYPES)
+        excluded = merged.get("excluded_account_ids", [])
+        if not isinstance(excluded, list) or any(
+            not isinstance(item, (str, int)) or isinstance(item, bool)
+            or not str(item).strip().isascii() or not str(item).strip().isdigit()
+            or int(str(item).strip()) <= 0
+            for item in excluded
+        ):
+            raise ValueError("定时排除账户必须是有效广告账户 ID 列表")
+        merged["excluded_account_ids"] = sorted({str(item).strip() for item in excluded})
         return merged
     if task_key == AD_REPORT_PUBLISH_TASK:
         raw_account_ids = merged.get("account_ids") or []
@@ -663,9 +673,13 @@ class XHSScheduleService:
         was_enabled = bool(row.enabled)
         previous_run_time = _normalize_run_time(row.run_time)
         normalized_run_time = _normalize_run_time(run_time)
+        # Older admin clients do not send this field when saving the schedule.
+        if task_key == AD_DATA_REFRESH_TASK and "excluded_account_ids" not in (config or {}):
+            config = {**(config or {}), "excluded_account_ids": (row.config or {}).get("excluded_account_ids", [])}
+        normalized_config = _normalize_task_config(task_key, config)
         row.enabled = bool(enabled)
         row.run_time = normalized_run_time
-        row.config = _normalize_task_config(task_key, config)
+        row.config = normalized_config
         schedule_changed = not was_enabled or previous_run_time != normalized_run_time
         if row.enabled and schedule_changed:
             scheduled_today = _scheduled_time_today(normalized_run_time)
@@ -835,6 +849,9 @@ async def _execute_ad_data_refresh(
     history_run_id: int | None = None,
 ) -> str:
     service = XHSService(session)
+    config = _normalize_task_config(AD_DATA_REFRESH_TASK, config)
+    excluded_account_ids = config["excluded_account_ids"]
+    exclusion_options = {"exclude_account_ids": excluded_account_ids} if excluded_account_ids else {}
     start_d, end_d, days = _resolve_ad_refresh_date_range(config)
     report_types = [str(item).strip() for item in (config.get("report_types") or AD_REPORT_TYPES) if str(item).strip() in AD_REPORT_TYPES]
     report_types = report_types or list(AD_REPORT_TYPES)
@@ -848,7 +865,7 @@ async def _execute_ad_data_refresh(
     refreshed_report_types: list[str] = []
     await mark_report_refresh_running_safely(history_run_id)
     try:
-        token_refresh = await service.refresh_report_token_statuses()
+        token_refresh = await service.refresh_report_token_statuses(**exclusion_options)
     except Exception as exc:
         await finish_report_refresh_run_safely(
             history_run_id,
@@ -877,6 +894,7 @@ async def _execute_ad_data_refresh(
                 successful_tokens_only=True,
                 use_cached_tokens=True,
                 defer_post_processing=True,
+                **exclusion_options,
             )
         except Exception as exc:
             await record_report_refresh_result_safely(
@@ -932,6 +950,8 @@ async def _execute_ad_data_refresh(
     )
     progress = f"{token_progress}，成功 {total_accounts}/{total_attempted_accounts} 个账户报表组合"
     skipped = f"，跳过 Token 不可用账户 {len(skipped_token_accounts)} 个" if skipped_token_accounts else ""
+    if excluded_account_ids:
+        skipped += f"，按配置排除 {len(excluded_account_ids)} 个广告账户（{', '.join(excluded_account_ids)}）"
     if errors:
         message = f"刷新完成，日期 {start_d.isoformat()} 至 {end_d.isoformat()}，{progress}{skipped}，读取 {total_rows} 行，实际变更 {total_changed_rows} 行，异常 {len(errors)} 条"
     else:
