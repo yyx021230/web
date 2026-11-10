@@ -4,7 +4,9 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ## [Unreleased]
 
-No additional changes are included beyond the scoped candidate below.
+### Fixed
+
+- Local candidate: admin schedule history uses server-side pagination and shows per-run advertising authorization issues by account, with separate statuses for missing, cached, and rejected tokens. Historical evidence may be partial. No schema change or deployment.
 
 ## [0.5.1] - 2026-11-03
 

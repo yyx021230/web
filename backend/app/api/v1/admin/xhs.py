@@ -119,12 +119,15 @@ async def list_schedule_settings(
 async def list_schedule_run_logs(
     task_key: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    page: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
     if task_key and task_key not in ALL_SCHEDULE_TASK_KEYS:
         raise HTTPException(status_code=404, detail="定时任务不存在")
     service = XHSScheduleService(db)
+    if page is not None:
+        return ApiResponse(data=await service.list_run_log_page(task_key=task_key, page=page, limit=limit))
     return ApiResponse(data=await service.list_run_logs(task_key=task_key, limit=limit))
 
 

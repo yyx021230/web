@@ -4,10 +4,12 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+from app.config import settings
 from app.db.session import async_session as session_factory
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_report import XHSReportDaily
 from app.models.xhs_schedule_run_log import XHSScheduleRunLog
+from app.models.xhs_report_refresh_run import XHSReportRefreshRun
 from app.services import xhs_schedule_service as module
 from app.services.xhs_schedule_service import (
     ACCOUNT_DATA_SYNC_TASK,
@@ -33,6 +35,61 @@ from app.services.xhs_schedule_service import (
     due_xhs_schedule_task_keys,
     trigger_xhs_scheduled_task,
 )
+
+
+@pytest.mark.asyncio
+async def test_schedule_keeps_full_token_diagnostics_without_job_shadow(client, monkeypatch):
+    monkeypatch.setattr(settings, "xhs_report_refresh_shadow_enabled", False)
+    missing = [{"account_id": str(i), "account_name": f"账户{i}", "error": "操作成功！"}
+               for i in range(100, 126)]
+    cached = {"account_id": "500", "account_name": "使用缓存", "error": "timeout secret-token-value"}
+    denied = {"account_id": "600", "account_name": "拒绝授权", "stage": "report",
+              "error": "access_token错误 secret-token-value"}
+
+    class ReportService:
+        def __init__(self, _db):
+            pass
+
+        async def refresh_report_token_statuses(self):
+            return {"configured_accounts": 28, "valid_accounts": [denied], "failed_accounts": missing,
+                    "transient_errors": [cached]}
+
+        async def refresh_jg_report_cache(self, **kwargs):
+            return {"updated_accounts": 1, "attempted_accounts": 2, "errors": ["access_token错误"],
+                    "skipped_token_accounts": missing, "failed_accounts": [denied]}
+
+        async def finalize_jg_report_refresh(self, **kwargs):
+            return {"errors": []}
+
+    monkeypatch.setattr(module, "XHSService", ReportService)
+    async with session_factory() as db:
+        log = XHSScheduleRunLog(task_key=AD_DATA_REFRESH_TASK, source="schedule", status="running")
+        db.add(log)
+        await db.flush()
+        log_id = log.id
+        await db.commit()
+    config = {"date_range_mode": "fixed", "start_date": "2026-10-17", "end_date": "2026-10-17",
+              "report_types": ["simple", "standard"]}
+    history_id = await module.create_report_refresh_run_safely(
+        job_id=f"schedule:{log_id}:ad-data-refresh", source="schedule", schedule_run_id=log_id,
+        request_config=config,
+    )
+    assert history_id
+    async with session_factory() as db:
+        await _execute_ad_data_refresh(db, config, history_run_id=history_id)
+    async with session_factory() as db:
+        saved = await db.get(XHSReportRefreshRun, history_id)
+        assert saved.status == "failed"
+        result = await XHSScheduleService(db).list_run_log_page(task_key=AD_DATA_REFRESH_TASK, page=1, limit=10)
+        log = result["items"][0]
+        assert log["token_details_status"] == "recorded"
+        issues = {item["account_id"]: item for item in log["token_issues"]}
+        assert len(issues) == 28
+        assert issues["125"]["status"] == "missing"
+        assert issues["125"]["report_types"] == ["simple", "standard"]
+        assert issues["500"]["status"] == "cached"
+        assert issues["600"]["status"] == "rejected"
+        assert "secret-token-value" not in str(log)
 
 
 @pytest.mark.asyncio
