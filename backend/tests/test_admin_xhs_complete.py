@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -10,6 +10,8 @@ from app.models.user import User
 from app.models.xhs_ad_account_assignment import XHSAdAccountBuyerAssignment, XHSAdAccountProfessionalMapping
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_report import XHSReportDaily, XHSReportToken
+from app.models.xhs_report_refresh_run import XHSReportRefreshRun
+from app.models.xhs_schedule_run_log import XHSScheduleRunLog
 from app.services.xhs_schedule_service import XHSScheduleService
 from app.services.xhs_service import XHSService
 from tests.conftest import make_auth_headers
@@ -55,6 +57,39 @@ async def _seed_admin_xhs_data():
         )
         await db.commit()
     return users, envs
+
+
+@pytest.mark.asyncio
+async def test_schedule_history_paginates_and_distinguishes_legacy_token_evidence(client):
+    users, _ = await _seed_admin_xhs_data()
+    task = "ad_data_refresh"
+    async with async_session() as db:
+        db.add_all([
+            XHSScheduleRunLog(id=i, task_key=task if i <= 83 else "ad_report_publish",
+                              source="schedule", status="partial", started_at=datetime(2026, 10, 18))
+            for i in range(1, 86)
+        ])
+        await db.flush()
+        db.add(XHSReportRefreshRun(
+            job_id="older-91", source="schedule", status="failed", schedule_run_id=3, request_config={},
+            error="8343103 上海炎创-云特曼3: Token 不可用: token接口失败: 操作成功！ | "
+                  "8829829 上海炎创-云特曼5: Token 不可用: token接口失败: 操作成功！",
+        ))
+        await db.commit()
+    url = "/api/v1/admin/xhs/schedule-run-logs"
+    headers = make_auth_headers(users[0].id)
+    first = (await client.get(url, params={"page": 1, "limit": 10}, headers=headers)).json()["data"]
+    assert first["total"] == 85 and first["total_pages"] == 9
+    assert [row["id"] for row in first["items"]] == list(range(85, 75, -1))
+    assert "token_issues" not in first["items"][0]
+    last = (await client.get(url, params={"page": 9, "limit": 10, "task_key": task}, headers=headers)).json()["data"]
+    assert last["total"] == 83
+    assert [row["id"] for row in last["items"]] == [3, 2, 1]
+    assert last["items"][0]["token_details_status"] == "partial"
+    assert [row["account_id"] for row in last["items"][0]["token_issues"]] == ["8343103", "8829829"]
+    assert last["items"][1]["token_details_status"] == "unavailable"
+    assert (await client.get(url, params={"page": 1}, headers=make_auth_headers(users[1].id))).status_code == 403
+    assert (await client.get(url, params={"page": 0}, headers=headers)).status_code == 422
 
 
 @pytest.mark.asyncio

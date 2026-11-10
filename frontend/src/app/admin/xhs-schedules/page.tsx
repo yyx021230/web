@@ -86,6 +86,21 @@ interface ScheduleRunLog {
   started_at?: string | null;
   finished_at?: string | null;
   updated_at?: string | null;
+  token_details_status?: 'recorded' | 'partial' | 'unavailable';
+  token_issues?: Array<{
+    account_id: string;
+    account_name: string;
+    status: 'missing' | 'cached' | 'rejected';
+    reason: string;
+    report_types: string[];
+  }>;
+}
+
+interface ScheduleLogPage {
+  items: ScheduleRunLog[];
+  page: number;
+  total: number;
+  total_pages: number;
 }
 
 interface ScheduleDraft {
@@ -325,37 +340,194 @@ function ScheduleToggleSwitch({
   );
 }
 
+const TOKEN_STATUS_LABEL = {
+  missing: '未取得 Token',
+  cached: '继续使用缓存 Token',
+  rejected: '报表拒绝授权',
+};
+
+function ScheduleRunResult({ log }: { log: ScheduleRunLog }) {
+  const issues = log.token_issues || [];
+  const blocked = issues.filter((item) => item.status !== 'cached').length;
+  return (
+    <div className="max-w-[520px] text-sm leading-6 text-slate-700">
+      <div>{log.message || '暂无记录'}</div>
+      {issues.length > 0 ? (
+        <details className="mt-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-1.5">
+          <summary className="cursor-pointer font-semibold text-amber-900">
+            Token 异常 {issues.length} 个{blocked ? `，影响同步 ${blocked} 个` : ''} · 查看账户
+          </summary>
+          {log.token_details_status === 'partial' && (
+            <p className="text-xs text-amber-900">旧日志仅能恢复部分名单，可能不全。</p>
+          )}
+          <ul className="mt-1 max-h-64 divide-y divide-amber-200/70 overflow-y-auto">
+            {issues.map((item) => (
+              <li key={item.account_id} className="break-words py-2">
+                <span className="font-semibold text-slate-900">{item.account_name}</span>
+                <span className="ml-2 font-mono text-xs text-slate-600">{item.account_id}</span>
+                <div className="text-xs leading-5 text-slate-700">
+                  {TOKEN_STATUS_LABEL[item.status]}：{item.reason}
+                </div>
+                {item.report_types.length > 0 && (
+                  <div className="text-xs text-slate-500">
+                    涉及报表：{item.report_types.map((type) => REPORT_TYPE_LABELS[type] || type).join('、')}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : log.token_details_status === 'unavailable' ? (
+        <p className="mt-1 text-xs text-slate-500">本次执行未记录 Token 明细</p>
+      ) : log.token_details_status === 'recorded' ? (
+        <p className="mt-1 text-xs text-slate-500">未发现 Token 异常</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ScheduleHistory({ settings, revision, taskKey }: {
+  settings: ScheduleSetting[];
+  revision: number;
+  taskKey?: string;
+}) {
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<ScheduleLogPage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const compact = !!taskKey;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setFailed(false);
+    api.get('/admin/xhs/schedule-run-logs', {
+      params: { page, limit: taskKey ? 8 : 15, task_key: taskKey },
+      signal: controller.signal,
+    }).then((response) => {
+      if (controller.signal.aborted) return;
+      if (!Array.isArray(response.data?.items)) throw new Error('Invalid schedule history response');
+      setResult(response.data as ScheduleLogPage);
+    }).catch(() => {
+      if (!controller.signal.aborted) setFailed(true);
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [page, retry, revision, taskKey]);
+
+  const logs = result?.items || [];
+  const statusBadge = (log: ScheduleRunLog) => (
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getScheduleStatusTone(log.status, log.status === 'running')}`}>
+      {getRunStatusLabel(log.status, log.status === 'running')}
+    </span>
+  );
+  return (
+    <section className={compact
+      ? 'rounded-[24px] border border-slate-200 bg-white p-4'
+      : 'overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.08)]'}>
+      <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 ${compact ? 'pb-3' : 'px-5 py-4'}`}>
+        {compact ? (
+          <h2 className="text-sm font-semibold text-slate-950">当前任务历史记录</h2>
+        ) : (
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Run History</div>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">历史执行记录</h2>
+          </div>
+        )}
+        {result && <span className="text-sm text-slate-500">共 {result.total} 条</span>}
+      </div>
+      {failed ? (
+        <div className="p-4 text-sm text-slate-600">
+          加载执行记录失败。<button type="button" className="font-semibold text-slate-900 underline" onClick={() => setRetry((value) => value + 1)}>重试</button>
+        </div>
+      ) : loading ? (
+        <div role="status" className="p-4 text-sm text-slate-500">正在加载执行记录...</div>
+      ) : logs.length === 0 ? (
+        <div className="p-4 text-sm text-slate-500">暂无执行记录</div>
+      ) : compact ? (
+        <div className="mt-3 space-y-3">
+          {logs.map((log) => (
+            <div key={log.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                {statusBadge(log)}
+                <span>{getRunSourceLabel(log.source)}</span>
+                <span>{formatEventTime(log.started_at)} 至 {formatEventTime(log.finished_at)}</span>
+              </div>
+              <ScheduleRunResult log={log} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-500">
+              <tr>
+                {['任务', '触发方式', '状态', '开始时间', '结束时间', '结果'].map((label) => (
+                  <th key={label} scope="col" className="px-5 py-3">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} className="border-t border-slate-200 align-top text-sm text-slate-700">
+                  <td className="px-5 py-4 font-semibold text-slate-900">{getTaskLabel(log.task_key, settings)}</td>
+                  <td className="px-5 py-4">{getRunSourceLabel(log.source)}</td>
+                  <td className="whitespace-nowrap px-5 py-4">{statusBadge(log)}</td>
+                  <td className="whitespace-nowrap px-5 py-4">{formatEventTime(log.started_at)}</td>
+                  <td className="whitespace-nowrap px-5 py-4">{formatEventTime(log.finished_at)}</td>
+                  <td className="min-w-[240px] px-5 py-4"><ScheduleRunResult log={log} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {result && result.total > 0 && (
+        <nav aria-label={compact ? '当前任务历史分页' : '执行记录分页'}
+          className={`mt-3 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 text-sm ${compact ? 'pt-3' : 'px-5 py-3'}`}>
+          <button type="button" disabled={loading || failed || result.page <= 1}
+            onClick={() => setPage(result.page - 1)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40">上一页</button>
+          <span className="tabular-nums text-slate-500">第 {result.page} / {result.total_pages} 页</span>
+          <button type="button" disabled={loading || failed || result.page >= result.total_pages}
+            onClick={() => setPage(result.page + 1)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40">下一页</button>
+        </nav>
+      )}
+    </section>
+  );
+}
+
 export default function AdminXhsSchedulesPage() {
   const [envs, setEnvs] = useState<XHSEnvironment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOption[]>([]);
   const [scheduleSettings, setScheduleSettings] = useState<ScheduleSetting[]>([]);
-  const [scheduleLogs, setScheduleLogs] = useState<ScheduleRunLog[]>([]);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, ScheduleDraft>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [activeTaskKey, setActiveTaskKey] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [envRes, userRes, adAccountRes, scheduleRes, scheduleLogRes] = await Promise.all([
+      const [envRes, userRes, adAccountRes, scheduleRes] = await Promise.all([
         api.get('/xhs/environments').catch(() => null),
         adminApi.getUsers(1, 100),
         adminApi.getXhsAdAccountAssignments().catch(() => null),
         api.get('/admin/xhs/schedule-settings'),
-        api.get('/admin/xhs/schedule-run-logs?limit=80'),
       ]);
       const nextEnvs = (envRes?.data || []) as XHSEnvironment[];
       const nextUsers = (userRes?.data?.items || []) as User[];
       const nextAdAccounts = (adAccountRes?.data || []) as AdAccountOption[];
       const nextSchedules = (scheduleRes?.data || []) as ScheduleSetting[];
-      const nextScheduleLogs = (scheduleLogRes?.data || []) as ScheduleRunLog[];
       setEnvs(nextEnvs);
       setUsers(nextUsers);
       setAdAccounts(nextAdAccounts);
       setScheduleSettings(nextSchedules);
-      setScheduleLogs(nextScheduleLogs);
       setScheduleDrafts(Object.fromEntries(nextSchedules.map((item) => [item.task_key, buildScheduleDraft(item)])));
       setActiveTaskKey((current) => (current && nextSchedules.some((item) => item.task_key === current) ? current : null));
     } catch (err: any) {
@@ -385,10 +557,6 @@ export default function AdminXhsSchedulesPage() {
   const activeSetting = useMemo(
     () => scheduleSettings.find((item) => item.task_key === activeTaskKey) || null,
     [activeTaskKey, scheduleSettings],
-  );
-  const activeTaskLogs = useMemo(
-    () => (activeTaskKey ? scheduleLogs.filter((item) => item.task_key === activeTaskKey) : []),
-    [activeTaskKey, scheduleLogs],
   );
   const activeDraft = activeTaskKey ? scheduleDrafts[activeTaskKey] : undefined;
   const selectedAdAccounts = useMemo(() => {
@@ -528,7 +696,10 @@ export default function AdminXhsSchedulesPage() {
             </div>
             <button
               type="button"
-              onClick={fetchData}
+              onClick={() => {
+                void fetchData();
+                setHistoryRevision((value) => value + 1);
+              }}
               disabled={loading}
               className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/14 bg-white/8 px-4 text-sm font-semibold text-white transition-all hover:bg-white/12 disabled:opacity-50"
             >
@@ -632,54 +803,7 @@ export default function AdminXhsSchedulesPage() {
         )}
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.08)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Run History</div>
-            <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">历史执行记录</h2>
-          </div>
-          <div className="text-sm text-slate-500">保留最近 {scheduleLogs.length} 条执行记录</div>
-        </div>
-
-        {scheduleLogs.length === 0 ? (
-          <div className="grid min-h-[220px] place-items-center px-5 py-10 text-center text-sm text-slate-500">
-            暂无执行日志
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed">
-              <thead className="bg-slate-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  <th className="px-5 py-3">任务</th>
-                  <th className="px-5 py-3">触发方式</th>
-                  <th className="px-5 py-3">状态</th>
-                  <th className="px-5 py-3">开始时间</th>
-                  <th className="px-5 py-3">结束时间</th>
-                  <th className="px-5 py-3">结果</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scheduleLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-slate-200 align-top">
-                    <td className="px-5 py-4 text-sm font-semibold text-slate-900">{getTaskLabel(log.task_key, scheduleSettings)}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{getRunSourceLabel(log.source)}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getScheduleStatusTone(log.status, log.status === 'running')}`}>
-                        {getRunStatusLabel(log.status, log.status === 'running')}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700">{formatEventTime(log.started_at)}</td>
-                    <td className="px-5 py-4 text-sm text-slate-700">{formatEventTime(log.finished_at)}</td>
-                    <td className="px-5 py-4">
-                      <div className="max-w-[520px] text-sm leading-6 text-slate-600">{log.message || '暂无记录'}</div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <ScheduleHistory settings={scheduleSettings} revision={historyRevision} />
 
       {activeSetting && activeDraft ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/28 backdrop-blur-sm" onClick={() => setActiveTaskKey(null)}>
@@ -1291,31 +1415,8 @@ export default function AdminXhsSchedulesPage() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                  <div className="text-sm font-semibold text-slate-950">当前任务历史记录</div>
-                  <div className="text-xs text-slate-500">最近 {activeTaskLogs.length} 条</div>
-                </div>
-                {activeTaskLogs.length === 0 ? (
-                  <div className="py-6 text-sm text-slate-500">当前任务还没有执行记录</div>
-                ) : (
-                  <div className="mt-3 space-y-3">
-                    {activeTaskLogs.slice(0, 12).map((log) => (
-                      <div key={log.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getScheduleStatusTone(log.status, log.status === 'running')}`}>
-                            {getRunStatusLabel(log.status, log.status === 'running')}
-                          </span>
-                          <span className="text-xs text-slate-500">{getRunSourceLabel(log.source)}</span>
-                          <span className="text-xs text-slate-400">{formatEventTime(log.started_at)}</span>
-                          <span className="text-xs text-slate-400">至 {formatEventTime(log.finished_at)}</span>
-                        </div>
-                        <div className="mt-2 text-sm leading-6 text-slate-700">{log.message || '暂无记录'}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ScheduleHistory key={activeSetting.task_key} taskKey={activeSetting.task_key}
+                settings={scheduleSettings} revision={historyRevision} />
             </div>
 
             <div className="sticky bottom-0 border-t border-slate-200 bg-white px-5 py-4">

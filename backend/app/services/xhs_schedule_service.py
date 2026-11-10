@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 import httpx
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import settings
@@ -21,11 +21,13 @@ from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_schedule_setting import XHSScheduleSetting
 from app.services.xhs_service import XHSService
+from app.services.xhs_report_token_diagnostics import legacy_token_issues
 from app.services.xhs_report_refresh_shadow import (
     create_report_refresh_run_safely,
     finish_report_refresh_run_safely,
     mark_report_refresh_running_safely,
     record_report_refresh_result_safely,
+    record_report_token_issues_safely,
 )
 from app.utils.timezone import cst_now_naive, utc_now_naive, utc_naive_to_aware_iso, utc_naive_to_cst_naive
 
@@ -645,6 +647,39 @@ class XHSScheduleService:
         rows = (await self.db.execute(stmt)).scalars().all()
         return [self.serialize_run_log(row) for row in rows]
 
+    async def list_run_log_page(self, *, task_key: str | None, page: int, limit: int) -> dict[str, Any]:
+        conditions = [XHSScheduleRunLog.task_key == task_key] if task_key else []
+        total = int(await self.db.scalar(select(func.count()).select_from(XHSScheduleRunLog).where(*conditions)) or 0)
+        total_pages = max(1, (total + limit - 1) // limit)
+        page = min(page, total_pages)
+        rows = (await self.db.scalars(
+            select(XHSScheduleRunLog).where(*conditions)
+            .order_by(XHSScheduleRunLog.started_at.desc(), XHSScheduleRunLog.id.desc())
+            .offset((page - 1) * limit).limit(limit)
+        )).all()
+        report_runs = {}
+        ad_run_ids = [row.id for row in rows if row.task_key == AD_DATA_REFRESH_TASK]
+        if ad_run_ids:
+            for run in (await self.db.scalars(
+                select(XHSReportRefreshRun).where(XHSReportRefreshRun.schedule_run_id.in_(ad_run_ids))
+                .order_by(XHSReportRefreshRun.id.desc())
+            )).all():
+                report_runs.setdefault(run.schedule_run_id, run)
+
+        items = []
+        for row in rows:
+            item = self.serialize_run_log(row)
+            if row.task_key == AD_DATA_REFRESH_TASK:
+                run = report_runs.get(row.id)
+                summary = (run.result_summary if run else None) or {}
+                if "token_issues" in summary:
+                    item.update(token_issues=summary["token_issues"], token_details_status="recorded")
+                else:
+                    issues = legacy_token_issues(summary, run.error if run else None)
+                    item.update(token_issues=issues, token_details_status="partial" if issues else "unavailable")
+            items.append(item)
+        return {"items": items, "page": page, "page_size": limit, "total": total, "total_pages": total_pages}
+
     async def get_row(self, task_key: str) -> XHSScheduleSetting:
         if task_key not in ALL_SCHEDULE_TASK_KEYS:
             raise ValueError("不支持的定时任务")
@@ -857,6 +892,7 @@ async def _execute_ad_data_refresh(
             error=str(exc),
         )
         raise
+    await record_report_token_issues_safely(history_run_id, result=token_refresh)
     for item in token_refresh.get("failed_accounts") or []:
         errors.append(
             f"{item.get('account_id')} {item.get('account_name')}: Token 不可用: {item.get('error')}"

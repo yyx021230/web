@@ -13,6 +13,7 @@ from app.db.session import async_session
 from app.models.job import Job, JobItem, JobStatus, TERMINAL_JOB_STATUSES
 from app.models.xhs_report_refresh_run import XHSReportRefreshRun
 from app.services.job_service import JobService
+from app.services.xhs_report_token_diagnostics import merge_token_issues, report_token_issues, token_issue
 from app.utils.timezone import utc_now_naive
 
 
@@ -158,12 +159,29 @@ class ReportRefreshRunService:
             "preserved_empty_accounts": preserved_empty_accounts,
         }
         summary = _summary_with_entry(run.result_summary, entry)
+        if "token_issues" in summary:
+            summary["token_issues"] = merge_token_issues(
+                summary["token_issues"], report_token_issues(payload, normalized_type)
+            )
         run.result_summary = summary
         run.message = entry["message"]
         if normalized_status == "failed":
             run.error = _bounded_text(error) or "报表刷新失败"
         await self.db.flush()
         return entry
+
+    async def record_token_issues(self, run: XHSReportRefreshRun, *, result: dict[str, Any]) -> None:
+        if run.status in TERMINAL_RUN_STATUSES:
+            return
+        issues = [
+            token_issue(item, status)
+            for key, status in (("failed_accounts", "missing"), ("transient_errors", "cached"))
+            for item in result.get(key) or []
+            if isinstance(item, dict)
+        ]
+        summary = run.result_summary or _empty_result_summary()
+        run.result_summary = {**summary, "token_issues": merge_token_issues(summary.get("token_issues", []), issues)}
+        await self.db.flush()
 
     async def finish(
         self,
@@ -195,7 +213,7 @@ class ReportRefreshRunService:
                 "error_code": "missing_report_result",
                 "message": "任务结束前未记录该报表结果",
             }
-        run.result_summary = _build_result_summary(reports)
+        run.result_summary = _build_result_summary(reports, run.result_summary)
         run.status = normalized_status
         run.message = _bounded_text(message)
         run.error = _bounded_text(error) if error else None
@@ -378,7 +396,7 @@ async def create_report_refresh_run_safely(
     requested_by_user_id: int | None = None,
     schedule_run_id: int | None = None,
 ) -> int | None:
-    if not settings.xhs_report_refresh_shadow_enabled:
+    if not settings.xhs_report_refresh_shadow_enabled and schedule_run_id is None:
         return None
     try:
         async with async_session() as db:
@@ -389,7 +407,8 @@ async def create_report_refresh_run_safely(
                 requested_by_user_id=requested_by_user_id,
                 schedule_run_id=schedule_run_id,
             )
-            await ReportRefreshShadowAdapter(db).mirror(int(run.id))
+            if settings.xhs_report_refresh_shadow_enabled:
+                await ReportRefreshShadowAdapter(db).mirror(int(run.id))
             await db.commit()
             return int(run.id)
     except Exception:
@@ -399,6 +418,10 @@ async def create_report_refresh_run_safely(
 
 async def mark_report_refresh_running_safely(run_id: int | None) -> None:
     await _mutate_run_safely(run_id, "mark_running")
+
+
+async def record_report_token_issues_safely(run_id: int | None, *, result: dict[str, Any]) -> None:
+    await _mutate_run_safely(run_id, "record_token_issues", result=result)
 
 
 async def record_report_refresh_result_safely(
@@ -440,7 +463,7 @@ async def _mutate_run_safely(
     method_name: str,
     **kwargs: Any,
 ) -> None:
-    if not settings.xhs_report_refresh_shadow_enabled or not run_id:
+    if not run_id:
         return
     try:
         async with async_session() as db:
@@ -449,7 +472,8 @@ async def _mutate_run_safely(
                 return
             method = getattr(ReportRefreshRunService(db), method_name)
             await method(run, **kwargs)
-            await ReportRefreshShadowAdapter(db).mirror(int(run.id))
+            if settings.xhs_report_refresh_shadow_enabled and method_name != "record_token_issues":
+                await ReportRefreshShadowAdapter(db).mirror(int(run.id))
             await db.commit()
     except Exception:
         logger.exception(
@@ -515,11 +539,12 @@ def _reports_by_type(value: Any) -> dict[str, dict[str, Any]]:
 def _summary_with_entry(value: Any, entry: dict[str, Any]) -> dict[str, Any]:
     reports = _reports_by_type(value)
     reports[str(entry["report_type"])] = copy.deepcopy(entry)
-    return _build_result_summary(reports)
+    return _build_result_summary(reports, value)
 
 
 def _build_result_summary(
     reports: dict[str, dict[str, Any]],
+    previous: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     ordered = [
         reports[report_type]
@@ -533,6 +558,7 @@ def _build_result_summary(
         ),
         "updated_rows": sum(_safe_int(item.get("updated_rows")) for item in ordered),
         "error_count": sum(_safe_int(item.get("error_count")) for item in ordered),
+        **({"token_issues": previous["token_issues"]} if previous and "token_issues" in previous else {}),
     }
 
 
