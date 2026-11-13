@@ -39,6 +39,7 @@ class XHSAccountSyncRunItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     run_id = Column(Integer, ForeignKey("xhs_account_sync_runs.id"), nullable=False, index=True)
     environment_id = Column(Integer, ForeignKey("xhs_environments.id"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("xhs_accounts.id"), nullable=True, index=True)
     account_name = Column(String(200), nullable=False, default="")
     status = Column(String(32), nullable=False, default="queued", server_default="queued", index=True)
     message = Column(Text, nullable=True)

@@ -10,11 +10,13 @@ class XHSCreatorSyncRow(Base):
     __tablename__ = "xhs_creator_sync_rows"
     __table_args__ = (
         UniqueConstraint("sync_run_id", "environment_id", "source_row_index", name="uq_xhs_creator_sync_run_row"),
+        UniqueConstraint("sync_run_id", "account_id", "source_row_index", name="uq_xhs_creator_master_run_row"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     sync_run_id = Column(Integer, ForeignKey("xhs_account_sync_runs.id"), nullable=True, index=True)
-    environment_id = Column(Integer, ForeignKey("xhs_environments.id"), nullable=False, index=True)
+    environment_id = Column(Integer, ForeignKey("xhs_environments.id"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("xhs_accounts.id"), nullable=True, index=True)
     matched_note_id = Column(Integer, ForeignKey("xhs_account_notes.id"), nullable=True, index=True)
     source_row_index = Column(Integer, nullable=False)
     source_key = Column(String(64), nullable=False, index=True)

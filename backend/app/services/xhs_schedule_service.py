@@ -21,6 +21,7 @@ from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_schedule_setting import XHSScheduleSetting
 from app.services.xhs_service import XHSService
+from app.services.xhs_cloud_data_service import cloud_enabled
 from app.services.xhs_report_token_diagnostics import legacy_token_issues
 from app.services.xhs_report_refresh_shadow import (
     create_report_refresh_run_safely,
@@ -132,7 +133,7 @@ def _normalize_task_config(task_key: str, config: dict[str, Any] | None) -> dict
     merged = {**defaults, **config}
     if task_key == ACCOUNT_DATA_SYNC_TASK:
         target_scope = str(merged.get("target_scope") or "all").strip()
-        if target_scope not in {"all", "owner_users", "environment_ids"}:
+        if target_scope not in {"all", "owner_users", "environment_ids", "account_ids"}:
             target_scope = "all"
         detail_sync_mode = str(merged.get("detail_sync_mode") or "unpublished_only").strip()
         ai_origin_type = str(merged.get("content_tag_ai_origin_type") or "all").strip()
@@ -141,6 +142,7 @@ def _normalize_task_config(task_key: str, config: dict[str, Any] | None) -> dict
             "target_scope": target_scope,
             "target_user_ids": sorted({int(item) for item in (merged.get("target_user_ids") or []) if int(item) > 0}),
             "target_environment_ids": sorted({int(item) for item in (merged.get("target_environment_ids") or []) if int(item) > 0}),
+            "target_account_ids": sorted({int(item) for item in (merged.get("target_account_ids") or []) if int(item) > 0}),
             "yundeng_sync_concurrency": max(1, min(int(merged.get("yundeng_sync_concurrency") or 5), 5)),
             "post_sync_enabled": bool(merged.get("post_sync_enabled")),
             "post_sync_runner_ids": sorted({int(item) for item in (merged.get("post_sync_runner_ids") or []) if int(item) > 0}),
@@ -346,13 +348,13 @@ async def _load_system_admin_user(db: AsyncSession) -> User:
     return user
 
 
-async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, Any]) -> list[int]:
+async def _resolve_target_environment_ids(db: AsyncSession, config: dict[str, Any], *, include_phone_cloud: bool = False) -> list[int]:
     stmt = (
         select(XHSEnvironment.id)
         .where(
             and_(
                 XHSEnvironment.status == "active",
-                ~XHSEnvironment.is_phone_cloud,
+                True if include_phone_cloud else ~XHSEnvironment.is_phone_cloud,
                 or_(XHSEnvironment.is_sync_runner.is_(False), XHSEnvironment.is_sync_runner.is_(None)),
             )
         )
@@ -394,6 +396,8 @@ def _creator_sync_configuration_issues(env: XHSEnvironment) -> list[str]:
         issues.append("账号名称")
     if not str(env.xhs_account_id or "").strip():
         issues.append("小红书ID")
+    if cloud_enabled():
+        return issues
     if len(_normalize_creator_login_phone(env.login_phone_number)) != 11:
         issues.append("登录手机号")
     if str(env.xhs_account_type or "").strip() not in {
@@ -507,6 +511,7 @@ async def _run_content_tag_batch(
     ai_origin_type: str,
     status: str,
     concurrency: int,
+    target_account_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     from app.api.v1.xhs import _tag_xhs_account_note_with_model
 
@@ -523,7 +528,9 @@ async def _run_content_tag_batch(
             XHSAccountNote.secondary_content_tag == "",
         ),
     ]
-    if target_env_ids:
+    if target_account_ids is not None:
+        conditions.append(XHSAccountNote.account_id.in_(target_account_ids))
+    elif target_env_ids:
         conditions.append(XHSAccountNote.environment_id.in_(target_env_ids))
     ai_origin_value = (ai_origin_type or "").strip()
     if ai_origin_value and ai_origin_value != "all":
@@ -728,6 +735,11 @@ class XHSScheduleService:
 
 
 async def _execute_account_data_sync(session: AsyncSession, config: dict[str, Any]) -> str:
+    from app.services.xhs_master_data import master_enabled
+    if master_enabled():
+        return await _execute_master_account_data_sync(session,config)
+    if (config or {}).get("target_scope")=="account_ids":
+        raise ValueError("主名单定时任务不能在旧环境模式下执行")
     service = XHSService(session)
     normalized = _normalize_task_config(ACCOUNT_DATA_SYNC_TASK, config)
     target_env_ids = await _resolve_target_environment_ids(session, normalized)
@@ -736,11 +748,15 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
 
     summary_parts: list[str] = []
     if normalized["engagement_sync_enabled"]:
-        if target_env_ids:
+        creator_target_ids = (
+            await _resolve_target_environment_ids(session, normalized, include_phone_cloud=True)
+            if cloud_enabled() else target_env_ids
+        )
+        if creator_target_ids:
             admin_user = await _load_system_admin_user(session)
             eligible_env_ids, skipped_configs, account_names = await _partition_creator_sync_targets(
                 session,
-                target_env_ids,
+                creator_target_ids,
             )
             if skipped_configs:
                 logger.info(
@@ -875,6 +891,65 @@ async def _execute_account_data_sync(session: AsyncSession, config: dict[str, An
     if not summary_parts:
         return "未启用任何账户同步步骤"
     return "；".join(summary_parts)
+
+
+async def _execute_master_account_data_sync(session: AsyncSession, config: dict[str, Any]) -> str:
+    from app.models.xhs_account import XHSAccount
+    from app.schemas.xhs_account_master import MasterSyncRequest
+    from app.services.xhs_master_data import require_master
+    from app.services.xhs_master_sync import XHSMasterSync
+    await require_master(session)
+    config=_normalize_task_config(ACCOUNT_DATA_SYNC_TASK,config)
+    scope=config["target_scope"]
+    if scope=="environment_ids":
+        raise ValueError("旧定时任务选择的是云登环境，请重新按飞书主名单选择账号后保存")
+    stmt=select(XHSAccount.id).where(XHSAccount.status=="active",XHSAccount.department.in_(("xhs","brand")))
+    if scope=="owner_users":
+        stmt=stmt.where(XHSAccount.owner_user_id.in_(config["target_user_ids"]))
+    elif scope=="account_ids":
+        stmt=stmt.where(XHSAccount.id.in_(config["target_account_ids"]))
+    ids=list((await session.scalars(stmt.order_by(XHSAccount.id))).all())
+    if not ids:
+        return "飞书主名单无符合条件的有效账号，未启动任何采集"
+    sync=XHSMasterSync(session)
+    parts=[]
+    failures=[]
+    successful=0
+    for kind,key in (("engagement","engagement_sync_enabled"),("posts","post_sync_enabled"),("details","detail_sync_enabled")):
+        if not config[key]:
+            continue
+        request=MasterSyncRequest(kind=kind,account_ids=ids,
+            runner_ids=config["post_sync_runner_ids"] if kind=="posts" else config["detail_runner_ids"] if kind=="details" else [],
+            concurrency=config["yundeng_sync_concurrency"],limit_per_account=config["post_sync_limit_per_env"],
+            sync_mode=config["detail_sync_mode"],sync_limit=config["detail_total_limit"],
+            sync_limit_per_runner=config["detail_limit_per_runner"],
+            pause_seconds_min=config["detail_pause_min_seconds"],pause_seconds_max=config["detail_pause_max_seconds"],
+            max_post_age_days=config["detail_max_post_age_days"])
+        run=await sync.prepare(request,source="scheduled")
+        result=await sync.execute(run.id)
+        successful+=int(result.get("synced_accounts") or 0)
+        parts.append(f"{kind} 首轮 {result['message']}")
+        if kind=="engagement" and result["failed_accounts"]:
+            request.account_ids=[f["account_id"] for f in result["failed_accounts"]]
+            retry=await sync.prepare(request,source="scheduled_retry",parent_run_id=run.id)
+            result=await sync.execute(retry.id)
+            successful+=int(result.get("synced_accounts") or 0)
+            parts.append(f"创作者失败重试一次：{result['message']}")
+        failures.extend(f"{kind}: {item['account_name']} ({item.get('error') or '同步失败'})"
+            for item in result["failed_accounts"])
+    if config["content_tag_enabled"]:
+        result=await _run_content_tag_batch(session,target_env_ids=[],target_account_ids=ids,
+            ai_origin_type=config["content_tag_ai_origin_type"],status=config["content_tag_status"],
+            concurrency=config["content_tag_concurrency"])
+        parts.append(f"内容打标 {result.get('tagged_count',0)}/{result.get('matched_count',0)} 条")
+        successful+=int(result.get("tagged_count") or 0)
+        if result.get("failed_count"):
+            failures.append(f"内容打标失败 {int(result['failed_count'])} 条")
+    if failures:
+        parts.append(f"最终异常 {len(failures)} 项："+"；".join(failures[:20]))
+        if not successful:
+            raise RuntimeError("；".join(parts))
+    return "；".join(parts) or "未启用任何账户同步步骤"
 
 
 async def _execute_ad_data_refresh(

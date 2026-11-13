@@ -199,7 +199,9 @@ class PostUpdateRequest(BaseModel):
 
 class AccountNoteOut(BaseModel):
     id: int
-    environment_id: int
+    environment_id: Optional[int] = None
+    account_id: Optional[int] = None
+    account_department: Optional[str] = None
     account_name: str
     profile_nickname: Optional[str] = None
     red_id: Optional[str] = None
@@ -212,6 +214,8 @@ class AccountNoteOut(BaseModel):
     creator_first_seen_at: Optional[datetime] = None
     creator_last_seen_at: Optional[datetime] = None
     creator_synced_at: Optional[datetime] = None
+    metric_sources: Optional[dict] = None
+    published_at_precision: Optional[str] = None
     homepage_synced_at: Optional[datetime] = None
     source_post_id: Optional[int] = None
     xsec_token: Optional[str] = None
@@ -349,6 +353,7 @@ class AccountNoteBatchUpdateRequest(BaseModel):
 
 class AccountNoteContentTagRequest(BaseModel):
     environment_id: Optional[int] = None
+    account_id: Optional[int] = None
     keyword: Optional[str] = None
     ai_origin_type: Optional[str] = None
     status: Optional[str] = "all"

@@ -28,6 +28,7 @@ from app.core.roles import (
 from app.models.user import User
 from app.models.xhs_post import XHSPost
 from app.models.xhs_account_note import XHSAccountNote
+from app.services.xhs_master_data import master_enabled, note_scope, require_master, XHSMasterData
 from app.models.xhs_environment import XHSEnvironment
 from app.models.xhs_account_sync_run import XHSAccountSyncRun, XHSAccountSyncRunItem
 from app.schemas.common import ApiResponse
@@ -408,7 +409,7 @@ async def _tag_xhs_account_note_with_model(client: httpx.AsyncClient, note: XHSA
     return primary, secondary
 
 
-async def _load_account_note_out(db: AsyncSession, note_id: int) -> XHSAccountNote | None:
+async def _load_account_note_out(db: AsyncSession, note_id: int, user: User | None = None):
     stmt = (
         select(XHSAccountNote)
         .where(XHSAccountNote.id == note_id)
@@ -417,11 +418,31 @@ async def _load_account_note_out(db: AsyncSession, note_id: int) -> XHSAccountNo
             selectinload(XHSAccountNote.assigned_runner_environment),
         )
     )
-    return (await db.execute(stmt)).scalar_one_or_none()
+    if master_enabled():
+        if user is None:
+            raise HTTPException(403,"缺少主名单读取身份")
+        stmt=stmt.where(note_scope(user))
+    note=(await db.execute(stmt.execution_options(populate_existing=True))).scalar_one_or_none()
+    if master_enabled():
+        if note is None:
+            raise HTTPException(404,"账号已变更归属，请刷新后查看")
+        projected=await XHSMasterData(db).project([note],user=user)
+        if not projected:
+            raise HTTPException(404,"账号已变更归属，请刷新后查看")
+        return projected[0]
+    return note
 
 
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
+
+
+async def require_account_roster(db: AsyncSession = Depends(get_db)):
+    if master_enabled():
+        try:
+            await require_master(db)
+        except ValueError as exc:
+            raise HTTPException(409,str(exc)) from None
 
 
 def _parse_environment_ids(value: str | None) -> list[int]:
@@ -763,6 +784,7 @@ def _serialize_sync_history_run(run: XHSAccountSyncRun, *, include_items: bool =
             {
                 "id": item.id,
                 "environment_id": item.environment_id,
+                "account_id": item.account_id,
                 "account_name": item.account_name,
                 "status": item.status,
                 "message": item.message,
@@ -1687,7 +1709,7 @@ async def get_report_accounts(
     return ApiResponse(data=data)
 
 
-@router.get("/profile-stat/owners")
+@router.get("/profile-stat/owners",dependencies=[Depends(require_account_roster)])
 async def get_xhs_profile_stat_owner_rows(
     start_date: str | None = Query(default=None),
     end_date: str | None = Query(default=None),
@@ -1895,6 +1917,7 @@ async def list_account_notes(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     environment_id: int | None = Query(default=None),
+    account_id: int | None = Query(default=None, gt=0),
     keyword: str | None = Query(default=None),
     ai_origin_type: str | None = Query(default=None),
     status: str | None = Query(default=None, pattern="^(active|offline|all)$"),
@@ -1902,6 +1925,15 @@ async def list_account_notes(
     current_user: User = Depends(get_current_user),
 ):
     service = XHSService(db)
+    if account_id is not None and not master_enabled():
+        raise HTTPException(422,"当前为旧环境模式，不能使用主名单账号ID")
+    if master_enabled():
+        try:
+            await require_master(db)
+        except ValueError as exc:
+            raise HTTPException(409,str(exc)) from None
+        if environment_id is not None:
+            raise HTTPException(422,"主名单模式使用account_id，不使用环境ID")
     items, total, total_accounts = await service.list_account_notes(
         current_user,
         page=page,
@@ -1910,6 +1942,7 @@ async def list_account_notes(
         keyword=keyword,
         ai_origin_type=ai_origin_type,
         status=status,
+        account_id=account_id,
     )
     return ApiResponse(
         data=AccountNoteListOut(
@@ -1933,6 +1966,13 @@ async def list_account_notes_for_insights(
     current_user: User = Depends(get_current_user),
 ):
     service = XHSService(db)
+    if master_enabled():
+        if start_date and end_date and (end_date < start_date or (end_date-start_date).days > 366):
+            raise HTTPException(422,"账号数据日期范围无效")
+        try:
+            await require_master(db)
+        except ValueError as exc:
+            raise HTTPException(409,str(exc)) from None
     items, total, total_accounts = await service.list_account_notes_for_insights(
         current_user,
         start_date=start_date,
@@ -1944,7 +1984,8 @@ async def list_account_notes_for_insights(
     # table still has data. Avoid an unnecessary catalog query in that case.
     if items:
         XHSService.set_vehicle_catalog_entries(await VehicleCatalogService(db).match_entries())
-    dashboard = XHSService.build_insights_dashboard(items, start_date=start_date, end_date=end_date)
+    dashboard = (XHSMasterData.dashboard(items,start_date=start_date,end_date=end_date) if master_enabled()
+                 else XHSService.build_insights_dashboard(items, start_date=start_date, end_date=end_date))
     return ApiResponse(
         data=AccountNoteListOut(
             items=[AccountNoteOut.model_validate(item) for item in items] if include_items else [],
@@ -1969,6 +2010,8 @@ async def sync_account_notes(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
+    if master_enabled():
+        raise HTTPException(409,"主名单同步请使用 /xhs/accounts/sync 和 account_ids")
     job = _new_job(
         "account_notes_sync",
         environment_id=environment_id,
@@ -2030,6 +2073,8 @@ async def sync_account_note_engagements(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
+    if master_enabled():
+        raise HTTPException(409,"主名单同步请使用 /xhs/accounts/sync 和 account_ids")
     job = _new_job(
         "account_note_engagement_sync",
         environment_id=environment_id,
@@ -2095,6 +2140,8 @@ async def sync_account_note_details(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
+    if master_enabled():
+        raise HTTPException(409,"主名单同步请使用 /xhs/accounts/sync 和 account_ids")
     job = _new_job(
         "account_note_details_sync",
         environment_id=environment_id,
@@ -2159,7 +2206,8 @@ async def sync_account_note_details(
 
 @router.post("/account-notes/import-creator-export")
 async def import_creator_export(
-    environment_id: int = Query(..., ge=1),
+    environment_id: int | None = Query(default=None, ge=1),
+    account_id: int | None = Query(default=None, ge=1),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
@@ -2176,12 +2224,24 @@ async def import_creator_export(
     if len(content) > 20 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="表格不能超过 20MB")
 
-    env = (
+    if master_enabled():
+        try:
+            await require_master(db)
+        except ValueError as exc:
+            raise HTTPException(409,str(exc)) from None
+        if environment_id is not None or account_id is None:
+            raise HTTPException(422,"主名单模式请选择 account_id，不使用环境ID")
+        from app.models.xhs_account import XHSAccount
+        env=await db.scalar(select(XHSAccount).where(XHSAccount.id==account_id,XHSAccount.status=="active"))
+    elif environment_id is None or account_id is not None:
+        raise HTTPException(422,"请选择有效的环境账号")
+    else:
+        env = (
         await db.execute(select(XHSEnvironment).where(XHSEnvironment.id == environment_id))
-    ).scalar_one_or_none()
+        ).scalar_one_or_none()
     if env is None:
         raise HTTPException(status_code=404, detail="未找到要导入的小红书账号")
-    if bool(env.is_sync_runner):
+    if bool(getattr(env,"is_sync_runner",False)):
         raise HTTPException(status_code=400, detail="测试账号不能导入创作者中心数据")
 
     # Manual import is synchronous. Keep it in durable sync history only and
@@ -2195,6 +2255,7 @@ async def import_creator_export(
         requested_by_user_id=current_user.id,
         request_config={
             "environment_id": environment_id,
+            "account_id": account_id,
             "file_name": filename,
             "file_size": len(content),
         },
@@ -2206,6 +2267,7 @@ async def import_creator_export(
     history_item = XHSAccountSyncRunItem(
         run_id=history_run.id,
         environment_id=environment_id,
+        account_id=account_id,
         account_name=(env.account_name or "").strip(),
         status="running",
         message="正在解析表格",
@@ -2213,6 +2275,7 @@ async def import_creator_export(
     )
     db.add(history_item)
     await db.commit()
+    history_run_id,history_item_id=history_run.id,history_item.id
 
     service = XHSService(db)
     try:
@@ -2220,6 +2283,7 @@ async def import_creator_export(
             environment_id,
             content,
             sync_run_id=history_run.id,
+            **({"account_id":account_id} if account_id is not None else {}),
         )
         finished_at = datetime.now()
         history_run.status = "succeeded"
@@ -2233,8 +2297,8 @@ async def import_creator_export(
         await db.commit()
     except Exception as exc:
         await db.rollback()
-        history_run = await db.get(XHSAccountSyncRun, history_run.id)
-        history_item = await db.get(XHSAccountSyncRunItem, history_item.id)
+        history_run = await db.get(XHSAccountSyncRun, history_run_id)
+        history_item = await db.get(XHSAccountSyncRunItem, history_item_id)
         finished_at = datetime.now()
         error_message = str(exc).strip() or "创作者中心表格导入失败"
         if history_run is not None:
@@ -2342,6 +2406,16 @@ async def retry_failed_account_note_sync_history(
     ).scalar_one_or_none()
     if previous is None:
         raise HTTPException(status_code=404, detail="同步历史不存在")
+    if (previous.request_config or {}).get("identity_source") == "feishu":
+        from app.services.xhs_master_sync import XHSMasterSync
+        from app.api.v1.xhs_accounts import start_master_job
+        try:
+            request=await XHSMasterSync(db).retry_request(previous)
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from None
+        return ApiResponse(data=await start_master_job(db,request,current_user.id,parent_run_id=previous.id))
+    if master_enabled():
+        raise HTTPException(409,"旧环境任务不能按主名单重放，请重新选择主名单账号")
     failed_items = [item for item in previous.items if item.status == "failed" and item.environment_id]
     failed_environment_ids = sorted({int(item.environment_id) for item in failed_items if item.environment_id})
     if previous.sync_kind == "details":
@@ -2571,7 +2645,7 @@ async def cancel_account_note_sync_job(
     return ApiResponse(data=job, message="已发送中止请求")
 
 
-@router.patch("/account-notes/{note_id}")
+@router.patch("/account-notes/{note_id}",dependencies=[Depends(require_account_roster)])
 async def update_account_note(
     note_id: int,
     req: AccountNoteUpdateRequest,
@@ -2583,11 +2657,11 @@ async def update_account_note(
         note = await service.update_account_note_ai_origin_type(current_user, note_id, req.ai_origin_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    hydrated_note = await _load_account_note_out(db, int(note.id))
+    hydrated_note = await _load_account_note_out(db, int(note.id),current_user)
     return ApiResponse(data=AccountNoteOut.model_validate(hydrated_note or note), message="标记已更新")
 
 
-@router.post("/account-notes/{note_id}/record-browse")
+@router.post("/account-notes/{note_id}/record-browse",dependencies=[Depends(require_account_roster)])
 async def record_account_note_browse(
     note_id: int,
     req: AccountNoteBrowseRecordRequest,
@@ -2598,7 +2672,9 @@ async def record_account_note_browse(
     envs = await service.list_environments(current_user)
     allowed_env_ids = {env.id for env in envs}
     stmt = select(XHSAccountNote).where(XHSAccountNote.id == note_id)
-    if current_user.role != "admin":
+    if master_enabled():
+        stmt = stmt.where(note_scope(current_user))
+    elif current_user.role != "admin":
         stmt = stmt.where(XHSAccountNote.environment_id.in_(allowed_env_ids))
     note = (await db.execute(stmt)).scalar_one_or_none()
     if note is None:
@@ -2618,7 +2694,7 @@ async def record_account_note_browse(
     )
 
 
-@router.post("/account-notes/batch-update")
+@router.post("/account-notes/batch-update",dependencies=[Depends(require_account_roster)])
 async def batch_update_account_notes(
     req: AccountNoteBatchUpdateRequest,
     db: AsyncSession = Depends(get_db),
@@ -2636,16 +2712,20 @@ async def batch_update_account_notes(
     return ApiResponse(data=result, message="批量标记已更新")
 
 
-@router.post("/account-notes/tag-content")
+@router.post("/account-notes/tag-content",dependencies=[Depends(require_account_roster)])
 async def tag_account_note_content(
     req: AccountNoteContentTagRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = XHSService(db)
+    if not master_enabled() and req.account_id is not None:
+        raise HTTPException(422,"当前为旧环境模式，不能使用主名单账号ID")
     envs = await service.list_environments(current_user)
     allowed_env_ids = {env.id for env in envs}
-    if not allowed_env_ids:
+    if master_enabled() and req.environment_id is not None:
+        raise HTTPException(422,"主名单模式使用account_id，不使用环境ID")
+    if not allowed_env_ids and not master_enabled():
         return ApiResponse(
             data=AccountNoteContentTagOut(
                 matched_count=0,
@@ -2655,7 +2735,7 @@ async def tag_account_note_content(
             ),
             message="暂无可打标账号数据",
         )
-    if req.environment_id is not None and req.environment_id not in allowed_env_ids:
+    if not master_enabled() and req.environment_id is not None and req.environment_id not in allowed_env_ids:
         return ApiResponse(
             data=AccountNoteContentTagOut(
                 matched_count=0,
@@ -2667,7 +2747,7 @@ async def tag_account_note_content(
         )
 
     conditions = [
-        XHSAccountNote.environment_id.in_(allowed_env_ids),
+        note_scope(current_user) if master_enabled() else XHSAccountNote.environment_id.in_(allowed_env_ids),
         XHSAccountNote.title != "",
         XHSAccountNote.detail_synced_at.is_not(None),
         XHSAccountNote.content_status == "from_detail",
@@ -2682,6 +2762,8 @@ async def tag_account_note_content(
     ]
     if req.environment_id is not None:
         conditions.append(XHSAccountNote.environment_id == req.environment_id)
+    if master_enabled() and req.account_id is not None:
+        conditions.append(XHSAccountNote.account_id == req.account_id)
     ai_origin_value = (req.ai_origin_type or "").strip()
     if ai_origin_value:
         if ai_origin_value == "__unset__":
@@ -2757,7 +2839,7 @@ async def tag_account_note_content(
     return ApiResponse(data=result, message=f"内容标签已更新 {len(tagged_results)} 条")
 
 
-@router.post("/account-notes/{note_id}/sync-stats")
+@router.post("/account-notes/{note_id}/sync-stats",dependencies=[Depends(require_account_roster)])
 async def sync_account_note_stats(
     note_id: int,
     scrape_environment_id: int | None = Query(default=None),
@@ -2775,7 +2857,7 @@ async def sync_account_note_stats(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    hydrated_note = await _load_account_note_out(db, int(note.id))
+    hydrated_note = await _load_account_note_out(db, int(note.id),current_user)
     return ApiResponse(
         data=AccountNoteOut.model_validate(hydrated_note or note),
         message=(
@@ -2786,7 +2868,7 @@ async def sync_account_note_stats(
     )
 
 
-@router.post("/account-notes/{note_id}/sync-engagement-stats")
+@router.post("/account-notes/{note_id}/sync-engagement-stats",dependencies=[Depends(require_account_roster)])
 async def sync_account_note_engagement_stats(
     note_id: int,
     db: AsyncSession = Depends(get_db),
@@ -2802,7 +2884,7 @@ async def sync_account_note_engagement_stats(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    hydrated_note = await _load_account_note_out(db, int(note.id))
+    hydrated_note = await _load_account_note_out(db, int(note.id),current_user)
     return ApiResponse(
         data=AccountNoteOut.model_validate(hydrated_note or note),
         message=("互动数据同步完成" if synced else "创作中心未匹配到这条帖子，已保留原有数据"),

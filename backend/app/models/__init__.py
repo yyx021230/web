@@ -17,8 +17,10 @@ from app.models.user_workflow import user_workflow_access
 from app.models.prompt import PromptCategory, PromptExample
 from app.models.prompt_moderation import PromptReport, PromptAuditLog
 from app.models.xhs_environment import XHSEnvironment
+from app.models.xhs_account import XHSAccount as XHSAccount, XHSAccountMasterImport as XHSAccountMasterImport, XHSAccountHistoryLink as XHSAccountHistoryLink
 from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
+from app.models.xhs_cloud_import import XHSCloudImport as XHSCloudImport
 from app.models.xhs_account_note_browse_event import XHSAccountNoteBrowseEvent
 from app.models.xhs_post import XHSPost
 from app.models.xhs_schedule_setting import XHSScheduleSetting

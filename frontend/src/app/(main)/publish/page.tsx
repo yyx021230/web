@@ -7,6 +7,9 @@ import {
   cancelXhsAccountNoteSyncJob,
   exportXhsReport,
   getEnvironments,
+  getXhsDataDirectory,
+  type XHSDataDirectory,
+  type XHSDataAccountOption,
   getXhsBrowserEnvironmentStatuses,
   getXhsAccountNoteSyncJob,
   getXhsAccountNoteSyncHistory,
@@ -702,12 +705,12 @@ function formatAccountNoteMetric(value?: number | null): string {
   return `${Math.round(normalized)}`;
 }
 
-function isAccountSyncRunnerEnv(env: XHSEnvironment): boolean {
+function isAccountSyncRunnerEnv(env: XHSDataAccountOption): boolean {
   return Boolean(env.is_sync_runner) || /测试[2345]/.test(env.account_name);
 }
 
-function getEnvironmentSearchText(env: XHSEnvironment): string {
-  return `${env.account_name || ''} ${env.shop_id || ''} ${env.id || ''}`.toLowerCase();
+function getEnvironmentSearchText(env: XHSDataAccountOption): string {
+  return `${env.account_name || ''} ${env.owner_name || ''} ${env.xhs_account_id || ''} ${env.shop_id || ''}`.toLowerCase();
 }
 
 function getBrowserStatusLabel(status?: string): string {
@@ -768,8 +771,8 @@ type CreatorExportImportDraft = {
 
 function buildAccountPostRunnerAssignments(
   overview: XHSSyncRunnerBrowseOverview | null,
-  runnerOptions: XHSEnvironment[],
-  publishOptions: XHSEnvironment[],
+  runnerOptions: XHSDataAccountOption[],
+  publishOptions: XHSDataAccountOption[],
 ): Record<string, number[]> {
   if (!overview) return {};
   const availableRunnerIds = new Set(runnerOptions.map((env) => env.id));
@@ -778,7 +781,7 @@ function buildAccountPostRunnerAssignments(
   for (const runner of overview.runners) {
     if (!availableRunnerIds.has(runner.environment_id)) continue;
     for (const account of runner.assigned_accounts) {
-      const publishId = Number(account.environment_id);
+      const publishId = Number(account.account_id ?? account.environment_id);
       if (!availablePublishIds.has(publishId)) continue;
       const noteCount = Math.max(0, Number(account.note_count) || 0);
       const current = winnerByPublishId.get(publishId);
@@ -1158,6 +1161,8 @@ export default function XHSPublishManagePage() {
   const [accountEnvSearch, setAccountEnvSearch] = useState('');
   const [accountSyncScrapeEnvId, setAccountSyncScrapeEnvId] = useState<number | null>(null);
   const [environments, setEnvironments] = useState<XHSEnvironment[]>([]);
+  const [dataDirectory, setDataDirectory] = useState<XHSDataDirectory | null>(null);
+  const identitySource = dataDirectory?.mode;
   const [browserStatuses, setBrowserStatuses] = useState<XHSBrowserEnvironmentStatus[]>([]);
   const [browserStatusRefreshing, setBrowserStatusRefreshing] = useState(false);
   const [envId, setEnvId] = useState<number | null>(null);
@@ -1262,11 +1267,11 @@ export default function XHSPublishManagePage() {
     [reportAccountId, reportAccountOptions],
   );
   const accountEnvOptions = useMemo(() => {
-    return [...environments].sort((a, b) => a.account_name.localeCompare(b.account_name, 'zh-Hans-CN'));
-  }, [environments]);
+    return [...(dataDirectory?.accounts || [])].sort((a, b) => a.account_name.localeCompare(b.account_name, 'zh-Hans-CN'));
+  }, [dataDirectory]);
   const accountBusinessEnvOptions = useMemo(() => {
-    return accountEnvOptions.filter((env) => !isAccountSyncRunnerEnv(env));
-  }, [accountEnvOptions]);
+    return accountEnvOptions.filter((env) => identitySource === 'feishu' ? env.status === 'active' : !isAccountSyncRunnerEnv(env));
+  }, [accountEnvOptions, identitySource]);
   const accountPostTargetEnvOptions = useMemo(() => {
     return accountBusinessEnvOptions.filter((env) => (
       env.homepage_sync_eligible ?? Boolean(env.profile_url?.trim())
@@ -1282,9 +1287,8 @@ export default function XHSPublishManagePage() {
     [accountEnvId, accountEnvOptions],
   );
   const accountSyncRunnerOptions = useMemo(() => {
-    const preferred = accountEnvOptions.filter((env) => isAccountSyncRunnerEnv(env));
-    return preferred.length > 0 ? preferred : accountEnvOptions;
-  }, [accountEnvOptions]);
+    return dataDirectory?.runners || [];
+  }, [dataDirectory]);
   const browserStatusByEnvId = useMemo(() => {
     return new Map(browserStatuses.map((item) => [item.environment_id, item]));
   }, [browserStatuses]);
@@ -1347,7 +1351,7 @@ export default function XHSPublishManagePage() {
     const accountById = new Map(accountBusinessEnvOptions.map((env) => [env.id, env]));
     return Array.from(new Set(accountEngagementSyncStrategy.selectedEnvIds))
       .map((envId) => accountById.get(envId))
-      .filter((env): env is XHSEnvironment => Boolean(env));
+      .filter((env): env is XHSDataAccountOption => Boolean(env));
   }, [accountBusinessEnvOptions, accountEngagementSyncStrategy]);
   const filteredCreatorImportEnvOptions = useMemo(() => {
     if (!creatorExportImport) return [];
@@ -1553,6 +1557,10 @@ export default function XHSPublishManagePage() {
   }, [accountEnvPickerOpen]);
 
   useEffect(() => {
+    getXhsDataDirectory().then(setDataDirectory).catch(err => toast.error(err.message));
+  }, []);
+
+  useEffect(() => {
     getEnvironments()
       .then((res) => {
         setEnvironments(res);
@@ -1714,6 +1722,7 @@ export default function XHSPublishManagePage() {
   }, [accountDetailSyncStrategy, accountSyncRunnerOptions]);
 
   const fetchAccountNotes = useCallback(async (overrides?: { page?: number; limit?: number; environment_id?: number | 'all'; keyword?: string; ai_origin_type?: typeof accountAiFilter }) => {
+    if (!identitySource) return;
     const targetPage = overrides?.page ?? page;
     const targetLimit = overrides?.limit ?? 20;
     const targetEnvId = overrides?.environment_id ?? accountEnvId;
@@ -1724,7 +1733,8 @@ export default function XHSPublishManagePage() {
       const result = await getXhsAccountNotes({
         page: targetPage,
         limit: targetLimit,
-        environment_id: targetEnvId === 'all' ? undefined : targetEnvId,
+        ...(identitySource === 'feishu' ? { account_id: targetEnvId === 'all' ? undefined : targetEnvId }
+          : { environment_id: targetEnvId === 'all' ? undefined : targetEnvId }),
         keyword: targetKeyword.trim() || undefined,
         ai_origin_type: targetAiOriginType === 'all' ? undefined : targetAiOriginType,
         status: 'all',
@@ -1743,7 +1753,7 @@ export default function XHSPublishManagePage() {
       toast.error(`获取账号帖子失败: ${err.message}`);
       setAccountNotesLoading(false);
     }
-  }, [page, accountEnvId, accountSearch, accountAiFilter]);
+  }, [page, accountEnvId, accountSearch, accountAiFilter, identitySource]);
 
   const loadAccountSyncHistory = useCallback(async () => {
     setAccountSyncHistoryLoading(true);
@@ -1793,6 +1803,7 @@ export default function XHSPublishManagePage() {
       const result = await importXhsCreatorExport(
         creatorExportImport.environmentId,
         creatorExportImport.file,
+        identitySource,
       );
       toast.success(
         `${result.account_name} 导入完成：识别 ${result.exported_rows || 0} 条，新增 ${result.created_notes || 0} 条，更新 ${result.updated_notes || 0} 条`,
@@ -1807,7 +1818,7 @@ export default function XHSPublishManagePage() {
     } finally {
       setCreatorExportImporting(false);
     }
-  }, [creatorExportImport, fetchAccountNotes, loadAccountSyncHistory]);
+  }, [creatorExportImport, fetchAccountNotes, loadAccountSyncHistory, identitySource]);
 
   useEffect(() => {
     if (accountSyncHistoryOpen) loadAccountSyncHistory();
@@ -1973,6 +1984,7 @@ export default function XHSPublishManagePage() {
     setAccountNotesSyncing(true);
     try {
       const job = await syncXhsAccountNotes({
+        identity_source: identitySource,
         environment_id: undefined,
         scrape_environment_id: normalizedRunnerIds.length === 1 ? normalizedRunnerIds[0] : undefined,
         scrape_environment_ids: normalizedRunnerIds.length > 1 ? normalizedRunnerIds.join(',') : undefined,
@@ -1990,7 +2002,7 @@ export default function XHSPublishManagePage() {
     } finally {
       setAccountNotesSyncing(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, identitySource]);
 
   const handleSyncAccountEngagements = useCallback(async (strategy: AccountEngagementSyncStrategyDraft) => {
     const selectedEnvIds = Array.from(new Set(strategy.selectedEnvIds.filter((envId) => envId > 0)));
@@ -2001,6 +2013,7 @@ export default function XHSPublishManagePage() {
     setAccountEngagementSyncing(true);
     try {
       const job = await syncXhsAccountNoteEngagements({
+        identity_source: identitySource,
         environment_id: undefined,
         target_environment_ids: selectedEnvIds.join(','),
         sync_account_limit: selectedEnvIds.length || undefined,
@@ -2014,7 +2027,7 @@ export default function XHSPublishManagePage() {
     } finally {
       setAccountEngagementSyncing(false);
     }
-  }, []);
+  }, [identitySource]);
 
   const handleSyncAccountNoteDetails = useCallback(async (strategy: AccountDetailSyncStrategyDraft) => {
     const normalizedRunnerIds = Array.from(new Set(strategy.runnerIds.filter((id) => id > 0)));
@@ -2034,6 +2047,7 @@ export default function XHSPublishManagePage() {
     setAccountNoteDetailsSyncing(true);
     try {
       const job = await syncXhsAccountNoteDetails({
+        identity_source: identitySource,
         environment_id: accountEnvId === 'all' ? undefined : accountEnvId,
         scrape_environment_id: normalizedRunnerIds.length === 1 ? normalizedRunnerIds[0] : undefined,
         scrape_environment_ids: normalizedRunnerIds.length > 1 ? normalizedRunnerIds.join(',') : undefined,
@@ -2058,7 +2072,7 @@ export default function XHSPublishManagePage() {
     } finally {
       setAccountNoteDetailsSyncing(false);
     }
-  }, [accountEnvId, isAdmin]);
+  }, [accountEnvId, isAdmin, identitySource]);
 
   const handleCancelAccountSyncJob = useCallback(async () => {
     if (!activeAccountSyncPanelJob || !['queued', 'running'].includes(activeAccountSyncPanelJob.status)) return;
@@ -2217,7 +2231,8 @@ export default function XHSPublishManagePage() {
     setAccountContentTagging(true);
     try {
       const result = await tagXhsAccountNoteContent({
-        environment_id: accountEnvId === 'all' ? undefined : accountEnvId,
+        ...(identitySource === 'feishu' ? { account_id: accountEnvId === 'all' ? undefined : accountEnvId }
+          : { environment_id: accountEnvId === 'all' ? undefined : accountEnvId }),
         keyword: accountSearch.trim() || undefined,
         ai_origin_type: accountAiFilter === 'all' ? undefined : accountAiFilter,
         status: 'all',
@@ -2231,7 +2246,7 @@ export default function XHSPublishManagePage() {
     } finally {
       setAccountContentTagging(false);
     }
-  }, [accountAiFilter, accountEnvId, accountSearch, fetchAccountNotes, page]);
+  }, [accountAiFilter, accountEnvId, accountSearch, fetchAccountNotes, page, identitySource]);
 
   const handleSyncAccountNoteStats = useCallback(async (noteId: number, scrapeEnvironmentId?: number | null) => {
     setAccountNoteSyncingId(noteId);
@@ -3164,7 +3179,7 @@ export default function XHSPublishManagePage() {
                                             : 'text-slate-700 hover:bg-slate-50'
                                         }`}
                                       >
-                                        <span className="block truncate">{item.account_name}</span>
+                                        <span className="block truncate">{item.account_name}{item.owner_name ? ` · ${item.owner_name}` : ''}</span>
                                       </button>
                                     );
                                   })
@@ -4063,7 +4078,7 @@ export default function XHSPublishManagePage() {
                                       className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-45"
                                       onClick={() => handleSyncAccountNoteEngagementStats(note.id)}
                                       disabled={accountNoteEngagementSyncingId === note.id}
-                                      title="打开该发布账号的创作中心，同步浏览/点赞/评论/收藏/转发"
+                                      title={identitySource==='feishu' ? '导入该账号云手机已采集的数据，不重新登录或操作手机' : '打开该发布账号的创作中心，同步浏览/点赞/评论/收藏/转发'}
                                     >
                                       {accountNoteEngagementSyncingId === note.id ? '同步中' : '同步互动'}
                                     </button>
@@ -6021,10 +6036,10 @@ export default function XHSPublishManagePage() {
                     ) : (
                       <div className="divide-y divide-slate-100">
                         {activeSyncRunnerInsight.assigned_accounts.map((account) => (
-                          <div key={`detail-${activeSyncRunnerInsight.environment_id}-${account.environment_id}`} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                          <div key={`detail-${activeSyncRunnerInsight.environment_id}-${account.account_id ?? account.environment_id}`} className="flex items-center justify-between gap-3 px-3 py-2.5">
                             <div className="min-w-0">
                               <div className="truncate text-sm font-semibold text-slate-800">{account.account_name}</div>
-                              <div className="mt-0.5 text-[11px] text-slate-400">环境 ID · {account.environment_id}</div>
+                              <div className="mt-0.5 text-[11px] text-slate-400">{account.account_id ? '主名单账号' : `环境 ID · ${account.environment_id}`}</div>
                             </div>
                             <div className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
                               {account.note_count} 条

@@ -3,15 +3,15 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import AdminXhsSchedulesPage from './page';
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }));
-vi.mock('@/services/api', () => ({ default: { get } }));
+const { get, put } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
+vi.mock('@/services/api', () => ({ default: { get, put } }));
 vi.mock('@/services/adminApi', () => ({
   adminApi: {
     getUsers: vi.fn(async () => ({ data: { items: [] } })),
     getXhsAdAccountAssignments: vi.fn(async () => ({ data: [] })),
   },
 }));
-vi.mock('@/lib/toast', () => ({ toast: { error: vi.fn() } }));
+vi.mock('@/lib/toast', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const taskKey = 'ad_data_refresh';
 const log = {
@@ -36,7 +36,11 @@ beforeEach(() => {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
+  put.mockReset();
   get.mockReset().mockImplementation(async (url, options) => {
+    if (url === '/xhs/accounts/mode') {
+      return { data: { mode: 'legacy', ready: true, accounts: [], runners: [] } };
+    }
     if (url === '/admin/xhs/schedule-settings') {
       return { data: [{ task_key: taskKey, label: 'Ads refresh', description: '', enabled: true, run_time: '08:30', config: {} }] };
     }
@@ -80,5 +84,31 @@ it('shows per-account token evidence and pages both histories independently', as
   await act(async () => { detailPagination.querySelectorAll('button')[1].click(); });
   expect(get).toHaveBeenCalledWith('/admin/xhs/schedule-run-logs', expect.objectContaining({
     params: { page: 2, limit: 8, task_key: taskKey },
+  }));
+});
+
+it('selects canonical accounts and saves account_ids without reusing environment IDs', async () => {
+  get.mockImplementation(async (url) => {
+    if (url === '/xhs/accounts/mode') return { data: { mode: 'feishu', ready: true,
+      accounts: [{ id: 7, account_name: 'Canonical account', status: 'active', owner_name: 'Current operator' }],
+      runners: [{ id: 100, account_name: '测试4' }] } };
+    if (url === '/xhs/environments') return { data: [{ id: 7, account_name: 'Unrelated legacy environment', shop_id: 'old', status: 'active' }] };
+    if (url === '/admin/xhs/schedule-settings') return { data: [{ task_key: 'account_data_sync', label: 'Account sync',
+      description: '', enabled: false, run_time: '03:00', config: {} }] };
+    if (url === '/admin/xhs/schedule-run-logs') return { data: { items: [], page: 1, total: 0, total_pages: 1 } };
+    return { data: [] };
+  });
+  put.mockImplementation(async (_url, payload) => ({ data: { task_key: 'account_data_sync', label: 'Account sync', ...payload } }));
+  await act(async () => root.render(<AdminXhsSchedulesPage />));
+  const button = (label: string) => Array.from(host.querySelectorAll('button')).find(b => b.textContent?.trim() === label)!;
+  await act(async () => button('配置').click());
+  await act(async () => button('指定账号').click());
+  expect(host.textContent).toContain('Canonical account');
+  expect(host.textContent).not.toContain('Unrelated legacy environment');
+  const account = Array.from(host.querySelectorAll('label')).find(l => l.textContent?.includes('Canonical account'))!;
+  await act(async () => account.querySelector<HTMLInputElement>('input')!.click());
+  await act(async () => button('保存配置').click());
+  expect(put).toHaveBeenCalledWith('/admin/xhs/schedule-settings/account_data_sync', expect.objectContaining({
+    config: expect.objectContaining({ target_scope: 'account_ids', target_account_ids: [7], target_environment_ids: [] }),
   }));
 });

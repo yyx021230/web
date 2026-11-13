@@ -11,10 +11,13 @@ class XHSAccountNote(Base):
     __table_args__ = (
         UniqueConstraint("environment_id", "feed_id", name="uq_xhs_account_notes_env_feed"),
         Index("uq_xhs_account_notes_env_creator_key", "environment_id", "creator_identity_key", unique=True),
+        UniqueConstraint("account_id", "feed_id", name="uq_xhs_account_notes_account_feed"),
+        Index("uq_xhs_account_notes_account_creator_key", "account_id", "creator_identity_key", unique=True),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    environment_id = Column(Integer, ForeignKey("xhs_environments.id"), nullable=False, index=True, comment="云登环境ID")
+    environment_id = Column(Integer, ForeignKey("xhs_environments.id"), nullable=True, index=True, comment="历史采集环境，保留溯源")
+    account_id = Column(Integer, ForeignKey("xhs_accounts.id"), nullable=True, index=True, comment="独立账号身份；历史不明时保持空")
 
     account_name = Column(String(200), nullable=False, default="", comment="抓取时的账号名称")
     profile_nickname = Column(String(200), nullable=True, comment="小红书主页昵称")
@@ -36,6 +39,8 @@ class XHSAccountNote(Base):
     creator_first_seen_at = Column(DateTime, nullable=True, comment="首次在创作者中心导出中出现")
     creator_last_seen_at = Column(DateTime, nullable=True, comment="最近在创作者中心导出中出现")
     creator_synced_at = Column(DateTime, nullable=True, index=True, comment="最近一次创作者中心指标同步时间")
+    metric_sources = Column(JSON, nullable=True, comment="逐指标来源、采集时间和精度；空值兼容历史记录")
+    published_at_precision = Column(String(16), nullable=True, comment="date/second；历史空值按精确时间处理")
     homepage_synced_at = Column(DateTime, nullable=True, index=True, comment="最近一次主页帖子同步时间")
     source_post_id = Column(Integer, ForeignKey("xhs_posts.id"), nullable=True, index=True, comment="对应系统发布记录")
     xsec_token = Column(String(255), nullable=True, comment="帖子安全令牌")

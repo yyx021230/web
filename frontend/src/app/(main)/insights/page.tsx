@@ -37,12 +37,12 @@ import { AccountMultiSelect } from '@/components/ui/account-multi-select';
 import adaptive from '@/components/layout/adaptive-dashboard.module.css';
 import { carModelsApi } from '@/services/carModelsApi';
 import {
-  getEnvironments,
+  getXhsDataDirectory,
   getXhsInsightAccountNotes,
   getXhsProfileStatOwnerRows,
   importXhsCreatorExport,
   type XHSAccountNote,
-  type XHSEnvironment,
+  type XHSDataAccountOption,
   type XHSInsightsDashboard,
   type XHSProfileStatOwnerRow,
 } from '@/services/xhsApi';
@@ -342,7 +342,8 @@ function getNoteAccountName(note: Pick<XHSAccountNote, 'account_name' | 'profile
   return normalizeContentAccountName(note.account_name || note.profile_nickname || '') || '未命名账号';
 }
 
-function getNoteAccountKey(note: Pick<XHSAccountNote, 'environment_id' | 'account_name' | 'profile_nickname'>): string {
+function getNoteAccountKey(note: Pick<XHSAccountNote, 'account_id' | 'environment_id' | 'account_name' | 'profile_nickname'>): string {
+  if (note.account_id) return `account:${note.account_id}`;
   const environmentId = Number(note.environment_id || 0);
   return environmentId > 0 ? `env:${environmentId}` : `name:${getNoteAccountName(note)}`;
 }
@@ -3269,7 +3270,8 @@ function CreatorExportImportDialog({
   onClose: () => void;
   onImported: () => void;
 }) {
-  const [environments, setEnvironments] = useState<XHSEnvironment[]>([]);
+  const [environments, setEnvironments] = useState<XHSDataAccountOption[]>([]);
+  const [identitySource, setIdentitySource] = useState<'feishu' | 'legacy'>('legacy');
   const [environmentId, setEnvironmentId] = useState<number | null>(null);
   const [accountSearch, setAccountSearch] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -3278,12 +3280,13 @@ function CreatorExportImportDialog({
 
   useEffect(() => {
     let cancelled = false;
-    getEnvironments()
-      .then((items) => {
+    getXhsDataDirectory()
+      .then((directory) => {
         if (cancelled) return;
+        setIdentitySource(directory.mode);
         setEnvironments(
-          items
-            .filter((environment) => !environment.is_sync_runner)
+          directory.accounts
+            .filter((environment) => directory.mode === 'feishu' ? environment.status === 'active' : !environment.is_sync_runner)
             .sort((left, right) => left.account_name.localeCompare(right.account_name, 'zh-Hans-CN')),
         );
       })
@@ -3330,7 +3333,7 @@ function CreatorExportImportDialog({
     }
     setImporting(true);
     try {
-      const result = await importXhsCreatorExport(environmentId, file);
+      const result = await importXhsCreatorExport(environmentId, file, identitySource);
       toast.success(
         `${result.account_name} 导入完成：识别 ${result.exported_rows || 0} 条，新增 ${result.created_notes || 0} 条，更新 ${result.updated_notes || 0} 条`,
       );

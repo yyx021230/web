@@ -21,6 +21,31 @@ export interface XHSEnvironment {
   homepage_sync_eligible?: boolean;
 }
 
+export type XHSDataAccountOption = Pick<XHSEnvironment, 'id' | 'account_name'> & Partial<Omit<XHSEnvironment, 'id' | 'account_name'>> & {
+  owner_name?: string | null;
+  department?: string;
+};
+export interface XHSDataDirectory {
+  mode: 'feishu' | 'legacy';
+  ready: boolean;
+  accounts: XHSDataAccountOption[];
+  runners: XHSDataAccountOption[];
+}
+
+export async function getXhsDataDirectory(options: { allowUnready?: boolean } = {}): Promise<XHSDataDirectory> {
+  const directory = (await api.get<XHSDataDirectory>('/xhs/accounts/mode')).data;
+  if (!directory.ready && !options.allowUnready) throw new Error('飞书主名单尚未完整初始化，请管理员确认名单');
+  if (directory.mode === 'legacy') {
+    const accounts = await getEnvironments();
+    return { ...directory, accounts, runners: accounts.filter(a => a.is_sync_runner) };
+  }
+  return directory;
+}
+
+function idsFromCsv(value?: string): number[] {
+  return value ? value.split(',').map(Number).filter(id => Number.isInteger(id) && id > 0) : [];
+}
+
 export interface XHSBrowserEnvironmentStatus {
   environment_id: number;
   shop_id: string;
@@ -133,7 +158,9 @@ export interface XHSCreativeReportCompareResponse {
 
 export interface XHSAccountNote {
   id: number;
-  environment_id: number;
+  environment_id: number | null;
+  account_id?: number | null;
+  account_department?: string | null;
   account_name: string;
   profile_nickname?: string | null;
   red_id?: string | null;
@@ -234,7 +261,8 @@ export interface XHSAccountNoteSyncResponse {
   total_notes: number;
   deferred_homepage_notes?: number;
   deferred_homepage_items?: Array<{
-    environment_id: number;
+    environment_id?: number | null;
+    account_id?: number | null;
     account_name: string;
     feed_id: string;
     title: string;
@@ -249,7 +277,8 @@ export interface XHSAccountNoteSyncResponse {
 
 export interface XHSCreatorExportImportResponse extends XHSAccountNoteSyncResponse {
   history_run_id: number;
-  environment_id: number;
+  environment_id?: number | null;
+  account_id?: number | null;
   account_name: string;
   file_name: string;
   ambiguous_notes: number;
@@ -323,6 +352,7 @@ export interface XHSAccountNoteSyncJob {
 
 export interface XHSAccountSyncHistoryItem {
   id: number;
+  account_id?: number | null;
   environment_id?: number | null;
   account_name: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
@@ -362,7 +392,8 @@ export interface XHSSyncRunnerBrowseOverview {
     account_name: string;
     assigned_notes: number;
     assigned_accounts: Array<{
-      environment_id: number;
+      environment_id: number | null;
+      account_id?: number | null;
       account_name: string;
       note_count: number;
     }>;
@@ -786,7 +817,7 @@ export async function exportXhsReport(
 }
 
 export async function getXhsAccountNotes(
-  params: { page?: number; limit?: number; environment_id?: number; keyword?: string; ai_origin_type?: string; status?: string } = {}
+  params: { page?: number; limit?: number; environment_id?: number; account_id?: number; keyword?: string; ai_origin_type?: string; status?: string } = {}
 ): Promise<XHSAccountNoteListResponse> {
   const response = await api.get('/xhs/account-notes', { params });
   return response.data;
@@ -801,6 +832,7 @@ export async function getXhsInsightAccountNotes(
 
 export async function syncXhsAccountNotes(
   params: {
+    identity_source?: 'feishu' | 'legacy';
     environment_id?: number;
     scrape_environment_id?: number;
     scrape_environment_ids?: string;
@@ -810,12 +842,22 @@ export async function syncXhsAccountNotes(
     concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
+  if (params.identity_source === 'feishu') {
+    const assignments = params.runner_account_assignments ? JSON.parse(params.runner_account_assignments) as Record<string, number[]> : undefined;
+    const response = await api.post('/xhs/accounts/sync', {
+      kind: 'posts', account_ids: assignments ? Object.values(assignments).flat() : params.environment_id ? [params.environment_id] : null,
+      runner_ids: params.scrape_environment_id ? [params.scrape_environment_id] : idsFromCsv(params.scrape_environment_ids),
+      runner_assignments: assignments, homepage_sync_mode: params.homepage_sync_mode, concurrency: params.concurrency,
+    });
+    return response.data;
+  }
   const response = await api.post('/xhs/account-notes/sync', null, { params });
   return response.data;
 }
 
 export async function syncXhsAccountNoteEngagements(
   params: {
+    identity_source?: 'feishu' | 'legacy';
     environment_id?: number;
     target_environment_ids?: string;
     sync_account_limit?: number;
@@ -823,6 +865,12 @@ export async function syncXhsAccountNoteEngagements(
     concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
+  if (params.identity_source === 'feishu') {
+    return (await api.post('/xhs/accounts/sync', { kind: 'engagement',
+      account_ids: params.environment_id ? [params.environment_id] : params.target_environment_ids ? idsFromCsv(params.target_environment_ids) : null,
+      concurrency: params.concurrency,
+    })).data;
+  }
   const response = await api.post('/xhs/account-notes/sync-engagement', null, { params });
   return response.data;
 }
@@ -830,11 +878,12 @@ export async function syncXhsAccountNoteEngagements(
 export async function importXhsCreatorExport(
   environmentId: number,
   file: File,
+  identitySource: 'feishu' | 'legacy' = 'legacy',
 ): Promise<XHSCreatorExportImportResponse> {
   const formData = new FormData();
   formData.append('file', file);
   const response = await api.post('/xhs/account-notes/import-creator-export', formData, {
-    params: { environment_id: environmentId },
+    params: identitySource === 'feishu' ? { account_id: environmentId } : { environment_id: environmentId },
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;
@@ -842,6 +891,7 @@ export async function importXhsCreatorExport(
 
 export async function syncXhsAccountNoteDetails(
   params: {
+    identity_source?: 'feishu' | 'legacy';
     environment_id?: number;
     target_note_ids?: string;
     scrape_environment_id?: number;
@@ -855,6 +905,14 @@ export async function syncXhsAccountNoteDetails(
     concurrency?: number;
   } = {}
 ): Promise<XHSAccountNoteSyncJob> {
+  if (params.identity_source === 'feishu') {
+    const { identity_source, environment_id, scrape_environment_id, scrape_environment_ids, target_note_ids, ...settings } = params;
+    return (await api.post('/xhs/accounts/sync', { ...settings, kind: 'details',
+      account_ids: environment_id ? [environment_id] : null,
+      runner_ids: scrape_environment_id ? [scrape_environment_id] : idsFromCsv(scrape_environment_ids),
+      target_note_ids: target_note_ids ? idsFromCsv(target_note_ids) : null,
+    })).data;
+  }
   const response = await api.post('/xhs/account-notes/sync-details', null, { params });
   return response.data;
 }
@@ -914,6 +972,7 @@ export async function batchUpdateXhsAccountNotes(
 export async function tagXhsAccountNoteContent(
   data: {
     environment_id?: number;
+    account_id?: number;
     keyword?: string;
     ai_origin_type?: string;
     status?: 'active' | 'offline' | 'all';

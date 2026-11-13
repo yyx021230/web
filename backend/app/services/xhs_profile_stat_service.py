@@ -175,6 +175,9 @@ class XHSProfileStatService:
         The displayed owner and account list always come from the latest
         assignment.
         """
+        from app.services.xhs_master_data import master_enabled
+        if master_enabled():
+            return await self._master_assignment_context(allowed_owner_roles,allowed_owner_ids)
         assignment_stmt = (
             select(
                 XHSEnvironment.id,
@@ -241,6 +244,49 @@ class XHSProfileStatService:
             "assigned_account_count": sum(len(item["account_names"]) for item in owners.values()),
             "assigned_active_account_count": len(active_environment_ids),
         }
+
+    async def _master_assignment_context(self, allowed_roles, allowed_ids):
+        from app.models.xhs_account import XHSAccount
+        from app.services.xhs_master_data import require_master, account_owner_role
+        await require_master(self.db)
+        rows=(await self.db.execute(select(XHSAccount,User).join(User,User.id==XHSAccount.owner_user_id)
+            .where(XHSAccount.status.in_(("active","retired")),XHSAccount.department.in_(("xhs","brand"))))).all()
+        roles=await load_roles_for_users(self.db,[u.id for _,u in rows])
+        names,profiles,owners,by_account={},{},{},{}
+        # Resolve collisions across the full roster BEFORE department/owner filtering.
+        candidates={"names":{},"profiles":{}}
+        active=0
+        for account,user in rows:
+            role=account_owner_role(account.department,roles.get(user.id,[]))
+            owner={"owner_id":str(user.id),"owner_name":user.display_name or user.username,"owner_role":role}
+            by_account[account.id]=owner
+            name=normalize_profile_account_name(account.account_name)
+            profile=extract_profile_url_id(account.profile_url)
+            if name:
+                candidates["names"].setdefault(name,set()).add(account.id)
+            if profile:
+                candidates["profiles"].setdefault(profile,set()).add(account.id)
+            if (allowed_roles and role not in allowed_roles) or (allowed_ids and user.id not in allowed_ids):
+                continue
+            item=owners.setdefault(str(user.id),{**owner,"account_names":set()})
+            item["account_names"].add(display_profile_account_name(account.account_name))
+            active+=account.status=="active"
+        aliases=(await self.db.execute(select(XHSAccountNote.account_id,XHSAccountNote.account_name,
+            XHSAccountNote.profile_nickname).where(XHSAccountNote.account_id.in_(by_account)))).all()
+        for aid,name,nickname in aliases:
+            for value in (name,nickname):
+                key=normalize_profile_account_name(value)
+                if key:
+                    candidates["names"].setdefault(key,set()).add(aid)
+        for kind,target in (("names",names),("profiles",profiles)):
+            for key,ids in candidates[kind].items():
+                if len(ids)==1:
+                    owner=by_account[next(iter(ids))]
+                    if owner["owner_id"] in owners:
+                        target[key]=owner
+        return profiles,names,owners,{"assigned_owner_count":len(owners),
+            "assigned_account_count":sum(len(o["account_names"]) for o in owners.values()),
+            "assigned_active_account_count":active}
 
     @staticmethod
     def _owner_for_account(account_name: str, owner_map: dict[str, dict]) -> dict:

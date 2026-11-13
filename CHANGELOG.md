@@ -4,6 +4,43 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-13
+
+Frozen local account-master and collection cutover candidate, not deployed.
+Activation requires a reviewed complete roster, verified collection bindings,
+compatible Windows Worker and an approved additive-migration rollback plan.
+Production space, backup/restore and runtime acceptance gates remain required.
+
+### Added
+
+- Local account-master foundation: Feishu CSV preview/apply, independent XHS
+  identities and reviewed historical attribution, current-owner/department read
+  APIs, and mobile observation imports with no browser environment. Three explicit
+  ID corrections are supported; private-department rows are excluded. Requires
+  migration e61113a0b001. No live data migration, deployment or automatic
+  Feishu polling is included.
+
+- Local opt-in cutover (`XHS_ACCOUNT_MASTER_ENABLED`, default false): existing
+  account data and operations dashboards, manual Excel imports, customer-lead
+  attribution and scheduled collection use canonical current ownership. Browser
+  test environments remain execution resources only. Native task history, retry,
+  cancellation and revision-checked Worker contracts retain distinct account IDs.
+  Requires migration e61113b0b002 and a reviewed full-roster import before enabling.
+  Legacy explicit environment scopes must be reselected, not reinterpreted as
+  canonical IDs; incomplete initialization fails closed. No production activation.
+
+- Local candidate: complete Feishu roster replacement previews every omitted
+  identity, removes only accounts with no actual foreign-key references, and
+  archives referenced identities for administrator-only historical access. Scope,
+  replay and late-history guards preserve existing data; partial updates never
+  trigger removals. Legacy environment rows and production data are untouched.
+
+- Local candidate: opt-in Phone Cloud XHS result ingestion replaces only automatic
+  Creator Center collection. Read-only signed batch queries, durable import receipts,
+  field provenance and date-precision matching preserve existing homepage/detail
+  enrichment. Requires migration e61112a0b001 and verified account/device bindings;
+  browser remains the default. No production activation or phone task submission.
+
 ### Fixed
 
 - Local candidate: admin schedule history uses server-side pagination and shows per-run advertising authorization issues by account, with separate statuses for missing, cached, and rejected tokens. Historical evidence may be partial. No schema change or deployment.

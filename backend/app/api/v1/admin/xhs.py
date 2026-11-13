@@ -8,6 +8,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.config import settings
 from app.db.session import get_db
 from app.core.deps import require_admin
 from app.core.roles import (
@@ -20,6 +21,7 @@ from app.core.roles import (
 )
 from app.models.xhs_ad_account_assignment import XHSAdAccountBuyerAssignment, XHSAdAccountProfessionalMapping
 from app.models.xhs_account_note import XHSAccountNote
+from app.models.xhs_cloud_import import XHSCloudImport
 from app.models.xhs_report import XHSReportDaily, XHSReportToken
 from app.models.user import User
 from app.schemas.common import ApiResponse
@@ -31,6 +33,62 @@ from app.services.xhs_schedule_service import (
 from app.services.xhs_service import XHSService
 
 router = APIRouter(prefix="/xhs", tags=["管理-小红书"])
+
+
+@router.get("/cloud-imports")
+async def list_cloud_imports(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    environment_id: int | None = Query(default=None),
+    account_id: int | None = Query(default=None,gt=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """List cloud import receipts without exposing raw snapshots or credentials."""
+    stmt = select(XHSCloudImport).order_by(XHSCloudImport.id.desc()).offset(skip).limit(limit)
+    if environment_id is not None:
+        stmt = stmt.where(XHSCloudImport.environment_id == environment_id)
+    if account_id is not None:
+        stmt=stmt.where(XHSCloudImport.account_id==account_id)
+    rows = (await db.scalars(stmt)).all()
+    return ApiResponse(data=[{
+        "id": row.id, "environment_id": row.environment_id, "account_id": row.account_id, "run_id": row.run_id, "item_id": row.item_id,
+        "status": row.status, "error_code": row.error_code, "captured_at": row.captured_at,
+        "applied_at": row.applied_at, "result": row.result,
+    } for row in rows])
+
+
+@router.post("/cloud-imports/{import_id}/retry")
+async def retry_cloud_import(
+    import_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Replay one retained observation; never launch a new phone or browser task."""
+    from app.services.xhs_cloud_data_service import XHSCloudDataService, cloud_enabled, verified_bindings
+    from app.adapters.phone_cloud_xhs_data import CloudDataError
+    from app.services.xhs_master_data import master_enabled
+    if not cloud_enabled() and not master_enabled():
+        raise HTTPException(status_code=409, detail="cloud_data_source_not_enabled")
+    row = await db.get(XHSCloudImport, import_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="cloud_data_receipt_not_found")
+    if row.client_id != settings.phone_cloud_xhs_data_client_id:
+        raise HTTPException(status_code=409, detail="cloud_data_receipt_client_changed")
+    from app.models.xhs_account import XHSAccount
+    if master_enabled() and row.account_id is None:
+        raise HTTPException(409,"旧环境采集回执不能按主名单重放")
+    env = await db.get(XHSAccount,row.account_id) if row.account_id is not None else await XHSService(db).get_environment(row.environment_id)
+    if env is None or env.status != "active":
+        raise HTTPException(status_code=409, detail="cloud_data_account_not_active")
+    try:
+        binding = verified_bindings().get(env.xhs_account_id)
+        if not binding:
+            raise CloudDataError("cloud_data_identity_not_verified")
+        result = await XHSCloudDataService(db).import_item(env, row.run_id, row.payload, binding)
+    except CloudDataError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    return ApiResponse(data=result)
 
 
 class AssignRequest(BaseModel):

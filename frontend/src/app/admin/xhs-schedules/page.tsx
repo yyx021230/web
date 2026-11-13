@@ -5,6 +5,7 @@ import { Clock3, RefreshCw, Settings2, X } from 'lucide-react';
 import api from '@/services/api';
 import { adminApi } from '@/services/adminApi';
 import { toast } from '@/lib/toast';
+import { getXhsDataDirectory, type XHSDataDirectory } from '@/services/xhsApi';
 
 interface XHSEnvironment {
   id: number;
@@ -39,7 +40,8 @@ interface ScheduleSetting {
   enabled: boolean;
   run_time: string;
   config: {
-    target_scope?: 'all' | 'owner_users' | 'environment_ids';
+    target_scope?: 'all' | 'owner_users' | 'environment_ids' | 'account_ids';
+    target_account_ids?: number[];
     target_user_ids?: number[];
     target_environment_ids?: number[];
     yundeng_sync_concurrency?: number;
@@ -106,7 +108,8 @@ interface ScheduleLogPage {
 interface ScheduleDraft {
   enabled: boolean;
   run_time: string;
-  target_scope?: 'all' | 'owner_users' | 'environment_ids';
+  target_scope?: 'all' | 'owner_users' | 'environment_ids' | 'account_ids';
+  target_account_ids?: number[];
   target_user_ids?: number[];
   target_environment_ids?: number[];
   yundeng_sync_concurrency?: number;
@@ -208,6 +211,7 @@ function buildScheduleDraft(setting: ScheduleSetting): ScheduleDraft {
     target_scope: setting.config?.target_scope || 'all',
     target_user_ids: setting.config?.target_user_ids || [],
     target_environment_ids: setting.config?.target_environment_ids || [],
+    target_account_ids: setting.config?.target_account_ids || [],
     yundeng_sync_concurrency: setting.config?.yundeng_sync_concurrency ?? 5,
     post_sync_enabled: !!setting.config?.post_sync_enabled,
     post_sync_runner_ids: setting.config?.post_sync_runner_ids || [],
@@ -241,6 +245,7 @@ function buildScheduleDraft(setting: ScheduleSetting): ScheduleDraft {
 function getScopeLabel(scope?: ScheduleDraft['target_scope']): string {
   if (scope === 'owner_users') return '指定负责人';
   if (scope === 'environment_ids') return '指定发布账号';
+  if (scope === 'account_ids') return '指定账号';
   return '全部账号';
 }
 
@@ -502,6 +507,7 @@ function ScheduleHistory({ settings, revision, taskKey }: {
 
 export default function AdminXhsSchedulesPage() {
   const [envs, setEnvs] = useState<XHSEnvironment[]>([]);
+  const [directory,setDirectory] = useState<XHSDataDirectory | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOption[]>([]);
   const [scheduleSettings, setScheduleSettings] = useState<ScheduleSetting[]>([]);
@@ -514,17 +520,19 @@ export default function AdminXhsSchedulesPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [envRes, userRes, adAccountRes, scheduleRes] = await Promise.all([
+      const [envRes, userRes, adAccountRes, scheduleRes, accountDirectory] = await Promise.all([
         api.get('/xhs/environments').catch(() => null),
         adminApi.getUsers(1, 100),
         adminApi.getXhsAdAccountAssignments().catch(() => null),
         api.get('/admin/xhs/schedule-settings'),
+        getXhsDataDirectory({ allowUnready: true }).catch(() => null),
       ]);
       const nextEnvs = (envRes?.data || []) as XHSEnvironment[];
       const nextUsers = (userRes?.data?.items || []) as User[];
       const nextAdAccounts = (adAccountRes?.data || []) as AdAccountOption[];
       const nextSchedules = (scheduleRes?.data || []) as ScheduleSetting[];
       setEnvs(nextEnvs);
+      setDirectory(accountDirectory);
       setUsers(nextUsers);
       setAdAccounts(nextAdAccounts);
       setScheduleSettings(nextSchedules);
@@ -542,7 +550,7 @@ export default function AdminXhsSchedulesPage() {
   }, [fetchData]);
 
   const ownerUsers = useMemo(
-    () => users.filter((user) => userHasRole(user, ['xhs_lead', 'xhs_ops'])),
+    () => users.filter((user) => userHasRole(user, ['xhs_lead', 'xhs_ops', 'brand_lead', 'brand_ops'])),
     [users],
   );
   const syncRunnerOptions = useMemo(
@@ -550,8 +558,8 @@ export default function AdminXhsSchedulesPage() {
     [envs],
   );
   const publishEnvOptions = useMemo(
-    () => envs.filter((env) => !isSyncRunnerEnv(env)),
-    [envs],
+    () => directory?.mode === 'feishu' ? directory.accounts.filter(a => a.status === 'active') : envs.filter((env) => !isSyncRunnerEnv(env)),
+    [envs, directory],
   );
 
   const activeSetting = useMemo(
@@ -583,6 +591,10 @@ export default function AdminXhsSchedulesPage() {
     const draft = scheduleDrafts[taskKey];
     if (!setting || !draft) return;
     const nextEnabled = options?.enabled ?? !!draft.enabled;
+    if (taskKey === 'account_data_sync' && nextEnabled && (!directory || !directory.ready)) {
+      toast.error('账号名单未就绪，请先确认主名单配置');
+      return;
+    }
     setActionKey(options?.actionKey || `save-${taskKey}`);
     try {
       let payload: {
@@ -599,6 +611,7 @@ export default function AdminXhsSchedulesPage() {
               target_scope: draft.target_scope || 'all',
               target_user_ids: draft.target_user_ids || [],
               target_environment_ids: draft.target_environment_ids || [],
+              target_account_ids: draft.target_account_ids || [],
               yundeng_sync_concurrency: Number(draft.yundeng_sync_concurrency || 5),
               post_sync_enabled: !!draft.post_sync_enabled,
               post_sync_runner_ids: draft.post_sync_runner_ids || [],
@@ -656,7 +669,7 @@ export default function AdminXhsSchedulesPage() {
     } finally {
       setActionKey(null);
     }
-  }, [scheduleDrafts, scheduleSettings]);
+  }, [scheduleDrafts, scheduleSettings, directory]);
 
   const handleSave = useCallback(async (taskKey: string) => {
     await persistSchedule(taskKey);
@@ -860,7 +873,7 @@ export default function AdminXhsSchedulesPage() {
                       {[
                         ['all', '全部账号'],
                         ['owner_users', '指定负责人'],
-                        ['environment_ids', '指定发布账号'],
+                        [directory?.mode === 'feishu' ? 'account_ids' : 'environment_ids', '指定账号'],
                       ].map(([value, label]) => (
                         <button
                           key={`${activeSetting.task_key}-${value}`}
@@ -869,7 +882,7 @@ export default function AdminXhsSchedulesPage() {
                             ...prev,
                             [activeSetting.task_key]: {
                               ...prev[activeSetting.task_key],
-                              target_scope: value as 'all' | 'owner_users' | 'environment_ids',
+                              target_scope: value as ScheduleDraft['target_scope'],
                             },
                           }))}
                           className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition-all ${activeDraft.target_scope === value ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
@@ -904,10 +917,14 @@ export default function AdminXhsSchedulesPage() {
                         })}
                       </div>
                     ) : null}
-                    {activeDraft.target_scope === 'environment_ids' ? (
+                    {directory?.mode === 'feishu' && activeDraft.target_scope === 'environment_ids' ? (
+                      <p role="alert" className="mt-3 text-sm text-amber-700">旧任务选择的是云登环境，请重新选择主名单账号并保存。</p>
+                    ) : null}
+                    {activeDraft.target_scope === 'account_ids' || (directory?.mode !== 'feishu' && activeDraft.target_scope === 'environment_ids') ? (
                       <div className="mt-3 max-h-[220px] space-y-2 overflow-y-auto pr-1">
                         {publishEnvOptions.map((env) => {
-                          const checked = !!activeDraft.target_environment_ids?.includes(env.id);
+                          const targetKey = directory?.mode === 'feishu' ? 'target_account_ids' : 'target_environment_ids';
+                          const checked = !!activeDraft[targetKey]?.includes(env.id);
                           return (
                             <label key={env.id} className={`flex items-center justify-between rounded-2xl border px-3 py-3 text-sm ${checked ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
                               <span className="min-w-0">
@@ -918,10 +935,10 @@ export default function AdminXhsSchedulesPage() {
                                 type="checkbox"
                                 checked={checked}
                                 onChange={(event) => setScheduleDrafts((prev) => {
-                                  const current = new Set(prev[activeSetting.task_key]?.target_environment_ids || []);
+                                  const current = new Set(prev[activeSetting.task_key]?.[targetKey] || []);
                                   if (event.target.checked) current.add(env.id);
                                   else current.delete(env.id);
-                                  return { ...prev, [activeSetting.task_key]: { ...prev[activeSetting.task_key], target_environment_ids: Array.from(current).sort((a, b) => a - b) } };
+                                  return { ...prev, [activeSetting.task_key]: { ...prev[activeSetting.task_key], [targetKey]: Array.from(current).sort((a, b) => a - b) } };
                                 })}
                                 className="h-4 w-4 rounded border-slate-300 text-slate-950"
                               />

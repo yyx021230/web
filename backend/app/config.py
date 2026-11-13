@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import unquote, urlparse
 
 from pydantic import Field
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     deployment_environment: str = "development"
     production_confirmation: str = ""
-    app_version: str = "0.5.1"
+    app_version: str = "0.6.0"
     git_commit: str = "unknown"
     build_time: str = "unknown"
     debug: bool = False
@@ -140,6 +141,15 @@ class Settings(BaseSettings):
     xhs_device_busy_retry_interval_seconds: float = 10.0
     xhs_creator_sync_behavior_enabled: bool = True
     xhs_creator_sync_behavior_mode: int = 0
+    xhs_creator_sync_source: Literal["browser", "phone_cloud"] = "browser"
+    xhs_account_master_enabled: bool = False
+    phone_cloud_xhs_data_base_url: str = ""
+    phone_cloud_xhs_data_client_id: str = ""
+    phone_cloud_xhs_data_secret: str = ""
+    phone_cloud_xhs_data_http_origins: str = ""
+    # Explicit, operator-verified device/slot/account bindings; never infer by nickname.
+    phone_cloud_xhs_verified_bindings: str = "[]"
+    phone_cloud_xhs_data_max_age_hours: int = Field(default=48, ge=1, le=168)
     xhs_yundeng_lease_seconds: int = 1800
     xhs_yundeng_acquire_timeout_seconds: int = 3600
     xhs_yundeng_start_stagger_seconds: float = 2.0

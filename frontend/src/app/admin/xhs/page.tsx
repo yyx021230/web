@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getXhsDataDirectory } from '@/services/xhsApi';
 import api from '@/services/api';
 import { adminApi } from '@/services/adminApi';
 import { toast } from '@/lib/toast';
@@ -262,6 +263,8 @@ export default function AdminXhsPage() {
   const [activePanel, setActivePanel] = useState<WorkbenchPanelKey>('profile');
   const [browseOverview, setBrowseOverview] = useState<SyncRunnerBrowseOverview | null>(null);
   const [browserStatuses, setBrowserStatuses] = useState<BrowserEnvironmentStatus[]>([]);
+  const [masterMode,setMasterMode] = useState(false);
+  useEffect(() => { getXhsDataDirectory().then(d=>setMasterMode(d.mode==='feishu')).catch(()=>{}); },[]);
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -572,12 +575,14 @@ export default function AdminXhsPage() {
               <div className="inline-flex rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
                 XHS Environment Ops
               </div>
-              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">小红书账号管理</h1>
+              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">{masterMode ? '采集执行环境' : '小红书账号管理'}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/62">
-                小红书与品牌是独立账号部门。这里集中处理账号归属、主页采集、同步账号标记和对应部门负责人分配。
+                {masterMode ? '账号、负责人和部门以飞书主名单为准。此处仅维护浏览器执行资源和旧环境溯源，不决定账户数据或看板归属。'
+                  : '小红书与品牌是独立账号部门。这里集中处理账号归属、主页采集、同步账号标记和对应部门负责人分配。'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
+              <Link href="/admin/xhs/accounts" className="inline-flex h-11 items-center rounded-2xl border border-white/14 bg-white/8 px-4 text-sm font-semibold text-white">飞书账号主名单</Link>
               <button
                 className="inline-flex h-11 items-center rounded-2xl border border-emerald-400/30 bg-emerald-400/12 px-4 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-400/18 disabled:opacity-50"
                 onClick={handleRefreshBrowserStatuses}
@@ -981,7 +986,7 @@ export default function AdminXhsPage() {
                   </div>
 
                   <div className="grid border-b border-slate-200 bg-white md:grid-cols-4">
-                    {WORKBENCH_PANELS.map((panel) => (
+                    {WORKBENCH_PANELS.filter(panel=>!masterMode || panel.key!=='users').map((panel) => (
                       <button
                         key={panel.key}
                         type="button"
@@ -1134,7 +1139,7 @@ export default function AdminXhsPage() {
                       </div>
                     )}
 
-                    {activePanel === 'users' && (
+                    {activePanel === 'users' && !masterMode && (
                       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1fr)]">
                         <div className="rounded-[24px] border border-slate-200 bg-[#fbfaf7] p-5">
                           <div className="text-sm font-semibold text-slate-950">当前运营负责人</div>

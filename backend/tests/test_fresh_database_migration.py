@@ -5,13 +5,14 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import pytest
 
 import app.models  # noqa: F401 - register every ORM table on Base.metadata
 from app.db.base import Base
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-CURRENT_REVISION = "e61010a0b001"
+CURRENT_REVISION = "e61113b0b002"
 
 
 def _run_alembic(path: Path, *args: str) -> None:
@@ -183,10 +184,11 @@ def test_current_database_additive_publish_upgrade_and_rollback(tmp_path):
     path = tmp_path / "publish-upgrade.db"
     _run_alembic(path, "upgrade", "c47f2a6d9b10")
     with sqlite3.connect(path) as connection:
+        existing_tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         before = {
             table.name: connection.execute(f'SELECT COUNT(*) FROM "{table.name}"').fetchone()[0]
             for table in Base.metadata.tables.values()
-            if not table.name.startswith("hermes_publish_") and table.name != "auth_sessions"
+            if table.name in existing_tables and not table.name.startswith("hermes_publish_")
         }
     _run_alembic(path, "upgrade", "head")
     with sqlite3.connect(path) as connection:
@@ -201,3 +203,39 @@ def test_current_database_additive_publish_upgrade_and_rollback(tmp_path):
         assert _revision(connection) == "c47f2a6d9b10"
         for name, count in before.items():
             assert connection.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0] == count
+
+
+def test_cloud_schema_downgrade_refuses_to_delete_saved_observations(tmp_path):
+    path = tmp_path / "cloud-retention.db"
+    _run_alembic(path, "upgrade", "head")
+    with sqlite3.connect(path) as connection:
+        connection.execute("INSERT INTO xhs_environments (id,shop_id,account_name,status) VALUES (1,'test-shop','Test','active')")
+        connection.execute("INSERT INTO xhs_cloud_imports (client_id,run_id,item_id,environment_id,payload_hash,payload,status) "
+                           "VALUES ('test-client',?, '0',1,?, '{}','applied')", ('a' * 64, 'b' * 64))
+        connection.commit()
+    with pytest.raises(subprocess.CalledProcessError):
+        _run_alembic(path, "downgrade", "e61010a0b001")
+    with sqlite3.connect(path) as connection:
+        assert _revision(connection) == "e61112a0b001"
+        assert connection.execute("SELECT COUNT(*) FROM xhs_cloud_imports").fetchone()[0] == 1
+
+
+def test_master_cutover_preserves_existing_creator_history_and_blocks_lossy_downgrade(tmp_path):
+    path=tmp_path / "master-cutover-retention.db"
+    _run_alembic(path,"upgrade","e61113a0b001")
+    with sqlite3.connect(path) as connection:
+        connection.execute("INSERT INTO xhs_environments (id,shop_id,account_name,status) VALUES (1,'fixture','Snapshot','active')")
+        connection.execute("INSERT INTO xhs_account_sync_runs (id,job_id,sync_kind,source,status,request_config) VALUES (1,'fixture-run','engagement','manual','succeeded','{}')")
+        connection.execute("INSERT INTO xhs_creator_sync_rows (sync_run_id,environment_id,source_row_index,source_key,title,metrics,raw_payload) VALUES (1,1,1,'fixture-key','Keep original','{}','{}')")
+        connection.commit()
+    _run_alembic(path,"upgrade","head")
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("SELECT environment_id,account_id,title FROM xhs_creator_sync_rows").fetchone()==(1,None,"Keep original")
+        connection.execute("INSERT INTO xhs_accounts (id,xhs_account_id,account_name,department,account_type,status,owner_label,sim_device_label,login_device_label,source_row,source_hash,revision) VALUES (1,'10000001','Canonical','xhs','personal','active','','','',1,'fixture',1)")
+        connection.execute("INSERT INTO xhs_creator_sync_rows (sync_run_id,account_id,source_row_index,source_key,title,metrics,raw_payload) VALUES (1,1,1,'native-key','Keep native','{}','{}')")
+        connection.commit()
+    with pytest.raises(subprocess.CalledProcessError):
+        _run_alembic(path,"downgrade","e61113a0b001")
+    with sqlite3.connect(path) as connection:
+        assert _revision(connection)==CURRENT_REVISION
+        assert connection.execute("SELECT COUNT(*) FROM xhs_creator_sync_rows").fetchone()[0]==2

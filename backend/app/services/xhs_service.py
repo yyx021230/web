@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from app.services.xhs_master_data import master_enabled, note_scope, require_master
+from app.models.xhs_account import XHSAccount
+
 import httpx
 import asyncio
 import csv
@@ -32,6 +35,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.xhs_environment import PHONE_CLOUD_ACCOUNT_PREFIX, XHSEnvironment
 from app.models.xhs_account_note import XHSAccountNote
 from app.models.xhs_creator_sync_row import XHSCreatorSyncRow
+from app.services.xhs_cloud_data_service import cloud_enabled, note_day, XHSCloudDataService
+from app.services.xhs_metric_provenance import may_enrich_metric, record_metric
 from app.models.xhs_account_note_browse_event import XHSAccountNoteBrowseEvent
 from app.models.xhs_post import XHSPost
 from app.models.user_xhs_env import UserXHSEnvironment
@@ -304,6 +309,7 @@ class SyncSessionPersona:
 
 ProgressCallback = Callable[[dict[str, Any]], Optional[Awaitable[None]]]
 CancelCheck = Callable[[], bool]
+AccountNoteCoverLocalization = tuple[int, str, str | None, str] | tuple[int, str, str | None, str, int]
 
 
 class XHSRemoteOperationUnsupported(ValueError):
@@ -3123,7 +3129,14 @@ class XHSService:
         keyword: str | None = None,
         ai_origin_type: str | None = None,
         status: str | None = None,
+        account_id: int | None = None,
     ) -> tuple[list[XHSAccountNote], int, int]:
+        if master_enabled():
+            if environment_id is not None:
+                raise ValueError("主名单模式请使用account_id筛选，不使用环境ID")
+            from app.services.xhs_master_data import XHSMasterData
+            return await XHSMasterData(self.db).query(user,page=page,limit=limit,account_id=account_id,
+                keyword=keyword,ai_origin_type=ai_origin_type,status=status)
         envs = await self.list_environments(user, include_inactive=True)
         allowed_env_ids = {env.id for env in envs}
         if not allowed_env_ids:
@@ -3449,10 +3462,14 @@ class XHSService:
 
     @staticmethod
     def _insights_note_account_key(note: XHSAccountNote) -> str:
+        if getattr(note,"account_id",None) is not None:
+            return f"account:{note.account_id}"
         return str(getattr(note, "environment_id", "") or XHSService._insights_note_account_name(note))
 
     @staticmethod
     def _insights_note_date(note: XHSAccountNote) -> datetime | None:
+        if getattr(note,"insights_published_at",None) is not None:
+            return note.insights_published_at
         for field in ("published_at", "created_at", "updated_at"):
             value = getattr(note, field, None)
             if isinstance(value, datetime):
@@ -3841,6 +3858,7 @@ class XHSService:
         *,
         start_date: date | None = None,
         end_date: date | None = None,
+        cache_namespace: str = "",
     ) -> dict[str, Any]:
         latest_updated = max((getattr(note, "updated_at", None) or getattr(note, "created_at", None) or datetime.min for note in items), default=datetime.min)
         owner_signature = "|".join(
@@ -3858,6 +3876,7 @@ class XHSService:
             str(getattr(items[-1], "id", "") if items else ""),
             latest_updated.isoformat(),
             owner_signature,
+            cache_namespace,
         ])
         cached = _INSIGHTS_DASHBOARD_CACHE.get(cache_key)
         if cached is not None:
@@ -4071,6 +4090,14 @@ class XHSService:
 
         dashboard = {
             "metrics": metrics,
+            "dataQuality": {
+                "notesWithFieldProvenance": sum(getattr(note, "metric_sources", None) is not None for note in items),
+                "missingMetricNotes": {
+                    field: sum(getattr(note, "metric_sources", None) is not None and field not in note.metric_sources for note in items)
+                    for field in ("view_count", "liked_count", "comment_count", "collected_count", "share_count", "exposure_count")
+                },
+                "dateOnlyNotes": sum(getattr(note, "published_at_precision", None) == "date" for note in items),
+            },
             "trend": [
                 point for point in trend_map.values()
                 if point["posts"] > 0 or point["views"] > 0 or point["comments"] > 0 or point["engagement"] > 0
@@ -4093,6 +4120,10 @@ class XHSService:
         limit: int = 5000,
         status: str | None = "active",
     ) -> tuple[list[XHSAccountNote], int, int]:
+        if master_enabled():
+            from app.services.xhs_master_data import XHSMasterData
+            return await XHSMasterData(self.db).query(user,limit=limit,status=status,
+                start_date=start_date,end_date=end_date,insights=True)
         envs = await self.list_environments(user, include_inactive=True)
         allowed_env_ids = {env.id for env in envs}
         if not allowed_env_ids:
@@ -4399,6 +4430,9 @@ class XHSService:
             .where(XHSAccountNote.assigned_runner_environment_id.in_(runner_ids))
             .group_by(XHSAccountNote.assigned_runner_environment_id)
         )
+        if master_enabled():
+            assigned_stmt=assigned_stmt.where(XHSAccountNote.account_id.in_(select(XHSAccount.id).where(
+                XHSAccount.status.in_(("active","retired")))))
         assigned_rows = await self.db.execute(assigned_stmt)
         assigned_counts = {int(row[0]): int(row[1] or 0) for row in assigned_rows.all() if row[0] is not None}
 
@@ -4420,6 +4454,14 @@ class XHSService:
                 XHSAccountNote.environment_id.asc(),
             )
         )
+        if master_enabled():
+            assigned_account_stmt=(select(XHSAccountNote.assigned_runner_environment_id,
+                XHSAccountNote.account_id,func.max(XHSAccount.account_name),func.count(XHSAccountNote.id))
+                .join(XHSAccount,XHSAccount.id==XHSAccountNote.account_id)
+                .where(XHSAccountNote.assigned_runner_environment_id.in_(runner_ids),
+                    XHSAccount.status.in_(("active","retired")))
+                .group_by(XHSAccountNote.assigned_runner_environment_id,XHSAccountNote.account_id)
+                .order_by(XHSAccountNote.assigned_runner_environment_id,XHSAccountNote.account_id))
         assigned_account_rows = await self.db.execute(assigned_account_stmt)
         assigned_accounts_by_runner: dict[int, list[dict[str, Any]]] = {}
         for runner_id, environment_id, account_name, note_count in assigned_account_rows.all():
@@ -4428,6 +4470,7 @@ class XHSService:
             assigned_accounts_by_runner.setdefault(int(runner_id), []).append(
                 {
                     "environment_id": int(environment_id),
+                    **({"account_id":int(environment_id),"environment_id":None} if master_enabled() else {}),
                     "account_name": (account_name or "").strip() or f"环境 {environment_id}",
                     "note_count": int(note_count or 0),
                 }
@@ -4593,6 +4636,8 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
+        if master_enabled():
+            raise ValueError("主名单模式不可按旧环境同步，请使用独立账号同步入口")
         normalized_homepage_sync_mode = str(homepage_sync_mode or "").strip()
         if normalized_homepage_sync_mode not in HOMEPAGE_SYNC_MODES:
             raise ValueError("主页帖子同步模式无效")
@@ -5311,6 +5356,12 @@ class XHSService:
         ]
         published_at = item.get("published_at")
         if isinstance(published_at, datetime):
+            dated = [note for note in unresolved if note.published_at_precision == "date"
+                     and note_day(note) == (published_at + timedelta(hours=8)).date()]
+            if len(dated) == 1:
+                return dated[0], "homepage_title_date", 0.9
+            if dated:
+                return None, None, None
             timed = [
                 note for note in unresolved
                 if isinstance(note.published_at, datetime)
@@ -5320,6 +5371,9 @@ class XHSService:
                 return timed[0], "homepage_title_time", 0.96
             if len(timed) > 1:
                 return None, None, None
+        if (isinstance(published_at, datetime)
+                and any(note.published_at_precision == "date" for note in unresolved)):
+            return None, None, None
         if len(unresolved) == 1:
             return unresolved[0], "homepage_title_unique", 0.72
         return None, None, None
@@ -5346,9 +5400,11 @@ class XHSService:
         if not (env.profile_url or "").strip():
             raise RuntimeError(f"环境 {env.account_name} 未配置个人主页链接")
 
+        native = isinstance(env,XHSAccount)
+        expected_revision = env.revision if native else None
         existing_note_stmt = (
             select(XHSAccountNote)
-            .where(XHSAccountNote.environment_id == env.id)
+            .where(XHSCloudDataService.subject_condition(XHSAccountNote,env))
             .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
         )
         existing_notes = list((await self.db.execute(existing_note_stmt)).scalars().all())
@@ -5406,6 +5462,17 @@ class XHSService:
             max_scroll_rounds=max_scroll_rounds if should_scroll_profile else None,
             max_stagnant_rounds=2 if should_scroll_profile else None,
         )
+        if native:
+            current = await self.db.scalar(select(XHSAccount).where(XHSAccount.id==env.id)
+                .with_for_update().execution_options(populate_existing=True))
+            if current is None or current.status != "active" or current.revision != expected_revision:
+                raise RuntimeError("主名单账号已变化，请按最新名单重新同步")
+            if str(payload.get("red_id") or "").strip() != current.xhs_account_id:
+                raise RuntimeError("主页公开号与主名单不一致或无法确认，未写入任何帖子")
+        # Mobile imports may finish while the browser is fetching. Do not enrich
+        # with stale ORM ownership/metric flags loaded before the remote request.
+        existing_notes = list((await self.db.execute(existing_note_stmt.with_for_update()
+            .execution_options(populate_existing=True))).scalars().all())
         now = utc_now_naive()
         created_notes = 0
         updated_notes = 0
@@ -5413,7 +5480,7 @@ class XHSService:
         # A transient XHS response or expired profile token can look like a
         # successful request with zero feeds. Do not let that mark all known
         # notes as offline in the stale-record sweep below.
-        if known_feed_id_set and not raw_items:
+        if (known_feed_id_set or (native and existing_notes)) and not raw_items:
             raise RuntimeError(
                 f"{env.account_name} 的主页返回 0 篇帖子，已保留现有 {len(known_feed_id_set)} 篇记录"
             )
@@ -5444,8 +5511,8 @@ class XHSService:
         applied_feed_id_set: set[str] = set()
         touched_notes: list[XHSAccountNote] = []
         deferred_homepage_items: list[dict[str, Any]] = []
-        pending_cover_localizations: list[tuple[int, str, str | None, str]] = []
-        source_posts = list((await self.db.execute(
+        pending_cover_localizations: list[AccountNoteCoverLocalization] = []
+        source_posts = [] if native else list((await self.db.execute(
             select(XHSPost).where(XHSPost.environment_id == env.id)
         )).scalars().all())
         source_posts_by_feed = {
@@ -5464,7 +5531,8 @@ class XHSService:
                         await self.rebalance_account_note_runner_assignments(touched_notes, runner_envs=effective_runner_envs)
             await self.db.commit()
             if pending_cover_localizations:
-                await self._apply_pending_account_note_cover_localizations(pending_cover_localizations)
+                await self._apply_pending_account_note_cover_localizations(pending_cover_localizations,
+                    **({"native_account_id":env.id} if native else {}))
 
         await self._emit_progress(
             progress_callback,
@@ -5497,7 +5565,7 @@ class XHSService:
             if note is None:
                 if homepage_sync_mode == HOMEPAGE_SYNC_MODE_CREATE_MISSING:
                     note = XHSAccountNote(
-                        environment_id=env.id,
+                        **XHSCloudDataService.subject_values(env),
                         account_name=env.account_name or "",
                         profile_nickname=payload.get("profile_nickname") or env.account_name or "",
                         red_id=payload.get("red_id"),
@@ -5522,7 +5590,7 @@ class XHSService:
                 else:
                     published_at = item.get("published_at")
                     deferred_homepage_items.append({
-                        "environment_id": int(env.id),
+                        ("account_id" if native else "environment_id"): int(env.id),
                         "account_name": env.account_name or "",
                         "feed_id": feed_id,
                         "title": str(item.get("title") or ""),
@@ -5561,7 +5629,8 @@ class XHSService:
             )
             note.homepage_synced_at = now
 
-            note.account_name = env.account_name or ""
+            if not native or was_created:
+                note.account_name = env.account_name or ""
             note.profile_nickname = payload.get("profile_nickname") or env.account_name or ""
             note.red_id = payload.get("red_id")
             note.xsec_token = item.get("xsec_token") or note.xsec_token
@@ -5579,17 +5648,23 @@ class XHSService:
                 ))
             if not has_creator_metrics or not note.title:
                 note.title = item.get("title") or note.title or ""
-            if not has_creator_metrics or note.published_at is None:
+            if not has_creator_metrics or note.published_at is None or note.published_at_precision == "date":
                 note.published_at = item.get("published_at") or note.published_at
+                if item.get("published_at"):
+                    note.published_at_precision = "second"
             note.status = "active"
-            if not has_creator_metrics and item.get("liked_count") is not None:
+            if may_enrich_metric(note, "liked_count") and item.get("liked_count") is not None:
                 note.liked_count = self._merge_metric_count(note.liked_count, item.get("liked_count"))
-            if not has_creator_metrics and item.get("comment_count") is not None:
+                record_metric(note, "liked_count", "homepage", now)
+            if may_enrich_metric(note, "comment_count") and item.get("comment_count") is not None:
                 note.comment_count = self._merge_metric_count(note.comment_count, item.get("comment_count"))
-            if not has_creator_metrics and item.get("collected_count") is not None:
+                record_metric(note, "comment_count", "homepage", now)
+            if may_enrich_metric(note, "collected_count") and item.get("collected_count") is not None:
                 note.collected_count = self._merge_metric_count(note.collected_count, item.get("collected_count"))
-            if not has_creator_metrics and item.get("share_count") is not None:
+                record_metric(note, "collected_count", "homepage", now)
+            if may_enrich_metric(note, "share_count") and item.get("share_count") is not None:
                 note.share_count = self._merge_metric_count(note.share_count, item.get("share_count"))
+                record_metric(note, "share_count", "homepage", now)
             note.sort_index = int(item.get("sort_index") or 0)
             note.first_synced_at = note.first_synced_at or now
             note.last_seen_at = now
@@ -5619,7 +5694,7 @@ class XHSService:
 
         stale_stmt = (
             select(XHSAccountNote)
-            .where(XHSAccountNote.environment_id == env.id)
+            .where(XHSCloudDataService.subject_condition(XHSAccountNote,env))
             .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
         )
         stale_notes = list((await self.db.execute(stale_stmt)).scalars().all())
@@ -5643,7 +5718,8 @@ class XHSService:
 
         await self.db.commit()
         if pending_cover_localizations:
-            await self._apply_pending_account_note_cover_localizations(pending_cover_localizations)
+            await self._apply_pending_account_note_cover_localizations(pending_cover_localizations,
+                **({"native_account_id":env.id} if native else {}))
         await self._emit_progress(
             progress_callback,
             {
@@ -5683,7 +5759,9 @@ class XHSService:
         envs = await self.list_environments(user)
         allowed_env_ids = {env.id for env in envs}
         stmt = select(XHSAccountNote).where(XHSAccountNote.id == note_id)
-        if user.role != "admin":
+        if master_enabled():
+            stmt = stmt.where(note_scope(user))
+        elif user.role != "admin":
             stmt = stmt.where(XHSAccountNote.environment_id.in_(allowed_env_ids))
         note = (await self.db.execute(stmt)).scalar_one_or_none()
         if note is None:
@@ -5712,7 +5790,9 @@ class XHSService:
             raise ValueError("请选择至少一条账号帖子")
 
         stmt = select(XHSAccountNote.id).where(XHSAccountNote.id.in_(normalized_ids))
-        if user.role != "admin":
+        if master_enabled():
+            stmt = stmt.where(note_scope(user))
+        elif user.role != "admin":
             stmt = stmt.where(XHSAccountNote.environment_id.in_(allowed_env_ids))
         found_ids = [row[0] for row in (await self.db.execute(stmt)).all()]
         if not found_ids:
@@ -5753,7 +5833,9 @@ class XHSService:
         envs = await self.list_environments(user)
         allowed_env_ids = {env.id for env in envs}
         stmt = select(XHSAccountNote).where(XHSAccountNote.id == note_id)
-        if user.role != "admin":
+        if master_enabled():
+            stmt = stmt.where(note_scope(user))
+        elif user.role != "admin":
             stmt = stmt.where(XHSAccountNote.environment_id.in_(allowed_env_ids))
         note = (await self.db.execute(stmt)).scalar_one_or_none()
         if note is None:
@@ -5798,7 +5880,7 @@ class XHSService:
                 runner_env=scrape_env,
                 commit=False,
             )
-            pending_cover_localizations: list[tuple[int, str, str | None, str]] = []
+            pending_cover_localizations: list[AccountNoteCoverLocalization] = []
             synced = await self._sync_account_note_metrics(
                 note,
                 api_base=mcp_api,
@@ -5826,11 +5908,24 @@ class XHSService:
         envs = await self.list_environments(user)
         allowed_env_ids = {env.id for env in envs}
         stmt = select(XHSAccountNote).where(XHSAccountNote.id == note_id)
-        if user.role != "admin":
+        if master_enabled():
+            stmt = stmt.where(note_scope(user))
+        elif user.role != "admin":
             stmt = stmt.where(XHSAccountNote.environment_id.in_(allowed_env_ids))
         note = (await self.db.execute(stmt)).scalar_one_or_none()
         if note is None:
             raise ValueError("账号帖子不存在")
+
+        if master_enabled():
+            from app.services.xhs_cloud_data_service import XHSCloudDataService
+            account = await self.db.get(XHSAccount,note.account_id)
+            if account is None or account.status != "active":
+                raise ValueError("账号已注销或归档，不可同步")
+            result = await XHSCloudDataService(self.db).sync([account])
+            if result.get("failed_accounts"):
+                raise ValueError(result["failed_accounts"][0]["error"])
+            await self.db.refresh(note)
+            return note, True
 
         publish_env = await self.get_environment(int(note.environment_id))
         if publish_env is None:
@@ -6180,6 +6275,9 @@ class XHSService:
         env = await self.get_environment(int(environment_id))
         if env is None or env.status != "active":
             raise RuntimeError(f"发布账号环境 {environment_id} 不存在或未启用")
+        if cloud_enabled():
+            return await XHSCloudDataService(self.db).sync(
+                [env], progress_callback=progress_callback, cancel_check=cancel_check)
         env_lock = await self._get_env_publish_lock(int(env.id))
         async with env_lock:
             return await self._sync_account_note_engagements_for_environment_locked(
@@ -6206,12 +6304,14 @@ class XHSService:
         progress_callback: ProgressCallback | None = None,
         cancel_check: CancelCheck | None = None,
     ) -> dict:
+        if master_enabled():
+            raise ValueError("主名单模式不可按旧环境同步，请使用独立账号同步入口")
         normalized_target_env_ids = self._normalize_account_note_sync_runner_ids(target_environment_ids)
         normalized_account_limit = self._normalize_account_note_sync_account_limit(sync_account_limit)
         normalized_runner_assignments = self._normalize_account_note_sync_runner_assignments(runner_account_assignments)
         normalized_concurrency = self._normalize_yundeng_sync_concurrency(concurrency)
 
-        envs = await self.list_environments(user)
+        envs = await self.list_environments(user, include_phone_cloud=True) if cloud_enabled() else await self.list_environments(user)
         if environment_id is not None:
             envs = [env for env in envs if env.id == environment_id]
         elif environment_id is None:
@@ -6245,6 +6345,10 @@ class XHSService:
                 "metric_synced_notes": 0,
                 "total_notes": 0,
             }
+
+        if cloud_enabled():
+            return await XHSCloudDataService(self.db).sync(
+                envs, progress_callback=progress_callback, cancel_check=cancel_check)
 
         if self._should_delegate_browser_ops():
             return await self._delegate_account_note_engagement_sync(
@@ -6761,6 +6865,11 @@ class XHSService:
             XHSAccountNote.id.asc(),
         )
         stmt = stmt.where(or_(XHSAccountNote.status == "active", XHSAccountNote.status.is_(None)))
+        if master_enabled():
+            stmt = stmt.where(XHSAccountNote.account_id.in_(select(XHSAccount.id).where(
+                XHSAccount.status == "active", XHSAccount.department.in_(("xhs","brand")))))
+            if environment_id is not None:
+                raise ValueError("主名单详情同步不能使用环境ID筛选")
         stmt = stmt.where(
             XHSAccountNote.feed_id.is_not(None),
             func.trim(XHSAccountNote.feed_id) != "",
@@ -6863,7 +6972,7 @@ class XHSService:
             )
 
             previous_env_id: int | None = None
-            pending_cover_localizations: list[tuple[int, str, str | None, str]] = []
+            pending_cover_localizations: list[AccountNoteCoverLocalization] = []
             async def finalize_partial_sync() -> None:
                 await self.db.commit()
                 if pending_cover_localizations:
@@ -8130,8 +8239,9 @@ class XHSService:
         note: XHSAccountNote,
         api_base: str | None = None,
         persona: SyncSessionPersona | None = None,
-        pending_cover_localizations: list[tuple[int, str, str | None, str]] | None = None,
+        pending_cover_localizations: list[AccountNoteCoverLocalization] | None = None,
     ) -> bool:
+        expected_account_id=getattr(note,"account_id",None)
         detail_data = await self._fetch_account_note_detail_metrics(
             note.feed_id,
             note.xsec_token,
@@ -8141,17 +8251,31 @@ class XHSService:
         )
         if not detail_data:
             return False
-        has_creator_metrics = note.creator_synced_at is not None
-        if not has_creator_metrics and isinstance(detail_data.get("liked_count"), int):
+        state = sa_inspect(note, raiseerr=False)
+        if self.db is not None and state is not None and state.persistent:
+            if expected_account_id is not None:
+                account=await self.db.scalar(select(XHSAccount).where(XHSAccount.id==expected_account_id,
+                    XHSAccount.status=="active").with_for_update())
+                if account is None:
+                    raise ValueError("主名单账号已停用，未写入详情数据")
+            await self.db.refresh(note, with_for_update=True)
+            if expected_account_id is not None and note.account_id!=expected_account_id:
+                raise ValueError("帖子账号身份已变化，未写入详情数据")
+        if may_enrich_metric(note, "liked_count") and isinstance(detail_data.get("liked_count"), int):
             note.liked_count = self._merge_metric_count(note.liked_count, detail_data["liked_count"])
-        if not has_creator_metrics and isinstance(detail_data.get("comment_count"), int):
+            record_metric(note, "liked_count", "detail", utc_now_naive())
+        if may_enrich_metric(note, "comment_count") and isinstance(detail_data.get("comment_count"), int):
             note.comment_count = self._merge_metric_count(note.comment_count, detail_data["comment_count"])
-        if not has_creator_metrics and isinstance(detail_data.get("collected_count"), int):
+            record_metric(note, "comment_count", "detail", utc_now_naive())
+        if may_enrich_metric(note, "collected_count") and isinstance(detail_data.get("collected_count"), int):
             note.collected_count = self._merge_metric_count(note.collected_count, detail_data["collected_count"])
-        if not has_creator_metrics and isinstance(detail_data.get("share_count"), int):
+            record_metric(note, "collected_count", "detail", utc_now_naive())
+        if may_enrich_metric(note, "share_count") and isinstance(detail_data.get("share_count"), int):
             note.share_count = self._merge_metric_count(note.share_count, detail_data["share_count"])
-        if note.published_at is None and detail_data.get("published_at"):
+            record_metric(note, "share_count", "detail", utc_now_naive())
+        if (note.published_at is None or note.published_at_precision == "date") and detail_data.get("published_at"):
             note.published_at = detail_data["published_at"]
+            note.published_at_precision = "second"
         if detail_data.get("cover_image_url"):
             note.cover_image_url, pending_cover_url = self._prepare_account_note_cover_image(
                 detail_data.get("cover_image_url"),
@@ -8164,6 +8288,8 @@ class XHSService:
                     note.cover_image_url,
                     pending_cover_url,
                 ))
+                if getattr(note,"account_id",None) is not None:
+                    pending_cover_localizations[-1] += (note.account_id,)
         image_urls = detail_data.get("image_urls") or []
         if isinstance(image_urls, list) and image_urls:
             note.image_urls = image_urls
@@ -8313,6 +8439,12 @@ class XHSService:
         ]
         published_at_utc = row.get("published_at_utc")
         if isinstance(published_at_utc, datetime):
+            date_matches = [note for note in title_matches if note.published_at_precision == "date"
+                            and note_day(note) == (published_at_utc + timedelta(hours=8)).date()]
+            if len(date_matches) == 1:
+                return date_matches[0], "creator_title_date", 0.9, False
+            if date_matches:
+                return None, None, None, True
             timed_matches = [
                 note for note in title_matches
                 if isinstance(note.published_at, datetime)
@@ -8363,8 +8495,10 @@ class XHSService:
             value = row.get(source)
             if value is not None:
                 setattr(note, target, max(0, int(value)))
+                record_metric(note, target, "creator_export", utc_now_naive())
         if row.get("cover_click_rate") is not None:
             note.cover_click_rate = max(0.0, float(row["cover_click_rate"]))
+            record_metric(note, "cover_click_rate", "creator_export", utc_now_naive())
 
     async def _import_creator_note_stats_rows(
         self,
@@ -8379,15 +8513,20 @@ class XHSService:
                 delete(XHSCreatorSyncRow).where(
                     and_(
                         XHSCreatorSyncRow.sync_run_id == sync_run_id,
-                        XHSCreatorSyncRow.environment_id == env.id,
+                        XHSCloudDataService.subject_condition(XHSCreatorSyncRow,env),
                     )
                 )
             )
 
+        # Serialize manual exports with mobile snapshots, including first-time creation.
+        subject_model = XHSAccount if isinstance(env,XHSAccount) else XHSEnvironment
+        await self.db.execute(select(subject_model.id).where(subject_model.id == env.id).with_for_update())
         notes = list((await self.db.execute(
             select(XHSAccountNote)
-            .where(XHSAccountNote.environment_id == env.id)
+            .where(XHSCloudDataService.subject_condition(XHSAccountNote,env))
             .order_by(XHSAccountNote.sort_index.asc(), XHSAccountNote.id.asc())
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )).scalars().all())
 
         known_feed_ids = {
@@ -8419,7 +8558,7 @@ class XHSService:
                 key=lambda item: (0 if has_exact_identity_match(item[1]) else 1, item[0]),
             )
         ]
-        posts = list((await self.db.execute(
+        posts = [] if isinstance(env,XHSAccount) else list((await self.db.execute(
             select(XHSPost).where(XHSPost.environment_id == env.id)
         )).scalars().all())
         posts_by_feed = {
@@ -8451,7 +8590,7 @@ class XHSService:
             if note is None:
                 feed_id = str(row.get("note_id") or "").strip() or None
                 note = XHSAccountNote(
-                    environment_id=env.id,
+                    **XHSCloudDataService.subject_values(env),
                     account_name=env.account_name or "",
                     profile_nickname=env.account_name or "",
                     feed_id=feed_id,
@@ -8481,14 +8620,16 @@ class XHSService:
                 note.identity_match_method = match_method or note.identity_match_method
                 note.identity_match_confidence = confidence if confidence is not None else note.identity_match_confidence
 
-            if not note.creator_identity_key or match_method in {"creator_legacy_key", "creator_legacy_raw_key"}:
+            if not note.creator_identity_key or match_method in {"creator_legacy_key", "creator_legacy_raw_key", "creator_title_date"}:
                 note.creator_identity_key = str(row.get("source_key") or "") or None
-            note.account_name = env.account_name or note.account_name or ""
+            if not isinstance(env,XHSAccount) or was_created:
+                note.account_name = env.account_name or note.account_name or ""
             note.profile_nickname = note.profile_nickname or env.account_name or ""
             note.title = str(row.get("title") or note.title or "")
             published_at_utc = row.get("published_at_utc")
             if isinstance(published_at_utc, datetime):
                 note.published_at = published_at_utc
+                note.published_at_precision = "second"
             note.creator_published_at_raw = str(row.get("published_at_raw") or "") or None
             note.creator_first_seen_at = note.creator_first_seen_at or now
             note.creator_last_seen_at = now
@@ -8527,7 +8668,7 @@ class XHSService:
             }
             self.db.add(XHSCreatorSyncRow(
                 sync_run_id=sync_run_id,
-                environment_id=env.id,
+                **XHSCloudDataService.subject_values(env),
                 matched_note_id=note.id,
                 source_row_index=int(row.get("source_row_index") or 0),
                 source_key=str(row.get("source_key") or ""),
@@ -8544,7 +8685,7 @@ class XHSService:
 
         await self.db.flush()
         total_notes = int((await self.db.execute(
-            select(func.count(XHSAccountNote.id)).where(XHSAccountNote.environment_id == env.id)
+            select(func.count(XHSAccountNote.id)).where(XHSCloudDataService.subject_condition(XHSAccountNote,env))
         )).scalar_one() or 0)
         return {
             "created_notes": created_notes,
@@ -8556,13 +8697,21 @@ class XHSService:
 
     async def import_creator_stats_excel(
         self,
-        environment_id: int,
+        environment_id: int | None,
         content: bytes,
         *,
         sync_run_id: int | None = None,
+        account_id: int | None = None,
     ) -> dict[str, int]:
         """Import a creator-center workbook through the canonical note importer."""
-        env = await self.get_environment(int(environment_id))
+        if master_enabled():
+            await require_master(self.db)
+            if environment_id is not None or account_id is None:
+                raise ValueError("主名单导入必须选择账号，不能使用环境ID")
+            env = await self.db.scalar(select(XHSAccount).where(XHSAccount.id==account_id,
+                XHSAccount.status=="active").with_for_update())
+        else:
+            env = await self.get_environment(int(environment_id))
         if env is None:
             raise ValueError("未找到要导入的小红书账号")
         if bool(getattr(env, "is_sync_runner", False)):
@@ -10679,10 +10828,10 @@ class XHSService:
             logger.error(f"同步云登环境失败: {e}")
             return 0
 
-    async def list_environments(self, user: User, include_inactive: bool = False) -> list[XHSEnvironment]:
+    async def list_environments(self, user: User, include_inactive: bool = False, *, include_phone_cloud: bool = False) -> list[XHSEnvironment]:
         """获取用户可用的环境列表"""
         status_condition = and_(
-            ~XHSEnvironment.is_phone_cloud,
+            True if include_phone_cloud else ~XHSEnvironment.is_phone_cloud,
             True if include_inactive else XHSEnvironment.status == "active",
         )
         if has_role(user, ROLE_ADMIN):
@@ -13101,18 +13250,21 @@ class XHSService:
 
     async def _apply_pending_account_note_cover_localizations(
         self,
-        pending_cover_localizations: list[tuple[int, str, str | None, str]],
+        pending_cover_localizations: list[AccountNoteCoverLocalization],
+        *, native_account_id: int | None = None,
     ) -> None:
         if not pending_cover_localizations:
             return
 
         updated = False
-        seen_pairs: set[tuple[int, str, str]] = set()
-        for environment_id, feed_id, current_cover_url, source_url in pending_cover_localizations:
+        seen_pairs: set[tuple[int | None, int, str, str]] = set()
+        for pending in pending_cover_localizations:
+            environment_id, feed_id, current_cover_url, source_url = pending[:4]
+            account_id = pending[4] if len(pending)>4 else native_account_id
             normalized_feed_id = str(feed_id or "").strip()
-            if environment_id <= 0 or not normalized_feed_id or not source_url:
+            if (environment_id <= 0 and not account_id) or not normalized_feed_id or not source_url:
                 continue
-            pair_key = (int(environment_id), normalized_feed_id, source_url)
+            pair_key = (account_id, int(environment_id), normalized_feed_id, source_url)
             if pair_key in seen_pairs:
                 continue
             seen_pairs.add(pair_key)
@@ -13125,7 +13277,8 @@ class XHSService:
                 continue
             stmt = select(XHSAccountNote).where(
                 and_(
-                    XHSAccountNote.environment_id == int(environment_id),
+                    (XHSAccountNote.account_id == account_id if account_id is not None
+                     else XHSAccountNote.environment_id == int(environment_id)),
                     XHSAccountNote.feed_id == normalized_feed_id,
                 )
             )
