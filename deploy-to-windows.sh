@@ -13,6 +13,7 @@ WIN_PS_PATH="${WIN_PATH//\//\\}"
 WIN_PASS="${WIN_PASS:-}"
 EXISTING_BACKUP_DIR="${EXISTING_BACKUP_DIR:-}"
 PRESERVE_ADDITIVE_SCHEMA="${PRESERVE_ADDITIVE_SCHEMA:-false}"
+PRESERVE_XHS_ACCOUNT_SCHEMA="${PRESERVE_XHS_ACCOUNT_SCHEMA:-false}"
 GO_TOOLCHAIN="${GO_TOOLCHAIN:-go1.24.6}"
 
 cd "$PROJECT"
@@ -102,6 +103,12 @@ if [[ "$PRESERVE_ADDITIVE_SCHEMA" == "true" ]]; then
   BACKUP_ARG+=" -PreserveAdditiveSchema"
 elif [[ "$PRESERVE_ADDITIVE_SCHEMA" != "false" ]]; then
   echo "PRESERVE_ADDITIVE_SCHEMA must be true or false." >&2
+  exit 1
+fi
+if [[ "$PRESERVE_XHS_ACCOUNT_SCHEMA" == "true" && "$PRESERVE_ADDITIVE_SCHEMA" == "false" ]]; then
+  BACKUP_ARG+=" -PreserveXhsAccountSchema"
+elif [[ "$PRESERVE_XHS_ACCOUNT_SCHEMA" != "false" ]]; then
+  echo "PRESERVE_XHS_ACCOUNT_SCHEMA requires true/false and cannot combine with PRESERVE_ADDITIVE_SCHEMA." >&2
   exit 1
 fi
 "${SSH[@]}" "$TARGET" \

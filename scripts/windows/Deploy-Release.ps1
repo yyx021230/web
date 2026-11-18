@@ -10,10 +10,13 @@ param(
     [string]$ExistingBackupDir = "",
     [string]$ComposeProjectName = "",
     [switch]$PreserveAdditiveSchema,
+    [switch]$PreserveXhsAccountSchema,
     [switch]$InstallDailyBackup
 )
 
 $ErrorActionPreference = "Stop"
+if ($PreserveAdditiveSchema -and $PreserveXhsAccountSchema) { throw 'Choose one audited schema policy' }
+. (Join-Path $PSScriptRoot 'Xhs-AccountMigration.ps1')
 $releaseRoot = Join-Path $ProjectRoot ".release"
 New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
 $deploymentLockPath = Join-Path $releaseRoot "deploy.lock"
@@ -183,6 +186,34 @@ function Read-EnvValue([string]$Path, [string]$Name, [string]$DefaultValue) {
     return (($line -split '=', 2)[1]).Trim().Trim('"').Trim("'")
 }
 
+function Assert-XhsReleasePreActivation {
+    foreach ($path in @($rootEnvPath, $backendEnvPath)) {
+        Assert-XhsAccountPreActivation (Read-EnvValue $path 'XHS_ACCOUNT_MASTER_ENABLED' 'false') (Read-EnvValue $path 'XHS_CREATOR_SYNC_SOURCE' 'browser')
+    }
+    Assert-XhsAccountPreActivation (Read-ContainerEnvValue $currentBackendId 'XHS_ACCOUNT_MASTER_ENABLED' 'false') (Read-ContainerEnvValue $currentBackendId 'XHS_CREATOR_SYNC_SOURCE' 'browser')
+}
+
+function Assert-XhsDatabaseRollbackSafe {
+    $revision = Read-XhsAuditScalar 'SELECT version_num FROM alembic_version LIMIT 1;'
+    $total = [long]0
+    foreach ($table in @('xhs_accounts','xhs_account_master_imports','xhs_account_history_links','xhs_cloud_imports')) {
+        $exists = Read-XhsAuditScalar "SELECT to_regclass('public.$table');"
+        if ($exists) {
+            $rows = Read-XhsAuditScalar "SELECT (EXISTS(SELECT 1 FROM $table LIMIT 1))::int;"
+            if ($rows -notmatch '^[01]$') { throw 'Cannot inspect native XHS rows' }
+            $total += [long]$rows
+        }
+    }
+    Assert-XhsAccountRollbackState $revision $total
+}
+
+function Read-XhsAuditScalar([string]$Sql) {
+    $value = docker exec -e 'PGOPTIONS=-c default_transaction_read_only=on -c statement_timeout=3000 -c lock_timeout=500 -c max_parallel_workers_per_gather=0' `
+        $currentPostgresId psql -U $databaseUser -d $databaseName -At -v ON_ERROR_STOP=1 -c $Sql
+    if ($LASTEXITCODE -ne 0) { throw 'Bounded read-only XHS rollback inspection failed' }
+    return "$($value | Select-Object -Last 1)".Trim()
+}
+
 function Assert-BackgroundQueuesDrained(
     [string]$PostgresId,
     [string]$DatabaseUser,
@@ -317,6 +348,11 @@ try {
     if ($PreserveAdditiveSchema -and $preMigrationRevision -ne 'c47f2a6d9b10') {
         throw 'PreserveAdditiveSchema is restricted to the audited c47f2a6d9b10 publish/session upgrade'
     }
+    if ($PreserveXhsAccountSchema) {
+        Assert-XhsAccountMigrationRevision $preMigrationRevision
+        Assert-XhsAccountMigrationPackage $stagingRoot
+        Assert-XhsReleasePreActivation
+    }
     $redisId = $currentRedisId
 
     # Build and compile-check candidate images while the current release keeps
@@ -358,6 +394,12 @@ try {
 
     docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot "docker-compose.yml") config --quiet
     if ($LASTEXITCODE -ne 0) { throw "Compose validation failed" }
+    if ($PreserveXhsAccountSchema) {
+        $resolved = docker compose --env-file $rootEnvPath -f (Join-Path $stagingRoot 'docker-compose.yml') config --format json | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot validate candidate XHS defaults' }
+        Assert-XhsAccountPreActivation "$($resolved.services.backend.environment.XHS_ACCOUNT_MASTER_ENABLED)" "$($resolved.services.backend.environment.XHS_CREATOR_SYNC_SOURCE)"
+        $resolved = $null
+    }
     $existingBackend = "$(docker image ls -q $candidateBackendImage | Select-Object -First 1)".Trim()
     $existingFrontend = "$(docker image ls -q $candidateFrontendImage | Select-Object -First 1)".Trim()
     if ($existingBackend -or $existingFrontend) {
@@ -440,6 +482,7 @@ try {
     docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath stop frontend | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to close frontend for cutover' }
     $servicesStopped = $true
+    if ($PreserveXhsAccountSchema) { Assert-XhsReleasePreActivation }
 
     # The user entrypoint has remained closed since the post-build gate. Check
     # once more before stopping API and worker processes.
@@ -509,6 +552,10 @@ try {
     $postMigrationRevision = $observedMigrationRevision
     if ($PreserveAdditiveSchema -and $postMigrationRevision -ne 'e61010a0b001') {
         throw 'Audited additive migration target does not match e61010a0b001'
+    }
+    if ($PreserveXhsAccountSchema) {
+        Assert-XhsAccountMigrationRevision $postMigrationRevision -After
+        Assert-XhsDatabaseRollbackSafe
     }
     docker compose --project-name $ComposeProjectName --env-file $rootEnvPath -f $rootComposePath up -d --no-deps backend ai-worker ai-postprocess-worker frontend
     if ($LASTEXITCODE -ne 0) { throw "Service startup failed" }
@@ -590,7 +637,19 @@ catch {
     Write-Warning "Deployment failed: $deploymentError"
     Write-Warning $_.ScriptStackTrace
     Write-Warning $_.InvocationInfo.PositionMessage
-    if ($servicesStopped) {
+    $rollbackDataSafe = $true
+    if ($servicesStopped -and $migrationAttempted -and $PreserveXhsAccountSchema) {
+        try {
+            foreach ($path in @($rootEnvPath, $backendEnvPath)) {
+                Assert-XhsAccountPreActivation (Read-EnvValue $path 'XHS_ACCOUNT_MASTER_ENABLED' 'false') (Read-EnvValue $path 'XHS_CREATOR_SYNC_SOURCE' 'browser')
+            }
+            Assert-XhsDatabaseRollbackSafe
+        } catch {
+            $rollbackDataSafe = $false
+            $rollbackErrors.Add('Application rollback withheld: XHS activation/data state cannot be proven safe; database retained')
+        }
+    }
+    if ($servicesStopped -and $rollbackDataSafe) {
         Write-Warning "Restoring previous source, images, and database state..."
         if (Test-Path $rootEnvBackupPath) {
             Copy-Item -Force $rootEnvBackupPath $rootEnvPath
@@ -620,7 +679,7 @@ catch {
         $env:RELEASE_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "RELEASE_SOURCE_SHA256" "unknown"
         $env:MCP_SOURCE_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_SOURCE_SHA256" "unknown"
         $env:MCP_BINARY_SHA256 = Read-ImageEnvValue $originalBackendImageId "MCP_BINARY_SHA256" "unknown"
-        if ($backupDir -and $migrationAttempted -and -not $PreserveAdditiveSchema) {
+        if ($backupDir -and $migrationAttempted -and -not $PreserveAdditiveSchema -and -not $PreserveXhsAccountSchema) {
             try {
                 & $rollbackRestoreScript -BackupDir $backupDir -ProjectRoot $ProjectRoot -ConfirmRestore
             } catch {
@@ -629,6 +688,9 @@ catch {
         }
         if ($migrationAttempted -and $PreserveAdditiveSchema) {
             Write-Warning 'Keeping additive publish/session tables; rolling back application images only. No database dump will be replayed.'
+        }
+        if ($migrationAttempted -and $PreserveXhsAccountSchema) {
+            Write-Warning 'Keeping audited XHS account schema; application-only rollback before activation. No database dump will be replayed.'
         }
         try {
             if ($applicationServicesStopped) {

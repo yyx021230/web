@@ -4,6 +4,20 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-18
+
+Release preparation candidate, not a production receipt. Includes the frozen
+0.6.0 account-master/collection features without changing their default gates.
+
+### Fixed
+
+- Add an explicit, hash-pinned XHS account migration policy for
+  e61010a0b001 through e61113b0b002. Pre-activation application rollback preserves
+  the additive schema and never replays a database dump. Unknown schema, enabled
+  account-master collection or native data blocks unsafe old-application rollback.
+- Keep the earlier publish/session preservation policy separately restricted;
+  reject combining migration modes and verify production and resolved defaults.
+
 ## [0.6.0] - 2026-11-13
 
 Frozen local account-master and collection cutover candidate, not deployed.
