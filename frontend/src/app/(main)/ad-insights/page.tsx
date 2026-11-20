@@ -3,7 +3,6 @@
 import Script from 'next/script';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BarChart3,
   Bot,
   CalendarDays,
   ChevronLeft,
@@ -12,7 +11,6 @@ import {
   Filter,
   HelpCircle,
   Loader2,
-  PieChart,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -26,6 +24,11 @@ import {
 import { AccountMultiSelect } from '@/components/ui/account-multi-select';
 import { toast } from '@/lib/toast';
 import adaptive from '@/components/layout/adaptive-dashboard.module.css';
+import {
+  chartNumber as num, comparisonColumns, comparisonRows, comparisonTable, conversionCost, coreTrendTable,
+  downloadChartTable, downloadFile, funnelTable, metricTable, metricTrendValues, ownerTable, rankOwners,
+  selectedTrendMetrics, spendTrendTable, tagRows, tagTable, TOP_NOTE_LABELS, topNotesTable, TREND_METRICS,
+} from './chart-export';
 
 declare global {
   interface Window {
@@ -44,6 +47,8 @@ declare global {
 
 type DateRange = { start: string; end: string };
 type ContentTagData = Pick<XHSAdDashboardResponse, 'quadrant' | 'creative_tags' | 'top_notes' | 'note_rows' | 'content_tag_level' | 'content_tag_primary' | 'content_tag_children'>;
+type DashboardParams = NonNullable<Parameters<typeof getXhsAdDashboard>[0]>;
+type FilteredSnapshot<T> = { params: DashboardParams; data: T };
 const DASHBOARD_REQUEST_DEBOUNCE_MS = 160;
 const CONTENT_TAG_REQUEST_DEBOUNCE_MS = 520;
 
@@ -54,14 +59,6 @@ function professionalAccountKey(account: Record<string, any>): string {
     String(account.xhs_owner_name || '').trim(),
   ].join('\u001f');
 }
-
-const TREND_METRICS = [
-  { key: 'conversion', label: '有效线索', color: '#166534' },
-  { key: 'impression', label: '曝光', color: '#111827' },
-  { key: 'click', label: '点击', color: '#2563eb' },
-  { key: 'interaction', label: '互动', color: '#d97706' },
-  { key: 'openings', label: '开口', color: '#be123c' },
-] as const;
 
 function isCanceledRequest(error: unknown): boolean {
   const err = error as { code?: string; name?: string; message?: string };
@@ -86,11 +83,6 @@ function defaultEnd() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return dateKey(date);
-}
-
-function num(value: unknown) {
-  const parsed = Number(value || 0);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function fmt(value: unknown, type?: string) {
@@ -119,35 +111,37 @@ function axisFormatter(value: number) {
   return Math.round(value).toLocaleString('zh-CN');
 }
 
-function kpiSparkValues(key: string, trend: Array<Record<string, any>>) {
-  return trend.map((point) => {
-    if (key === 'ctr') return num(point.impression) > 0 ? (num(point.click) / num(point.impression)) * 100 : 0;
-    if (key === 'avg_click_cost') return num(point.click) > 0 ? num(point.fee) / num(point.click) : 0;
-    if (key === 'interaction_rate') return num(point.click) > 0 ? (num(point.interaction) / num(point.click)) * 100 : 0;
-    if (key === 'opening_cost') return num(point.openings) > 0 ? num(point.fee) / num(point.openings) : 0;
-    if (key === 'conversion_rate') return num(point.click) > 0 ? (num(point.conversion) / num(point.click)) * 100 : 0;
-    if (key === 'conversion_cost') return num(point.conversion) > 0 ? num(point.fee) / num(point.conversion) : 0;
-    const fieldMap: Record<string, string> = {
-      total_spend: 'fee',
-      total_impression: 'impression',
-      total_click: 'click',
-      openings: 'openings',
-      interaction: 'interaction',
-      conversion: 'conversion',
-    };
-    return num(point[fieldMap[key] || 'fee']);
-  });
+function ExportButton({ title, onExport, compact = false, busy = false }: {
+  title: string; onExport?: () => void; compact?: boolean; busy?: boolean;
+}) {
+  const label = `导出表格：${title}`;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={!onExport || busy}
+      onClick={onExport}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 disabled:cursor-not-allowed disabled:opacity-40',
+        compact ? 'h-6 w-6' : 'h-8 px-2.5',
+      )}
+    >
+      {busy ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Download aria-hidden="true" className="h-3.5 w-3.5" />}
+      {!compact && <span className="whitespace-nowrap">{busy ? '导出中' : '导出表格'}</span>}
+    </button>
+  );
 }
 
-function PanelTitle({ eyebrow, title, suffix, icon }: { eyebrow?: string; title: string; suffix?: string; icon?: ReactNode }) {
+function PanelTitle({ eyebrow, title, suffix, icon, action }: { eyebrow?: string; title: string; suffix?: string; icon?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div>
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
         {eyebrow ? <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">{eyebrow}</div> : null}
         <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.035em] text-slate-950">{title}</h2>
       </div>
       {suffix ? <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 shadow-sm">{suffix}</span> : null}
-      {icon ? <div className="grid h-9 w-9 place-items-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-400">{icon}</div> : null}
+      {action ?? (icon ? <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-400">{icon}</div> : null)}
     </div>
   );
 }
@@ -291,9 +285,7 @@ function EchartPanel({
 }
 
 function buildAdTrendOption(trend: Array<Record<string, any>>, metricKeys: string[], chartWidth = 760): Record<string, unknown> {
-  const metrics = metricKeys
-    .map((key) => TREND_METRICS.find((metric) => metric.key === key))
-    .filter(Boolean) as Array<(typeof TREND_METRICS)[number]>;
+  const metrics = selectedTrendMetrics(metricKeys);
   const isDense = trend.length > (chartWidth < 680 ? 10 : 14);
   return {
     animation: true,
@@ -404,7 +396,7 @@ function buildSpendConversionTrendOption(trend: Array<Record<string, any>>, char
           `<strong>${point.date}</strong> <span style="color:#cbd5e1">日趋势</span>`,
           `<span style="color:#111827">●</span> 消耗 <b style="float:right;margin-left:18px">${fmt(point.fee, 'currency')}</b>`,
           `<span style="color:#166534">●</span> 转化 <b style="float:right;margin-left:18px">${fmt(point.conversion)}</b>`,
-          `<span style="color:#2563eb">●</span> 转化成本 <b style="float:right;margin-left:18px">${fmt(num(point.conversion) > 0 ? num(point.fee) / num(point.conversion) : 0, 'currency')}</b>`,
+          `<span style="color:#2563eb">●</span> 转化成本 <b style="float:right;margin-left:18px">${fmt(conversionCost(point), 'currency')}</b>`,
           `<span style="color:#94a3b8">●</span> 点击 <b style="float:right;margin-left:18px">${fmt(point.click)}</b>`,
           `<span style="color:#cbd5e1">●</span> 曝光 <b style="float:right;margin-left:18px">${fmt(point.impression)}</b>`,
         ].join('<br/>');
@@ -436,7 +428,7 @@ function buildSpendConversionTrendOption(trend: Array<Record<string, any>>, char
     series: [
       { name: '消耗', type: 'bar', barWidth, data: trend.map((point) => num(point.fee)), itemStyle: { color: '#111827', borderRadius: [8, 8, 3, 3] }, emphasis: { itemStyle: { color: '#020617' } } },
       { name: '转化', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 3, color: '#166534' }, itemStyle: { color: '#166534' }, areaStyle: { color: 'rgba(22,101,52,0.08)' }, data: trend.map((point) => num(point.conversion)) },
-      { name: '转化成本', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 2.5, color: '#2563eb', type: 'dashed' }, itemStyle: { color: '#2563eb' }, data: trend.map((point) => num(point.conversion) > 0 ? num(point.fee) / num(point.conversion) : 0) },
+      { name: '转化成本', type: 'line', yAxisIndex: 1, smooth: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 2.5, color: '#2563eb', type: 'dashed' }, itemStyle: { color: '#2563eb' }, data: trend.map(conversionCost) },
     ],
   };
 }
@@ -682,13 +674,12 @@ function buildQuadrantOption(data: XHSAdDashboardResponse['quadrant']): Record<s
   };
 }
 
-function OwnerRankingPanel({ rows, notes, notesLoading = false, accountMode = false }: { rows: Array<Record<string, any>>; notes: Record<string, Record<string, any>>; notesLoading?: boolean; accountMode?: boolean }) {
-  const displayRows: Array<Record<string, any>> = accountMode
-    ? [...rows].sort((a, b) => num(b.fee) - num(a.fee))
-    : [...rows]
-      .map((row) => ({ ...row, efficiency: num(row.fee) > 0 ? (num(row.conversion) / num(row.fee)) * 1000 : 0 }))
-      .sort((a, b) => num(b.efficiency) - num(a.efficiency))
-      .slice(0, 8);
+function OwnerRankingPanel({ rows, notes, notesLoading = false, accountMode = false, exportOwners, exportNotes }: {
+  rows: Array<Record<string, any>>; notes: Record<string, Record<string, any>>; notesLoading?: boolean;
+  accountMode?: boolean; exportOwners: ReactNode; exportNotes: ReactNode;
+}) {
+  const rankedRows = rankOwners(rows, !accountMode);
+  const displayRows = accountMode ? rankedRows : rankedRows.slice(0, 8);
   const maxPrimaryMetric = Math.max(1, ...displayRows.map((row) => accountMode ? num(row.fee) : num(row.efficiency)));
   const renderRows = (items: Array<Record<string, any>>) => (
     <div className="space-y-2">
@@ -717,16 +708,15 @@ function OwnerRankingPanel({ rows, notes, notesLoading = false, accountMode = fa
       })}
     </div>
   );
-  if (!rows.length) return <div className="grid h-[300px] place-items-center text-sm font-medium text-slate-500">当前范围暂无负责人数据</div>;
   return (
     <div className={cn(adaptive.innerContainer, 'h-full min-h-0 overflow-hidden px-3 pb-3 pt-1')}>
       <div className={adaptive.innerSplit}>
       <div className="flex min-h-0 flex-col overflow-hidden">
-        <div className="mb-1.5 flex shrink-0 items-center justify-between px-1 text-[11px] font-bold text-slate-400"><span>{accountMode ? '投流账号排行' : '转化:消耗排行'}</span><span>{accountMode ? '柱长=消耗' : '柱长=每千元转化'}</span></div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">{renderRows(displayRows)}</div>
+        <div className="mb-1.5 flex shrink-0 flex-wrap items-center justify-between gap-x-1 px-1 text-[11px] font-bold text-slate-400"><span>{accountMode ? '投流账号排行' : '转化:消耗排行'}</span><div className="flex items-center gap-1.5"><span>{accountMode ? '柱长=消耗' : '柱长=每千元转化'}</span>{exportOwners}</div></div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">{displayRows.length ? renderRows(displayRows) : <div className="grid h-[220px] place-items-center text-sm font-medium text-slate-500">当前范围暂无排行数据</div>}</div>
       </div>
       <div className={cn(adaptive.innerSplitSecondary, 'flex min-h-0 flex-col overflow-hidden')}>
-        <div className="mb-0.5 flex shrink-0 items-center justify-between px-1 text-[11px] font-bold text-slate-400"><span>笔记排行</span><span>TOP 维度</span></div>
+        <div className="mb-0.5 flex shrink-0 flex-wrap items-center justify-between gap-x-1 px-1 text-[11px] font-bold text-slate-400"><span>笔记排行</span><div className="flex items-center gap-1.5"><span>TOP 维度</span>{exportNotes}</div></div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"><TopNotesBoard notes={notes} loading={notesLoading} /></div>
       </div>
       </div>
@@ -737,7 +727,6 @@ function OwnerRankingPanel({ rows, notes, notesLoading = false, accountMode = fa
 function TopNotesBoard({ notes, loading = false }: { notes: Record<string, Record<string, any>>; loading?: boolean }) {
   const rows = Object.entries(notes || {});
   const maxScore = Math.max(1, ...rows.map(([, note]) => num(note.score)));
-  const labelMap: Record<string, string> = { conversion: '转化最高笔记', conversion_rate: '转化率最高笔记', impression: '展现最高笔记', message_consult: '私信进线最高', initiative_message: '私信开口最高' };
   if (loading && !rows.length) return <div className="grid h-[220px] place-items-center text-sm font-medium text-slate-500"><span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />笔记样本加载中...</span></div>;
   if (!rows.length) return <div className="grid h-[220px] place-items-center text-sm font-medium text-slate-500">当前范围暂无笔记样本</div>;
   return (
@@ -750,7 +739,7 @@ function TopNotesBoard({ notes, loading = false }: { notes: Record<string, Recor
             <div className="flex items-start gap-3">
               <div className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-black shadow-sm', isHero ? 'bg-white text-slate-950' : 'bg-slate-950 text-white')}>{index + 1}</div>
               <div className="min-w-0 flex-1">
-                <div className={cn('text-[11px] font-bold uppercase tracking-[0.16em]', isHero ? 'text-emerald-300' : 'text-slate-400')}>{labelMap[key] || key}</div>
+                <div className={cn('text-[11px] font-bold uppercase tracking-[0.16em]', isHero ? 'text-emerald-300' : 'text-slate-400')}>{TOP_NOTE_LABELS[key] || key}</div>
                 <div className={cn('mt-1 line-clamp-2 text-sm font-semibold leading-snug', isHero ? 'text-white' : 'text-slate-950')}>{note.note_title || '未命名笔记'}</div>
                 <div className={cn('mt-1 text-[11px] font-semibold', isHero ? 'text-slate-300' : 'text-slate-500')}>
                   小红书账号：<span className={cn(isHero ? 'text-white' : 'text-slate-700')}>{String(note.xhs_account_name || '未知')}</span>
@@ -869,23 +858,8 @@ function FunnelPanel({ rows }: { rows: Array<Record<string, any>> }) {
 }
 
 function ComparisonList({ rows, accountMode = false }: { rows: Array<Record<string, any>>; accountMode?: boolean }) {
-  const visibleRows = rows.filter((row) => {
-    const ownerKey = String(row.owner_key || '').toLowerCase();
-    const ownerName = String(row.owner_name || '').toLowerCase();
-    return ownerKey !== 'unassigned' && ownerName !== 'unassigned' && ownerName !== '未分配';
-  });
-  const columns: Array<{ label: string; metric: string; type: string }> = accountMode ? [
-    { label: '消耗环比', metric: 'fee', type: 'currency' },
-    { label: '转化数环比', metric: 'conversion', type: 'integer' },
-    { label: '转化成本环比', metric: 'conversion_cost', type: 'currency' },
-    { label: '开口率环比', metric: 'opening_rate', type: 'percent' },
-  ] : [
-    { label: '消耗环比', metric: 'fee', type: 'currency' },
-    { label: '转化数环比', metric: 'conversion', type: 'integer' },
-    { label: '转化成本环比', metric: 'conversion_cost', type: 'currency' },
-    { label: '开口率环比', metric: 'opening_rate', type: 'percent' },
-    { label: '开口成本环比', metric: 'opening_cost', type: 'currency' },
-];
+  const visibleRows = comparisonRows(rows);
+  const columns = comparisonColumns(accountMode);
   const renderMetricCell = (row: Record<string, any>, metric: string, type: string) => {
     const deltaKey = `${metric}_delta`;
     const currentKey = `${metric}_current`;
@@ -922,7 +896,7 @@ function ComparisonList({ rows, accountMode = false }: { rows: Array<Record<stri
           <thead className="sticky top-0 z-10 bg-slate-50/95 text-xs text-slate-400 backdrop-blur">
             <tr>
               <th className="px-3 py-3 text-left font-black">{accountMode ? '投流账号' : '负责人'}</th>
-              {columns.map((column) => <th key={column.label} className="px-3 py-3 text-left font-black leading-4">{column.label}</th>)}
+              {columns.map((column) => <th key={column.metric} className="px-3 py-3 text-left font-black leading-4">{column.name}环比</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -943,7 +917,10 @@ function ComparisonList({ rows, accountMode = false }: { rows: Array<Record<stri
   );
 }
 
-function DataTable({ title, eyebrow, rows, columns, onExport }: { title: string; eyebrow: string; rows: Array<Record<string, any>>; columns: Array<[string, string]>; onExport: () => void }) {
+function DataTable({ title, eyebrow, rows, columns, onExport, exporting }: {
+  title: string; eyebrow: string; rows: Array<Record<string, any>>; columns: Array<[string, string]>;
+  onExport?: () => void; exporting: boolean;
+}) {
   const [sortKey, setSortKey] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -984,7 +961,7 @@ function DataTable({ title, eyebrow, rows, columns, onExport }: { title: string;
 
   return (
     <div className={`${PANEL_CLASS} min-w-0 overflow-hidden`}>
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><PanelTitle eyebrow={eyebrow} title={title} /><button onClick={onExport} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] hover:bg-slate-50"><Download className="h-4 w-4" />导出表格</button></div>
+      <div className="border-b border-slate-100 px-5 py-4"><PanelTitle eyebrow={eyebrow} title={title} action={<ExportButton title={title} onExport={onExport} busy={exporting} />} /></div>
       <div className="max-h-[460px] min-w-0 overflow-y-auto overflow-x-hidden">
         <table className="w-full table-fixed text-[11px]">
           <colgroup>
@@ -1039,8 +1016,10 @@ export default function XhsAdInsightsPage() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedXhsAccountIds, setSelectedXhsAccountIds] = useState<string[]>([]);
   const [buyerUserId, setBuyerUserId] = useState('');
-  const [data, setData] = useState<XHSAdDashboardResponse | null>(null);
-  const [primaryContentTags, setPrimaryContentTags] = useState<ContentTagData | null>(null);
+  const [dashboard, setDashboard] = useState<FilteredSnapshot<XHSAdDashboardResponse> | null>(null);
+  const [content, setContent] = useState<FilteredSnapshot<ContentTagData> | null>(null);
+  const [exportingTable, setExportingTable] = useState<'brand' | 'note' | null>(null);
+  const data = dashboard?.data;
   const [loading, setLoading] = useState(true);
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState('');
@@ -1078,6 +1057,9 @@ export default function XhsAdInsightsPage() {
     buyer_user_id: buyerUserId ? Number(buyerUserId) : undefined,
   }), [buyerUserId, range.end, range.start, selectedAccountIdKey, selectedProfessionalAccountIdKey]);
   const isBuyerScoped = Boolean(buyerUserId);
+  const primaryContentTags = content?.params === params ? content.data : null;
+  const activeTag = primaryContentTags?.content_tag_children?.[selectedPrimaryTag];
+  const quadrant = activeTag?.quadrant ?? primaryContentTags?.quadrant;
 
   useEffect(() => {
     let cancelled = false;
@@ -1087,7 +1069,6 @@ export default function XhsAdInsightsPage() {
     setLoading(true);
     setContentLoading(true);
     setSelectedPrimaryTag('');
-    setPrimaryContentTags(null);
     setContentError('');
     setLoadError('');
 
@@ -1095,7 +1076,7 @@ export default function XhsAdInsightsPage() {
       getXhsAdDashboard({ ...params, include_content_tags: false, signal: controller.signal })
         .then((nextData) => {
           if (!cancelled && contentTagRequestSeq.current === requestSeq) {
-            setData(nextData);
+            setDashboard({ params, data: nextData });
           }
         })
         .catch((error) => {
@@ -1117,8 +1098,7 @@ export default function XhsAdInsightsPage() {
       getXhsAdDashboardContentTags({ ...params, signal: controller.signal })
         .then((contentData) => {
           if (!cancelled && contentTagRequestSeq.current === requestSeq) {
-            setPrimaryContentTags(contentData);
-            setData((current) => current ? { ...current, ...contentData } : current);
+            setContent({ params, data: contentData });
           }
         })
         .catch((error) => {
@@ -1152,23 +1132,6 @@ export default function XhsAdInsightsPage() {
       return;
     }
     setSelectedPrimaryTag(nextPrimaryTag);
-    setData((current) => {
-      if (!current || !primaryContentTags) return current;
-      if (!nextPrimaryTag) {
-        return { ...current, ...primaryContentTags };
-      }
-      const child = primaryContentTags.content_tag_children?.[nextPrimaryTag];
-      if (!child) {
-        return current;
-      }
-      return {
-        ...current,
-        quadrant: child.quadrant,
-        creative_tags: child.creative_tags,
-        content_tag_level: 'secondary',
-        content_tag_primary: nextPrimaryTag,
-      };
-    });
   };
 
   const buyerScopedAccounts = useMemo(() => {
@@ -1245,16 +1208,12 @@ export default function XhsAdInsightsPage() {
     return order.map((key) => source.find((item) => item.key === key)).filter(Boolean) as XHSAdDashboardResponse['kpis'];
   }, [data?.kpis]);
 
-  const contentTagRows = useMemo(() => {
-    return (data?.quadrant.points || []).map((point) => ({
-      tag: point.tag,
-      conversion: point.y,
-      conversion_cost: point.x,
-      fee: point.size,
-      click: point.click,
-      interaction: point.interaction,
-    }));
-  }, [data?.quadrant.points]);
+  const contentTagRows = useMemo(() => tagRows(quadrant?.points || []), [quadrant?.points]);
+  const notes = primaryContentTags?.top_notes ?? {};
+  const canExport = dashboard?.params === params && !loading && !loadError
+    && (!selectedXhsAccountIds.length || (selectedProfessionalAccountIds.length > 0
+      && selectedAccountIds.every((id) => selectedProfessionalAccountIds.includes(id))));
+  const canExportContent = canExport && Boolean(primaryContentTags) && !contentLoading && !contentError;
 
   const toggleTrendMetric = (metricKey: string) => {
     setTrendMetricKeys((current) => {
@@ -1266,18 +1225,30 @@ export default function XhsAdInsightsPage() {
   };
 
   const exportTable = async (table: 'brand' | 'note') => {
+    if (!canExport || !data || exportingTable) return;
+    setExportingTable(table);
     try {
       const blob = await exportXhsAdDashboardTable(table, params);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `小红书投流${table === 'brand' ? '品牌' : '笔记'}表_${range.start}_${range.end}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadFile(blob, `小红书投流${table === 'brand' ? '品牌' : '笔记'}表_${data.start_date}_${data.end_date}.xlsx`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '导出失败');
+    } finally {
+      setExportingTable(null);
     }
   };
+
+  const chartExport = (title: string, build: () => Parameters<typeof downloadChartTable>[2], enabled = true, compact = false) => (
+    <ExportButton title={title} compact={compact} onExport={canExport && data && enabled ? () => {
+      try {
+        downloadChartTable(title, data, build());
+      } catch {
+        toast.error('导出表格失败，请重试');
+      }
+    } : undefined} />
+  );
+  const rankTitle = isBuyerScoped ? '投流账号排行' : '投手转化消耗效率排行';
+  const spendRankTitle = isBuyerScoped ? '投流账号消耗 / 转化排行' : '投手消耗 / 转化排行';
+  const comparisonTitle = isBuyerScoped ? '账号环比数据' : '环比数据';
 
   const dataStatusLabel = loading ? '正在刷新投流数据...' : loadError ? `投流数据加载失败：${loadError}` : data ? `真实数据 · ${fmt(data.filters.accounts.length)} 个广告账户 · ${fmt(data.owner_rows.length)} ${isBuyerScoped ? '个投流账号' : '位投手'}` : '等待加载投流数据';
   const isDashboardRefreshing = loading && Boolean(data);
@@ -1337,27 +1308,51 @@ export default function XhsAdInsightsPage() {
             <div className={cn('grid min-h-[520px] place-items-center rounded-[32px]', CARD_CLASS)}><div className="flex items-center gap-3 text-sm font-medium text-slate-500"><Loader2 className="h-5 w-5 animate-spin text-slate-700" />正在加载投流看板数据...</div></div>
           ) : data ? (
             <>
-              <section className={adaptive.kpiGridSix}>{kpis.map((metric) => <div key={metric.key} className={cn('group relative min-h-[138px] overflow-hidden rounded-[22px] p-3 transition hover:-translate-y-0.5', PANEL_CLASS)}><div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" /><div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-slate-100/70 blur-2xl transition group-hover:bg-slate-200/80" /><div className="relative grid h-full grid-rows-[auto_1fr] gap-1"><div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><div className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.04em] text-slate-400">{metric.label}</div><span className="group/help relative grid h-4 w-4 shrink-0 place-items-center rounded-full text-slate-300 transition hover:text-slate-700"><HelpCircle className="h-3.5 w-3.5" /><span className="pointer-events-none absolute left-1/2 top-6 z-20 w-48 -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-left text-[11px] font-medium leading-relaxed tracking-normal text-white opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.22)] transition group-hover/help:translate-y-1 group-hover/help:opacity-100">对比上一周期：{formatDelta(metric.delta, metric.value_type)}</span></span></div><span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', num(metric.delta) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600')}>{formatDelta(metric.delta, metric.value_type)}</span></div><div className="grid min-w-0 grid-cols-[minmax(0,1fr)_88px] items-center gap-3"><div className="min-w-0 whitespace-nowrap text-left text-[28px] font-semibold leading-none tracking-[-0.05em] text-slate-950 tabular-nums">{fmt(metric.value, metric.value_type)}</div><div className="w-[88px] shrink-0 justify-self-end opacity-90"><MiniSparkline id={metric.key} values={kpiSparkValues(metric.key, data.trend)} /></div></div></div></div>)}</section>
+              <section className={adaptive.kpiGridSix}>
+                {kpis.map((metric) => (
+                  <div key={metric.key} className={cn('group relative min-h-[138px] overflow-hidden rounded-[22px] p-3 transition hover:-translate-y-0.5', PANEL_CLASS)}>
+                    <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                    <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-slate-100/70 blur-2xl transition group-hover:bg-slate-200/80" />
+                    <div className="relative grid h-full grid-rows-[auto_1fr_auto] gap-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <div className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.04em] text-slate-400">{metric.label}</div>
+                          <span className="group/help relative grid h-4 w-4 shrink-0 place-items-center rounded-full text-slate-300 transition hover:text-slate-700">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                            <span className="pointer-events-none absolute left-1/2 top-6 z-20 w-48 -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2 text-left text-[11px] font-medium leading-relaxed tracking-normal text-white opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.22)] transition group-hover/help:translate-y-1 group-hover/help:opacity-100">对比上一周期：{formatDelta(metric.delta, metric.value_type)}</span>
+                          </span>
+                        </div>
+                        <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold', num(metric.delta) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600')}>{formatDelta(metric.delta, metric.value_type)}</span>
+                      </div>
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_88px] items-center gap-3">
+                        <div className="min-w-0 whitespace-nowrap text-left text-[28px] font-semibold leading-none tracking-[-0.05em] text-slate-950 tabular-nums">{fmt(metric.value, metric.value_type)}</div>
+                        <div className="w-[88px] shrink-0 justify-self-end opacity-90"><MiniSparkline id={metric.key} values={metricTrendValues(metric.key, data.trend)} /></div>
+                      </div>
+                      <div className="flex justify-end">{chartExport(metric.label, () => metricTable(metric, data), true, true)}</div>
+                    </div>
+                  </div>
+                ))}
+              </section>
 
               <section className={adaptive.pairGridWide}>
                 <section className={cn(adaptive.heroPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <PanelTitle eyebrow={isBuyerScoped ? '账号排行' : '负责人排行'} title={isBuyerScoped ? '投流账号排行条' : '投手排行条'} suffix={isBuyerScoped ? '左=账号 · 右=笔记' : '左=效率 · 右=笔记'} icon={<Filter className="h-4 w-4" />} />
                   <div className="mt-2 h-[calc(100%-54px)] min-h-0 overflow-hidden">
-                    <OwnerRankingPanel rows={data.owner_rows} notes={data.top_notes} notesLoading={contentLoading} accountMode={isBuyerScoped} />
+                    <OwnerRankingPanel
+                      rows={data.owner_rows} notes={notes} notesLoading={contentLoading} accountMode={isBuyerScoped}
+                      exportOwners={chartExport(rankTitle, () => ownerTable(data.owner_rows, isBuyerScoped, !isBuyerScoped), data.owner_rows.length > 0, true)}
+                      exportNotes={chartExport('笔记排行', () => topNotesTable(notes), canExportContent && Object.keys(notes).length > 0, true)}
+                    />
                   </div>
                 </section>
                 <section className={cn(adaptive.heroPanel, 'relative overflow-hidden p-4', PANEL_CLASS)}>
-                  <PanelTitle eyebrow="内容标签" title="内容标签分析" suffix={selectedPrimaryTag ? '二级下钻 · 右=矩阵' : '一级总览 · 右=矩阵'} icon={<PieChart className="h-4 w-4" />} />
-                  {contentLoading ? (
-                    <div className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-500 shadow-sm">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />内容标签加载中
-                    </div>
-                  ) : contentError ? (
-                    <div className="absolute right-4 top-4 rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600">{contentError}</div>
-                  ) : null}
+                  <PanelTitle
+                    eyebrow="内容标签" title="内容标签分析" suffix={activeTag ? '二级下钻 · 右=矩阵' : '一级总览 · 右=矩阵'}
+                    action={chartExport(activeTag ? `内容标签分析_${selectedPrimaryTag}` : '内容标签分析', () => tagTable(contentTagRows, activeTag ? selectedPrimaryTag : ''), canExportContent && contentTagRows.length > 0)}
+                  />
                   <div className="mt-3 flex h-[calc(100%-58px)] min-h-0 flex-col">
                     <div className="relative flex min-h-0 flex-1 flex-col">
-                      {selectedPrimaryTag ? (
+                      {activeTag ? (
                         <button
                           type="button"
                           onClick={() => switchContentTags()}
@@ -1371,12 +1366,14 @@ export default function XhsAdInsightsPage() {
                         <div className="grid min-h-0 flex-1 place-items-center text-sm font-medium text-slate-500">
                           <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />矩阵计算中...</span>
                         </div>
+                      ) : contentError ? (
+                        <div className="grid min-h-0 flex-1 place-items-center text-sm font-medium text-rose-600">{contentError}</div>
                       ) : (
                         <EchartPanel
                           ready={echartsReady}
-                          optionBuilder={() => buildQuadrantOption(data.quadrant)}
+                          optionBuilder={() => buildQuadrantOption(quadrant ?? data.quadrant)}
                           className="min-h-0 flex-1"
-                          onPointClick={selectedPrimaryTag ? undefined : (tag) => switchContentTags(tag)}
+                          onPointClick={activeTag ? undefined : (tag) => switchContentTags(tag)}
                         />
                       )}
                     </div>
@@ -1388,7 +1385,7 @@ export default function XhsAdInsightsPage() {
                       ) : (
                         <CreativeTagList
                           rows={contentTagRows}
-                          mode={selectedPrimaryTag ? 'secondary' : 'primary'}
+                          mode={activeTag ? 'secondary' : 'primary'}
                           onSelectPrimary={(tag) => switchContentTags(tag)}
                         />
                       )}
@@ -1401,18 +1398,21 @@ export default function XhsAdInsightsPage() {
                 <div className="space-y-4">
                   <section className={cn('relative h-[300px] overflow-hidden p-5', PANEL_CLASS)}>
                     <div className="relative flex h-full flex-col">
-                      <PanelTitle eyebrow={isBuyerScoped ? '账号表现' : '负责人表现'} title={isBuyerScoped ? '投流账号消耗 / 转化排行' : '投手消耗 / 转化排行'} suffix="柱=消耗 · 线=转化" icon={<Filter className="h-4 w-4" />} />
+                      <PanelTitle eyebrow={isBuyerScoped ? '账号表现' : '负责人表现'} title={spendRankTitle} suffix="柱=消耗 · 线=转化"
+                        action={chartExport(spendRankTitle, () => ownerTable(data.owner_rows, isBuyerScoped), data.owner_rows.length > 0)} />
                       <div className="mt-3 min-h-0 flex-1"><EchartPanel ready={echartsReady} optionBuilder={(width) => buildOwnerPerformanceOption(data.owner_rows, width, isBuyerScoped)} className="h-full" /></div>
                     </div>
                   </section>
                   <section className={cn('relative min-h-[500px] overflow-visible p-5', PANEL_CLASS)}>
-                    <PanelTitle eyebrow="转化链路" title="转化漏斗" icon={<BarChart3 className="h-4 w-4" />} />
+                    <PanelTitle eyebrow="转化链路" title="转化漏斗"
+                      action={chartExport('转化漏斗', () => funnelTable(data.funnel), data.funnel.length > 0)} />
                     <FunnelPanel rows={data.funnel} />
                   </section>
                 </div>
                 <section className={cn(adaptive.trendPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <div className="relative flex h-full flex-col">
-                    <PanelTitle eyebrow="经营趋势" title="消耗转化趋势" suffix="柱=消耗 · 线=转化/转化成本" />
+                    <PanelTitle eyebrow="经营趋势" title="消耗转化趋势" suffix="柱=消耗 · 线=转化/转化成本"
+                      action={chartExport('消耗转化趋势', () => spendTrendTable(data.trend), data.trend.length > 0)} />
                     <div className="mt-3 min-h-0 flex-1">
                       <EchartPanel ready={echartsReady} optionBuilder={(width) => buildSpendConversionTrendOption(data.trend, width)} className="h-full" />
                     </div>
@@ -1422,12 +1422,14 @@ export default function XhsAdInsightsPage() {
 
               <section className={adaptive.pairGrid}>
                 <section className={cn(adaptive.comparisonPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
-                  <PanelTitle eyebrow="周期对比" title={isBuyerScoped ? '账号环比数据' : '环比数据'} />
+                  <PanelTitle eyebrow="周期对比" title={comparisonTitle}
+                    action={chartExport(comparisonTitle, () => comparisonTable(data.comparison_rows, isBuyerScoped), comparisonRows(data.comparison_rows).length > 0)} />
                   <ComparisonList rows={data.comparison_rows} accountMode={isBuyerScoped} />
                 </section>
                 <section className={cn(adaptive.comparisonPanel, 'relative overflow-hidden p-5', PANEL_CLASS)}>
                   <div className="relative flex h-full flex-col">
-                    <PanelTitle eyebrow="趋势表现" title="核心指标趋势" suffix="单次最多展示 2 条" />
+                    <PanelTitle eyebrow="趋势表现" title="核心指标趋势" suffix="单次最多展示 2 条"
+                      action={chartExport('核心指标趋势', () => coreTrendTable(data.trend, trendMetricKeys), data.trend.length > 0)} />
                     <div className="mt-4 flex flex-wrap gap-2">
                       {TREND_METRICS.map((metric) => {
                         const active = trendMetricKeys.includes(metric.key);
@@ -1435,6 +1437,7 @@ export default function XhsAdInsightsPage() {
                           <button
                             key={metric.key}
                             type="button"
+                            aria-pressed={active}
                             onClick={() => toggleTrendMetric(metric.key)}
                             className={cn(
                               'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black transition',
@@ -1455,7 +1458,10 @@ export default function XhsAdInsightsPage() {
                   </div>
                 </section>
               </section>
-              <section className={adaptive.pairGridNarrow}><DataTable title="品牌消耗转化表" eyebrow="明细导出" rows={data.brand_rows.slice(0, 80)} columns={[['品牌', 'brand'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['转化', 'conversion'], ['转化成本', 'conversion_cost']]} onExport={() => exportTable('brand')} /><DataTable title="笔记消耗转化表" eyebrow="明细导出" rows={data.note_rows.slice(0, 80)} columns={[['笔记/素材', 'note_title'], ['小红书账号', 'xhs_account_name'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['开口数', 'openings'], ['转化', 'conversion'], ['转化成本', 'conversion_cost'], ['开口转化率', 'opening_conversion_rate']]} onExport={() => exportTable('note')} /></section>
+              <section className={adaptive.pairGridNarrow}>
+                <DataTable title="品牌消耗转化表" eyebrow="明细导出" rows={data.brand_rows.slice(0, 80)} columns={[['品牌', 'brand'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['转化', 'conversion'], ['转化成本', 'conversion_cost']]} onExport={canExport && !exportingTable ? () => exportTable('brand') : undefined} exporting={exportingTable === 'brand'} />
+                <DataTable title="笔记消耗转化表" eyebrow="明细导出" rows={(primaryContentTags?.note_rows ?? data.note_rows).slice(0, 80)} columns={[['笔记/素材', 'note_title'], ['小红书账号', 'xhs_account_name'], ['消费', 'fee'], ['展现', 'impression'], ['点击', 'click'], ['点击率', 'ctr'], ['开口数', 'openings'], ['转化', 'conversion'], ['转化成本', 'conversion_cost'], ['开口转化率', 'opening_conversion_rate']]} onExport={canExport && !exportingTable ? () => exportTable('note') : undefined} exporting={exportingTable === 'note'} />
+              </section>
             </>
           ) : (
             <div className={cn('grid min-h-[520px] place-items-center rounded-[32px]', CARD_CLASS)}><div className="text-sm font-medium text-slate-500">暂无投流看板数据</div></div>
