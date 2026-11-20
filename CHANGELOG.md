@@ -4,6 +4,19 @@ All notable changes are recorded here. Versions follow semantic versioning.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-20
+
+### Added
+
+- Export individual advertising dashboard charts and KPI cards as Excel-readable
+  CSV using the loaded filter scope, selected trend series and tag drill-down.
+  Existing brand and note Excel exports retain the full-report endpoint.
+
+### Fixed
+
+- Keep the sidebar's active background on its link after the homepage tag panel
+  disappears when navigating to Publish, Insights, or Ads.
+
 ## [0.6.1] - 2026-11-18
 
 Release preparation candidate, not a production receipt. Includes the frozen
