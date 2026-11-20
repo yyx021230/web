@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
@@ -51,9 +51,6 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [storedUser, setStoredUser] = useState<CurrentUser | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const navigationRef = useRef<HTMLElement>(null);
-  const navItemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
-  const [indicator, setIndicator] = useState({ top: 0, height: 32, visible: false });
   const [promptFilter, setPromptFilter] = useState<PromptLibraryFilter>({ source: 'all', category: '' });
   const [promptCategories, setPromptCategories] = useState<Array<{ name: string; count: number }>>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -127,47 +124,9 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
     event.preventDefault();
     openLogin(href, `登录后进入${label}`);
   };
-  const beginNavigation = (event: React.MouseEvent<HTMLAnchorElement>, href: string, label: string) => {
-    protectNavigation(event, href, label);
-    if (!event.defaultPrevented && pathname !== href) setPendingHref(href);
-  };
   const choosePromptCategory = (category: string) => {
     setPromptLibraryFilter({ source: promptFilter.source, category });
   };
-  const visualPathname = pendingHref || pathname;
-  const activeHref = groups.flatMap(group => group.items).find(item => {
-    const paths = [item.href, ...('aliases' in item ? item.aliases || [] : [])];
-    return paths.some(path => visualPathname === path || visualPathname.startsWith(path + '/'));
-  })?.href;
-
-  useLayoutEffect(() => {
-    const navigation = navigationRef.current;
-    const activeItem = activeHref ? navItemRefs.current[activeHref] : null;
-    if (!navigation || !activeItem) {
-      setIndicator(current => ({ ...current, visible: false }));
-      return;
-    }
-
-    const positionIndicator = () => {
-      const navigationRect = navigation.getBoundingClientRect();
-      const itemRect = activeItem.getBoundingClientRect();
-      setIndicator({
-        top: itemRect.top - navigationRect.top + navigation.scrollTop,
-        height: itemRect.height,
-        visible: true,
-      });
-    };
-
-    positionIndicator();
-    window.addEventListener('resize', positionIndicator);
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(positionIndicator);
-    observer?.observe(navigation);
-    observer?.observe(activeItem);
-    return () => {
-      window.removeEventListener('resize', positionIndicator);
-      observer?.disconnect();
-    };
-  }, [activeHref, collapsed]);
 
   return (
     <aside aria-label="工作空间导航" className={cn(shell.sidebar, collapsed && shell.collapsed)}>
@@ -182,12 +141,7 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
         </button>
       </div>
 
-      <nav ref={navigationRef} aria-label="主导航" className={shell.navigation}>
-        <span
-          aria-hidden="true"
-          className={shell.navIndicator}
-          style={{ height: indicator.height, opacity: indicator.visible ? 1 : 0, transform: `translate3d(0, ${indicator.top}px, 0)` }}
-        />
+      <nav aria-label="主导航" className={shell.navigation}>
         {groups.map(group => (
           <Fragment key={group.label}>
             {group.label === '运营' && pathname.startsWith('/prompts') && !collapsed && (
@@ -237,12 +191,12 @@ export default function AppSidebar({ pathname }: { pathname: string }) {
               <div className="space-y-1">
                 {group.items.map(item => {
                   const paths = [item.href, ...('aliases' in item ? item.aliases || [] : [])];
-                  const active = paths.some(path => visualPathname === path || visualPathname.startsWith(path + '/'));
+                  const active = paths.some(path => pathname === path || pathname.startsWith(path + '/'));
                   return (
                     <Link key={item.href} href={item.href} prefetch title={item.label} aria-label={item.label} aria-current={active ? 'page' : undefined}
-                      ref={node => { navItemRefs.current[item.href] = node; }}
-                      onClick={event => beginNavigation(event, item.href, item.label)}
-                      className={cn(shell.navItem, pendingHref === item.href && shell.navPending, collapsed ? 'justify-center' : 'justify-center md:justify-start')}>
+                      onClick={event => protectNavigation(event, item.href, item.label)}
+                      onNavigate={() => setPendingHref(active ? null : item.href)}
+                      className={cn(shell.navItem, !active && pendingHref === item.href && shell.navPending, collapsed ? 'justify-center' : 'justify-center md:justify-start')}>
                       <item.icon />
                       <span className={labelClass}>{item.label}</span>
                     </Link>

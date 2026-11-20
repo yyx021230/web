@@ -1,10 +1,13 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime';
+import type { NextRouter } from 'next/router';
 import AppSidebar from './AppSidebar';
 import { AUTH_REQUIRED_EVENT, type AuthRequiredDetail } from '@/lib/auth-events';
 import { promptsApi } from '@/services/promptsApi';
 import { setPromptLibraryFilter } from '@/lib/prompt-library-filter';
+import shell from './workspace-shell.module.css';
 
 vi.mock('@/services/promptsApi', () => ({
   promptsApi: { getCategories: vi.fn() },
@@ -57,6 +60,34 @@ describe('workspace sidebar', () => {
     await act(async () => root.render(<AppSidebar pathname={pathname} />));
     expect(host.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     expect(host.querySelector('[aria-current="page"]')?.getAttribute('href')).toBe(href);
+  });
+
+  it.each(['/publish', '/insights', '/ad-insights'])('keeps the current highlight on the link when homepage filters disappear on %s', async (href) => {
+    localStorage.setItem('app_current_user', JSON.stringify({ username: 'test_login' }));
+    const push = vi.fn();
+    const router = { push, prefetch: vi.fn() } as unknown as NextRouter;
+    const renderSidebar = async (pathname: string) => act(async () => root.render(
+      <RouterContext.Provider value={router}><AppSidebar pathname={pathname} /></RouterContext.Provider>,
+    ));
+    const current = () => host.querySelector('nav a[aria-current="page"]');
+    await renderSidebar('/prompts');
+    expect(host.querySelector('[aria-label="标签筛选"]')).not.toBeNull();
+    const destination = host.querySelector<HTMLAnchorElement>(`nav a[href="${href}"]`)!;
+
+    await act(async () => destination.click());
+    expect(push).toHaveBeenCalledWith(href, { scroll: true });
+    expect(current()?.getAttribute('href')).toBe('/prompts');
+    expect(destination.classList.contains(shell.navPending)).toBe(true);
+
+    await renderSidebar(href);
+    expect(host.querySelector('[aria-label="标签筛选"]')).toBeNull();
+    expect(current()).toBe(destination);
+    expect(destination.classList.contains(shell.navPending)).toBe(false);
+    expect(host.querySelector('nav > span[aria-hidden="true"]')).toBeNull();
+
+    await renderSidebar('/prompts');
+    expect(current()?.getAttribute('href')).toBe('/prompts');
+    expect(host.querySelector('[aria-label="标签筛选"]')).not.toBeNull();
   });
 
   it('preserves the collapsed preference', async () => {

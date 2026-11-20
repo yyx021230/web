@@ -170,20 +170,6 @@
   scrollbar-color: #e7e8ed transparent;
 }
 
-.navIndicator {
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-  border: 0;
-  border-radius: 10px;
-  background: #ededeb;
-  box-shadow: inset 0 1px 0 #ffffff9e;
-  transition: transform 340ms cubic-bezier(.22, 1, .36, 1), height 220ms ease, opacity 140ms ease;
-}
-
 .group { position: relative; z-index: 1; }
 .group + .group { margin-top: 20px; }
 .group:first-of-type .groupLabel { display: none; }
@@ -207,7 +193,7 @@
 .navItem:hover { color: #1b1b1b; }
 .navItem:hover::before { opacity: 1; }
 .navItem[aria-current='page'] { color: #1b1b1b; font-weight: 500; }
-.navItem[aria-current='page']::before { opacity: 0; transform: scale(1); }
+.navItem[aria-current='page']::before { opacity: 1; background: #ededeb; box-shadow: inset 0 1px 0 #ffffff9e; }
 .navItem svg { width: 14px; height: 14px; flex-shrink: 0; stroke-width: 2; color: #4b5563; transition: color 150ms cubic-bezier(.4, 0, .2, 1); }
 .navItem[aria-current='page'] svg { color: #4b5563; }
 .navPending::after { content: ''; position: absolute; right: 10px; width: 4px; height: 4px; border-radius: 50%; background: #777b87; animation: navPendingPulse 700ms ease-in-out infinite alternate; }
@@ -348,5 +334,5 @@
 @media (prefers-reduced-motion: reduce) {
   .shell::before, .shell::after { animation: none; }
   .routeStage, .navPending::after { animation: none; }
-  .navIndicator, .navItem, .navItem::before, .navItem svg, .inspiration, .account { transition: none; }
+  .navItem, .navItem::before, .navItem svg, .inspiration, .account { transition: none; }
 }
